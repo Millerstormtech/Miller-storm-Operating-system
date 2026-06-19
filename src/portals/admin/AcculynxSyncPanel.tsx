@@ -6,6 +6,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
   const [unmatched, setUnmatched] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const load = useCallback(async () => {
     const [s, u, us] = await Promise.all([
@@ -22,13 +23,22 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
 
   async function refreshNow() {
     setBusy(true);
+    setActionError("");
     try {
-      await fetch("/api/acculynx/sync", {
+      const res = await fetch("/api/acculynx/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: adminUserId, mode: "incremental" }),
       });
+      if (!res.ok) {
+        setActionError(`Sync failed (HTTP ${res.status}).`);
+      } else {
+        const r = await res.json();
+        if (r?.status === "failed") setActionError(`Sync error: ${r.error ?? "unknown"}`);
+      }
       await load();
+    } catch (e: any) {
+      setActionError(e?.message ?? "Sync request failed.");
     } finally {
       setBusy(false);
     }
@@ -75,6 +85,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
           ))}
         </div>
       )}
+      {actionError ? <p style={{ color: "#dc2626" }}>{actionError}</p> : null}
       {status?.lastError ? <p style={{ color: "#dc2626" }}>Last error: {status.lastError}</p> : null}
 
       <h3 style={{ fontSize: 16, fontWeight: 600, margin: "8px 0 12px" }}>Unmatched reps</h3>

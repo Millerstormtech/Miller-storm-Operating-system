@@ -7,6 +7,8 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
   await connectMongo();
   const rows = await ScoringFactModel.aggregate([
     { $match: { repUserId: null, repExternalId: { $ne: null } } },
+    // Deterministic order so $last picks the newest name snapshot.
+    { $sort: { occurredAt: 1, _id: 1 } },
     { $group: { _id: "$repExternalId", name: { $last: "$repNameSnapshot" }, facts: { $sum: 1 } } },
     { $sort: { facts: -1 } },
   ]);

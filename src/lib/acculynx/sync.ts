@@ -8,7 +8,8 @@ import {
   fetchJobsModifiedSince, fetchMilestoneHistory, fetchRepresentatives,
   fetchFinancials, fetchUserMap,
 } from "./client";
-import { mapJobToFacts, MappingConfig } from "./mapping";
+import { mapJobToFacts } from "./mapping";
+import type { MappingConfig } from "./mapping";
 
 const MAPPING_CFG: MappingConfig = {
   repType: REP_TYPE,
@@ -35,7 +36,8 @@ export async function runSync(opts: { mode?: "incremental" | "backfill"; dryRun?
   if (!state) state = await SyncStateModel.create({ key: "acculynx" });
   if (state.running) return { skipped: true, status: "ok", jobsProcessed: 0, factsWritten: 0, unmatched: [] };
 
-  state.running = true; state.runStartedAt = new Date();
+  const runStartedAt = new Date();
+  state.running = true; state.runStartedAt = runStartedAt;
   await state.save();
 
   const result: SyncResult = { status: "ok", jobsProcessed: 0, factsWritten: 0, unmatched: [] };
@@ -99,8 +101,10 @@ export async function runSync(opts: { mode?: "incremental" | "backfill"; dryRun?
     result.unmatched = [...unmatchedSet].map(([repExternalId, name]) => ({ repExternalId, name }));
 
     if (!dryRun) {
-      state.lastSyncAt = new Date();
-      if (mode === "backfill") state.lastFullSyncAt = new Date();
+      // Watermark = run START time (not end), so jobs modified mid-run are re-pulled
+      // next time rather than skipped.
+      state.lastSyncAt = runStartedAt;
+      if (mode === "backfill") state.lastFullSyncAt = runStartedAt;
     }
     state.lastStatus = "ok"; state.lastError = "";
     state.jobsProcessed = result.jobsProcessed; state.factsWritten = result.factsWritten;
