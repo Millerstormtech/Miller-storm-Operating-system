@@ -4,8 +4,18 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { runSync } from "../../../src/lib/acculynx/sync";
 
-// Locked: either the cron's shared secret OR an admin user id (matches the
-// platform's existing localStorage auth model -- better than the open webhook).
+// Authorization. Two paths:
+//   1. x-sync-secret header (used by the cron) -- SERVER-TRUSTED and not spoofable.
+//   2. body userId resolved to an admin (used by the in-app "Refresh now" button).
+//
+// SECURITY LIMITATION (known, platform-wide): path 2 trusts a client-supplied
+// userId and is therefore spoofable. This is NOT unique to this endpoint -- the
+// entire app authorizes from the client (localStorage; no server sessions/JWT).
+// See docs/STATE-OF-THE-PLATFORM.md s7: server-side identity is the platform's
+// #1 security debt and must be fixed for ALL ~78 routes together, not one-off
+// here. This endpoint intentionally matches the existing pattern. Worst case of
+// abuse here is triggering an idempotent, read-only AccuLynx pull (no data is
+// returned to the caller beyond sync counts).
 async function authorize(req: NextApiRequest): Promise<boolean> {
   const secret = req.headers["x-sync-secret"];
   if (secret && secret === process.env.ACCULYNX_SYNC_SECRET) return true;
