@@ -19,7 +19,9 @@ test("month range starts day 1 00:00 Central", () => {
   assert.equal(start.toISOString(), "2026-06-01T05:00:00.000Z");
 });
 
-test("all range starts at epoch", () => {
-  const { start } = getWindowRange("all", now);
-  assert.equal(start.getTime(), 0);
+test("year range starts Jan 1 00:00 Central (CST, UTC-6)", () => {
+  // Jan 1 2026 00:00 Central is CST (UTC-6) => 2026-01-01T06:00:00Z
+  const { start, end } = getWindowRange("year", now);
+  assert.equal(start.toISOString(), "2026-01-01T06:00:00.000Z");
+  assert.equal(end.getTime(), now.getTime());
 });

@@ -10,6 +10,7 @@ import {
 } from "./client";
 import { mapJobToFacts } from "./mapping";
 import type { MappingConfig } from "./mapping";
+import { getWindowRange } from "./windows";
 
 const MAPPING_CFG: MappingConfig = {
   repType: REP_TYPE,
@@ -44,10 +45,12 @@ export async function runSync(opts: { mode?: "incremental" | "backfill"; dryRun?
   const unmatchedSet = new Map<string, string>();
 
   try {
-    // since: backfill = 12 months; incremental = last watermark (minus 1 day buffer) or 12 months if first run
+    // since: backfill (and first run) = start of the current year (year-to-date);
+    // incremental = last watermark minus a 1-day re-fetch buffer.
+    const yearStart = getWindowRange("year").start;
     let since: Date;
     if (mode === "backfill" || !state.lastSyncAt) {
-      since = new Date(Date.now() - 365 * 86400000);
+      since = yearStart;
     } else {
       since = new Date(state.lastSyncAt.getTime() - 86400000);
     }

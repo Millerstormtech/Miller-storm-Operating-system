@@ -1,5 +1,9 @@
 // src/lib/acculynx/windows.ts
-export type Window = "week" | "month" | "all";
+// All windows are "to date": from the period start (Central time) through now.
+//   week  = week-to-date  (since Monday 00:00 Central)
+//   month = month-to-date (since the 1st 00:00 Central)
+//   year  = year-to-date  (since Jan 1 00:00 Central)
+export type Window = "week" | "month" | "year";
 
 const ZONE = "America/Chicago";
 
@@ -35,9 +39,11 @@ function centralParts(d: Date) {
 const MON_INDEX: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
 
 export function getWindowRange(window: Window, now: Date = new Date()): { start: Date; end: Date } {
-  if (window === "all") return { start: new Date(0), end: now };
-
   const { year, month, day, weekday } = centralParts(now);
+
+  if (window === "year") {
+    return { start: centralWallToUtc(year, 1, 1), end: now };
+  }
 
   if (window === "month") {
     return { start: centralWallToUtc(year, month, 1), end: now };

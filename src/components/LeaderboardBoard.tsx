@@ -1,11 +1,11 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useState, useCallback } from "react";
 
-type Window = "week" | "month" | "all";
+type Window = "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
-  { key: "week", label: "This Week" },
-  { key: "month", label: "This Month" },
-  { key: "all", label: "All-Time" },
+  { key: "week", label: "Week to Date" },
+  { key: "month", label: "Month to Date" },
+  { key: "year", label: "Year to Date" },
 ];
 const fmtMoney = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);

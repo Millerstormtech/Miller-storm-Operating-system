@@ -99,8 +99,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // AccuLynx sales leaderboard (window-aware: week / month / all)
-  const w = (["week", "month", "all"].includes(String(req.query.window)) ? req.query.window : "all") as Window;
+  // AccuLynx sales leaderboard (window-aware: week / month / year-to-date)
+  const w = (["week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
   const { start, end } = getWindowRange(w);
 
   const rows = await ScoringFactModel.aggregate([
