@@ -53,18 +53,18 @@ const PAGE = 50;
 export async function fetchJobsModifiedSince(since: string): Promise<any[]> {
   const out: any[] = [];
   const endDate = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
-  let recordStartIndex = 0;
+  let pageStartIndex = 0;
   for (;;) {
     const page = await get("/jobs", {
       dateFilterType: "ModifiedDate", startDate: since, endDate,
       sortBy: "ModifiedDate", sortOrder: "Descending",
-      pageSize: PAGE, recordStartIndex,
+      pageSize: PAGE, pageStartIndex,
     });
     const items = page?.items ?? [];
     out.push(...items);
     if (items.length < PAGE) break;
-    recordStartIndex += PAGE;
-    if (recordStartIndex > 100000) break; // AccuLynx hard cap guard
+    pageStartIndex += PAGE;
+    if (pageStartIndex > 100000) break; // AccuLynx hard cap guard
   }
   return out;
 }
@@ -76,16 +76,16 @@ export async function fetchFinancials(jobId: string) { return get(`/jobs/${jobId
 // All users -> map of AccuLynx userId -> { email, name }.
 export async function fetchUserMap(): Promise<Record<string, { email: string; name: string }>> {
   const map: Record<string, { email: string; name: string }> = {};
-  let recordStartIndex = 0;
+  let pageStartIndex = 0;
   for (;;) {
-    const page = await get("/users", { pageSize: PAGE, recordStartIndex });
+    const page = await get("/users", { pageSize: PAGE, pageStartIndex });
     const items = page?.items ?? [];
     for (const u of items) {
       const name = u.displayName || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email || u.id;
       map[u.id] = { email: (u.email || "").toLowerCase(), name };
     }
     if (items.length < PAGE) break;
-    recordStartIndex += PAGE;
+    pageStartIndex += PAGE;
   }
   return map;
 }
