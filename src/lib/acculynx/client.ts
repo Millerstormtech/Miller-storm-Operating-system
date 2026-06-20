@@ -44,7 +44,9 @@ async function get(path: string, params: Record<string, string | number> = {}): 
 }
 
 // AccuLynx caps page size at 50 across list endpoints (pageSize > 50 -> HTTP 400).
-const PAGE = 50;
+// AccuLynx caps page size PER ENDPOINT: /jobs max 25, /users max 50 (larger -> HTTP 400).
+const JOBS_PAGE = 25;
+const USERS_PAGE = 50;
 
 // All jobs modified on/after `since` (YYYY-MM-DD). Paginates fully.
 // NOTE: AccuLynx REQUIRES both startDate AND endDate when dateFilterType is set
@@ -58,12 +60,12 @@ export async function fetchJobsModifiedSince(since: string): Promise<any[]> {
     const page = await get("/jobs", {
       dateFilterType: "ModifiedDate", startDate: since, endDate,
       sortBy: "ModifiedDate", sortOrder: "Descending",
-      pageSize: PAGE, pageStartIndex,
+      pageSize: JOBS_PAGE, pageStartIndex,
     });
     const items = page?.items ?? [];
     out.push(...items);
-    if (items.length < PAGE) break;
-    pageStartIndex += PAGE;
+    if (items.length < JOBS_PAGE) break;
+    pageStartIndex += JOBS_PAGE;
     if (pageStartIndex > 100000) break; // AccuLynx hard cap guard
   }
   return out;
@@ -78,14 +80,14 @@ export async function fetchUserMap(): Promise<Record<string, { email: string; na
   const map: Record<string, { email: string; name: string }> = {};
   let pageStartIndex = 0;
   for (;;) {
-    const page = await get("/users", { pageSize: PAGE, pageStartIndex });
+    const page = await get("/users", { pageSize: USERS_PAGE, pageStartIndex });
     const items = page?.items ?? [];
     for (const u of items) {
       const name = u.displayName || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email || u.id;
       map[u.id] = { email: (u.email || "").toLowerCase(), name };
     }
-    if (items.length < PAGE) break;
-    pageStartIndex += PAGE;
+    if (items.length < USERS_PAGE) break;
+    pageStartIndex += USERS_PAGE;
   }
   return map;
 }
