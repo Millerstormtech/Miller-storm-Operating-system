@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "pages/api/upload-image.ts": {
+      "maxDuration": 300,
+      "memory": 3008
+    }
+  },
+  "api": {
+    "bodyParser": {
+      "sizeLimit": "1000mb"
+    }
+  }
+}

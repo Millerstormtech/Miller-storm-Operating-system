@@ -1,0 +1,6 @@
+id,name,email,password,role,phone,territory,strengths,weaknesses
+john.doe@example.com,John Doe,john.doe@example.com,Password123!,sales,555-0101,North Region,Excellent communication and closing skills,Needs improvement in technical product knowledge
+jane.smith@example.com,Jane Smith,jane.smith@example.com,SecurePass456!,sales,555-0102,South Region,Strong relationship building and follow-up,Time management could be better
+mike.johnson@example.com,Mike Johnson,mike.johnson@example.com,MyPass789!,manager,555-0103,East Region,Leadership and team motivation,Delegation skills need work
+sarah.williams@example.com,Sarah Williams,sarah.williams@example.com,Pass2024!,sales,555-0104,West Region,Product expertise and presentation skills,Prospecting and cold calling
+david.brown@example.com,David Brown,david.brown@example.com,BrownPass321!,marketing,555-0105,Central Region,Creative content and social media,Analytics and reporting

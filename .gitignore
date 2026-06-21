@@ -1,0 +1,13 @@
+.next/
+node_modules/
+dist/
+.env
+.env.*.local
+*.log
+firebase-service-account.json
+*.plist
+google-services.json
+
+# Build artifacts / OS files
+.DS_Store
+tsconfig.tsbuildinfo

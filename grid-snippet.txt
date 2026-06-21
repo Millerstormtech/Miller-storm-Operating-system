@@ -1,0 +1,15 @@
+﻿}
+
+.training-card-grid {
+  margin-top: 4px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .training-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
