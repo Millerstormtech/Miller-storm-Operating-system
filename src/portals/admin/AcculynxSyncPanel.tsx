@@ -11,13 +11,13 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
   const load = useCallback(async () => {
     const [s, u, us] = await Promise.all([
       fetch("/api/acculynx/status").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/acculynx/unmatched").then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/acculynx/unmatched?userId=${encodeURIComponent(adminUserId)}`).then((r) => (r.ok ? r.json() : [])),
       fetch("/api/users").then((r) => (r.ok ? r.json() : [])),
     ]);
     setStatus(s);
     setUnmatched(Array.isArray(u) ? u : []);
     setUsers(Array.isArray(us) ? us : us?.users ?? []);
-  }, []);
+  }, [adminUserId]);
 
   useEffect(() => { load(); }, [load]);
 
