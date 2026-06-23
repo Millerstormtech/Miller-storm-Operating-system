@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const mongoUrl = process.env.MONGODB_URI || 'mongodb://dsatguru:vivekVOra32%2B@69.62.66.123:27017/millerstorm?authSource=admin';
+const mongoUrl = process.env.MONGODB_URI;
 
 async function traceSaveFlow() {
   try {

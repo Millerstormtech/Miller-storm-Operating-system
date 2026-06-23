@@ -28,7 +28,7 @@ node seed.js
 
 echo ""
 echo "=== Verifying users were created ==="
-mongosh "mongodb://dsatguru:vivekVOra32+@69.62.66.123:27017/millerstorm?authSource=admin" --eval "db.users.countDocuments()"
+mongosh "$MONGODB_URI" --eval "db.users.countDocuments()"
 
 echo ""
 echo "=== Restarting application ==="

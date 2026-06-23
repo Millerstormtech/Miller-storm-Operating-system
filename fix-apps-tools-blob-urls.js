@@ -1,6 +1,6 @@
 const { MongoClient } = require('mongodb');
 
-const uri = 'mongodb://dsatguru:vivekVOra32%2B@69.62.66.123:27017/millerstorm?authSource=admin';
+const uri = process.env.MONGODB_URI;
 
 async function fixBlobUrls() {
   const client = new MongoClient(uri);
