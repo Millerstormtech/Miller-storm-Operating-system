@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Course, CoursePage, CourseFolder } from "../../types";
 import { Toast } from "../../components/Toast";
+import { parseQuestionsDoc, validateQuestions } from "../../lib/quizImport";
 
 type CourseEditorProps = {
   courses: Course[];
@@ -46,6 +47,12 @@ export function CourseManagement(props: CourseEditorProps) {
   const [resourceFileLabelDraft, setResourceFileLabelDraft] = useState("");
   const [isPinPostModalOpen, setIsPinPostModalOpen] = useState(false);
   const [pinPostUrlDraft, setPinPostUrlDraft] = useState("");
+  // Bulk "Import Quizzes" feature
+  const [isImportQuizModalOpen, setIsImportQuizModalOpen] = useState(false);
+  const [importDocText, setImportDocText] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importReport, setImportReport] = useState<any | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const resourceFileInputRef = useRef<HTMLInputElement | null>(null);
   const bodyInputRef = useRef<HTMLDivElement | null>(null);
   const [lastPageId, setLastPageId] = useState<string | null>(null);
@@ -2344,6 +2351,88 @@ export function CourseManagement(props: CourseEditorProps) {
                           const pages = selectedCourse.pages ?? [];
                           const folders = selectedCourse.folders ?? [];
                           const activePage = pages.find((page) => page.id === activePageId) ?? pages[pages.length - 1] ?? pages[0];
+
+                          // ---- Import Quiz (scoped to THIS quiz page) ----
+                          function previewQuizImport() {
+                            try {
+                              const parsed = parseQuestionsDoc(importDocText);
+                              const errs = validateQuestions(parsed);
+                              if (errs.length) {
+                                setImportError(errs.join("\n"));
+                                setImportReport(null);
+                                return;
+                              }
+                              setImportError(null);
+                              setImportReport({ count: parsed.questions.length, questionsToShow: parsed.questionsToShow });
+                            } catch (e: any) {
+                              setImportError(e?.message || "Could not read the questions.");
+                              setImportReport(null);
+                            }
+                          }
+                          function applyQuizImport() {
+                            if (!activePage || !selectedCourse) return;
+                            let parsed;
+                            try {
+                              parsed = parseQuestionsDoc(importDocText);
+                            } catch (e: any) {
+                              setImportError(e?.message || "Could not read the questions.");
+                              return;
+                            }
+                            const errs = validateQuestions(parsed);
+                            if (errs.length) {
+                              setImportError(errs.join("\n"));
+                              return;
+                            }
+                            const stamp = Date.now();
+                            const newQuestions = parsed.questions.map((q, i) => ({
+                              id: `q-${stamp}-${i}`,
+                              prompt: q.prompt,
+                              options: q.options,
+                              correctIndex: q.correctIndex,
+                            }));
+                            // Drop the empty placeholder question(s), keep real ones, then append.
+                            const existing = (activePage.quizQuestions || []).filter(
+                              (q) => (q.prompt && q.prompt.trim()) || (q.options || []).some((o) => o && o.trim())
+                            );
+                            const merged = [...existing, ...newQuestions];
+                            const nextPages = pages.map((page) =>
+                              page.id === activePage.id
+                                ? { ...page, quizQuestions: merged, questionsToShow: parsed.questionsToShow ?? page.questionsToShow }
+                                : page
+                            );
+                            updateCourse({ ...selectedCourse, pages: nextPages });
+                            showToast(`${newQuestions.length} question(s) imported — click SAVE to keep them.`, "success");
+                            setIsImportQuizModalOpen(false);
+                            setImportDocText("");
+                            setImportReport(null);
+                            setImportError(null);
+                          }
+                          async function uploadQuizFile(file: File) {
+                            const name = file.name.toLowerCase();
+                            setImportError(null);
+                            setImportReport(null);
+                            if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".markdown")) {
+                              const reader = new FileReader();
+                              reader.onload = () => setImportDocText(String(reader.result || ""));
+                              reader.readAsText(file);
+                              return;
+                            }
+                            setImportBusy(true);
+                            try {
+                              const fd = new FormData();
+                              fd.append("file", file);
+                              fd.append("mode", "questions");
+                              const res = await fetch("/api/admin/parse-quiz-file", { method: "POST", body: fd });
+                              const data = await res.json();
+                              if (!res.ok || !data.ok) setImportError(data.error || "Could not read that file.");
+                              else setImportDocText(data.doc || "");
+                            } catch {
+                              setImportError("Could not upload the file. Please try again.");
+                            } finally {
+                              setImportBusy(false);
+                            }
+                          }
+
                           function applyFormatting(kind: "h1" | "h2" | "h3" | "h4" | "bold" | "italic" | "underline" | "strike" | "code" | "ul" | "ol" | "quote") {
                             if (kind === "code") {
                               const selection = window.getSelection();
@@ -3014,16 +3103,96 @@ export function CourseManagement(props: CourseEditorProps) {
                                   <>
                                     {activePage.isQuiz ? (
                                       <>
-                                        <div className="course-page-main-header" key="quiz-header">
+                                        <div className="course-page-main-header" key="quiz-header" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                                           <input
                                             className="course-page-title-input"
+                                            style={{ flex: 1 }}
                                             value={activePage.title}
                                             onChange={(event) => {
                                               const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, title: event.target.value } : page));
                                               updateCourse({ ...selectedCourse, pages: nextPages });
                                             }}
                                           />
+                                          <button
+                                            type="button"
+                                            className="btn-secondary btn-small"
+                                            style={{ whiteSpace: "nowrap" }}
+                                            onClick={() => {
+                                              setImportDocText("");
+                                              setImportReport(null);
+                                              setImportError(null);
+                                              setIsImportQuizModalOpen(true);
+                                            }}
+                                          >
+                                            ⬆ Import Quiz
+                                          </button>
                                         </div>
+                                        {isImportQuizModalOpen && (
+                                          <div className="overlay" style={{ zIndex: 9998 }}>
+                                            <div className="dialog" style={{ maxWidth: 720, width: "92%" }}>
+                                              <div className="dialog-title">Import questions into “{activePage.title}”</div>
+                                              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 10, lineHeight: 1.5 }}>
+                                                Paste your questions below or upload a file. No course or lesson name needed —
+                                                everything goes into <strong>this</strong> quiz. Options can be lettered
+                                                (<code>A.</code> <code>B.</code> …) with a <code>Correct Answer: C</code> line, or use
+                                                <code>{" * "}</code> to mark the right one. Optional <code>{"Show: N"}</code> sets how many to show.
+                                              </div>
+                                              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 10, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px" }}>
+                                                <strong>Excel (.xlsx):</strong> columns <code>Question</code>,
+                                                <code> Option A</code>, <code>Option B</code>, <code>Option C</code>, <code>Option D</code>,
+                                                <code> Correct</code> (A/B/C/D), optional <code>Show</code>.
+                                              </div>
+                                              <label className="field">
+                                                <span className="field-label">Questions</span>
+                                                <textarea
+                                                  className="field-input"
+                                                  style={{ minHeight: 200, fontFamily: "monospace", fontSize: 12, whiteSpace: "pre" }}
+                                                  placeholder={"Questions to show the user\n3\n\n1. What is the capital of France?\nA. Berlin\nB. Madrid\nC. Paris\nD. Rome\nCorrect Answer: C. Paris"}
+                                                  value={importDocText}
+                                                  onChange={(e) => setImportDocText(e.target.value)}
+                                                  disabled={importBusy}
+                                                />
+                                                <div className="field-helper">
+                                                  Or upload a file (.xlsx, .docx, .txt, .md):&nbsp;
+                                                  <input
+                                                    type="file"
+                                                    accept=".txt,.md,.markdown,.doc,.docx,.xls,.xlsx,.csv"
+                                                    disabled={importBusy}
+                                                    onChange={(e) => {
+                                                      const file = e.target.files?.[0];
+                                                      if (file) uploadQuizFile(file);
+                                                      e.target.value = "";
+                                                    }}
+                                                  />
+                                                </div>
+                                              </label>
+                                              {importError && (
+                                                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", borderRadius: 8, padding: "10px 12px", fontSize: 12, whiteSpace: "pre-wrap", marginTop: 8 }}>
+                                                  {importError}
+                                                </div>
+                                              )}
+                                              {importReport && (
+                                                <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46", borderRadius: 8, padding: "10px 12px", fontSize: 13, marginTop: 8 }}>
+                                                  ✅ {importReport.count} question(s) ready to import
+                                                  {importReport.questionsToShow ? `, showing ${importReport.questionsToShow} per attempt` : ""}.
+                                                </div>
+                                              )}
+                                              <div className="dialog-footer">
+                                                <div className="dialog-actions">
+                                                  <button type="button" className="btn-secondary btn-cancel" disabled={importBusy} onClick={() => setIsImportQuizModalOpen(false)}>
+                                                    Cancel
+                                                  </button>
+                                                  <button type="button" className="btn-secondary btn-small" disabled={importBusy || !importDocText.trim()} onClick={previewQuizImport}>
+                                                    {importBusy ? "Working…" : "Preview"}
+                                                  </button>
+                                                  <button type="button" className="btn-primary btn-success" disabled={importBusy || !importDocText.trim()} onClick={applyQuizImport}>
+                                                    {importBusy ? "Working…" : "Import"}
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
                                         <div className="course-page-editor-body" key="quiz-editor-body">
                                           <div className="field" style={{ marginBottom: 24, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8, display: "block" }}>
                                             <span className="field-label">Questions to show the user</span>
@@ -3101,7 +3270,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                           updateCourse({ ...selectedCourse, pages: nextPages });
                                                         }}
                                                       />
-                                                      <span className="field-label" style={{ marginBottom: 0 }}>Option {optIdx + 1}</span>
+                                                      <span className="field-label" style={{ marginBottom: 0 }}>{String.fromCharCode(65 + optIdx)}</span>
                                                     </div>
                                                     {q.options.length > 2 && (
                                                       <button
