@@ -11,3 +11,9 @@ google-services.json
 # Build artifacts / OS files
 .DS_Store
 tsconfig.tsbuildinfo
+
+# Local-only product/planning docs (kept off GitHub on purpose)
+docs/
+
+# Local-only AI assistant guidance (kept off GitHub on purpose)
+CLAUDE.md

@@ -37,6 +37,22 @@ module.exports = {
       out_file: '/var/www/millerstorm/logs/upload-out.log',
       merge_logs: true,
       time: true
+    },
+    {
+      name: 'acculynx-sync',
+      script: 'scripts/acculynx-sync-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 6789
+      },
+      error_file: '/var/www/millerstorm/logs/acculynx-sync-err.log',
+      out_file: '/var/www/millerstorm/logs/acculynx-sync-out.log',
+      merge_logs: true,
+      time: true
     }
   ]
 };
