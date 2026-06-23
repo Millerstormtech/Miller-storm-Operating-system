@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import mongoose from 'mongoose';
+import { allowMethods } from '../../../src/lib/auth';
 
 const UserSchema = new mongoose.Schema({
   name: String,
@@ -20,9 +21,7 @@ const UserSchema = new mongoose.Schema({
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!allowMethods(req, res, ['GET'])) return;
 
   const { username } = req.query;
 

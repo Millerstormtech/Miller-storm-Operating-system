@@ -45,6 +45,7 @@ const CourseManagementPage: NextPage = () => {
         resourceLinks: Array.isArray(page.resourceLinks) ? page.resourceLinks : [],
         fileUrls: Array.isArray(page.fileUrls) ? page.fileUrls : [],
         isQuiz: Boolean(page.isQuiz),
+        questionsToShow: page.questionsToShow,
         quizQuestions: Array.isArray(page.quizQuestions) ? page.quizQuestions.map((q: any) => ({
           id: q.id, prompt: q.prompt,
           options: Array.isArray(q.options) ? q.options : [],

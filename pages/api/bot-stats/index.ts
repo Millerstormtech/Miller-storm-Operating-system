@@ -1,11 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import mongoose from "mongoose";
 import { connectMongo } from "../../../src/lib/mongodb";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET"])) return;
+
+  const auth = requireRole(req, res, "admin");
+  if (!auth) return;
+
   await connectMongo();
 
   if (req.method === "GET") {

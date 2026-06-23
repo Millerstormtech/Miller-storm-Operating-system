@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
@@ -113,7 +114,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
       final userId = user?['id'] ?? '';
       final userRole = user?['role'] ?? '';
       
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole'),
       );
 
@@ -169,7 +170,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   Future<void> _fetchMyPlaylists() async {
     if (_userId == null || _userId!.isEmpty) return;
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/playlists?managerId=$_userId'),
       );
       if (response.statusCode == 200) {
@@ -185,7 +186,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   Future<void> _fetchAssignedPlaylists() async {
     if (_userId == null || _userId!.isEmpty) return;
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/playlist-assignments?userId=$_userId'),
       );
       if (response.statusCode == 200) {
@@ -200,7 +201,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
 
   Future<void> _deletePlaylist(String playlistId) async {
     try {
-      final response = await http.delete(
+      final response = await api.delete(
         Uri.parse('https://millerstorm.tech/api/playlists?id=$playlistId'),
       );
       if (response.statusCode == 200) {

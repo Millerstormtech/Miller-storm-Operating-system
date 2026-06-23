@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
@@ -75,7 +76,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
       final botId = widget.bot['id'] ?? widget.bot['_id'];
       print('Loading chat sessions for userId: $userId, botId: $botId');
       
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/ai-bots/chats?userId=$userId&botId=$botId'),
       );
 
@@ -174,7 +175,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
 
       print('Sending request to API: $requestBody');
 
-      final response = await http.post(
+      final response = await api.post(
         Uri.parse('https://millerstorm.tech/api/ai-bots/chat'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(requestBody),
@@ -226,7 +227,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
 
   Future<void> _deleteSession(String chatId) async {
     try {
-      final response = await http.delete(
+      final response = await api.delete(
         Uri.parse('https://millerstorm.tech/api/ai-bots/chats'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'chatId': chatId}),

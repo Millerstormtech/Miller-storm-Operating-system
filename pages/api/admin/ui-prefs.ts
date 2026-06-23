@@ -1,8 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UiPrefsModel } from "../../../src/lib/models/UiPrefs";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "POST"])) return;
+  if (!requireRole(req, res, "admin")) return;
+
   await connectMongo();
   const { key } = req.query;
 
@@ -24,7 +28,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
     return res.status(200).json({ success: true });
   }
-
-  res.setHeader("Allow", ["GET", "POST"]);
-  res.status(405).end();
 }

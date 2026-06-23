@@ -1052,6 +1052,10 @@ export function UserManagement(props: UserEditorProps) {
                             alert(`Failed to save: ${err.error || "Unknown error"}`);
                             return;
                           }
+                          const putData = await putRes.json().catch(() => ({}));
+                          if (putData?.emailWarning) {
+                            alert(`User saved, but the notification email could NOT be sent:\n\n${putData.emailWarning}`);
+                          }
                           const freshRes = await fetch("/api/users?deleted=false");
                           if (freshRes.ok) {
                             const freshUsers = await freshRes.json();

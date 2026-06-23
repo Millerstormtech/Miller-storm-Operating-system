@@ -14,12 +14,23 @@ import type { NextApiRequest, NextApiResponse } from "next";
 const COOKIE_NAME = "ms_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-// Secret used to sign tokens. Set AUTH_SECRET in the server .env for security.
-// The fallback keeps the app working if the env var is missing, but it should
-// always be set in production.
-const SECRET =
-  process.env.AUTH_SECRET ||
-  "millerstorm-default-insecure-secret-change-me";
+// Secret used to sign tokens. AUTH_SECRET MUST be set in the server .env.
+// In production a missing secret is a hard error so we never silently sign
+// tokens with a publicly-known fallback. In development we warn and use a
+// throwaway value so local work isn't blocked.
+const SECRET = (() => {
+  const fromEnv = process.env.AUTH_SECRET;
+  if (fromEnv && fromEnv.length >= 16) return fromEnv;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "AUTH_SECRET is not set (or too short). Set a strong AUTH_SECRET in the environment."
+    );
+  }
+  console.warn(
+    "[auth] AUTH_SECRET is not set — using an insecure development fallback. Do NOT use in production."
+  );
+  return "millerstorm-default-insecure-secret-change-me";
+})();
 
 export type Session = {
   sub: string; // user id
@@ -103,6 +114,88 @@ export function getSession(req: NextApiRequest): Session | null {
   return verifySession(match.slice(COOKIE_NAME.length + 1));
 }
 
+// ---------------------------------------------------------------------------
+// Bearer-token support.
+//
+// In addition to the cookie, the same signed token can be supplied via the
+// `Authorization: Bearer <token>` header. The Flutter app and (post-migration)
+// the web client send it this way. We always check the header first, then fall
+// back to the cookie, so both transports keep working.
+// ---------------------------------------------------------------------------
+
+export function getBearerToken(req: NextApiRequest): string | null {
+  const header = req.headers.authorization || (req.headers as Record<string, string>).Authorization;
+  if (!header || typeof header !== "string") return null;
+  const [scheme, token] = header.split(" ");
+  if (scheme?.toLowerCase() !== "bearer" || !token) return null;
+  return token.trim();
+}
+
+// Resolve the verified session for a request from the Bearer header (preferred)
+// or the session cookie. Returns null when no valid token is present.
+export function getAuthUser(req: NextApiRequest): Session | null {
+  const bearer = getBearerToken(req);
+  if (bearer) {
+    const fromHeader = verifySession(bearer);
+    if (fromHeader) return fromHeader;
+  }
+  return getSession(req);
+}
+
+/**
+ * Require an authenticated caller. Returns the verified session
+ * (`{ sub, role, exp }`) where `sub` is the user id. On a missing or invalid
+ * token it sends HTTP 401 and returns null — the caller must `return` early.
+ *
+ *   const auth = requireUser(req, res); if (!auth) return;
+ *   // auth.sub is the trusted user id, auth.role the trusted role
+ */
+export function requireUser(req: NextApiRequest, res: NextApiResponse): Session | null {
+  const user = getAuthUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+  return user;
+}
+
+/**
+ * Require an authenticated caller whose role is in `roles`. Sends 401 for a
+ * missing/invalid token, 403 for a valid token with an unauthorized role.
+ * Returns the session or null (caller must `return` early on null).
+ */
+export function requireRole(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  roles: string | string[]
+): Session | null {
+  const user = requireUser(req, res);
+  if (!user) return null;
+  const allowed = Array.isArray(roles) ? roles : [roles];
+  if (!allowed.includes(user.role)) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return user;
+}
+
+/**
+ * Validate the HTTP method. If the request method is not in `methods`, sends a
+ * 405 with the proper `Allow` header and returns false; otherwise returns true.
+ *
+ *   if (!allowMethods(req, res, ["GET", "POST"])) return;
+ */
+export function allowMethods(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  methods: string[]
+): boolean {
+  if (req.method && methods.includes(req.method)) return true;
+  res.setHeader("Allow", methods.join(", "));
+  res.status(405).json({ error: "Method Not Allowed" });
+  return false;
+}
+
 type Handler = (req: NextApiRequest, res: NextApiResponse) => void | Promise<void>;
 
 /**
@@ -116,7 +209,7 @@ type Handler = (req: NextApiRequest, res: NextApiResponse) => void | Promise<voi
  */
 export function requireAuth(handler: Handler, roles?: string[]): Handler {
   return async (req, res) => {
-    const session = getSession(req);
+    const session = getAuthUser(req);
     if (!session) {
       res.status(401).json({ error: "Authentication required" });
       return;

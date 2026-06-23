@@ -1,13 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
+import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'PUT', 'DELETE'])) return;
+
   await connectMongo();
 
   const { id } = req.query;
 
   if (req.method === 'GET') {
+    if (!requireUser(req, res)) return;
     try {
       const group = await ChatGroup.findById(id);
       
@@ -21,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to fetch group' });
     }
   } else if (req.method === 'PUT') {
+    if (!requireRole(req, res, ['admin', 'manager'])) return;
     try {
       const { name, description, imageUrl, members, admins, onlyAdminCanChat } = req.body;
       
@@ -51,6 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to update group' });
     }
   } else if (req.method === 'DELETE') {
+    if (!requireRole(req, res, ['admin', 'manager'])) return;
     try {
       const group = await ChatGroup.findByIdAndDelete(id);
 

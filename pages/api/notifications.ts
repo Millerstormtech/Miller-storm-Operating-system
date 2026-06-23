@@ -1,15 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { NotificationModel } from "../../src/lib/models/Notification";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET", "POST", "PUT", "DELETE"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
-    const { userId } = req.query;
+    // A user reads their OWN notifications — identity comes from the session.
+    const userId = auth.sub;
     const notifications = await NotificationModel.find({ userId }).sort({ createdAt: -1 }).lean();
     res.status(200).json(notifications);
     return;

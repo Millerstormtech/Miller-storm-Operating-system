@@ -1,13 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import AppToolCategory from '../../../../src/lib/models/AppToolCategory';
+import { requireRole, allowMethods } from '../../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['PUT', 'DELETE'])) return;
+
   await connectMongo();
 
   const { id } = req.query;
 
   if (req.method === 'PUT') {
+    if (!requireRole(req, res, 'admin')) return;
     try {
       const { name, status } = req.body;
       
@@ -40,6 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to update category' });
     }
   } else if (req.method === 'DELETE') {
+    if (!requireRole(req, res, 'admin')) return;
     try {
       const category = await AppToolCategory.findByIdAndDelete(id);
 

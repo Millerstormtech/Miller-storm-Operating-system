@@ -4,6 +4,7 @@ import '../widgets/notification_bell.dart';
 import 'storm_chat_room_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 
 class ManagerStormChatScreen extends StatefulWidget {
   const ManagerStormChatScreen({Key? key}) : super(key: key);
@@ -39,7 +40,7 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
 
   Future<void> _fetchGroups() async {
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/groups'),
       );
 
@@ -76,12 +77,12 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
       final groupIds = groups.map((g) => g['_id']).join(',');
       
       // Fetch unread counts
-      final unreadResponse = await http.get(
+      final unreadResponse = await api.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/unread-counts?userId=$userId&groupIds=$groupIds'),
       );
 
       // Fetch mention counts
-      final mentionResponse = await http.get(
+      final mentionResponse = await api.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/mention-counts?userId=$userId&groupIds=$groupIds'),
       );
 

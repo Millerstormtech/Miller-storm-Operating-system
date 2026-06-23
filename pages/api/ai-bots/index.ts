@@ -1,11 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
+import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "POST", "PUT"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
+    const auth = requireUser(req, res);
+    if (!auth) return;
     const bots = await AiBotModel.find({ isActive: true, status: 'published' }).lean();
     const normalized = bots.map(normalizeBot);
     // Sort: bots with sortOrder set come first (by sortOrder asc), rest by createdAt desc
@@ -21,6 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "PUT") {
+    const auth = requireRole(req, res, "admin");
+    if (!auth) return;
     const { orderedIds } = req.body;
     if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds required" });
     const collection = AiBotModel.collection;
@@ -33,6 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "POST") {
+    const auth = requireRole(req, res, "admin");
+    if (!auth) return;
     const { name } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Name required" });
     const id = `bot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

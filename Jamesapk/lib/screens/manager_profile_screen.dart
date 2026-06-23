@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -66,7 +67,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
         
         // Fetch fresh data from API
         try {
-          final response = await http.get(
+          final response = await api.get(
             Uri.parse('https://millerstorm.tech/api/users/$userId'),
           );
           
@@ -167,7 +168,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
         await http.MultipartFile.fromPath('file', image.path),
       );
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await api.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
       print('Upload response status: ${response.statusCode}');
@@ -178,7 +179,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
         final imageUrl = data['url'];
 
         // Update user profile with new headshot
-        final updateResponse = await http.put(
+        final updateResponse = await api.put(
           Uri.parse('https://millerstorm.tech/api/users/$_userId'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'headshotUrl': imageUrl}),
@@ -239,7 +240,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
       // Convert territories array to string with " · " separator
       final territoryString = _userTerritories.join(' · ');
       
-      final response = await http.put(
+      final response = await api.put(
         Uri.parse('https://millerstorm.tech/api/users/$_userId'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -351,7 +352,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     });
 
     try {
-      final response = await http.delete(
+      final response = await api.delete(
         Uri.parse('https://millerstorm.tech/api/users/$_userId'),
       );
 

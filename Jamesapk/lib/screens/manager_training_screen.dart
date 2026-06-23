@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'manager_courses_screen.dart';
 
 class ManagerTrainingScreen extends StatefulWidget {
@@ -50,7 +51,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
     if (_userId == null) return;
     
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/groups'),
       );
 

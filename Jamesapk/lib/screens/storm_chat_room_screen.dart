@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -169,7 +170,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       
       // Fetch all members in a single API call
       final memberIds = members.join(',');
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/users/by-mongo-ids?ids=$memberIds'),
       );
       
@@ -331,7 +332,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   Future<void> _markAsRead() async {
     try {
-      await http.post(
+      await api.post(
         Uri.parse('https://millerstorm.tech/api/storm-chat/mark-read'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
@@ -346,7 +347,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   Future<void> _fetchMessages({bool silent = false}) async {
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}?userId=${widget.userId}&userRole=${widget.userRole}'),
       );
 
@@ -475,7 +476,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
       print('🔵 Sending message body: ${json.encode(body)}');
 
-      final response = await http.post(
+      final response = await api.post(
         Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(body),
@@ -606,7 +607,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
       print('📤 Uploading $type: $fileName (${fileSizeMB.toStringAsFixed(1)}MB)');
 
-      final streamedResponse = await request.send().timeout(
+      final streamedResponse = await api.send(request).timeout(
         const Duration(minutes: 15),
         onTimeout: () => throw Exception('Upload timed out after 15 minutes'),
       );
@@ -618,7 +619,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         final data = json.decode(response.body);
         final url = data['url'];
 
-        await http.post(
+        await api.post(
           Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
@@ -1694,7 +1695,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
 
     // Save to server
-    http.patch(
+    api.patch(
       Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({

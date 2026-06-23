@@ -2,18 +2,20 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { sendEmail } from "../../src/lib/email";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
 
   await connectMongo();
 
-  const { type, userId, courseTitle, durationHours, progressPct, lessonsCompleted, lessonsTotal } = req.body;
+  const { type, courseTitle, durationHours, progressPct, lessonsCompleted, lessonsTotal } = req.body;
+  const userId = auth.sub;
 
-  if (!type || !userId) return res.status(400).json({ error: "Missing required fields" });
+  if (!type) return res.status(400).json({ error: "Missing required fields" });
 
   try {
     const user = await UserModel.findOne({ id: userId }).lean() as any;

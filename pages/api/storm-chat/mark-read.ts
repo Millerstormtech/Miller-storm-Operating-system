@@ -1,19 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import GroupReadReceipt from '../../../src/lib/models/GroupReadReceipt';
+import { requireUser, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!allowMethods(req, res, ['POST'])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
 
   try {
     await connectMongo();
 
-    const { userId, groupId } = req.body;
+    const { groupId } = req.body;
+    const userId = auth.sub;
 
-    if (!userId || !groupId) {
-      return res.status(400).json({ error: 'userId and groupId are required' });
+    if (!groupId) {
+      return res.status(400).json({ error: 'groupId is required' });
     }
 
     // Update or create read receipt

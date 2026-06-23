@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:http/http.dart' as http;
+import 'api_client.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'auth_service.dart';
@@ -118,7 +119,7 @@ class FirebaseMessagingService {
       print('USER ID => $userId');
       print('FCM TOKEN => $token');
 
-      final response = await http.patch(
+      final response = await api.patch(
         Uri.parse('https://millerstorm.tech/api/users/$userId'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'fcmToken': token}),
@@ -187,7 +188,7 @@ class FirebaseMessagingService {
       
       try {
         // Fetch group details
-        final response = await http.get(
+        final response = await api.get(
           Uri.parse('https://millerstorm.tech/api/storm-chat/groups/$groupId'),
         );
 

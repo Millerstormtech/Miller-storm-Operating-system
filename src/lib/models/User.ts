@@ -69,7 +69,6 @@ const userSchema = new Schema(
     webPage: webPageSchema,
     publicProfile: { type: publicProfileSchema, required: true },
     featureToggles: { type: Schema.Types.Mixed, required: true },
-    acculynxUserId: { type: String, default: null, index: true },
     fcmToken: { type: String, default: '' }
   },
   { timestamps: true }

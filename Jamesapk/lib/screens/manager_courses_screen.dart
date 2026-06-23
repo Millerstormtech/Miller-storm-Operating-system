@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
 
@@ -54,7 +55,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
       final userId = user?['id'] ?? '';
       final userRole = user?['role'] ?? '';
       
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole'),
       );
 
@@ -83,7 +84,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
   Future<void> _fetchMyPlaylists() async {
     if (_userId == null || _userId!.isEmpty) return;
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/playlists?managerId=$_userId'),
       );
       if (response.statusCode == 200) {
@@ -98,7 +99,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
 
   Future<void> _deletePlaylist(String playlistId) async {
     try {
-      final response = await http.delete(
+      final response = await api.delete(
         Uri.parse('https://millerstorm.tech/api/playlists?id=$playlistId'),
       );
       if (response.statusCode == 200) {
@@ -117,7 +118,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
     final courseId = playlist['courseId'];
     
     // Fetch course details to get all pages
-    final courseResponse = await http.get(
+    final courseResponse = await api.get(
       Uri.parse('https://millerstorm.tech/api/courses/$courseId'),
     );
     
@@ -215,7 +216,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
                 if (nameController.text.trim().isEmpty || selectedModules.isEmpty) return;
                 
                 try {
-                  final response = await http.put(
+                  final response = await api.put(
                     Uri.parse('https://millerstorm.tech/api/playlists'),
                     headers: {'Content-Type': 'application/json'},
                     body: jsonEncode({
@@ -248,7 +249,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
     final playlistId = playlist['_id'] ?? playlist['id'];
     
     // Fetch sales users under this manager
-    final salesResponse = await http.get(
+    final salesResponse = await api.get(
       Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_userId'),
     );
     
@@ -257,7 +258,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
     final salesUsers = jsonDecode(salesResponse.body) as List;
     
     // Fetch already assigned users
-    final assignmentsResponse = await http.get(
+    final assignmentsResponse = await api.get(
       Uri.parse('https://millerstorm.tech/api/playlist-assignments?playlistId=$playlistId'),
     );
     
@@ -379,7 +380,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
                   try {
                     for (final userId in selectedUsers) {
                       final user = availableUsers.firstWhere((u) => u['id'] == userId);
-                      await http.post(
+                      await api.post(
                         Uri.parse('https://millerstorm.tech/api/playlist-assignments'),
                         headers: {'Content-Type': 'application/json'},
                         body: jsonEncode({
@@ -458,7 +459,7 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
                           final assignment = assignments.firstWhere(
                             (a) => a['assignedToUserId'] == user['id'],
                           );
-                          await http.delete(
+                          await api.delete(
                             Uri.parse('https://millerstorm.tech/api/playlist-assignments?id=${assignment['_id']}'),
                           );
                           Navigator.pop(context);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 
 class ManagerPlannerScreen extends StatefulWidget {
   const ManagerPlannerScreen({super.key});
@@ -126,7 +127,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
     if (!silent) setState(() => _isLoading = true);
 
     try {
-      final response = await http.get(Uri.parse('https://millerstorm.tech/api/users'));
+      final response = await api.get(Uri.parse('https://millerstorm.tech/api/users'));
       if (response.statusCode == 200) {
         final List<dynamic> allUsers = jsonDecode(response.body);
         
@@ -147,7 +148,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
           final mId = _extractId(member);
           if (mId.isEmpty) continue;
 
-          final planRes = await http.get(Uri.parse('https://millerstorm.tech/api/business-plan?userId=$mId'));
+          final planRes = await api.get(Uri.parse('https://millerstorm.tech/api/business-plan?userId=$mId'));
           
           Map<String, dynamic>? businessPlan;
           if (planRes.statusCode == 200) {
@@ -208,7 +209,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
 
   Future<void> _savePlan(String memberId, Map<String, dynamic> updatedPlan) async {
     try {
-      final response = await http.post(
+      final response = await api.post(
         Uri.parse('https://millerstorm.tech/api/business-plan'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -227,7 +228,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
 
         // Create notification
         try {
-          await http.post(
+          await api.post(
             Uri.parse('https://millerstorm.tech/api/notifications'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({

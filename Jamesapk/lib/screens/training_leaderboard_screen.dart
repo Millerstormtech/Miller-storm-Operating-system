@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
@@ -49,7 +50,7 @@ class _TrainingLeaderboardScreenState extends State<TrainingLeaderboardScreen> {
 
   Future<void> _fetchCourses() async {
     try {
-      final response = await http.get(Uri.parse('https://millerstorm.tech/api/courses'));
+      final response = await api.get(Uri.parse('https://millerstorm.tech/api/courses'));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final published = data.where((c) => c['status'] == 'published').toList();
@@ -80,7 +81,7 @@ class _TrainingLeaderboardScreenState extends State<TrainingLeaderboardScreen> {
 
     try {
       // Use optimized leaderboard API
-      final leaderboardResponse = await http.get(
+      final leaderboardResponse = await api.get(
         Uri.parse('https://millerstorm.tech/api/leaderboard?courseId=${course['id']}')
       );
       

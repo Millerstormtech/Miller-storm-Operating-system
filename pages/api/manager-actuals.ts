@@ -1,8 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../src/lib/mongodb';
 import mongoose from 'mongoose';
+import { requireRole, allowMethods } from '../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'POST'])) return;
+  if (!requireRole(req, res, ['admin', 'manager'])) return;
+
   if (req.method === 'POST') {
     try {
       const { managerId, actualData, month, year } = req.body;

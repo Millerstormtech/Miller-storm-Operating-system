@@ -12,7 +12,7 @@ const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 require('dotenv').config();
 
-const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/millerstorm";
+const uri = process.env.MONGODB_URI;
 SEEDEOF
 
 # Get the rest of seed.js (skip first 4 lines)

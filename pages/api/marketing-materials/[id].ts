@@ -1,13 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import MarketingMaterial from '../../../src/lib/models/MarketingMaterial';
+import { requireRole, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['DELETE'])) return;
+
   await connectMongo();
 
   const { id } = req.query;
 
   if (req.method === 'DELETE') {
+    if (!requireRole(req, res, 'admin')) return;
     try {
       const material = await MarketingMaterial.findByIdAndDelete(id);
 
@@ -21,6 +25,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to delete marketing material' });
     }
   }
-
-  return res.status(405).json({ error: 'Method not allowed' });
 }

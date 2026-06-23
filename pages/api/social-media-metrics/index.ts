@@ -1,14 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { SocialMediaMetricsModel } from "../../../src/lib/models/SocialMediaMetrics";
+import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET", "POST", "PUT"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
+    if (!requireUser(req, res)) return;
     try {
       console.log("=== FETCHING METRICS ===");
       const metrics = await SocialMediaMetricsModel.find({}).sort({ displayOrder: 1, platform: 1 });
@@ -34,6 +38,7 @@ export default async function handler(
       res.status(500).json({ error: "Failed to fetch metrics" });
     }
   } else if (req.method === "POST") {
+    if (!requireRole(req, res, "admin")) return;
     try {
       const { platform, platformName, followers, posts30d, views30d } = req.body;
 
@@ -58,6 +63,7 @@ export default async function handler(
       res.status(500).json({ error: "Failed to create metric" });
     }
   } else if (req.method === "PUT") {
+    if (!requireRole(req, res, "admin")) return;
     try {
       const metrics = req.body;
 

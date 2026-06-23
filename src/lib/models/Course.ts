@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, deleteModel } from "mongoose";
 
 const quizQuestionSchema = new Schema(
   {
@@ -31,7 +31,8 @@ const coursePageSchema = new Schema(
     resourceLinks: [lessonLinkSchema],
     fileUrls: [lessonLinkSchema],
     isQuiz: Boolean,
-    quizQuestions: [quizQuestionSchema]
+    quizQuestions: [quizQuestionSchema],
+    questionsToShow: Number
   },
   { _id: false }
 );
@@ -79,4 +80,12 @@ courseSchema.index({ id: 1 });
 courseSchema.index({ status: 1 });
 courseSchema.index({ order: 1 });
 
-export const CourseModel = models.Course || model("Course", courseSchema);
+// In dev, Next.js keeps the previously-compiled Mongoose model in `models` across
+// hot-reloads. If the schema changed (e.g. a newly-added field like questionsToShow),
+// the stale model silently strips that field from writes under strict mode. Drop the
+// cached model so the latest schema is always used. (In production the model compiles
+// once, so `models.Course` is falsy here and this is a no-op.)
+if (models.Course) {
+  deleteModel("Course");
+}
+export const CourseModel = model("Course", courseSchema);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -224,7 +225,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
       final url = widget.videoUrl.startsWith('http') 
           ? widget.videoUrl 
           : 'https://millerstorm.tech${widget.videoUrl}';
-      final response = await http.get(Uri.parse(url));
+      final response = await api.get(Uri.parse(url));
       
       // Save to temp file first
       final tempDir = await getTemporaryDirectory();
@@ -258,7 +259,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
           : 'https://millerstorm.tech${widget.videoUrl}';
       
       // Download video temporarily for sharing
-      final response = await http.get(Uri.parse(url));
+      final response = await api.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final tempDir = await getTemporaryDirectory();
         final fileName = 'share_video_${DateTime.now().millisecondsSinceEpoch}.mp4';

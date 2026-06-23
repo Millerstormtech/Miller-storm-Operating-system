@@ -138,6 +138,9 @@ export type CoursePage = {
   fileUrls: LessonLink[];
   isQuiz?: boolean;
   quizQuestions?: QuizQuestion[];
+  // For quizzes: how many questions (randomly chosen from quizQuestions) to
+  // actually show the user. Undefined / 0 / >= total means show them all.
+  questionsToShow?: number;
 };
 
 export type CourseFolder = {

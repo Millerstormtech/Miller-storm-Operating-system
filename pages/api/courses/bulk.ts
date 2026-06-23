@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export const config = {
   api: {
@@ -17,13 +18,10 @@ export default async function handler(
   const startTime = Date.now();
   
   try {
-    await connectMongo();
+    if (!allowMethods(req, res, ["PUT"])) return;
+    if (!requireRole(req, res, "admin")) return;
 
-    if (req.method !== "PUT") {
-      res.setHeader("Allow", "PUT");
-      res.status(405).end();
-      return;
-    }
+    await connectMongo();
 
     const courses = Array.isArray(req.body) ? req.body : req.body?.courses;
     if (!Array.isArray(courses)) {

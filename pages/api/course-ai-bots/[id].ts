@@ -2,18 +2,23 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseAiBotModel } from "../../../src/lib/models/CourseAiBot";
 import { CourseModel } from "../../../src/lib/models/Course";
+import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "PATCH", "DELETE"])) return;
+
   await connectMongo();
   const { id } = req.query as { id: string };
 
   if (req.method === "GET") {
+    if (!requireUser(req, res)) return;
     const bot = await CourseAiBotModel.findOne({ id }).lean();
     if (!bot) return res.status(404).json({ error: "Not found" });
     return res.status(200).json(bot);
   }
 
   if (req.method === "PATCH") {
+    if (!requireRole(req, res, "admin")) return;
     const updates = req.body;
 
     // Rebuild trainingText whenever selectedPages changes
@@ -83,6 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "DELETE") {
+    if (!requireRole(req, res, "admin")) return;
     await CourseAiBotModel.deleteOne({ id });
     return res.status(200).json({ ok: true });
   }

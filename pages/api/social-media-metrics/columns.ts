@@ -2,14 +2,18 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { CustomColumnModel } from "../../../src/lib/models/CustomColumn";
 import { SocialMediaMetricsModel } from "../../../src/lib/models/SocialMediaMetrics";
+import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET", "POST"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
+    if (!requireUser(req, res)) return;
     try {
       console.log("=== FETCHING CUSTOM COLUMNS ===");
       const columns = await CustomColumnModel.find({}).sort({ createdAt: 1 });
@@ -23,6 +27,7 @@ export default async function handler(
       res.status(500).json({ error: "Failed to fetch columns" });
     }
   } else if (req.method === "POST") {
+    if (!requireRole(req, res, "admin")) return;
     try {
       const { name, datatype } = req.body;
 

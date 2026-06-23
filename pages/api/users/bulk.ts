@@ -3,19 +3,17 @@ import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   try {
-    await connectMongo();
+    if (!allowMethods(req, res, ["PUT"])) return;
+    if (!requireRole(req, res, "admin")) return;
 
-    if (req.method !== "PUT") {
-      res.setHeader("Allow", "PUT");
-      res.status(405).end();
-      return;
-    }
+    await connectMongo();
 
     const users = Array.isArray(req.body) ? req.body : req.body?.users;
     if (!Array.isArray(users)) {

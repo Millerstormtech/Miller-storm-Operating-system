@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'image_viewer_screen.dart';
 import 'video_viewer_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -48,7 +49,7 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
       final members = List<String>.from(widget.group['members'] ?? []);
       if (members.isEmpty) { setState(() => _loadingMembers = false); return; }
       final memberIds = members.join(',');
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/users/by-mongo-ids?ids=$memberIds'),
       );
       if (response.statusCode == 200) {
@@ -64,7 +65,7 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
   Future<void> _fetchGroupMedia() async {
     setState(() => _loadingMedia = true);
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}?userId=${widget.userId}&userRole=${widget.userRole}'),
       );
       if (response.statusCode == 200) {

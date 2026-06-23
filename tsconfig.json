@@ -34,7 +34,6 @@
     "seed.ts",
     "seed.js",
     "*.js",
-    "test-*.js",
-    "**/*.test.ts"
+    "test-*.js"
   ]
 }

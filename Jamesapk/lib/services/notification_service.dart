@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Notification {
@@ -55,7 +56,7 @@ class NotificationService {
 
   static Future<List<Notification>> fetchNotifications(String userId) async {
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('$baseUrl/notifications?userId=$userId'),
       );
 
@@ -72,7 +73,7 @@ class NotificationService {
 
   static Future<void> markAsRead(String id) async {
     try {
-      await http.put(
+      await api.put(
         Uri.parse('$baseUrl/notifications'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'id': id}),
@@ -84,7 +85,7 @@ class NotificationService {
 
   static Future<void> deleteNotification(String id) async {
     try {
-      await http.delete(
+      await api.delete(
         Uri.parse('$baseUrl/notifications'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'id': id}),

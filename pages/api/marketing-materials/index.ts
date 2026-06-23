@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import MarketingMaterial from '../../../src/lib/models/MarketingMaterial';
+import { requireUser, requireRole, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'POST'])) return;
+
   await connectMongo();
 
   if (req.method === 'GET') {
+    if (!requireUser(req, res)) return;
     try {
       const materials = await MarketingMaterial.find({}).sort({ createdAt: -1 });
       return res.status(200).json(materials);
@@ -16,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
+    if (!requireRole(req, res, 'admin')) return;
     try {
       const { courseId, courseName, pageId, pageName, type, url, title, description } = req.body;
 
@@ -40,6 +45,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to create marketing material' });
     }
   }
-
-  return res.status(405).json({ error: 'Method not allowed' });
 }

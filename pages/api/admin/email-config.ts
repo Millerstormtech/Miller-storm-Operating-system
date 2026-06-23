@@ -1,8 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { EmailConfigModel } from "../../../src/lib/models/EmailConfig";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "PUT"])) return;
+  if (!requireRole(req, res, "admin")) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
@@ -27,6 +31,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(200).json({ success: true });
     return;
   }
-
-  res.status(405).end();
 }

@@ -2,11 +2,15 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import AppTool from '../../../src/lib/models/AppTool';
 import AppToolCategory from '../../../src/lib/models/AppToolCategory';
+import { requireUser, requireRole, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'POST'])) return;
+
   await connectMongo();
 
   if (req.method === 'GET') {
+    if (!requireUser(req, res)) return;
     try {
       const { published } = req.query;
       const filter = published === 'true' ? { status: 'published' } : {};
@@ -32,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
+    if (!requireRole(req, res, 'admin')) return;
     try {
       const { title, imageUrl, imageWidth, imageHeight, description, link, webLink, appStoreLink, playStoreLink, category } = req.body;
 
@@ -69,6 +74,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to create app/tool' });
     }
   }
-
-  return res.status(405).json({ error: 'Method not allowed' });
 }

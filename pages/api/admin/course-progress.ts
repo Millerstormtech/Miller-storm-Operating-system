@@ -1,14 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 // GET /api/admin/course-progress?courseId=xxx
 // Returns all users' progress for a given course
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["GET"])) return;
+  if (!requireRole(req, res, "admin")) return;
 
   await connectMongo();
 

@@ -2,15 +2,18 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { BotChatModel } from "../../../src/lib/models/BotChat";
+import { requireUser, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
 
   await connectMongo();
-  const { botId, messages, chatId, userId, userName, userEmail, userRole } = req.body;
+  const { botId, messages, chatId, userName, userEmail } = req.body;
+  const userId = auth.sub;
+  const userRole = auth.role;
 
   const bot = await AiBotModel.findOne({ id: botId, isActive: true });
   if (!bot) return res.status(404).json({ error: "Bot not found" });

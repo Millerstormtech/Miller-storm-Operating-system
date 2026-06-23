@@ -9,6 +9,7 @@ import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { SmsTemplateModel, DEFAULT_SMS_TEMPLATES } from "../../src/lib/models/SmsTemplate";
 import { sendSms, renderTemplate } from "../../src/lib/telnyx";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 
 function formatDuration(hours: number): string {
   if (hours === 1) return "1 hour";
@@ -25,16 +26,17 @@ function formatRemaining(seconds: number): string {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
 
   await connectMongo();
 
-  const { type, userId, courseTitle, durationHours, timeRemainingSeconds } = req.body;
+  const { type, courseTitle, durationHours, timeRemainingSeconds } = req.body;
+  const userId = auth.sub;
 
-  if (!type || !userId) return res.status(400).json({ error: "Missing required fields" });
+  if (!type) return res.status(400).json({ error: "Missing required fields" });
 
   const validTypes = ["start", "midpoint", "final", "complete"];
   if (!validTypes.includes(type)) return res.status(400).json({ error: "Invalid type" });

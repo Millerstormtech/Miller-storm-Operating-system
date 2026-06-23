@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -40,7 +41,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     setState(() { _isLoading = true; _error = ''; });
     try {
-      final response = await http.post(
+      final response = await api.post(
         Uri.parse('$baseUrl/api/user-requests'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({

@@ -1,7 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "POST", "DELETE"])) return;
+  const auth = requireUser(req, res);
+  if (!auth) return;
+  const userId = auth.sub;
+
   try {
     const mongoose = await connectMongo();
     if (!mongoose) {
@@ -14,12 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const collection = db.collection("chatHistory");
 
     if (req.method === "GET") {
-      const { userId } = req.query;
-      
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
-      }
-
       const chats = await collection
         .find({ userId })
         .sort({ updatedAt: -1 })
@@ -30,11 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "POST") {
-      const { userId, chatId, title, messages } = req.body;
-
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
-      }
+      const { chatId, title, messages } = req.body;
 
       const chat = {
         chatId: chatId || `chat-${Date.now()}`,
@@ -58,10 +54,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "DELETE") {
-      const { chatId, userId } = req.body;
+      const { chatId } = req.body;
 
-      if (!chatId || !userId) {
-        return res.status(400).json({ error: "chatId and userId are required" });
+      if (!chatId) {
+        return res.status(400).json({ error: "chatId is required" });
       }
 
       await collection.deleteOne({ chatId, userId });
@@ -69,9 +65,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.status(200).json({ success: true });
     }
-
-    res.setHeader("Allow", ["GET", "POST", "DELETE"]);
-    res.status(405).end();
   } catch (error: any) {
     console.error("Chat history API error:", error);
     res.status(500).json({ error: error.message });

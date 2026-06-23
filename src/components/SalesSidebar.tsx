@@ -10,7 +10,6 @@ const baseItems = [
   { id: "aiChat", label: "Jay's AI Clone", toggleKey: "aiChat" },
   { id: "task-tracker", label: "Task Tracker", toggleKey: "taskTracker" },
   { id: "apps-tools", label: "Apps & Tools", toggleKey: "appsTools" },
-  { id: "rankings", label: "Sales Rankings", toggleKey: "rankings" },
   { id: "profile", label: "My Profile", toggleKey: "profile" },
 ];
 

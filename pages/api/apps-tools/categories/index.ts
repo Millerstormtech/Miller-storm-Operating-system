@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import AppToolCategory from '../../../../src/lib/models/AppToolCategory';
+import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'POST'])) return;
+
   await connectMongo();
 
   if (req.method === 'GET') {
+    if (!requireUser(req, res)) return;
     try {
       const categories = await AppToolCategory.find().sort({ order: 1 });
       res.status(200).json(categories);
@@ -14,6 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to fetch categories' });
     }
   } else if (req.method === 'POST') {
+    if (!requireRole(req, res, 'admin')) return;
     try {
       const { name, order, status } = req.body;
       

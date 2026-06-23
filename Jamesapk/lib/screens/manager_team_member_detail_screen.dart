@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 
 class ManagerTeamMemberDetailScreen extends StatefulWidget {
   final Map<String, dynamic> member;
@@ -47,7 +48,7 @@ class _ManagerTeamMemberDetailScreenState extends State<ManagerTeamMemberDetailS
     if (mId.isEmpty) return;
 
     try {
-      final response = await http.get(Uri.parse('https://millerstorm.tech/api/business-plan?userId=$mId'));
+      final response = await api.get(Uri.parse('https://millerstorm.tech/api/business-plan?userId=$mId'));
       if (response.statusCode == 200) {
         final dynamic data = jsonDecode(response.body);
         List<dynamic> plans = data is List ? data : [];
@@ -101,7 +102,7 @@ class _ManagerTeamMemberDetailScreenState extends State<ManagerTeamMemberDetailS
   Future<void> _savePlan(Map<String, dynamic> updatedPlan) async {
     final mId = _extractId(widget.member);
     try {
-      final response = await http.post(
+      final response = await api.post(
         Uri.parse('https://millerstorm.tech/api/business-plan'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({

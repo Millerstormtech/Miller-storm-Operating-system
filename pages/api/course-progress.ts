@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -17,15 +18,21 @@ export default async function handler(
     return;
   }
 
+  if (!allowMethods(req, res, ["GET"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
-    const { userId, courseIds } = req.query;
-    
+    const userId = auth.sub;
+    const { courseIds } = req.query;
+
     console.log('📊 Course Progress API called for userId:', userId, 'courseIds:', courseIds);
-    
-    if (!userId || !courseIds) {
-      res.status(400).json({ error: 'userId and courseIds are required' });
+
+    if (!courseIds) {
+      res.status(400).json({ error: 'courseIds are required' });
       return;
     }
 

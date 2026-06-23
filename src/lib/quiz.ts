@@ -39,3 +39,16 @@ export function shuffleQuestions<T>(arr: T[]): T[] {
   }
   return a;
 }
+
+// Pick the questions to actually present for a quiz attempt: shuffle the full
+// pool, then keep only `questionsToShow` of them when the creator set a limit
+// (a positive number smaller than the pool). Undefined / 0 / >= pool size keeps
+// every question. Called fresh per user and per retry, so each attempt gets a
+// different random subset and order.
+export function selectQuizQuestions<T>(questions: T[], questionsToShow?: number): T[] {
+  const shuffled = shuffleQuestions(questions);
+  if (questionsToShow && questionsToShow > 0 && questionsToShow < shuffled.length) {
+    return shuffled.slice(0, questionsToShow);
+  }
+  return shuffled;
+}

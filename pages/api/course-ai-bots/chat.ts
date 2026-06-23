@@ -2,14 +2,17 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseAiBotModel } from "../../../src/lib/models/CourseAiBot";
 import { BotChatHistoryModel } from "../../../src/lib/models/BotChatHistory";
+import { requireUser, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
 
-  const { botId, messages, chatId, userId = "admin", userName = "Admin", userEmail = "", userRole = "admin" } = req.body;
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
+  const { botId, messages, chatId, userName = "Admin", userEmail = "" } = req.body;
+  const userId = auth.sub;
+  const userRole = auth.role;
   if (!botId || !messages?.length) return res.status(400).json({ error: "botId and messages required" });
 
   await connectMongo();

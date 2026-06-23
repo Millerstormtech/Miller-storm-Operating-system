@@ -3,12 +3,11 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["GET"])) return;
+  if (!requireRole(req, res, "admin")) return;
 
   await connectMongo();
 

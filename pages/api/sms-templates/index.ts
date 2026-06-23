@@ -1,8 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { SmsTemplateModel, DEFAULT_SMS_TEMPLATES } from "../../../src/lib/models/SmsTemplate";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "PUT"])) return;
+  if (!requireRole(req, res, "admin")) return;
+
   await connectMongo();
 
   if (req.method === "GET") {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import '../services/auth_service.dart';
 
 class ManagerTrainingLeaderboardScreen extends StatefulWidget {
@@ -59,7 +60,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
   Future<void> _fetchPlaylists() async {
     if (_managerId == null) return;
     try {
-      final response = await http.get(Uri.parse('https://millerstorm.tech/api/playlists?managerId=$_managerId'));
+      final response = await api.get(Uri.parse('https://millerstorm.tech/api/playlists?managerId=$_managerId'));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
@@ -76,7 +77,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
 
   Future<void> _fetchCourses() async {
     try {
-      final response = await http.get(Uri.parse('https://millerstorm.tech/api/courses'));
+      final response = await api.get(Uri.parse('https://millerstorm.tech/api/courses'));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final published = data.where((c) => c['status'] == 'published').toList();
@@ -109,7 +110,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
       // If playlist mode, use the old approach for now (we can optimize playlists later)
       if (_viewType == 'playlists' && playlist != null) {
         // Original playlist logic here
-        final usersResponse = await http.get(Uri.parse('https://millerstorm.tech/api/users'));
+        final usersResponse = await api.get(Uri.parse('https://millerstorm.tech/api/users'));
         if (usersResponse.statusCode != 200) throw Exception('Failed to fetch users');
         
         final List<dynamic> allUsers = jsonDecode(usersResponse.body);
@@ -117,7 +118,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
         Set<String>? assignedUserIds;
         try {
           final playlistId = playlist['_id'] ?? playlist['id'];
-          final assignRes = await http.get(Uri.parse('https://millerstorm.tech/api/playlist-assignments?playlistId=$playlistId'));
+          final assignRes = await api.get(Uri.parse('https://millerstorm.tech/api/playlist-assignments?playlistId=$playlistId'));
           if (assignRes.statusCode == 200) {
             final List<dynamic> assignments = jsonDecode(assignRes.body);
             assignedUserIds = Set.from(assignments.map((a) => a['assignedToUserId'].toString()));
@@ -149,7 +150,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
         final List<Future<void>> progressFutures = targetUsers.map((u) async {
           try {
             final userId = u['id'] ?? u['_id'];
-            final progRes = await http.get(
+            final progRes = await api.get(
               Uri.parse('https://millerstorm.tech/api/course-progress?userId=$userId&courseIds=$targetCourseId')
             );
             
@@ -199,7 +200,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
         ? 'https://millerstorm.tech/api/leaderboard?courseId=${course['id']}&managerId=$_managerId'
         : 'https://millerstorm.tech/api/leaderboard?courseId=${course['id']}';
 
-      final leaderboardResponse = await http.get(Uri.parse(url));
+      final leaderboardResponse = await api.get(Uri.parse(url));
       
       if (leaderboardResponse.statusCode == 200) {
         final data = jsonDecode(leaderboardResponse.body);

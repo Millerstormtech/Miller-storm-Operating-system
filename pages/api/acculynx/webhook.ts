@@ -4,6 +4,7 @@ import { IntegrationEventModel } from "../../../src/lib/models/IntegrationEvent"
 import { LeaderboardEntryModel } from "../../../src/lib/models/LeaderboardEntry";
 import { NotificationModel } from "../../../src/lib/models/Notification";
 import { UserModel } from "../../../src/lib/models/User";
+import { allowMethods } from "../../../src/lib/auth";
 
 /**
  * AccuLynx Direct Webhook Handler
@@ -21,10 +22,7 @@ function extractLocation(companyName: string): string {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
 
   console.log("Incoming AccuLynx Direct Payload:", JSON.stringify(req.body, null, 2));
 

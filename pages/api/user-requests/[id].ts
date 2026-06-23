@@ -3,18 +3,25 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
 import { UserModel } from "../../../src/lib/models/User";
 import { sendAccountApprovedEmail, sendAccountRejectedEmail, sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["PUT"])) return;
+
+  const auth = requireRole(req, res, "admin");
+  if (!auth) return;
+
   await connectMongo();
 
   const { id } = req.query;
 
   if (req.method === "PUT") {
     try {
-      const { action, rejectionReason, reviewedBy } = req.body;
+      const { action, rejectionReason } = req.body;
+      const reviewedBy = auth.sub;
 
       if (!["approve", "reject"].includes(action)) {
         res.status(400).json({ error: "Invalid action" });
@@ -158,8 +165,5 @@ export default async function handler(
       console.error("Failed to process user request:", error);
       res.status(500).json({ error: "Failed to process request" });
     }
-  } else {
-    res.setHeader("Allow", ["PUT"]);
-    res.status(405).end();
   }
 }

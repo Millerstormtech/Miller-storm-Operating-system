@@ -318,15 +318,28 @@ function scrollToEntry(entry: Entry) {
  * @param autoPlayRef          - A React ref to the live autoPlay boolean value
  * @param shouldAutoStartFirst - If true, immediately play the first video (used when navigating via autoplay)
  * @param isAlreadyCompleted   - If true, allow skipping (video was already watched)
+ * @param onSeekBlocked        - Called when a forward-seek is blocked (video not yet completed once)
  */
 export async function initVideoSequence(
   container: HTMLElement,
   onAllEnded: () => void,
   autoPlayRef: { current: boolean },
   shouldAutoStartFirst = false,
-  isAlreadyCompleted = false
+  isAlreadyCompleted = false,
+  onSeekBlocked?: () => void
 ): Promise<(() => void) | undefined> {
   if (typeof window === 'undefined') return;
+
+  // Notify the UI at most once every few seconds so a held-down fast-forward
+  // (which fires many seek/timeupdate events) only surfaces one message.
+  let lastSeekBlockAt = 0;
+  function notifySeekBlocked() {
+    if (!onSeekBlocked) return;
+    const now = Date.now();
+    if (now - lastSeekBlockAt < 3000) return;
+    lastSeekBlockAt = now;
+    onSeekBlocked();
+  }
 
   // Immediately simulate user interaction to unlock autoplay
   simulateUserInteraction();
@@ -414,6 +427,7 @@ export async function initVideoSequence(
           vp.on('timeupdate', (data: { seconds: number }) => {
             if (data.seconds > vimeoEntry.maxTimeWatched + 2) {
               vp.setCurrentTime(vimeoEntry.maxTimeWatched);
+              notifySeekBlocked();
             } else {
               vimeoEntry.maxTimeWatched = Math.max(vimeoEntry.maxTimeWatched, data.seconds);
             }
@@ -422,6 +436,7 @@ export async function initVideoSequence(
           vp.on('seeking', (data: { seconds: number }) => {
             if (data.seconds > vimeoEntry.maxTimeWatched + 1) {
               vp.setCurrentTime(vimeoEntry.maxTimeWatched);
+              notifySeekBlocked();
             }
           });
         }
@@ -471,6 +486,7 @@ export async function initVideoSequence(
         if (!isSeeking) {
           if (e.video.currentTime > e.maxTimeWatched + 2) {
             e.video.currentTime = e.maxTimeWatched;
+            notifySeekBlocked();
           } else {
             e.maxTimeWatched = Math.max(e.maxTimeWatched, e.video.currentTime);
           }
@@ -535,6 +551,7 @@ export async function initVideoSequence(
                   const currentTime = player.getCurrentTime();
                   if (currentTime > ytEntry.maxTimeWatched + 2) {
                     player.seekTo(ytEntry.maxTimeWatched, true);
+                    notifySeekBlocked();
                   } else {
                     ytEntry.maxTimeWatched = Math.max(ytEntry.maxTimeWatched, currentTime);
                   }

@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { exactCaseInsensitive } from "../../src/lib/sanitize";
-import { setSession } from "../../src/lib/auth";
+import { setSession, signSession } from "../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -100,7 +100,8 @@ export default async function handler(
       featureToggles: defaultToggles
     });
     setSession(res, { id: created.id, role: created.role });
-    res.status(201).json(sanitizeUser(created.toObject()));
+    const token = signSession({ id: created.id, role: created.role });
+    res.status(201).json({ ...sanitizeUser(created.toObject()), token });
     return;
   }
 
@@ -133,5 +134,6 @@ export default async function handler(
   }
 
   setSession(res, { id: user.id as string, role: user.role as string });
-  res.status(200).json(sanitizeUser(user));
+  const token = signSession({ id: user.id as string, role: user.role as string });
+  res.status(200).json({ ...sanitizeUser(user), token });
 }

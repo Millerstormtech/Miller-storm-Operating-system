@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import PlaylistAssignment from '../../../src/lib/models/PlaylistAssignment';
+import { requireUser, requireRole, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'POST', 'DELETE'])) return;
+
   await connectMongo();
 
   if (req.method === 'GET') {
+    if (!requireUser(req, res)) return;
     try {
       const { userId, managerId, playlistId } = req.query;
       
@@ -29,9 +33,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
+    if (!requireRole(req, res, ['admin', 'manager'])) return;
     try {
-      const { 
-        playlistId, 
+      const {
+        playlistId,
         playlistName, 
         courseId, 
         courseName, 
@@ -68,9 +73,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'DELETE') {
+    if (!requireRole(req, res, ['admin', 'manager'])) return;
     try {
       const { id } = req.query;
-      
+
       if (!id) {
         return res.status(400).json({ error: 'Assignment ID required' });
       }
@@ -82,6 +88,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to delete assignment' });
     }
   }
-
-  return res.status(405).json({ error: 'Method not allowed' });
 }

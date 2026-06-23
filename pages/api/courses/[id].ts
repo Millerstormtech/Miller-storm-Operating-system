@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
+import { requireUser, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,18 +12,23 @@ export default async function handler(
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
   }
 
+  if (!allowMethods(req, res, ["GET"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
-    const { id, userId } = req.query;
-    
+    const auth = requireUser(req, res);
+    if (!auth) return;
+    const { id } = req.query;
+    const userId = auth.sub;
+
     console.log('📚 Course detail API called for:', id, 'userId:', userId);
     
     try {
@@ -87,7 +93,4 @@ export default async function handler(
       return;
     }
   }
-
-  res.setHeader("Allow", "GET");
-  res.status(405).end();
 }

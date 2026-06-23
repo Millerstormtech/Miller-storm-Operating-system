@@ -1,12 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    res.status(405).end();
-    return;
-  }
+  if (!allowMethods(req, res, ["GET"])) return;
+  if (!requireRole(req, res, "admin")) return;
 
   const { userId } = req.query;
 

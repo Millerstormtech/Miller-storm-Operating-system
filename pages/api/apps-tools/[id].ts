@@ -2,13 +2,17 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import AppTool from '../../../src/lib/models/AppTool';
 import AppToolCategory from '../../../src/lib/models/AppToolCategory';
+import { requireUser, requireRole, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'PUT', 'DELETE'])) return;
+
   await connectMongo();
 
   const { id } = req.query;
 
   if (req.method === 'GET') {
+    if (!requireUser(req, res)) return;
     try {
       const appTool = await AppTool.findById(id);
 
@@ -29,6 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'PUT') {
+    if (!requireRole(req, res, 'admin')) return;
     try {
       const { title, imageUrl, imageWidth, imageHeight, description, link, webLink, appStoreLink, playStoreLink, category, status } = req.body;
 
@@ -65,6 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'DELETE') {
+    if (!requireRole(req, res, 'admin')) return;
     try {
       const appTool = await AppTool.findByIdAndDelete(id);
 
@@ -78,6 +84,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to delete app/tool' });
     }
   }
-
-  return res.status(405).json({ error: 'Method not allowed' });
 }

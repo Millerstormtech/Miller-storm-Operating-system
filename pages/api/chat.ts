@@ -1,11 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    res.status(405).end();
-    return;
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
+  const auth = requireUser(req, res);
+  if (!auth) return;
 
   const { messages, lessonTitle, lessonContent, videoUrl, courseTitle, allPages, trainingText, hasTraining } = req.body;
 

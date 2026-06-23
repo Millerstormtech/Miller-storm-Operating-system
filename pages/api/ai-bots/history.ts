@@ -1,8 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { BotChatModel } from "../../../src/lib/models/BotChat";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "DELETE"])) return;
+
+  const auth = requireRole(req, res, "admin");
+  if (!auth) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
@@ -24,7 +30,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await BotChatModel.deleteOne({ chatId });
     return res.status(200).json({ ok: true });
   }
-
-  res.setHeader("Allow", ["GET", "DELETE"]);
-  res.status(405).end();
 }

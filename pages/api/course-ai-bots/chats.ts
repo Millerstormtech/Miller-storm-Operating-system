@@ -1,8 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { BotChatHistoryModel } from "../../../src/lib/models/BotChatHistory";
+import { requireUser, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "DELETE"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
   await connectMongo();
 
   if (req.method === "GET") {

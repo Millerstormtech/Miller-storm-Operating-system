@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { renderTemplate } from "./emailTemplates";
 import { getEmailTemplate } from "./emailTemplatesServer";
 
@@ -11,24 +11,22 @@ type EmailOptions = {
 
 export async function sendEmail(options: EmailOptions) {
   try {
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      throw new Error("SMTP configuration is missing in environment variables");
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is missing in environment variables");
     }
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: process.env.SMTP_SECURE === "true",
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-    });
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"Miller Storm OS" <${process.env.SMTP_USER}>`,
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM || "Miller Storm OS <onboarding@resend.dev>",
       to: options.to,
       subject: options.subject,
       text: options.text,
-      html: options.html
+      html: options.html,
     });
-    console.log("Email sent successfully. Message ID:", info.messageId);
-    return info;
+    if (error) {
+      throw new Error(error.message || JSON.stringify(error));
+    }
+    console.log("Email sent successfully. Message ID:", data?.id);
+    return data;
   } catch (error: any) {
     console.error("Email sending error:", error.message || error);
     throw error;
@@ -142,6 +140,28 @@ export async function sendAdminConfirmationEmail(params: {
     "{{updatedAt}}": params.updatedAt,
   });
   return sendEmail({ to: params.adminEmail, subject, html, text });
+}
+
+export async function sendManagerDeadlineMissedEmail(params: {
+  managerName: string;
+  managerEmail: string;
+  userName: string;
+  playlistName: string;
+  deadline: string;
+  completedModules: number;
+  totalModules: number;
+}) {
+  const tmpl = await getEmailTemplate("managerDeadlineMissed");
+  if (tmpl.status === "draft") { console.log("[Email] managerDeadlineMissed is draft — skipping"); return; }
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{managerName}}": params.managerName,
+    "{{userName}}": params.userName,
+    "{{playlistName}}": params.playlistName,
+    "{{deadline}}": params.deadline,
+    "{{completedModules}}": String(params.completedModules),
+    "{{totalModules}}": String(params.totalModules),
+  });
+  return sendEmail({ to: params.managerEmail, subject, html, text });
 }
 
 // ── Legacy static generators (kept for backward compatibility) ───────────────

@@ -2,19 +2,22 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import ChatMessage from '../../../src/lib/models/ChatMessage';
 import GroupReadReceipt from '../../../src/lib/models/GroupReadReceipt';
+import { requireUser, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!allowMethods(req, res, ['GET'])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
 
   try {
     await connectMongo();
 
-    const { userId, groupIds } = req.query;
+    const { groupIds } = req.query;
+    const userId = auth.sub;
 
-    if (!userId || !groupIds) {
-      return res.status(400).json({ error: 'userId and groupIds are required' });
+    if (!groupIds) {
+      return res.status(400).json({ error: 'groupIds are required' });
     }
 
     const groupIdArray = (groupIds as string).split(',');

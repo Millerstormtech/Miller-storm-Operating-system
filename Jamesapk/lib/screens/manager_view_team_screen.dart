@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 
 class ManagerViewTeamScreen extends StatefulWidget {
   const ManagerViewTeamScreen({super.key});
@@ -88,7 +89,7 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
 
     try {
       print('Fetching users with managerId: $_userId');
-      final response = await http.get(Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_userId'));
+      final response = await api.get(Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_userId'));
       print('Users API response status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final List<dynamic> allUsers = jsonDecode(response.body);

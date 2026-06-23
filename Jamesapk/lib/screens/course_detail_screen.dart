@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'lesson_player_screen.dart';
 
@@ -66,7 +67,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       
       print('🔵 Fetching course detail: ${widget.courseId}');
       
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId'),
       );
 
@@ -79,7 +80,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         // Fetch actual completed pages from progress API to ensure accuracy
         Set<String> completedIds = {};
         try {
-          final progressResponse = await http.get(
+          final progressResponse = await api.get(
             Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
           );
           if (progressResponse.statusCode == 200) {
@@ -287,7 +288,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             final user = await AuthService.getStoredUser();
             final userId = user?['id'] ?? '';
             if (userId.isNotEmpty) {
-              final progressResponse = await http.get(
+              final progressResponse = await api.get(
                 Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
               );
               if (progressResponse.statusCode == 200) {
@@ -857,7 +858,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     try {
       final user = await AuthService.getStoredUser();
-      final response = await http.post(
+      final response = await api.post(
         Uri.parse('https://millerstorm.tech/api/playlists'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({

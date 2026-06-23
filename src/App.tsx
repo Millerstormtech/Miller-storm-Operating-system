@@ -5,7 +5,10 @@ import { ManagerPortal } from "./portals/ManagerPortal";
 import { SalesPortal } from "./portals/SalesPortal";
 import { MarketingPortal } from "./portals/MarketingPortal";
 import { AuthenticatedUser, Course, UserProfile } from "./types";
+import { setToken, clearToken, installAuthFetch } from "./lib/authToken";
 import logoImage from "../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
+
+installAuthFetch();
 
 type LoginState = {
   email: string;
@@ -97,6 +100,9 @@ export function App() {
         return;
       }
       const userForRole = await response.json();
+      if (userForRole.token) {
+        setToken(userForRole.token);
+      }
       setCurrentUser({
         id: userForRole.id,
         name: userForRole.name,
@@ -118,6 +124,7 @@ export function App() {
     setCurrentUser(null);
     setLoginState({ email: "", password: "" });
     setLoginError("");
+    clearToken();
   }
 
   async function updateUsers(next: UserProfile[]) {

@@ -2,14 +2,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import formidable from "formidable";
 import fs from "fs";
 import path from "path";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
+
+  const auth = requireRole(req, res, "admin");
+  if (!auth) return;
 
   const uploadDir = path.join(process.cwd(), "public", "uploads");
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });

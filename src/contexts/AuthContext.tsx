@@ -1,5 +1,10 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/router";
+import { setToken, clearToken, installAuthFetch } from "../lib/authToken";
+
+// Install the global Authorization-header fetch wrapper as early as possible,
+// before any component fires off API requests.
+installAuthFetch();
 
 type User = {
   _id?: string; // MongoDB ID
@@ -25,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    installAuthFetch();
     const storedUser = localStorage.getItem("user");
     if (storedUser && storedUser !== "undefined") {
       try {
@@ -49,6 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const userData = await response.json();
+
+    // Store the server-issued token so every subsequent API request can send
+    // it as an Authorization: Bearer header (see installAuthFetch).
+    if (userData.token) {
+      setToken(userData.token);
+    }
+
     const user: User = {
       id: userData.id,
       name: userData.name,
@@ -74,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     setUser(null);
     localStorage.removeItem("user");
+    clearToken();
     router.push("/login");
   }
 

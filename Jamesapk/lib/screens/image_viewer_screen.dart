@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -131,7 +132,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       );
 
       final url = widget.imageUrl.startsWith('http') ? widget.imageUrl : 'https://millerstorm.tech${widget.imageUrl}';
-      final response = await http.get(Uri.parse(url));
+      final response = await api.get(Uri.parse(url));
       await Gal.putImageBytes(
         Uint8List.fromList(response.bodyBytes),
         album: 'StormChat',
@@ -168,7 +169,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       print('Sharing image from URL: $url');
       
       // Download image temporarily for sharing
-      final response = await http.get(Uri.parse(url));
+      final response = await api.get(Uri.parse(url));
       print('Response status: ${response.statusCode}');
       print('Response body length: ${response.bodyBytes.length}');
       
@@ -223,7 +224,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       final url = widget.imageUrl.startsWith('http')
           ? widget.imageUrl
           : 'https://millerstorm.tech${widget.imageUrl}';
-      final response = await http.get(Uri.parse(url));
+      final response = await api.get(Uri.parse(url));
       if (!mounted) return;
 
       if (response.statusCode != 200) {
@@ -272,7 +273,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             uploadRequest.files.add(
               await http.MultipartFile.fromPath('file', tempFile.path),
             );
-            final uploadStream = await uploadRequest.send();
+            final uploadStream = await api.send(uploadRequest);
             final uploadResponse = await http.Response.fromStream(uploadStream);
 
             if (!mounted) return;
@@ -280,7 +281,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
               final uploadData = jsonDecode(uploadResponse.body);
               final uploadedUrl = uploadData['url'];
 
-              await http.post(
+              await api.post(
                 Uri.parse(
                   'https://millerstorm.tech/api/storm-chat/messages/${widget.groupId}',
                 ),

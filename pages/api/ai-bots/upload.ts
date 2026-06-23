@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export const config = { api: { bodyParser: false } };
 
@@ -14,10 +15,10 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
+
+  const auth = requireRole(req, res, "admin");
+  if (!auth) return;
 
   await connectMongo();
 

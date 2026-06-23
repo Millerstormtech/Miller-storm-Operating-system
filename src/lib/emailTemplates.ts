@@ -116,6 +116,23 @@ If you have any questions, please contact your administrator.
 © 2026-2027 Miller Storm. All Rights Reserved.`,
     variables: ["{{name}}", "{{email}}", "{{password}}", "{{role}}", "{{managerName}}", "{{loginUrl}}"],
   },
+  managerDeadlineMissed: {
+    subject: "Training Deadline Missed - {{userName}}",
+    body: `Hi {{managerName}},
+
+A training deadline has been missed by a member of your team.
+
+Details:
+- Team Member: {{userName}}
+- Playlist: {{playlistName}}
+- Deadline: {{deadline}}
+- Progress: {{completedModules}} of {{totalModules}} modules complete
+
+{{userName}} did not finish watching the assigned videos and passing the quizzes before the deadline. Please follow up with them inside the Miller Storm Operating System.
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{managerName}}", "{{userName}}", "{{playlistName}}", "{{deadline}}", "{{completedModules}}", "{{totalModules}}"],
+  },
   adminConfirmation: {
     subject: "User Account Updated - {{userName}}",
     body: `Hi {{adminName}},

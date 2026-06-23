@@ -5,8 +5,14 @@ import ChatGroup from '../../../../src/lib/models/ChatGroup';
 import { NotificationModel } from '../../../../src/lib/models/Notification';
 import { sendPushNotificationToMultiple } from '../../../../src/lib/firebase-admin';
 import { logToDb } from '../../../../src/lib/models/SystemLog';
+import { requireUser, allowMethods } from '../../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'POST', 'PATCH'])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
   await connectMongo();
 
   const { groupId } = req.query;
@@ -14,8 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     // Get messages for a group
     try {
-      const { userId, userRole } = req.query;
-      
       // Check if group exists
       const group = await ChatGroup.findById(groupId);
       if (!group) {
@@ -23,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Group not found' });
       }
 
-      const { userId: queryUserId, userRole: queryUserRole } = req.query;
+      const queryUserId = auth.sub;
+      const queryUserRole = auth.role;
 
       // Allow access if user is admin, group admin, or member
       const isAdmin = queryUserRole?.toString().toLowerCase() === 'admin';
@@ -46,11 +51,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'POST') {
     // Send a message
     try {
-      const { senderId, senderName, senderRole, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender } = req.body;
-      
+      const { senderName, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender } = req.body;
+      const senderId = auth.sub;
+      const senderRole = auth.role;
+
       await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderName, senderId, messageType });
 
-      if (!senderId || !senderName) {
+      if (!senderName) {
         return res.status(400).json({ error: 'Sender information is required' });
       }
 
@@ -258,10 +265,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'PATCH') {
     // Add or remove a reaction on a message
     try {
-      const { messageId, emoji, userId, userName } = req.body;
+      const { messageId, emoji, userName } = req.body;
+      const userId = auth.sub;
 
-      if (!messageId || !emoji || !userId) {
-        return res.status(400).json({ error: 'messageId, emoji and userId are required' });
+      if (!messageId || !emoji) {
+        return res.status(400).json({ error: 'messageId and emoji are required' });
       }
 
       const msg = await ChatMessage.findById(messageId);

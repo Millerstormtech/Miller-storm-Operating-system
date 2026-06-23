@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { CourseModel } from "../../src/lib/models/Course";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 
 // Direct web progress API - returns exact percentages that web shows
 export default async function handler(
@@ -18,13 +19,19 @@ export default async function handler(
     return;
   }
 
+  if (!allowMethods(req, res, ["GET"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
   if (req.method === "GET") {
-    const { userId, courseIds } = req.query;
-    
+    const userId = auth.sub;
+    const { courseIds } = req.query;
+
     console.log('🌐 Web Progress API - Direct fetch for:', userId);
-    
-    if (!userId || !courseIds) {
-      res.status(400).json({ error: 'userId and courseIds required' });
+
+    if (!courseIds) {
+      res.status(400).json({ error: 'courseIds required' });
       return;
     }
 

@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { SocialMediaMetricsModel } from "../../../src/lib/models/SocialMediaMetrics";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["PUT", "DELETE"])) return;
+  if (!requireRole(req, res, "admin")) return;
+
   await connectMongo();
 
   const { id } = req.query;

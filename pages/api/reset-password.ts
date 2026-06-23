@@ -3,11 +3,14 @@ import bcrypt from "bcryptjs";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { PasswordResetModel } from "../../src/lib/models/PasswordReset";
+import { allowMethods } from "../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET", "POST"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
@@ -104,8 +107,5 @@ export default async function handler(
       console.error("Password reset error:", error);
       res.status(500).json({ error: "An error occurred. Please try again." });
     }
-  } else {
-    res.setHeader("Allow", ["GET", "POST"]);
-    res.status(405).end();
   }
 }

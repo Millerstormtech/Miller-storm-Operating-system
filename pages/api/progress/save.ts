@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
+import { requireUser, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -17,15 +18,21 @@ export default async function handler(
     return;
   }
 
+  if (!allowMethods(req, res, ["POST", "PUT"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
   await connectMongo();
 
   if (req.method === "POST" || req.method === "PUT") {
-    const { userId, courseId, pageId, quizResult, courseCompleted } = req.body;
-    
+    const userId = auth.sub;
+    const { courseId, pageId, quizResult, courseCompleted } = req.body;
+
     console.log('💾 Progress Save API called:', { userId, courseId, pageId, courseCompleted });
-    
-    if (!userId || !courseId) {
-      res.status(400).json({ error: 'userId and courseId are required' });
+
+    if (!courseId) {
+      res.status(400).json({ error: 'courseId is required' });
       return;
     }
 

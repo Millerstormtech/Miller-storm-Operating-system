@@ -1,9 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import mongoose from 'mongoose';
+import { requireRole, allowMethods } from '../../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'PUT') return res.status(405).json({ error: 'Method not allowed' });
+  if (!allowMethods(req, res, ['PUT'])) return;
+  if (!requireRole(req, res, ['admin', 'manager'])) return;
 
   await connectMongo();
 

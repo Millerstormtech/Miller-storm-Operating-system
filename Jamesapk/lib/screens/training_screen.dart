@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'ai_clone_chat_screen.dart';
 
 class TrainingScreen extends StatefulWidget {
@@ -78,7 +79,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     if (_userId == null) return;
     
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/groups'),
       );
 
@@ -106,7 +107,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     });
 
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/ai-bots'),
       );
 

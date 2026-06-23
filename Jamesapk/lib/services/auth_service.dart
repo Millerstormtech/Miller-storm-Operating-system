@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api_client.dart';
 
 const String baseUrl = 'https://millerstorm.tech';
 
@@ -35,6 +36,14 @@ class AuthService {
       print('✅ Login successful');
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user', jsonEncode(data));
+
+      // Persist the server-issued token and prime the shared API client so
+      // every subsequent request sends `Authorization: Bearer <token>`.
+      final token = data['token'];
+      if (token is String && token.isNotEmpty) {
+        await prefs.setString('token', token);
+        api.setToken(token);
+      }
       return data;
     } catch (e) {
       print('❌ Login error: $e');
@@ -55,5 +64,7 @@ class AuthService {
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user');
+    await prefs.remove('token');
+    api.clearToken();
   }
 }

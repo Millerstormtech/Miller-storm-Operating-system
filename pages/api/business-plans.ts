@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { BusinessPlanModel, BusinessPlansModel, SalesBusinessPlanModel } from "../../src/lib/models/BusinessPlan";
+import { requireRole, allowMethods } from "../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET"])) return;
+  if (!requireRole(req, res, ["admin", "manager"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {

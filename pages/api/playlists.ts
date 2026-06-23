@@ -1,18 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../src/lib/mongodb';
 import Playlist from '../../src/lib/models/Playlist';
+import { requireUser, requireRole, allowMethods } from '../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'POST', 'PUT', 'DELETE'])) return;
+
   await connectMongo();
 
   if (req.method === 'GET') {
+    if (!requireUser(req, res)) return;
     try {
       const { managerId } = req.query;
-      
+
       if (!managerId) {
         return res.status(400).json({ error: 'Manager ID required' });
       }
-      
+
       const playlists = await Playlist.find({ managerId }).sort({ createdAt: -1 });
       return res.status(200).json(playlists);
     } catch (error) {
@@ -22,6 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
+    if (!requireRole(req, res, ['admin', 'manager'])) return;
     try {
       const { name, courseId, courseName, selectedModules, managerId, managerName } = req.body;
 
@@ -46,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'PUT') {
+    if (!requireRole(req, res, ['admin', 'manager'])) return;
     try {
       const { id, name, selectedModules } = req.body;
 
@@ -71,6 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'DELETE') {
+    if (!requireRole(req, res, ['admin', 'manager'])) return;
     try {
       const { id } = req.query;
 
@@ -85,6 +92,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to delete playlist' });
     }
   }
-
-  return res.status(405).json({ error: 'Method not allowed' });
 }

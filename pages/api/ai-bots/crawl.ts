@@ -1,16 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("=== CRAWL API CALLED ===");
   console.log("Method:", req.method);
   console.log("Body:", JSON.stringify(req.body));
-  
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end();
-  }
+
+  if (!allowMethods(req, res, ["POST"])) return;
+
+  const auth = requireRole(req, res, "admin");
+  if (!auth) return;
 
   await connectMongo();
   const { botId, url, type } = req.body;

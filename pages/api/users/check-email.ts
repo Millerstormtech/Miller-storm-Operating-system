@@ -3,16 +3,13 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
 import { exactCaseInsensitive } from "../../../src/lib/sanitize";
+import { allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end();
-    return;
-  }
+  if (!allowMethods(req, res, ["GET"])) return;
 
   await connectMongo();
 

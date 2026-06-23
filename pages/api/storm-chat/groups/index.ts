@@ -2,11 +2,15 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
 import mongoose from 'mongoose';
+import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ['GET', 'POST'])) return;
+
   await connectMongo();
 
   if (req.method === 'GET') {
+    if (!requireUser(req, res)) return;
     try {
       // Use native driver so the `order` field (added after initial schema compile) is always read
       const db = mongoose.connection.db!;
@@ -20,8 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to fetch groups' });
     }
   } else if (req.method === 'POST') {
+    const auth = requireRole(req, res, ['admin', 'manager']);
+    if (!auth) return;
     try {
-      const { name, description, imageUrl, members, admins, onlyAdminCanChat, createdBy } = req.body;
+      const { name, description, imageUrl, members, admins, onlyAdminCanChat } = req.body;
+      const createdBy = auth.sub;
 
       if (!name || !members || members.length === 0) {
         return res.status(400).json({ error: 'Name and members are required' });

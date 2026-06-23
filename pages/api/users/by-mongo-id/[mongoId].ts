@@ -1,11 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../../src/lib/mongodb";
 import { UserModel } from "../../../../src/lib/models/User";
+import { requireUser, allowMethods } from "../../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
   await connectMongo();
   const rawMongoId = req.query.mongoId;
   const mongoId = typeof rawMongoId === "string" ? decodeURIComponent(rawMongoId) : null;
@@ -31,7 +37,4 @@ export default async function handler(
       return;
     }
   }
-
-  res.setHeader("Allow", "GET");
-  res.status(405).end();
 }

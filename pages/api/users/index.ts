@@ -5,6 +5,7 @@ import { UserModel } from "../../../src/lib/models/User";
 import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -20,9 +21,12 @@ async function handler(
     return;
   }
 
+  if (!allowMethods(req, res, ["GET", "POST"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
+    if (!requireRole(req, res, ["admin", "manager"])) return;
     const { role, managerId, deleted } = req.query;
     const query: any = {};
     if (role) query.role = role;
@@ -39,6 +43,7 @@ async function handler(
   }
 
   if (req.method === "POST") {
+    if (!requireRole(req, res, "admin")) return;
     const payload = req.body || {};
 
     const valid = validateUserPayload(payload);
@@ -151,9 +156,6 @@ async function handler(
     res.status(201).json(safeUser);
     return;
   }
-
-  res.setHeader("Allow", "GET, POST");
-  res.status(405).end();
 }
 
 export default handler;

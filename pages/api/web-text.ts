@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import mongoose from "mongoose";
+import { requireRole, allowMethods } from "../../src/lib/auth";
 
 const WebTextSchema = new mongoose.Schema({
   title: String,
@@ -11,15 +12,19 @@ const WebTextSchema = new mongoose.Schema({
 const WebText = mongoose.models.WebText || mongoose.model("WebText", WebTextSchema);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "POST", "DELETE"])) return;
+
   try {
     await connectMongo();
 
     if (req.method === "GET") {
+      // PUBLIC: renders rep public web pages (no login required).
       const items = await WebText.find({}).sort({ createdAt: -1 });
       return res.status(200).json(items);
     }
 
     if (req.method === "POST") {
+      if (!requireRole(req, res, "admin")) return;
       const { title, description } = req.body;
       if (!title || !description) {
         return res.status(400).json({ error: "Title and description are required" });
@@ -29,6 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "DELETE") {
+      if (!requireRole(req, res, "admin")) return;
       const { id } = req.query;
       if (!id || typeof id !== "string") {
         return res.status(400).json({ error: "ID is required" });
@@ -36,8 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await WebText.findByIdAndDelete(id);
       return res.status(200).json({ message: "Deleted successfully" });
     }
-
-    return res.status(405).json({ error: "Method not allowed" });
   } catch (error) {
     console.error("API error:", error);
     return res.status(500).json({ error: "Internal server error" });

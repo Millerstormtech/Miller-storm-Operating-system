@@ -3,6 +3,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserModel } from "../../../src/lib/models/User";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
+import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -12,31 +13,36 @@ export default async function handler(
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
   }
 
+  if (!allowMethods(req, res, ["GET", "POST", "DELETE"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
-    const { userId, userRole } = req.query;
-    
+    const auth = requireUser(req, res);
+    if (!auth) return;
+    const userId = auth.sub;
+    const userRole = auth.role;
+
     console.log('📚 Courses API called with userId:', userId, 'userRole:', userRole);
-    
+
     // Fetch all necessary course and page fields
     const courses = await CourseModel.find({}).lean();
     console.log('📚 Total courses in DB:', courses.length);
-    
+
     // If no user context, return all courses (for admin)
     if (!userId || !userRole) {
       console.log('📚 No user context, returning all courses');
       res.status(200).json(courses);
       return;
     }
-    
+
     // Get user to check training center feature toggle
     const user = await UserModel.findOne({ id: userId }).lean();
     if (!user) {
@@ -129,6 +135,7 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
+    if (!requireRole(req, res, "admin")) return;
     const payload = req.body;
     const id = payload.id || `course-${Date.now()}`;
     const created = await CourseModel.create({ ...payload, id });
@@ -137,6 +144,7 @@ export default async function handler(
   }
 
   if (req.method === "DELETE") {
+    if (!requireRole(req, res, "admin")) return;
     const { id } = req.query;
     if (!id) {
       return res.status(400).json({ error: "Course ID is required" });
@@ -148,7 +156,4 @@ export default async function handler(
     ]);
     return res.status(200).json({ success: true });
   }
-
-  res.setHeader("Allow", "GET, POST, DELETE");
-  res.status(405).end();
 }

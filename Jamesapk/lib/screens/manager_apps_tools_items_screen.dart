@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -40,7 +41,7 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/apps-tools/categories'),
       );
 
@@ -86,7 +87,7 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
       final selectedCategory = _categories[_selectedCategoryIndex];
       final categorySlug = selectedCategory['slug'];
       
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/apps-tools?published=true'),
       );
 

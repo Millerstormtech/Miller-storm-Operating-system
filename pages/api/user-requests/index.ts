@@ -3,14 +3,18 @@ import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
 import { sendRegistrationConfirmationEmail } from "../../../src/lib/email";
+import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET", "POST", "DELETE"])) return;
+
   await connectMongo();
 
   if (req.method === "GET") {
+    if (!requireRole(req, res, "admin")) return;
     try {
       const requests = await UserRequestModel.find({}).sort({ requestedAt: -1 }).lean();
       res.status(200).json(requests);
@@ -83,6 +87,7 @@ export default async function handler(
       res.status(500).json({ error: "Failed to submit registration request" });
     }
   } else if (req.method === "DELETE") {
+    if (!requireRole(req, res, "admin")) return;
     try {
       const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
@@ -95,8 +100,5 @@ export default async function handler(
       console.error("Failed to delete user requests:", error);
       res.status(500).json({ error: "Failed to delete requests" });
     }
-  } else {
-    res.setHeader("Allow", ["GET", "POST", "DELETE"]);
-    res.status(405).end();
   }
 }

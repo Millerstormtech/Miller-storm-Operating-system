@@ -4,16 +4,13 @@ import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { PasswordResetModel } from "../../src/lib/models/PasswordReset";
 import { sendPasswordResetEmail } from "../../src/lib/email";
+import { allowMethods } from "../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    res.status(405).end();
-    return;
-  }
+  if (!allowMethods(req, res, ["POST"])) return;
 
   await connectMongo();
 

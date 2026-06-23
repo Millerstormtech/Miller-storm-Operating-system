@@ -2,18 +2,25 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { CourseModel } from "../../../src/lib/models/Course";
+import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "PATCH", "DELETE"])) return;
+
   await connectMongo();
   const { id } = req.query as { id: string };
 
   if (req.method === "GET") {
+    const auth = requireUser(req, res);
+    if (!auth) return;
     const bot = await AiBotModel.findOne({ id }).lean();
     if (!bot) return res.status(404).json({ error: "Not found" });
     return res.status(200).json(normalizeBot(bot));
   }
 
   if (req.method === "PATCH") {
+    const auth = requireRole(req, res, "admin");
+    if (!auth) return;
     const { _id, id: _id2, ...safeUpdates } = req.body;
     
     // If course selection changed, rebuild courseTrainingText
@@ -80,6 +87,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "DELETE") {
+    const auth = requireRole(req, res, "admin");
+    if (!auth) return;
     await AiBotModel.findOneAndUpdate({ id }, { $set: { isActive: false } });
     return res.status(200).json({ ok: true });
   }
