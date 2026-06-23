@@ -3103,7 +3103,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                   <>
                                     {activePage.isQuiz ? (
                                       <>
-                                        <div className="course-page-main-header" key="quiz-header" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                        <div className="course-page-main-header" key="quiz-header" style={{ display: "flex", flexDirection: "row", gap: 8, alignItems: "center" }}>
                                           <input
                                             className="course-page-title-input"
                                             style={{ flex: 1 }}
@@ -3116,7 +3116,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <button
                                             type="button"
                                             className="btn-secondary btn-small"
-                                            style={{ whiteSpace: "nowrap" }}
+                                            style={{ whiteSpace: "nowrap", backgroundColor: "#111827", color: "#ffffff", border: "none" }}
                                             onClick={() => {
                                               setImportDocText("");
                                               setImportReport(null);
