@@ -1,10 +1,13 @@
+// pages/api/leaderboard.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
-import { LeaderboardEntryModel } from "../../src/lib/models/LeaderboardEntry";
 import { CourseModel } from "../../src/lib/models/Course";
 import { UserModel } from "../../src/lib/models/User";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../src/lib/auth";
+import { ScoringFactModel } from "../../src/lib/models/ScoringFact";
+import { getWindowRange } from "../../src/lib/acculynx/windows";
+import type { Window } from "../../src/lib/acculynx/windows";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -62,9 +65,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .map((f: any) => f.id)
     );
     const lessonPages = (course.pages || []).filter(
-      (p: any) => 
-        p.status === "published" && 
-        !p.isQuiz && 
+      (p: any) =>
+        p.status === "published" &&
+        !p.isQuiz &&
         (!p.folderId || publishedFolderIds.has(p.folderId))
     );
     const lessonIds = new Set(lessonPages.map((p: any) => p.id));
@@ -100,15 +103,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // Original sales leaderboard
-  const [inspections, claims] = await Promise.all([
-    LeaderboardEntryModel.find({}, "repName inspectionCount")
-      .sort({ inspectionCount: -1 })
-      .lean(),
-    LeaderboardEntryModel.find({}, "repName claimCount revenueTotal")
-      .sort({ claimCount: -1 })
-      .lean(),
+  // AccuLynx sales leaderboard (window-aware: week / month / year-to-date)
+  const w = (["week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
+  const { start, end } = getWindowRange(w);
+
+  const rows = await ScoringFactModel.aggregate([
+    { $match: { occurredAt: { $gte: start, $lte: end }, repExternalId: { $ne: null } } },
+    // Deterministic order so $last below means "most recent fact" (newest name/branch/link).
+    { $sort: { occurredAt: 1, _id: 1 } },
+    { $group: {
+        _id: "$repExternalId",
+        repName: { $last: "$repNameSnapshot" },
+        repUserId: { $last: "$repUserId" },
+        branch: { $last: "$location" },
+        filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
+        won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
+        revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
+    } },
+    { $sort: { won: -1, revenue: -1, filed: -1 } },
   ]);
 
-  return res.status(200).json({ inspections, claims });
+  const leaderboard = rows.map((r: any, i: number) => ({
+    rank: i + 1,
+    repExternalId: r._id,
+    repUserId: r.repUserId ?? null,
+    name: r.repName,
+    branch: r.branch,
+    filed: r.filed,
+    won: r.won,
+    revenue: r.revenue,
+    linked: Boolean(r.repUserId),
+  }));
+
+  return res.status(200).json({ window: w, leaderboard });
 }

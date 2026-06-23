@@ -14,7 +14,7 @@ const allSidebarItems = [
   { id: "courseAiBots", label: "Course Bots Builder", toggleKey: "courseAiBots" },
   { id: "aiBots", label: "Master Bot Builder", toggleKey: "aiBots" },
   { id: "messaging", label: "SMS Config", toggleKey: "messaging" },
-  { id: "leaderboard", label: "Zapier Config", toggleKey: "leaderboard" },
+  { id: "leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
   { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig" },
 ];
 
