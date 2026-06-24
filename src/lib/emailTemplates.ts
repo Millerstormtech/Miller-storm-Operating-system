@@ -45,7 +45,10 @@ Your Login Credentials:
 - Role: {{role}}
 - Password: The password you set during registration
 
-Login here: {{loginUrl}}
+You can access Miller Storm OS on both web and mobile — use the same login on either:
+
+Web App: {{loginUrl}}
+iPhone / iPad App: https://apps.apple.com/in/app/millerstorm/id6771883296
 
 Welcome to Miller Storm OS!
 
