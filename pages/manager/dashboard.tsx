@@ -2,6 +2,7 @@ import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
 import { ManagerDashboard } from "../../src/portals/manager/Dashboard";
+import { NewCoursePopup } from "../../src/components/NewCoursePopup";
 import { UserProfile } from "../../src/types";
 
 const DashboardPage: NextPage = () => {
@@ -24,6 +25,7 @@ const DashboardPage: NextPage = () => {
 
   return (
     <ManagerLayout currentView="dashboard">
+      <NewCoursePopup />
       <ManagerDashboard teamMembers={teamMembers} />
     </ManagerLayout>
   );

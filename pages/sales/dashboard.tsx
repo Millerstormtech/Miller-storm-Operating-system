@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
 import { SalesDashboard } from "../../src/portals/sales/Dashboard";
 import { ProtectedRoute } from "../../src/components/ProtectedRoute";
+import { NewCoursePopup } from "../../src/components/NewCoursePopup";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
@@ -86,6 +87,7 @@ const DashboardPage: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["sales"]}>
       <SalesLayout currentView="dashboard" userName={user.name} userId={user.id}>
+        <NewCoursePopup />
         <SalesDashboard profile={profile} />
       </SalesLayout>
     </ProtectedRoute>

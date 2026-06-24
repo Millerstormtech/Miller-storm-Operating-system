@@ -49,7 +49,10 @@ export function NotificationBell({ userId }: { userId: string }) {
     try {
       const res = await fetch(`/api/notifications?userId=${userId}`);
       if (!res.ok) return;
-      const data: Notification[] = await res.json();
+      const all: Notification[] = await res.json();
+      // "course_added" notifications are shown as a dedicated dashboard pop-up
+      // (NewCoursePopup), not in the bell — filter them out here.
+      const data = all.filter((n) => n.type !== "course_added");
       setNotifications(data);
       setUnreadCount(data.filter((n) => !n.read).length);
 
