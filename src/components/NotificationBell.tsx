@@ -121,7 +121,7 @@ export function NotificationBell({ userId }: { userId: string }) {
           background: 'transparent',
           border: 'none',
           cursor: 'pointer',
-          fontSize: 20,
+          fontSize: 28,
           padding: 8
         }}
       >
