@@ -25,29 +25,40 @@ export function NewCoursePopup() {
   const { user } = useAuth();
   const router = useRouter();
   const [notif, setNotif] = useState<Notification | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  // Ids the user closed with the X this session — hidden until next login.
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user?.id) return;
     let active = true;
-    (async () => {
+
+    async function check() {
       try {
         const res = await fetch("/api/notifications");
         if (!res.ok) return;
         const data: Notification[] = await res.json();
-        // Newest unread "course_added" (list is already sorted newest-first).
-        const fresh = data.find((n) => n.type === "course_added" && !n.read);
-        if (active && fresh) setNotif(fresh);
+        // Newest unread "course_added" the user hasn't closed this session
+        // (list is already sorted newest-first).
+        const fresh = data.find(
+          (n) => n.type === "course_added" && !n.read && !dismissedIds.has(n.id)
+        );
+        if (active) setNotif(fresh || null);
       } catch {
         /* ignore */
       }
-    })();
+    }
+
+    check();
+    // Re-check every 20s so a freshly published course pops up WITHOUT a manual
+    // page refresh.
+    const interval = setInterval(check, 20000);
     return () => {
       active = false;
+      clearInterval(interval);
     };
-  }, [user?.id]);
+  }, [user?.id, dismissedIds]);
 
-  if (!notif || dismissed) return null;
+  if (!notif) return null;
 
   const watchUrl = notif.metadata?.watchUrl || "/sales/training";
   const courseName = notif.metadata?.courseName;
@@ -87,7 +98,11 @@ export function NewCoursePopup() {
       <button
         type="button"
         aria-label="Close"
-        onClick={() => setDismissed(true)}
+        onClick={() => {
+          const id = notif.id;
+          setDismissedIds((prev) => new Set(prev).add(id));
+          setNotif(null);
+        }}
         style={{
           position: "absolute",
           top: 10,

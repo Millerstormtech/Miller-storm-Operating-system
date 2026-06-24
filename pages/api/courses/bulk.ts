@@ -5,13 +5,19 @@ import { UserModel } from "../../../src/lib/models/User";
 import { NotificationModel } from "../../../src/lib/models/Notification";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 
-// Create an in-app "new course" notification for every sales + manager user
-// whenever a course becomes newly available (brand-new published course, or a
-// draft that just flipped to published). Sales reps / managers see this as a
-// red pop-up on their dashboard. Failures here must never break the save.
-async function notifyNewCourses(newlyPublished: any[]) {
+type ContentAnnouncement = {
+  course: any;
+  newPages: { title: string; isQuiz: boolean }[];
+};
+
+// Create an in-app "new training" notification for every sales + manager user
+// whenever a new LESSON or QUIZ becomes available inside a PUBLISHED course
+// (a brand-new published page, or a page that just flipped draft -> published).
+// Sales reps / managers see this as a red pop-up on their dashboard.
+// Failures here must never break the save.
+async function notifyNewContent(announcements: ContentAnnouncement[]) {
   try {
-    if (!newlyPublished.length) return;
+    if (!announcements.length) return;
     const recipients = await UserModel.find(
       {
         deleted: { $ne: true },
@@ -24,25 +30,57 @@ async function notifyNewCourses(newlyPublished: any[]) {
     const docs: any[] = [];
     let i = 0;
     const stamp = Date.now();
-    for (const course of newlyPublished) {
+    for (const { course, newPages } of announcements) {
+      const lessons = newPages.filter((p) => !p.isQuiz);
+      const quizzes = newPages.filter((p) => p.isQuiz);
+
+      let message: string;
+      if (newPages.length === 1) {
+        const p = newPages[0];
+        message = `New ${p.isQuiz ? "quiz" : "lesson"} "${p.title}" was just added in "${course.title}". Check it out now.`;
+      } else {
+        const parts: string[] = [];
+        if (lessons.length) parts.push(`${lessons.length} new lesson${lessons.length > 1 ? "s" : ""}`);
+        if (quizzes.length) parts.push(`${quizzes.length} new quiz${quizzes.length > 1 ? "zes" : ""}`);
+        message = `${parts.join(" and ")} just added in "${course.title}". Check it out now.`;
+      }
+
+      // Dedup per course: if a user already has an UNREAD "new training"
+      // notification for this course, refresh it instead of stacking another —
+      // so a rep never gets more than one unread pop-up per course, no matter
+      // how many times the admin saves.
+      const existing = await NotificationModel.find(
+        { type: "course_added", read: false, "metadata.courseId": course.id },
+        { userId: 1 }
+      ).lean();
+      const haveUnread = new Set((existing as any[]).map((e) => e.userId));
+
+      if (haveUnread.size) {
+        await NotificationModel.updateMany(
+          { type: "course_added", read: false, "metadata.courseId": course.id },
+          { $set: { title: "🔥 New Training Just Added!", message } }
+        );
+      }
+
       for (const u of recipients as any[]) {
+        if (haveUnread.has(u.id)) continue; // already has an unread pop-up for this course
         const isManager = u.role === "manager" || (Array.isArray(u.roles) && u.roles.includes("manager"));
         const watchUrl = isManager ? "/manager/onlineTraining" : "/sales/training";
         docs.push({
           id: `notif-${stamp}-${i++}`,
           userId: u.id,
           type: "course_added",
-          title: "🔥 Fresh Course Just Dropped!",
-          message: "Ready to boost your sales and marketing game? Check out our newest course now.",
+          title: "🔥 New Training Just Added!",
+          message,
           read: false,
           metadata: { courseId: course.id, courseName: course.title, watchUrl },
         });
       }
     }
     if (docs.length) await NotificationModel.insertMany(docs, { ordered: false });
-    console.log(`[Bulk Save] Created ${docs.length} course-added notifications for ${newlyPublished.length} course(s)`);
+    console.log(`[Bulk Save] Created ${docs.length} new-training notifications for ${announcements.length} course(s)`);
   } catch (err) {
-    console.error("[Bulk Save] Failed to create course notifications:", err);
+    console.error("[Bulk Save] Failed to create training notifications:", err);
   }
 }
 
@@ -96,12 +134,11 @@ export default async function handler(
       return course;
     });
 
-    // Capture the prior state so we can detect courses that become newly
-    // available (new published course, or draft -> published) after the save.
+    // Capture the prior pages of each course so we can detect newly-added
+    // lessons/quizzes (new published page, or a page flipped draft -> published).
     const incomingIds = migratedCourses.map((c) => c.id);
-    const priorCourses = await CourseModel.find({ id: { $in: incomingIds } }, { id: 1, status: 1 }).lean();
-    const priorIds = new Set(priorCourses.map((c: any) => c.id));
-    const priorStatus = new Map(priorCourses.map((c: any) => [c.id, c.status]));
+    const priorCourses = await CourseModel.find({ id: { $in: incomingIds } }, { id: 1, pages: 1 }).lean();
+    const priorById = new Map(priorCourses.map((c: any) => [c.id, c]));
 
     // Use bulkWrite for better performance
     const bulkOps = migratedCourses.map((course) => ({
@@ -114,13 +151,27 @@ export default async function handler(
 
     await CourseModel.bulkWrite(bulkOps);
 
-    // Notify sales + managers about courses that just became available.
-    const newlyPublished = migratedCourses.filter((c) => {
-      if (c.status !== "published") return false;
-      if (!priorIds.has(c.id)) return true; // brand-new published course
-      return priorStatus.get(c.id) === "draft"; // draft -> published
-    });
-    await notifyNewCourses(newlyPublished);
+    // Notify sales + managers about NEW lessons/quizzes that just became
+    // visible inside a PUBLISHED course (new published page, or draft->published).
+    const announcements: ContentAnnouncement[] = [];
+    for (const course of migratedCourses) {
+      if (course.status !== "published") continue; // a draft course isn't visible to reps
+      const prior = priorById.get(course.id);
+      const priorPages: any[] = Array.isArray(prior?.pages) ? prior.pages : [];
+      const priorPageIds = new Set(priorPages.map((p) => p.id));
+      const priorPageStatus = new Map(priorPages.map((p) => [p.id, p.status]));
+
+      const newPages = (Array.isArray(course.pages) ? course.pages : [])
+        .filter((p: any) => {
+          if (p.status !== "published") return false;
+          if (!priorPageIds.has(p.id)) return true; // brand-new published lesson/quiz
+          return priorPageStatus.get(p.id) === "draft"; // draft -> published
+        })
+        .map((p: any) => ({ title: p.title || (p.isQuiz ? "Quiz" : "Lesson"), isQuiz: Boolean(p.isQuiz) }));
+
+      if (newPages.length) announcements.push({ course, newPages });
+    }
+    await notifyNewContent(announcements);
 
     // Return only the saved courses
     const savedCourses = await CourseModel.find({ 

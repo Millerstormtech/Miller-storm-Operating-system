@@ -788,8 +788,12 @@ export function CourseManagement(props: CourseEditorProps) {
           status: "draft",
           body: "",
           videoUrl: "",
+          transcript: "",
+          pinnedCommunityPostUrl: "",
           resourceLinks: [],
-          fileUrls: []
+          fileUrls: [],
+          isQuiz: false,
+          quizQuestions: []
         }
       ]
     };
