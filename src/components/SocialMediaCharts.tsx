@@ -67,14 +67,14 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
     if (total === 0) return null;
 
     if (slices.length === 1) {
-      return <circle cx="150" cy="150" r="120" fill={slices[0].color} stroke="#ffffff" strokeWidth="2" />;
+      return <circle cx="150" cy="150" r="130" fill={slices[0].color} stroke="#ffffff" strokeWidth="2" />;
     }
 
     let currentAngle = -90; // start from top
     return slices.map(slice => {
       const angle = (slice.value / total) * 360;
       const pct = Math.round((slice.value / total) * 100);
-      const radius = 110, cx = 150, cy = 150;
+      const radius = 130, cx = 150, cy = 150;
       const start = (currentAngle * Math.PI) / 180;
       const end = ((currentAngle + angle) * Math.PI) / 180;
       const x1 = cx + radius * Math.cos(start);
@@ -166,8 +166,8 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
           {/* Left: Pie Chart */}
           <div style={{ flex: 0.4 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 16 }}>{chartTitle}</div>
-            <div style={{ position: "relative", width: 380, height: 380, maxWidth: "100%" }}>
-              <svg width="100%" height="100%" viewBox="-90 -90 480 480" style={{ overflow: "visible" }}>
+            <div style={{ position: "relative", width: 440, height: 440, maxWidth: "100%" }}>
+              <svg width="100%" height="100%" viewBox="-80 -80 460 460" style={{ overflow: "visible" }}>
                 {drawPieSlices()}
               </svg>
             </div>
