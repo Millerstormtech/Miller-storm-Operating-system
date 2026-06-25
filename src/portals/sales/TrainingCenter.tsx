@@ -9,6 +9,20 @@ import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 
+// Order pages to match the folder-grouped sidebar display: non-folder pages
+// first, then each folder's pages (in folder order), then any orphaned pages.
+// Navigation (Next) and the lock check MUST use this SAME order as the sidebar —
+// otherwise "Next" follows the raw array order and can jump across modules,
+// skipping the rest of a module's lessons + its quiz (so the quiz never unlocks).
+function orderPagesByFolder(pages: any[], folders: any[]): any[] {
+  const known = new Set((folders || []).map((f: any) => f.id));
+  return [
+    ...pages.filter((p: any) => !p.folderId),
+    ...(folders || []).flatMap((f: any) => pages.filter((p: any) => p.folderId === f.id)),
+    ...pages.filter((p: any) => p.folderId && !known.has(p.folderId)),
+  ];
+}
+
 type Playlist = {
   id: string;
   _id?: string; // MongoDB ID
@@ -243,6 +257,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     if (viewingPlaylist) {
       currentPages = currentPages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
     }
+    // Match the folder-grouped sidebar order so "next" goes to the visually-next page.
+    currentPages = orderPagesByFolder(currentPages, selectedCourse.folders ?? []);
     const currentIndex = currentPages.findIndex(p => p.id === activePageId);
     console.log(`[TrainingCenter] Current page index: ${currentIndex}, activePageId: ${activePageId}`);
     if (currentIndex === -1) {
@@ -813,10 +829,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     let folders = selectedCourse.folders ?? [];
     if (viewingPlaylist) {
       const selectedPageIds = new Set(viewingPlaylist.selectedModules);
-      folders = folders.filter(folder => 
+      folders = folders.filter(folder =>
         pages.some(page => page.folderId === folder.id && selectedPageIds.has(page.id))
       );
     }
+    // Reorder navigation/unlock pages to match the folder-grouped sidebar display.
+    pages = orderPagesByFolder(pages, folders);
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
     const isPageUnlocked = (pageId: string) => {
       const currentIndex = pages.findIndex(p => p.id === pageId);
