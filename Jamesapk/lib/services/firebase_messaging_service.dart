@@ -211,6 +211,13 @@ class FirebaseMessagingService {
       return;
     }
 
+    // Ticket status update -> open the user's tickets screen.
+    if (type == 'ticket_update') {
+      print('🚀 Navigating to tickets');
+      _navigatorKey!.currentState!.pushNamed('/tickets');
+      return;
+    }
+
     // StormChat message/mention -> open the chat room (existing behavior).
     final groupId = data['groupId'];
     if (groupId != null && _navigatorKey != null) {

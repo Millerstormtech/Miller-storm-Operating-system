@@ -167,6 +167,68 @@ This is an automated confirmation of the changes you made.
 © 2026-2027 Miller Storm. All Rights Reserved.`,
     variables: ["{{adminName}}", "{{userName}}", "{{userEmail}}", "{{role}}", "{{managerName}}", "{{passwordChanged}}", "{{updatedAt}}"],
   },
+  supportTicketCreated: {
+    subject: "New Support Ticket — {{type}}",
+    body: `Hi {{adminName}},
+
+A new support ticket has just been raised.
+
+- From: {{userName}}
+- Email: {{userEmail}}
+- Type: {{type}}
+- Details: {{note}}
+
+Please review and action it in the Admin Portal → Tickets.
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{adminName}}", "{{userName}}", "{{userEmail}}", "{{type}}", "{{note}}"],
+  },
+  ticketApproved: {
+    subject: "Your ticket has been approved ✅",
+    body: `Hi {{name}},
+
+Good news — your {{type}} ticket has been approved by our team. We'll begin working on it soon.
+
+Thank you for helping us improve Miller Storm OS.
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{name}}", "{{type}}"],
+  },
+  ticketInProgress: {
+    subject: "Your ticket is now in progress 🔧",
+    body: `Hi {{name}},
+
+Your {{type}} ticket is now in progress. Our team is actively working on it and we'll let you know as soon as it's done.
+
+Thank you for your patience.
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{name}}", "{{type}}"],
+  },
+  ticketCompleted: {
+    subject: "Your ticket has been completed 🎉",
+    body: `Hi {{name}},
+
+Your {{type}} ticket has been completed successfully. Please check further and let us know if anything else is needed.
+
+Thank you!
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{name}}", "{{type}}"],
+  },
+  ticketRejected: {
+    subject: "Update on your ticket",
+    body: `Hi {{name}},
+
+After review, your {{type}} ticket could not be approved at this time.
+
+{{adminNote}}
+
+Thank you for your feedback — please feel free to raise another ticket anytime.
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{name}}", "{{type}}", "{{adminNote}}"],
+  },
 };
 
 export function renderTemplate(body: string, subject: string, vars: Record<string, string>): { html: string; text: string; subject: string } {

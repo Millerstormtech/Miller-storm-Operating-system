@@ -21,6 +21,7 @@ import 'screens/manager_profile_screen.dart';
 import 'screens/manager_view_team_screen.dart';
 import 'screens/manager_team_member_detail_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/ticket_screen.dart';
 import 'screens/apps_tools_items_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
 import 'screens/manager_apps_tools_items_screen.dart';
@@ -142,6 +143,8 @@ class _MillerStormAppState extends State<MillerStormApp> {
             return MaterialPageRoute(builder: (_) => const ManagerProfileScreen());
           case '/profile':
             return MaterialPageRoute(builder: (_) => const ProfileScreen());
+          case '/tickets':
+            return MaterialPageRoute(builder: (_) => const TicketScreen());
           default:
             return MaterialPageRoute(builder: (_) => const SplashScreen());
         }

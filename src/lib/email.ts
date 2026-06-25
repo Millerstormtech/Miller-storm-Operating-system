@@ -241,3 +241,51 @@ export function generateQuickStartManagerEmail(hireName: string, managerName: st
 <p>© 2026-2027 Miller Storm.</p>
 </body></html>`;
 }
+
+// ── Support ticket emails ────────────────────────────────────────────────────
+
+export async function sendSupportTicketCreatedEmail(params: {
+  adminName: string;
+  adminEmail: string;
+  userName: string;
+  userEmail: string;
+  type: string;
+  note: string;
+}) {
+  const tmpl = await getEmailTemplate("supportTicketCreated");
+  if (tmpl.status === "draft") { console.log("[Email] supportTicketCreated is draft — skipping"); return; }
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{adminName}}": params.adminName,
+    "{{userName}}": params.userName,
+    "{{userEmail}}": params.userEmail,
+    "{{type}}": params.type,
+    "{{note}}": params.note,
+  });
+  return sendEmail({ to: params.adminEmail, subject, html, text });
+}
+
+const TICKET_STATUS_TEMPLATE: Record<string, string> = {
+  approved: "ticketApproved",
+  in_progress: "ticketInProgress",
+  completed: "ticketCompleted",
+  rejected: "ticketRejected",
+};
+
+export async function sendTicketStatusEmail(params: {
+  status: string;
+  name: string;
+  email: string;
+  type: string;
+  adminNote?: string;
+}) {
+  const key = TICKET_STATUS_TEMPLATE[params.status];
+  if (!key) return; // no email for "open"
+  const tmpl = await getEmailTemplate(key);
+  if (tmpl.status === "draft") { console.log(`[Email] ${key} is draft — skipping`); return; }
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": params.name,
+    "{{type}}": params.type,
+    "{{adminNote}}": params.adminNote || "",
+  });
+  return sendEmail({ to: params.email, subject, html, text });
+}
