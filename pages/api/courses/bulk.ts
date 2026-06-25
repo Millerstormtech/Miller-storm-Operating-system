@@ -3,6 +3,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserModel } from "../../../src/lib/models/User";
 import { NotificationModel } from "../../../src/lib/models/Notification";
+import { sendPushNotificationToMultiple } from "../../../src/lib/firebase-admin";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 type ContentAnnouncement = {
@@ -23,9 +24,12 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
         deleted: { $ne: true },
         $or: [{ role: { $in: ["sales", "manager"] } }, { roles: { $in: ["sales", "manager"] } }],
       },
-      { id: 1, role: 1, roles: 1 }
+      { id: 1, role: 1, roles: 1, fcmToken: 1 }
     ).lean();
     if (!recipients.length) return;
+
+    // FCM device tokens of all sales + managers (for mobile push).
+    const pushTokens = (recipients as any[]).map((u) => u.fcmToken).filter(Boolean);
 
     const docs: any[] = [];
     let i = 0;
@@ -43,6 +47,20 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
         if (lessons.length) parts.push(`${lessons.length} new lesson${lessons.length > 1 ? "s" : ""}`);
         if (quizzes.length) parts.push(`${quizzes.length} new quiz${quizzes.length > 1 ? "zes" : ""}`);
         message = `${parts.join(" and ")} just added in "${course.title}". Check it out now.`;
+      }
+
+      // Mobile push (FCM) to all sales + managers — fire-and-forget.
+      if (pushTokens.length) {
+        try {
+          await sendPushNotificationToMultiple(
+            pushTokens,
+            "🔥 New Training Added",
+            message,
+            { courseId: course.id, courseName: course.title, type: "new_training" }
+          );
+        } catch (pushErr) {
+          console.error("[Bulk Save] Push notification failed:", pushErr);
+        }
       }
 
       // Dedup per course: if a user already has an UNREAD "new training"

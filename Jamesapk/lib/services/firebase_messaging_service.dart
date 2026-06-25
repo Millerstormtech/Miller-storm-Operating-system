@@ -8,6 +8,7 @@ import 'dart:io';
 import 'auth_service.dart';
 import '../firebase_options.dart';
 import '../screens/storm_chat_room_screen.dart';
+import '../screens/course_detail_screen.dart';
 import 'package:flutter/material.dart';
 
 class FirebaseMessagingService {
@@ -75,6 +76,16 @@ class FirebaseMessagingService {
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+      // App opened from a TERMINATED (fully closed) state by tapping a
+      // notification — getInitialMessage returns the message that launched it.
+      // Delay so the Navigator is ready before we push a screen.
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          _handleNotificationTap(initialMessage);
+        });
+      }
     } else {
       print('NOTIFICATION PERMISSION DENIED => ${settings.authorizationStatus}');
     }
@@ -181,11 +192,30 @@ class FirebaseMessagingService {
 
   static void _handleNotificationTap(RemoteMessage message) async {
     print('🔔 Notification tapped: ${message.data}');
-    final groupId = message.data['groupId'];
-    
+    final data = message.data;
+    final type = data['type'];
+
+    if (_navigatorKey?.currentState == null) return;
+
+    // New training (new lesson/quiz published) -> open that course.
+    if (type == 'new_training' && data['courseId'] != null) {
+      print('🚀 Navigating to course: ${data['courseId']}');
+      _navigatorKey!.currentState!.push(
+        MaterialPageRoute(
+          builder: (context) => CourseDetailScreen(
+            courseId: data['courseId'].toString(),
+            courseTitle: (data['courseName'] ?? 'Course').toString(),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // StormChat message/mention -> open the chat room (existing behavior).
+    final groupId = data['groupId'];
     if (groupId != null && _navigatorKey != null) {
       print('🚀 Navigating to group: $groupId');
-      
+
       try {
         // Fetch group details
         final response = await api.get(
