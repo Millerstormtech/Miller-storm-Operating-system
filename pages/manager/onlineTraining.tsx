@@ -26,7 +26,8 @@ const OnlineTrainingPage: NextPage = () => {
       setIsLoading(true);
       
       try {
-        const coursesRes = await fetch(`/api/courses?userId=${user!.id}&userRole=${user!.role}&t=${Date.now()}`);
+        // Lightweight list (page stubs); full course loaded on open in OnlineTraining.
+        const coursesRes = await fetch(`/api/courses?summary=1&userId=${user!.id}&userRole=${user!.role}&t=${Date.now()}`);
         if (coursesRes.ok && mounted) {
           const data = await coursesRes.json();
           // Sort courses by order field

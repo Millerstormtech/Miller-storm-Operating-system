@@ -30,7 +30,29 @@ export default async function handler(
     const userId = auth.sub;
     const userRole = auth.role;
 
-    console.log('📚 Courses API called with userId:', userId, 'userRole:', userRole);
+    // Lightweight list mode (?summary=1): return the SAME set of courses but
+    // strip each page's heavy fields (body HTML, transcript, quizQuestions) so
+    // the course grid / training list loads fast. The full course (with bodies
+    // and quiz questions) is fetched on demand via /api/courses/[id] when a
+    // course is opened. Page stubs keep id/title/status/isQuiz/folderId so the
+    // sidebar + lock logic still render correctly.
+    const summary = req.query.summary === "1" || req.query.summary === "true";
+    const stripPages = (course: any) => {
+      if (!summary || !Array.isArray(course.pages)) return course;
+      return {
+        ...course,
+        pages: course.pages.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          status: p.status,
+          isQuiz: p.isQuiz,
+          folderId: p.folderId,
+          questionsToShow: p.questionsToShow,
+        })),
+      };
+    };
+
+    console.log('📚 Courses API called with userId:', userId, 'userRole:', userRole, 'summary:', summary);
 
     // Fetch all necessary course and page fields
     const courses = await CourseModel.find({}).lean();
@@ -39,7 +61,7 @@ export default async function handler(
     // If no user context, return all courses (for admin)
     if (!userId || !userRole) {
       console.log('📚 No user context, returning all courses');
-      res.status(200).json(courses);
+      res.status(200).json(summary ? courses.map(stripPages) : courses);
       return;
     }
 
@@ -52,7 +74,17 @@ export default async function handler(
     }
     
     console.log('📚 User found:', user.name, 'trainingCenter toggle:', user.featureToggles?.trainingCenter);
-    
+
+    // Admins use the Course Builder and must see EVERY course — published AND
+    // draft — with all pages (drafts included). Never apply the published-only
+    // training filter to admins.
+    const isAdmin = user.role === "admin" || (Array.isArray((user as any).roles) && (user as any).roles.includes("admin"));
+    if (isAdmin) {
+      console.log('📚 Admin — returning ALL courses (published + draft)');
+      res.status(200).json(summary ? courses.map(stripPages) : courses);
+      return;
+    }
+
     // Filter courses based on access mode and user's training center toggle
     const filteredCourses = courses.filter((course: any) => {
       // Only show published courses (not draft)
@@ -130,7 +162,7 @@ export default async function handler(
     });
     
     console.log('✅ Returning courses with progress data');
-    res.status(200).json(coursesWithProgress);
+    res.status(200).json(summary ? coursesWithProgress.map(stripPages) : coursesWithProgress);
     return;
   }
 

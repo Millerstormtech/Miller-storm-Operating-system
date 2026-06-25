@@ -9,6 +9,7 @@ type CourseEditorProps = {
   onDeleteCourse: (courseId: string) => Promise<void>;
   onForceSave?: (courses: Course[]) => Promise<void>;
   cleanCourses?: (courses: Course[]) => Course[];
+  onOpenCourse?: (courseId: string) => Promise<void>;
 };
 
 export function CourseManagement(props: CourseEditorProps) {
@@ -48,6 +49,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isPinPostModalOpen, setIsPinPostModalOpen] = useState(false);
   const [pinPostUrlDraft, setPinPostUrlDraft] = useState("");
   // Bulk "Import Quizzes" feature
+  const [openingCourseId, setOpeningCourseId] = useState<string | null>(null);
   const [isImportQuizModalOpen, setIsImportQuizModalOpen] = useState(false);
   const [importDocText, setImportDocText] = useState("");
   const [importBusy, setImportBusy] = useState(false);
@@ -1292,15 +1294,27 @@ export function CourseManagement(props: CourseEditorProps) {
                     style={{
                       opacity: draggedCourseId === course.id ? 0.5 : (course.status === "draft" ? 0.6 : 1),
                       cursor: 'move',
+                      position: 'relative',
                       filter: course.status === "draft" ? 'grayscale(30%)' : 'none',
                       border: course.status === "draft" ? '2px dashed #d1d5db' : undefined
                     }}
-                    onClick={() => {
+                    onClick={async () => {
+                      // Fetch the course's FULL data (lesson bodies + quizzes)
+                      // before opening the editor — the grid only has page stubs.
+                      if (props.onOpenCourse && openingCourseId === null) {
+                        setOpeningCourseId(course.id);
+                        try { await props.onOpenCourse(course.id); } finally { setOpeningCourseId(null); }
+                      }
                       setSelectedCourseId(course.id);
                       setViewMode("detail");
                       setDetailSection("overview");
                     }}
                   >
+                    {openingCourseId === course.id && (
+                      <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5, borderRadius: 12, fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                        Loading…
+                      </div>
+                    )}
                     <div
                       className="training-card-image"
                       style={

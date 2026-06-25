@@ -24,7 +24,10 @@ const Training: NextPage = () => {
       setIsLoading(true);
       
       try {
-        const coursesRes = await fetch(`/api/courses?userId=${user.id}&userRole=${user.role}&t=${Date.now()}`);
+        // Lightweight list (page stubs only) for a fast initial load. The full
+        // course (lesson bodies + quiz questions) is fetched on demand when a
+        // course is opened (see TrainingCenter lazy-load).
+        const coursesRes = await fetch(`/api/courses?summary=1&userId=${user.id}&userRole=${user.role}&t=${Date.now()}`);
         if (coursesRes.ok && mounted) {
           const data = await coursesRes.json();
           // Sort courses by order field
