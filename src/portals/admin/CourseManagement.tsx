@@ -2557,12 +2557,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="course-pages-course-progress">
-                                    <div className="course-pages-course-progress-label">0%</div>
-                                    <div className="course-pages-course-progress-track">
-                                      <div className="course-pages-course-progress-fill" />
-                                    </div>
-                                  </div>
                                 </div>
                                 {/* Expand/Collapse All Buttons */}
                                 {folders.length > 0 && (
