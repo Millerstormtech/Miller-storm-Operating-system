@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { UserProfile, FeatureToggles } from "../../types";
+import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
 
 type UserRole = "admin" | "manager" | "sales" | "marketing";
@@ -77,12 +78,18 @@ export function UserManagement(props: UserEditorProps) {
       const progRes = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
       const progData = progRes.ok ? await progRes.json() : {};
       const rows = published.map((course: any) => {
-        const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
-        const total = lessonPages.length;
-        const lessonIds = new Set(lessonPages.map((p: any) => p.id));
+        // Count ALL published items (lessons + quizzes), matching the app.
+        const publishedPages = (course.pages || []).filter((p: any) => p.status === 'published');
+        const total = publishedPages.length;
         const rec = progData[course.id] || {};
-        const completed = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
-        return { course, completed, total, isCompleted: rec.courseCompleted || false };
+        const completedSet = new Set(rec.completedPages || []);
+        const quizResults = rec.quizResults || [];
+        const completed = publishedPages.filter((p: any) =>
+          p.isQuiz
+            ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
+            : completedSet.has(p.id)
+        ).length;
+        return { course, completed, total, isCompleted: total > 0 && completed >= total };
       }).filter((r: any) => r.total > 0);
       setTrainingModalData(rows);
     }).catch(console.error).finally(() => setIsLoadingTrainingModal(false));
@@ -1382,7 +1389,7 @@ export function UserManagement(props: UserEditorProps) {
                                     {course.title}
                                   </div>
                                   <div style={{ fontSize: 13, color: '#6b7280' }}>
-                                    {completed} of {total} lessons completed
+                                    {completed} of {total} items completed
                                   </div>
                                 </div>
                                 {isCompleted && (

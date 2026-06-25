@@ -37,6 +37,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _progressPercent = 0;
   String? _userId;
   Set<String> _completedPageIds = <String>{};
+  List<dynamic> _quizResults = <dynamic>[];
   
   // Track which sections are expanded
   Set<int> _expandedSections = <int>{};
@@ -79,6 +80,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         
         // Fetch actual completed pages from progress API to ensure accuracy
         Set<String> completedIds = {};
+        List<dynamic> quizResults = <dynamic>[];
         try {
           final progressResponse = await api.get(
             Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
@@ -87,6 +89,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             final progressData = jsonDecode(progressResponse.body);
             final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
             completedIds = completedPages.map((p) => p.toString()).toSet();
+            quizResults = progressData['quizResults'] as List<dynamic>? ?? [];
           }
         } catch (e) {
           print('⚠️ Could not load progress in detail: $e');
@@ -98,6 +101,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           _totalLessons = data['progress']?['totalLessons'] ?? 0;
           _progressPercent = data['progress']?['progressPercent'] ?? 0;
           _completedPageIds = completedIds;
+          _quizResults = quizResults;
           _isLoading = false;
         });
         print('✅ Course loaded: ${data['title']}');
@@ -219,7 +223,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Completed $_completedLessons of $_totalLessons lessons',
+          'Completed $_completedLessons of $_totalLessons items',
           style: const TextStyle(fontSize: 14, color: _textLight),
         ),
         const SizedBox(height: 12),
@@ -255,35 +259,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           final folders = _course!['folders'] as List<dynamic>? ?? [];
 
           var lessons = pages.where((page) => page['status'] == 'published').toList();
-
-          if (folders.isNotEmpty) {
-            final folderIndexMap = <String, int>{};
-            for (var i = 0; i < folders.length; i++) {
-              folderIndexMap[folders[i]['id']] = i;
-            }
-            final pageIndexMap = <String, int>{};
-            for (var i = 0; i < lessons.length; i++) {
-              pageIndexMap[lessons[i]['id']] = i;
-            }
-            lessons.sort((a, b) {
-              final aFolderId = a['folderId'];
-              final bFolderId = b['folderId'];
-              if (aFolderId != null && bFolderId != null) {
-                final aFolderIndex = folderIndexMap[aFolderId] ?? 999;
-                final bFolderIndex = folderIndexMap[bFolderId] ?? 999;
-                if (aFolderIndex == bFolderIndex) {
-                  return (pageIndexMap[a['id']] ?? 999).compareTo(pageIndexMap[b['id']] ?? 999);
-                }
-                return aFolderIndex.compareTo(bFolderIndex);
-              }
-              if (aFolderId != null) return -1;
-              if (bFolderId != null) return 1;
-              return (pageIndexMap[a['id']] ?? 999).compareTo(pageIndexMap[b['id']] ?? 999);
-            });
-          }
+          // Folder-grouped order (same as web): non-folder pages first, then
+          // each folder's pages in order. Prevents skipping/jumping modules.
+          lessons = orderPagesByFolder(lessons, folders);
 
           // Fetch actual completed pages from progress API
           Set<String> completedLessonIds = {};
+          List<dynamic> quizResults = <dynamic>[];
           try {
             final user = await AuthService.getStoredUser();
             final userId = user?['id'] ?? '';
@@ -295,6 +277,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 final progressData = jsonDecode(progressResponse.body);
                 final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
                 completedLessonIds = completedPages.map((p) => p.toString()).toSet();
+                quizResults = progressData['quizResults'] as List<dynamic>? ?? [];
                 print('✅ Completed pages: $completedLessonIds');
               }
             }
@@ -302,10 +285,21 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             print('⚠️ Could not load progress: $e');
           }
 
-          // Find first incomplete lesson
+          // Find first incomplete item (lesson not watched, or quiz not passed).
+          bool isItemComplete(dynamic item) {
+            if (item['isQuiz'] == true) {
+              final m = quizResults.where((r) => r['pageId']?.toString() == item['id']?.toString());
+              if (m.isEmpty) return false;
+              final score = m.first['score'];
+              final total = (score?['total'] ?? 0) as num;
+              if (total <= 0) return false;
+              return ((score?['correct'] ?? 0) as num) / total >= 0.6;
+            }
+            return completedLessonIds.contains(item['id']?.toString());
+          }
           dynamic nextLesson;
           for (final lesson in lessons) {
-            if (!completedLessonIds.contains(lesson['id'])) {
+            if (!isItemComplete(lesson)) {
               nextLesson = lesson;
               break;
             }
@@ -351,6 +345,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
+  // A quiz counts as complete only if a saved result scored >= 60% (same
+  // threshold as the web). Quizzes are tracked in quizResults, not completedPages.
+  bool _isQuizPassed(String pageId) {
+    final matches = _quizResults.where((r) => r['pageId']?.toString() == pageId);
+    if (matches.isEmpty) return false;
+    final score = matches.first['score'];
+    final total = (score?['total'] ?? 0) as num;
+    if (total <= 0) return false;
+    final correct = (score?['correct'] ?? 0) as num;
+    return correct / total >= 0.6;
+  }
+
   Widget _buildCourseContent() {
     if (_course == null) {
       return const SizedBox();
@@ -362,32 +368,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         .where((page) => page['status'] == 'published')
         .toList();
     
-    // Sort all pages first to determine correct sequence
-    if (folders.isNotEmpty) {
-      final folderIndexMap = <String, int>{};
-      for (var i = 0; i < folders.length; i++) {
-        folderIndexMap[folders[i]['id']] = i;
-      }
-      final pageIndexMap = <String, int>{};
-      for (var i = 0; i < allPublishedPages.length; i++) {
-        pageIndexMap[allPublishedPages[i]['id']] = i;
-      }
-      allPublishedPages.sort((a, b) {
-        final aFolderId = a['folderId'];
-        final bFolderId = b['folderId'];
-        if (aFolderId != null && bFolderId != null) {
-          final aFolderIndex = folderIndexMap[aFolderId] ?? 999;
-          final bFolderIndex = folderIndexMap[bFolderId] ?? 999;
-          if (aFolderIndex == bFolderIndex) {
-            return (pageIndexMap[a['id']] ?? 999).compareTo(pageIndexMap[b['id']] ?? 999);
-          }
-          return aFolderIndex.compareTo(bFolderIndex);
-        }
-        if (aFolderId != null) return -1;
-        if (bFolderId != null) return 1;
-        return (pageIndexMap[a['id']] ?? 999).compareTo(pageIndexMap[b['id']] ?? 999);
-      });
-    }
+    // Folder-grouped order (same as web): non-folder pages first, then each
+    // folder's pages in order. Used for unlock + sequencing.
+    allPublishedPages = orderPagesByFolder(allPublishedPages, folders);
 
     // Filter pages if viewing a playlist
     var pagesToShow = allPublishedPages;
@@ -395,28 +378,46 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       pagesToShow = allPublishedPages.where((page) => widget.playlistModules!.contains(page['id'])).toList();
     }
     
-    // Helper to check if a page is unlocked
+    // Strict sequential unlock (same as web): a page is unlocked ONLY IF EVERY
+    // preceding item is complete — lesson watched, or quiz passed (>= 60%). The
+    // first incomplete item locks everything after it, so a newly-inserted
+    // lesson/quiz re-locks the rest until it's done.
     bool isPageUnlocked(String pageId) {
       final index = allPublishedPages.indexWhere((p) => p['id'] == pageId);
       if (index <= 0) return true; // First page is always unlocked
-      
-      final previousPage = allPublishedPages[index - 1];
-      return _completedPageIds.contains(previousPage['id'].toString());
+      for (var i = 0; i < index; i++) {
+        final p = allPublishedPages[i];
+        if (p['isQuiz'] == true) {
+          if (!_isQuizPassed(p['id'].toString())) return false;
+        } else if (!_completedPageIds.contains(p['id'].toString())) {
+          return false;
+        }
+      }
+      return true;
     }
 
     // If no folders, create sections from lessonNames or pages
     List<Map<String, dynamic>> sections = [];
     
     if (folders.isNotEmpty) {
-      // Use actual folders from backend
-      sections = folders.map<Map<String, dynamic>>((folder) {
+      // Non-folder pages first (matches the folder-grouped navigation order),
+      // then each folder as a section.
+      final noFolderPages = pagesToShow.where((page) => page['folderId'] == null).toList();
+      if (noFolderPages.isNotEmpty) {
+        sections.add({
+          'title': 'Course Content',
+          'lessons': noFolderPages.length,
+          'pages': noFolderPages,
+        });
+      }
+      sections.addAll(folders.map<Map<String, dynamic>>((folder) {
         final folderPages = pagesToShow.where((page) => page['folderId'] == folder['id']).toList();
         return {
           'title': folder['title'] ?? 'Untitled Section',
           'lessons': folderPages.length,
           'pages': folderPages,
         };
-      }).where((section) => section['lessons'] > 0).toList();
+      }).where((section) => section['lessons'] > 0));
     } else if (pagesToShow.isNotEmpty) {
       // Group pages by some logic or show all as one section
       sections = [
@@ -442,7 +443,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          '${sections.length} Sections • $_totalLessons Lessons',
+          '${sections.length} Sections • $_totalLessons Items',
           style: const TextStyle(fontSize: 14, color: _textLight),
         ),
         const SizedBox(height: 16),

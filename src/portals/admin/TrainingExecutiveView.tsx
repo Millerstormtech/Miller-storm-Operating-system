@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isQuizResultPassing } from "../../lib/quiz";
 
 type UserRow = {
   id: string;
@@ -70,12 +71,12 @@ export function TrainingExecutiveView() {
         });
 
         const result: CourseStats[] = published.map((course: any) => {
-          const lessonPages = (course.pages || []).filter(
-            (p: any) => p.status === "published" && !p.isQuiz
+          // Count ALL published items (lessons + quizzes), matching the app.
+          const publishedPages = (course.pages || []).filter(
+            (p: any) => p.status === "published"
           );
-          const total = lessonPages.length;
+          const total = publishedPages.length;
           if (total === 0) return null;
-          const lessonIds = new Set(lessonPages.map((p: any) => p.id));
 
           let completed = 0, inProgress = 0, notStarted = 0, totalPct = 0;
           const managers: UserRow[] = [];
@@ -83,12 +84,18 @@ export function TrainingExecutiveView() {
 
           targetUsers.forEach((u: any) => {
             const rec = progressMap[u.id]?.[course.id] || {};
-            const done = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
+            const completedSet = new Set(rec.completedPages || []);
+            const quizResults = rec.quizResults || [];
+            const done = publishedPages.filter((p: any) =>
+              p.isQuiz
+                ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
+                : completedSet.has(p.id)
+            ).length;
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
             totalPct += pct;
 
             let status: UserRow["status"];
-            if (rec.courseCompleted || done === total) { status = "Completed"; completed++; }
+            if (total > 0 && done === total) { status = "Completed"; completed++; }
             else if (done > 0) { status = "In Progress"; inProgress++; }
             else { status = "Not Started"; notStarted++; }
 

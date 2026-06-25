@@ -23,6 +23,26 @@ function orderPagesByFolder(pages: any[], folders: any[]): any[] {
   ];
 }
 
+// Progress counts BOTH lessons (completed) and quizzes (passed) out of ALL
+// published pages — so adding a new quiz drops % below 100% until it's passed.
+function computeItemProgress(
+  publishedPages: any[],
+  completed: Set<string>,
+  quizResults: any[],
+  courseCompletedFlag = false
+) {
+  const total = publishedPages.length;
+  const done = publishedPages.filter((p: any) =>
+    p.isQuiz
+      ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
+      : completed.has(p.id)
+  ).length;
+  // isCompleted reflects ACTUAL completion only — we deliberately ignore any
+  // stale stored courseCompleted flag, so adding new lessons/quizzes to an
+  // already-finished course drops it below 100% instead of showing "✓ 100%".
+  return { completed: done, total, isCompleted: total > 0 && done >= total };
+}
+
 type Playlist = {
   id: string;
   _id?: string; // MongoDB ID
@@ -271,15 +291,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     if (!currentPage.isQuiz) {
       const newCompleted = new Set([...completedPages, currentPage.id]);
       setCompletedPages(newCompleted);
-      const lessonPages = currentPages.filter(p => !p.isQuiz);
-      const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
       setCourseProgress(prev => ({
         ...prev,
-        [selectedCourse.id]: {
-          completed: completedLessons,
-          total: lessonPages.length,
-          isCompleted: prev[selectedCourse.id]?.isCompleted || false
-        }
+        [selectedCourse.id]: computeItemProgress(currentPages, newCompleted, savedQuizResults, prev[selectedCourse.id]?.isCompleted),
       }));
       if (user) {
         fetch('/api/progress', {
@@ -355,15 +369,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         if (viewingPlaylist) {
           pages = pages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
         }
-        const lessonPages = pages.filter(p => !p.isQuiz);
-        const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
         setCourseProgress(prev => ({
           ...prev,
-          [selectedCourse.id]: {
-            completed: completedLessons,
-            total: lessonPages.length,
-            isCompleted: prev[selectedCourse.id]?.isCompleted || false
-          }
+          [selectedCourse.id]: computeItemProgress(pages, newCompleted, savedQuizResults, prev[selectedCourse.id]?.isCompleted),
         }));
 
         if (user) {
@@ -422,19 +430,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           
           courses.forEach(course => {
             const courseData = data[course.id] || {};
-            const lessonPages = (course.pages || []).filter(p => p.status === 'published' && !p.isQuiz);
-            const totalPages = lessonPages.length;
-            const completedLessonIds = new Set(lessonPages.map(p => p.id));
-            const completedPages = (courseData.completedPages || []).filter((id: string) => completedLessonIds.has(id)).length;
-            
-            // Auto-complete course when all lessons are done OR when explicitly marked complete
-            const isCompleted = courseData.courseCompleted || (totalPages > 0 && completedPages >= totalPages);
-            
-            progressMap[course.id] = { 
-              completed: completedPages, 
-              total: totalPages,
-              isCompleted: isCompleted
-            };
+            const publishedPages = (course.pages || []).filter(p => p.status === 'published');
+            progressMap[course.id] = computeItemProgress(
+              publishedPages,
+              new Set(courseData.completedPages || []),
+              courseData.quizResults || [],
+              courseData.courseCompleted
+            );
           });
           
           setCourseProgress(progressMap);
@@ -839,12 +841,18 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     const isPageUnlocked = (pageId: string) => {
       const currentIndex = pages.findIndex(p => p.id === pageId);
       if (currentIndex <= 0) return true;
-      
-      const previousPage = pages[currentIndex - 1];
-      if (previousPage.isQuiz) {
-        return isQuizResultPassing(savedQuizResults.find(r => r.pageId === previousPage.id));
+      // Strict sequential: EVERY preceding item must be complete (lesson watched
+      // or quiz passed). The first incomplete item locks everything after it — so
+      // a newly-inserted lesson/quiz re-locks the rest until it's done.
+      for (let i = 0; i < currentIndex; i++) {
+        const prev = pages[i];
+        if (prev.isQuiz) {
+          if (!isQuizResultPassing(savedQuizResults.find(r => r.pageId === prev.id))) return false;
+        } else if (!completedPages.has(prev.id)) {
+          return false;
+        }
       }
-      return completedPages.has(previousPage.id);
+      return true;
     };
     const progress = courseProgress[selectedCourse.id] || { completed: 0, total: 0, isCompleted: false };
     const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
@@ -1018,15 +1026,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         setCompletedPages(newCompleted);
 
         // Update the card progress state immediately
-        const lessonPages = pages.filter(p => !p.isQuiz);
-        const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
         setCourseProgress(prev => ({
           ...prev,
-          [selectedCourse.id]: {
-            completed: completedLessons,
-            total: lessonPages.length,
-            isCompleted: prev[selectedCourse.id]?.isCompleted || false
-          }
+          [selectedCourse.id]: computeItemProgress(pages, newCompleted, savedQuizResults, prev[selectedCourse.id]?.isCompleted),
         }));
 
         fetch('/api/progress', {
@@ -1122,22 +1124,16 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       if (!user || !selectedCourse) return;
       setCourseCompleted(true);
 
-      // Mark the last lesson page as completed too
-      const lessonPages = pages.filter(p => !p.isQuiz);
       let newCompleted = completedPages;
       if (activePage && !activePage.isQuiz) {
         newCompleted = new Set([...completedPages, activePage.id]);
         setCompletedPages(newCompleted);
       }
 
-      // Update card to 100% completed immediately
+      // Mark course complete (counts all published items — lessons + quizzes).
       setCourseProgress(prev => ({
         ...prev,
-        [selectedCourse.id]: {
-          completed: lessonPages.length,
-          total: lessonPages.length,
-          isCompleted: true
-        }
+        [selectedCourse.id]: computeItemProgress(pages, newCompleted, savedQuizResults, true),
       }));
 
       fetch('/api/progress', {
@@ -1182,11 +1178,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             courseId={selectedCourse.id}
             courseTitle={selectedCourse.title}
             onComplete={async () => {
-              const lessonPages = (selectedCourse.pages || []).filter(
-                (p: any) => p.status === "published" && !p.isQuiz
-              );
-              const total = lessonPages.length;
-              const done = lessonPages.filter((p: any) => completedPages.has(p.id)).length;
+              const publishedPages = (selectedCourse.pages || []).filter((p: any) => p.status === "published");
+              const { completed: done, total } = computeItemProgress(publishedPages, completedPages, savedQuizResults);
               const pct = total > 0 ? Math.round((done / total) * 100) : 0;
               return { pct, done, total };
             }}
@@ -1275,7 +1268,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             </div>
             <div className="mobile-lesson-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                {courseCompleted && (
+                {progress.isCompleted && (
                   <div style={{ fontSize: 14, color: '#10b981', fontWeight: 600 }}>✓ Course Completed!</div>
                 )}
               </div>
@@ -1283,7 +1276,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   {activePage.isQuiz && !quizSubmitted && (
                     <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0)}>Submit Quiz</button>
                   )}
-                  {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
+                  {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !progress.isCompleted && (
                      <button 
                        type="button" 
                        className="btn-primary" 
@@ -1804,7 +1797,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 )}
                 <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    {courseCompleted && (
+                    {progress.isCompleted && (
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", fontWeight: 600 }}>
                         <span>✓</span>
                         <span>Course Completed!</span>
@@ -1822,7 +1815,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         Submit Quiz
                       </button>
                     )}
-                    {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
+                    {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !progress.isCompleted && (
                       <button 
                         type="button" 
                         className="btn-primary" 

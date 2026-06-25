@@ -22,6 +22,26 @@ function orderPagesByFolder(pages: any[], folders: any[]): any[] {
   ];
 }
 
+// Progress counts BOTH lessons (completed) and quizzes (passed) out of ALL
+// published pages — so adding a new quiz drops % below 100% until it's passed.
+function computeItemProgress(
+  publishedPages: any[],
+  completed: Set<string>,
+  quizResults: any[],
+  courseCompletedFlag = false
+) {
+  const total = publishedPages.length;
+  const done = publishedPages.filter((p: any) =>
+    p.isQuiz
+      ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
+      : completed.has(p.id)
+  ).length;
+  // isCompleted reflects ACTUAL completion only — we deliberately ignore any
+  // stale stored courseCompleted flag, so adding new lessons/quizzes to an
+  // already-finished course drops it below 100% instead of showing "✓ 100%".
+  return { completed: done, total, isCompleted: total > 0 && done >= total };
+}
+
 type Playlist = {
   id: string;
   _id?: string; // MongoDB ID
@@ -165,7 +185,6 @@ export function ManagerOnlineTrainingPage(props: {
         return;
       }
 
-      const playlistModuleIds = new Set(playlist.selectedModules);
       const totalModules = playlist.selectedModules.length;
 
       // 3. For each assigned user, get their progress for this course
@@ -175,8 +194,14 @@ export function ManagerOnlineTrainingPage(props: {
         const progData = await progRes.json();
         const courseProg = progData[playlist.courseId] || {};
         
-        const completedPages = (courseProg.completedPages || []).filter((id: string) => playlistModuleIds.has(id));
-        const completedCount = completedPages.length;
+        const quizResults = courseProg.quizResults || [];
+        const completedSet = new Set(courseProg.completedPages || []);
+        const completedCount = (playlist.selectedModules || []).filter((id: string) => {
+          const page = (course.pages || []).find((p: any) => p.id === id);
+          return page?.isQuiz
+            ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === id))
+            : completedSet.has(id);
+        }).length;
         const pct = totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
         
         return {
@@ -342,15 +367,9 @@ export function ManagerOnlineTrainingPage(props: {
     if (!currentPage.isQuiz) {
       const newCompleted = new Set([...completedPages, currentPage.id]);
       setCompletedPages(newCompleted);
-      const lessonPages = currentPages.filter(p => !p.isQuiz);
-      const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
       setCourseProgress(prev => ({
         ...prev,
-        [selectedCourse.id]: {
-          completed: completedLessons,
-          total: lessonPages.length,
-          isCompleted: prev[selectedCourse.id]?.isCompleted || false
-        }
+        [selectedCourse.id]: computeItemProgress(currentPages, newCompleted, savedQuizResults, prev[selectedCourse.id]?.isCompleted),
       }));
       fetch('/api/progress', {
         method: 'POST',
@@ -420,15 +439,9 @@ export function ManagerOnlineTrainingPage(props: {
         if (viewingPlaylist) {
           pages = pages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
         }
-        const lessonPages = pages.filter(p => !p.isQuiz);
-        const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
         setCourseProgress(prev => ({
           ...prev,
-          [selectedCourse.id]: {
-            completed: completedLessons,
-            total: lessonPages.length,
-            isCompleted: prev[selectedCourse.id]?.isCompleted || false
-          }
+          [selectedCourse.id]: computeItemProgress(pages, newCompleted, savedQuizResults, prev[selectedCourse.id]?.isCompleted),
         }));
 
         fetch('/api/progress', {
@@ -487,19 +500,13 @@ export function ManagerOnlineTrainingPage(props: {
           
           publishedCourses.forEach(course => {
             const courseData = data[course.id] || {};
-            const lessonPages = (course.pages || []).filter(p => p.status === 'published' && !p.isQuiz);
-            const totalPages = lessonPages.length;
-            const completedLessonIds = new Set(lessonPages.map(p => p.id));
-            const completedPages = (courseData.completedPages || []).filter((id: string) => completedLessonIds.has(id)).length;
-            
-            // Auto-complete course when all lessons are done OR when explicitly marked complete
-            const isCompleted = courseData.courseCompleted || (totalPages > 0 && completedPages >= totalPages);
-            
-            progressMap[course.id] = { 
-              completed: completedPages, 
-              total: totalPages,
-              isCompleted: isCompleted
-            };
+            const publishedPages = (course.pages || []).filter(p => p.status === 'published');
+            progressMap[course.id] = computeItemProgress(
+              publishedPages,
+              new Set(courseData.completedPages || []),
+              courseData.quizResults || [],
+              courseData.courseCompleted
+            );
           });
           
           setCourseProgress(progressMap);
@@ -531,12 +538,15 @@ export function ManagerOnlineTrainingPage(props: {
           const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
           const progData = res.ok ? await res.json() : {};
           const rows = publishedCourses.map(course => {
-            const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
-            const total = lessonPages.length;
-            const lessonIds = new Set(lessonPages.map((p: any) => p.id));
+            const publishedPages = (course.pages || []).filter((p: any) => p.status === 'published');
             const rec = progData[course.id] || {};
-            const completed = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
-            return { course, completed, total, isCompleted: rec.courseCompleted || false };
+            const { completed, total, isCompleted } = computeItemProgress(
+              publishedPages,
+              new Set(rec.completedPages || []),
+              rec.quizResults || [],
+              rec.courseCompleted
+            );
+            return { course, completed, total, isCompleted };
           }).filter(r => r.total > 0);
           return { user, rows };
         })
@@ -1238,12 +1248,18 @@ export function ManagerOnlineTrainingPage(props: {
     const isPageUnlocked = (pageId: string) => {
       const currentIndex = pages.findIndex(p => p.id === pageId);
       if (currentIndex <= 0) return true;
-      
-      const previousPage = pages[currentIndex - 1];
-      if (previousPage.isQuiz) {
-        return isQuizResultPassing(savedQuizResults.find(r => r.pageId === previousPage.id));
+      // Strict sequential: EVERY preceding item must be complete (lesson watched
+      // or quiz passed). The first incomplete item locks everything after it — so
+      // a newly-inserted lesson/quiz re-locks the rest until it's done.
+      for (let i = 0; i < currentIndex; i++) {
+        const prev = pages[i];
+        if (prev.isQuiz) {
+          if (!isQuizResultPassing(savedQuizResults.find(r => r.pageId === prev.id))) return false;
+        } else if (!completedPages.has(prev.id)) {
+          return false;
+        }
       }
-      return completedPages.has(previousPage.id);
+      return true;
     };
 
     const handleNextPage = () => {
@@ -1257,15 +1273,9 @@ export function ManagerOnlineTrainingPage(props: {
         setCompletedPages(newCompleted);
 
         // Update card progress immediately
-        const lessonPages = pages.filter(p => !p.isQuiz);
-        const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
         setCourseProgress(prev => ({
           ...prev,
-          [selectedCourse.id]: {
-            completed: completedLessons,
-            total: lessonPages.length,
-            isCompleted: prev[selectedCourse.id]?.isCompleted || false
-          }
+          [selectedCourse.id]: computeItemProgress(pages, newCompleted, savedQuizResults, prev[selectedCourse.id]?.isCompleted),
         }));
 
         fetch('/api/progress', {
@@ -1362,22 +1372,16 @@ export function ManagerOnlineTrainingPage(props: {
       if (!props.currentUser || !selectedCourse) return;
       setCourseCompleted(true);
 
-      // Mark the last lesson page as completed too
-      const lessonPages = pages.filter(p => !p.isQuiz);
       let newCompleted = completedPages;
       if (activePage && !activePage.isQuiz) {
         newCompleted = new Set([...completedPages, activePage.id]);
         setCompletedPages(newCompleted);
       }
 
-      // Update card to 100% completed immediately
+      // Mark course complete (counts all published items — lessons + quizzes).
       setCourseProgress(prev => ({
         ...prev,
-        [selectedCourse.id]: {
-          completed: lessonPages.length,
-          total: lessonPages.length,
-          isCompleted: true
-        }
+        [selectedCourse.id]: computeItemProgress(pages, newCompleted, savedQuizResults, true),
       }));
 
       fetch('/api/progress', {
@@ -1558,11 +1562,8 @@ export function ManagerOnlineTrainingPage(props: {
           courseId={selectedCourse.id}
           courseTitle={selectedCourse.title}
           onComplete={async () => {
-            const lessonPages = (selectedCourse.pages || []).filter(
-              (p: any) => p.status === "published" && !p.isQuiz
-            );
-            const total = lessonPages.length;
-            const done = lessonPages.filter((p: any) => completedPages.has(p.id)).length;
+            const publishedPages = (selectedCourse.pages || []).filter((p: any) => p.status === "published");
+            const { completed: done, total } = computeItemProgress(publishedPages, completedPages, savedQuizResults);
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
             return { pct, done, total };
           }}
@@ -1647,13 +1648,13 @@ export function ManagerOnlineTrainingPage(props: {
             </div>
             <div className="mobile-lesson-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                {courseCompleted && <div style={{ fontSize: 14, color: '#10b981', fontWeight: 600 }}>✓ Course Completed!</div>}
+                {progress.isCompleted && <div style={{ fontSize: 14, color: '#10b981', fontWeight: 600 }}>✓ Course Completed!</div>}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {activePage.isQuiz && !quizSubmitted && (
                   <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0)}>Submit Quiz</button>
                 )}
-                {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
+                {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !progress.isCompleted && (
                    <button 
                      type="button" 
                      className="btn-primary" 
@@ -2022,7 +2023,7 @@ export function ManagerOnlineTrainingPage(props: {
                 )}
                 <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    {courseCompleted && (
+                    {progress.isCompleted && (
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", fontWeight: 600 }}>
                         <span>✓</span>
                         <span>Course Completed!</span>
@@ -2040,7 +2041,7 @@ export function ManagerOnlineTrainingPage(props: {
                         Submit Quiz
                       </button>
                     )}
-                    {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
+                    {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !progress.isCompleted && (
                       <button 
                         type="button" 
                         className="btn-primary" 
@@ -2434,13 +2435,12 @@ export function ManagerOnlineTrainingPage(props: {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                     {publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).length > 0 ? (
                       publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).map(course => {
-                        const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
-                        const total = lessonPages.length;
+                        const total = (course.pages || []).filter((p: any) => p.status === 'published').length;
                         return (
                           <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
                             <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
                               {course.title}
-                              <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} lesson{total !== 1 ? 's' : ''}</span>
+                              <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} item{total !== 1 ? 's' : ''}</span>
                             </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                               <thead>

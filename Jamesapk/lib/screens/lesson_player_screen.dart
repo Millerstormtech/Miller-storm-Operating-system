@@ -12,6 +12,23 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 
+/// Order pages to match the folder-grouped module list, exactly like the web:
+/// non-folder pages first, then each folder's pages (in folder order, keeping
+/// each page's original order within its folder), then any orphaned pages
+/// (folderId pointing at a missing folder). Navigation ("Next") and the lock
+/// check MUST use this order so they never skip lessons/quizzes or jump across
+/// modules. Shared by course_detail_screen.dart (which imports this file).
+List<dynamic> orderPagesByFolder(List<dynamic> pages, List<dynamic> folders) {
+  final known = folders.map((f) => f['id']).toSet();
+  final result = <dynamic>[];
+  result.addAll(pages.where((p) => p['folderId'] == null));
+  for (final f in folders) {
+    result.addAll(pages.where((p) => p['folderId'] == f['id']));
+  }
+  result.addAll(pages.where((p) => p['folderId'] != null && !known.contains(p['folderId'])));
+  return result;
+}
+
 class LessonPlayerScreen extends StatefulWidget {
   final String courseId;
   final String courseTitle;
@@ -173,52 +190,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           lessons = lessons.where((page) => widget.playlistModules!.contains(page['id'])).toList();
         }
         
-        // Sort pages by folder order and page order within folders
+        // Order pages like the folder-grouped module list (non-folder pages
+        // first, then each folder's pages in order) — same as the web. Keeps
+        // "Next" from skipping lessons/quizzes or jumping across modules.
         final folders = courseData['folders'] as List<dynamic>? ?? [];
-        if (folders.isNotEmpty) {
-          // Create a map of folderId to folder index
-          final folderIndexMap = <String, int>{};
-          for (var i = 0; i < folders.length; i++) {
-            folderIndexMap[folders[i]['id']] = i;
-          }
-          
-          // Create a map of pageId to its original index for stable sorting
-          final pageIndexMap = <String, int>{};
-          for (var i = 0; i < lessons.length; i++) {
-            pageIndexMap[lessons[i]['id']] = i;
-          }
-          
-          // Sort pages: by folder order, then by original page order within folder
-          lessons.sort((a, b) {
-            final aFolderId = a['folderId'];
-            final bFolderId = b['folderId'];
-            
-            // If both have folders
-            if (aFolderId != null && bFolderId != null) {
-              final aFolderIndex = folderIndexMap[aFolderId] ?? 999;
-              final bFolderIndex = folderIndexMap[bFolderId] ?? 999;
-              
-              // If same folder, sort by original page order
-              if (aFolderIndex == bFolderIndex) {
-                final aPageIndex = pageIndexMap[a['id']] ?? 999;
-                final bPageIndex = pageIndexMap[b['id']] ?? 999;
-                return aPageIndex.compareTo(bPageIndex);
-              }
-              
-              // Different folders, sort by folder order
-              return aFolderIndex.compareTo(bFolderIndex);
-            }
-            
-            // Pages with folders come before pages without folders
-            if (aFolderId != null && bFolderId == null) return -1;
-            if (aFolderId == null && bFolderId != null) return 1;
-            
-            // Both without folders, maintain original order
-            final aPageIndex = pageIndexMap[a['id']] ?? 999;
-            final bPageIndex = pageIndexMap[b['id']] ?? 999;
-            return aPageIndex.compareTo(bPageIndex);
-          });
-        }
+        lessons = orderPagesByFolder(lessons, folders);
         
         print('📚 Total pages loaded: ${lessons.length}');
         if (widget.playlistModules != null) {

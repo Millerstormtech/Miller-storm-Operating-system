@@ -3,6 +3,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
+import { isQuizResultPassing } from "../../../src/lib/quiz";
 
 export default async function handler(
   req: NextApiRequest,
@@ -52,10 +53,11 @@ export default async function handler(
         progressPercent: 0
       };
 
-      // Use web's exact calculation logic - only count lesson pages (not quizzes)
-      const lessonPages = course.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz) || [];
-      const totalLessonPages = lessonPages.length;
-      progress.totalLessons = totalLessonPages;
+      // Progress counts BOTH lessons (completed) and quizzes (passed) out of all
+      // published pages — matches the web so a new quiz drops % below 100%.
+      const publishedPages = course.pages?.filter((p: any) => p.status === 'published') || [];
+      const totalItems = publishedPages.length;
+      progress.totalLessons = totalItems;
 
       if (userId) {
         try {
@@ -64,15 +66,21 @@ export default async function handler(
             userId: userId,
             courseId: id
           }).lean();
-          
+
           if (userProgress) {
-            const completedPages = userProgress.completedPages?.length || 0;
-            const progressPercent = totalLessonPages > 0 ? Math.round((completedPages / totalLessonPages) * 100) : 0;
-            
-            progress.completedLessons = completedPages;
+            const completedSet = new Set(userProgress.completedPages || []);
+            const quizResults = userProgress.quizResults || [];
+            const completedCount = publishedPages.filter((p: any) =>
+              p.isQuiz
+                ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
+                : completedSet.has(p.id)
+            ).length;
+            const progressPercent = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
+
+            progress.completedLessons = completedCount;
             progress.progressPercent = progressPercent;
-              
-            console.log(`✅ Progress result: ${completedPages}/${totalLessonPages} lessons = ${progressPercent}%`);
+
+            console.log(`✅ Progress result: ${completedCount}/${totalItems} items = ${progressPercent}%`);
           }
         } catch (error) {
           console.log('⚠️ Could not get progress:', error);

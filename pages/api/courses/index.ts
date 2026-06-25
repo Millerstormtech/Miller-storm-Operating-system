@@ -4,6 +4,7 @@ import { CourseModel } from "../../../src/lib/models/Course";
 import { UserModel } from "../../../src/lib/models/User";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
+import { isQuizResultPassing } from "../../../src/lib/quiz";
 
 export default async function handler(
   req: NextApiRequest,
@@ -36,9 +37,10 @@ export default async function handler(
     const courses = await CourseModel.find({}).lean();
     console.log('📚 Total courses in DB:', courses.length);
 
-    // If no user context, return all courses (for admin)
-    if (!userId || !userRole) {
-      console.log('📚 No user context, returning all courses');
+    // Admins manage every course (including drafts), so never filter for them.
+    // Sales/Managers go through the published + access-mode filter below.
+    if (!userId || !userRole || userRole === 'admin') {
+      console.log('📚 Admin/no-context request — returning all courses (incl. drafts)');
       res.status(200).json(courses);
       return;
     }
@@ -104,12 +106,18 @@ export default async function handler(
       const publishedPages = course.pages?.filter((p: any) => p.status === 'published') || [];
       const publishedFolders = course.folders?.filter((f: any) => f.status === 'published') || [];
       
-      // Use web's exact calculation - only count lesson pages (not quizzes)
-      const lessonPages = publishedPages.filter((p: any) => !p.isQuiz);
-      const totalPages = lessonPages.length;
-      const completedPages = progress?.completedPages?.length || 0;
+      // Progress counts BOTH lessons (completed) and quizzes (passed) out of all
+      // published pages — matches the web so a new quiz drops % below 100%.
+      const completedSet = new Set(progress?.completedPages || []);
+      const quizResults = progress?.quizResults || [];
+      const totalPages = publishedPages.length;
+      const completedPages = publishedPages.filter((p: any) =>
+        p.isQuiz
+          ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
+          : completedSet.has(p.id)
+      ).length;
       const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
-      
+
       return {
         ...course,
         pages: publishedPages,

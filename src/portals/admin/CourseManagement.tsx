@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { Course, CoursePage, CourseFolder } from "../../types";
 import { Toast } from "../../components/Toast";
 import { parseQuestionsDoc, validateQuestions } from "../../lib/quizImport";
+import { isQuizResultPassing } from "../../lib/quiz";
 
 type CourseEditorProps = {
   courses: Course[];
@@ -1139,20 +1140,27 @@ export function CourseManagement(props: CourseEditorProps) {
 
   if (viewMode === "progress") {
     const course = props.courses.find(c => c.id === progressCourseId);
-    const lessonPages = (course?.pages || []).filter(p => p.status === 'published' && !p.isQuiz);
-    const totalLessons = lessonPages.length;
-    const lessonIds = new Set(lessonPages.map(p => p.id));
+    // Count ALL published items (lessons + quizzes), matching the rest of the app.
+    const publishedPages = (course?.pages || []).filter(p => p.status === 'published');
+    const totalLessons = publishedPages.length;
 
     // Build per-user rows: all non-admin users
     const allRows = progressUsers
       .filter(u => u.role !== 'admin')
       .map(user => {
         const record = progressData.find((p: any) => p.userId === user.id);
-        const completedLessons = record
-          ? (record.completedPages || []).filter((id: string) => lessonIds.has(id)).length
-          : 0;
+        const completedSet = new Set(record?.completedPages || []);
+        const quizResults = record?.quizResults || [];
+        const completedLessons = publishedPages.filter((p: any) =>
+          p.isQuiz
+            ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
+            : completedSet.has(p.id)
+        ).length;
         const pct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-        return { user, completedLessons, pct, courseCompleted: record?.courseCompleted || false };
+        // "Completed" = all lessons actually done — NOT the stale stored flag, so
+        // a user at 10/11 shows their real % instead of a false "✓ Completed".
+        const courseCompleted = totalLessons > 0 && completedLessons >= totalLessons;
+        return { user, completedLessons, pct, courseCompleted };
       })
       .sort((a, b) => b.pct - a.pct);
 
@@ -1203,7 +1211,7 @@ export function CourseManagement(props: CourseEditorProps) {
             </select>
           </div>
           <div style={{ marginBottom: 16, color: '#6b7280', fontSize: 14 }}>
-            {totalLessons} lesson page{totalLessons !== 1 ? 's' : ''} (quizzes excluded) · {rows.length}{rows.length !== allRows.length ? ` of ${allRows.length}` : ''} users
+            {totalLessons} item{totalLessons !== 1 ? 's' : ''} (lessons + quizzes) · {rows.length}{rows.length !== allRows.length ? ` of ${allRows.length}` : ''} users
           </div>
           {isLoadingProgress ? (
             <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
@@ -1237,7 +1245,7 @@ export function CourseManagement(props: CourseEditorProps) {
                   {/* Progress bar */}
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, color: '#374151' }}>
-                      <span>{completedLessons} / {totalLessons} lessons</span>
+                      <span>{completedLessons} / {totalLessons} items</span>
                       <span style={{ fontWeight: 600, color: courseCompleted ? '#10b981' : '#2563eb' }}>
                         {courseCompleted ? '✓ Completed' : `${pct}%`}
                       </span>
