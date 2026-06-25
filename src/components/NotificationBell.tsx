@@ -52,9 +52,11 @@ export function NotificationBell({ userId }: { userId: string }) {
       const all: Notification[] = await res.json();
       // "course_added" notifications are shown as a dedicated dashboard pop-up
       // (NewCoursePopup), not in the bell — filter them out here.
-      const data = all.filter((n) => n.type !== "course_added");
+      // The bell shows ONLY unread notifications: clicking one marks it read so
+      // it disappears from the bell ("seen → gone").
+      const data = all.filter((n) => n.type !== "course_added" && !n.read);
       setNotifications(data);
-      setUnreadCount(data.filter((n) => !n.read).length);
+      setUnreadCount(data.length);
 
       // Find unread notifications we haven't seen before.
       const freshUnread = data.filter((n) => !n.read && !seenIdsRef.current.has(n.id));
@@ -89,12 +91,11 @@ export function NotificationBell({ userId }: { userId: string }) {
   }
 
   function handleNotificationClick(notif: Notification) {
-    console.log('Notification clicked:', notif);
-
-    // Mark as read if unread
-    if (!notif.read) {
-      markAsRead(notif.id);
-    }
+    // Clicking counts as "seen": remove it from the bell immediately, then
+    // persist it as read so it stays gone (bell shows unread only).
+    setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+    markAsRead(notif.id);
 
     // If it's a lesson share notification, redirect to the lesson page
     if (notif.type === 'lesson_share' && notif.metadata?.shareUrl) {

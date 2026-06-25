@@ -88,10 +88,13 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
       const innerR = radius * 0.62;
       const ix = cx + innerR * Math.cos(midAngle);
       const iy = cy + innerR * Math.sin(midAngle);
-      // name label outside slice
-      const outerR = radius + 22;
+      // name label outside slice — anchor toward the correct side so long
+      // labels grow OUTWARD (away from the pie) instead of being clipped.
+      const outerR = radius + 16;
       const ox = cx + outerR * Math.cos(midAngle);
       const oy = cy + outerR * Math.sin(midAngle);
+      const cosMid = Math.cos(midAngle);
+      const labelAnchor = cosMid > 0.2 ? "start" : cosMid < -0.2 ? "end" : "middle";
       currentAngle += angle;
       return (
         <g key={slice.id}>
@@ -110,7 +113,7 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
             </text>
           )}
           {angle >= 15 && (
-            <text x={ox} y={oy} textAnchor="middle" dominantBaseline="middle" style={{ pointerEvents: "none", fontSize: 11, fontWeight: 600, fill: "#374151" }}>
+            <text x={ox} y={oy} textAnchor={labelAnchor} dominantBaseline="middle" style={{ pointerEvents: "none", fontSize: 11, fontWeight: 600, fill: "#374151" }}>
               {slice.label}
             </text>
           )}
@@ -163,8 +166,8 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
           {/* Left: Pie Chart */}
           <div style={{ flex: 0.4 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 16 }}>{chartTitle}</div>
-            <div style={{ position: "relative", width: 340, height: 340 }}>
-              <svg width="340" height="340" viewBox="0 0 300 300">
+            <div style={{ position: "relative", width: 380, height: 380, maxWidth: "100%" }}>
+              <svg width="100%" height="100%" viewBox="-90 -90 480 480" style={{ overflow: "visible" }}>
                 {drawPieSlices()}
               </svg>
             </div>

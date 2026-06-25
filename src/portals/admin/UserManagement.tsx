@@ -548,43 +548,26 @@ export function UserManagement(props: UserEditorProps) {
     <div className="admin-user-management">
       <div className="panel-header" style={{ marginBottom: 16 }}>
         <div className="panel-header-row">
-          <span>User Management</span>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {(['admin', 'manager', 'sales', 'marketing'] as UserRole[]).map(role => {
-              const count = draftUsers.filter(u => u.role === role).length;
-              const colors: Record<UserRole, { bg: string; color: string }> = {
-                admin: { bg: '#fef3c7', color: '#92400e' },
-                manager: { bg: '#dbeafe', color: '#1e40af' },
-                sales: { bg: '#dcfce7', color: '#166534' },
-                marketing: { bg: '#fce7f3', color: '#9d174d' }
-              };
-              return (
-                <span key={role} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, backgroundColor: colors[role].bg, color: colors[role].color }}>
-                  {role.charAt(0).toUpperCase() + role.slice(1)}: {count}
-                </span>
-              );
-            })}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span>User Management</span>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {(['admin', 'manager', 'sales', 'marketing'] as UserRole[]).map(role => {
+                const count = draftUsers.filter(u => u.role === role).length;
+                const colors: Record<UserRole, { bg: string; color: string }> = {
+                  admin: { bg: '#fef3c7', color: '#92400e' },
+                  manager: { bg: '#dbeafe', color: '#1e40af' },
+                  sales: { bg: '#dcfce7', color: '#166534' },
+                  marketing: { bg: '#fce7f3', color: '#9d174d' }
+                };
+                return (
+                  <span key={role} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, backgroundColor: colors[role].bg, color: colors[role].color }}>
+                    {role.charAt(0).toUpperCase() + role.slice(1)}: {count}
+                  </span>
+                );
+              })}
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button 
-              type="button" 
-              onClick={() => setShowDeveloperModal(true)}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 6,
-                border: "1px solid #8b5cf6",
-                background: "#f5f3ff",
-                color: "#7c3aed",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              👨‍💻 Developer Accounts
-            </button>
-            <button type="button" className="btn-secondary btn-small" onClick={handleDownloadTemplate}>
-              📥 Download Template
-            </button>
             <button type="button" className="btn-secondary btn-small" onClick={handleExportCSV}>
               Export CSV
             </button>
