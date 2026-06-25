@@ -178,29 +178,6 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     }
   }, [selectedCourse, user]);
 
-  // Lazy-load: the course list is fetched lightweight (page stubs, no lesson
-  // bodies/quiz questions). When a course is opened, fetch its FULL data once
-  // so lessons/quizzes render. Guarded by a ref so we don't re-fetch in a loop.
-  const fullCourseLoadedRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!selectedCourse || !user) return;
-    const cid = selectedCourse.id;
-    if (fullCourseLoadedRef.current.has(cid)) return;
-    // Already full? (pages carry a body field only in the full payload.)
-    const looksFull = (selectedCourse.pages ?? []).some((p: any) => p.body !== undefined || p.quizQuestions !== undefined);
-    if (looksFull) { fullCourseLoadedRef.current.add(cid); return; }
-    let cancelled = false;
-    fetch(`/api/courses/${encodeURIComponent(cid)}?userId=${user.id}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(full => {
-        if (cancelled || !full) return;
-        fullCourseLoadedRef.current.add(cid);
-        setSelectedCourse(prev => (prev && prev.id === cid ? { ...prev, ...full } : prev));
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [selectedCourse?.id, user?.id]);
-
   // Collapse all folders by default when entering a course; expand only the active lesson's folder
   // Collapse all folders by default when entering a course
   useEffect(() => {

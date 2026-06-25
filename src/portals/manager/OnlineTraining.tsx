@@ -258,28 +258,6 @@ export function ManagerOnlineTrainingPage(props: {
     }
   }, [selectedCourse, props.currentUser]);
 
-  // Lazy-load: course list is fetched lightweight (page stubs). When a course is
-  // opened, fetch its FULL data once so lessons/quizzes render.
-  const fullCourseLoadedRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const u = props.currentUser;
-    if (!selectedCourse || !u) return;
-    const cid = selectedCourse.id;
-    if (fullCourseLoadedRef.current.has(cid)) return;
-    const looksFull = (selectedCourse.pages ?? []).some((p: any) => p.body !== undefined || p.quizQuestions !== undefined);
-    if (looksFull) { fullCourseLoadedRef.current.add(cid); return; }
-    let cancelled = false;
-    fetch(`/api/courses/${encodeURIComponent(cid)}?userId=${u.id}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(full => {
-        if (cancelled || !full) return;
-        fullCourseLoadedRef.current.add(cid);
-        setSelectedCourse(prev => (prev && prev.id === cid ? { ...prev, ...full } : prev));
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [selectedCourse?.id, props.currentUser?.id]);
-
   // Collapse all folders by default when entering a course
   useEffect(() => {
     if (!selectedCourse || courseViewInitialized === selectedCourse.id) return;

@@ -16,10 +16,7 @@ const CourseManagementPage: NextPage = () => {
     let mounted = true;
     async function loadData() {
       try {
-        // Lightweight list (page stubs, no lesson bodies/quiz questions) for a
-        // fast Course Builder grid. The full course is fetched on demand when a
-        // card is opened (loadFullCourse) before the editor shows.
-        const res = await fetch(`/api/courses?summary=1&t=${Date.now()}`);
+        const res = await fetch(`/api/courses?t=${Date.now()}`);
         if (res.ok && mounted) {
           const data = await res.json();
           const sortedData = data.sort((a: Course, b: Course) => (a.order ?? 999999) - (b.order ?? 999999));
@@ -37,34 +34,8 @@ const CourseManagementPage: NextPage = () => {
     return () => { mounted = false; };
   }, []);
 
-  // A "summary" course came from the lightweight list: its pages are stubs with
-  // no `body` field. We must NEVER save such a course (it would wipe content).
-  function isSummaryCourse(course: any): boolean {
-    const pgs = course?.pages;
-    return Array.isArray(pgs) && pgs.length > 0 && pgs.every((p: any) => p.body === undefined);
-  }
-
-  // Fetch a single course's FULL data and merge it into state, so the editor
-  // has lesson bodies + quiz questions before any edit/save happens.
-  async function loadFullCourse(courseId: string) {
-    try {
-      const res = await fetch(`/api/courses/${encodeURIComponent(courseId)}?t=${Date.now()}`);
-      if (!res.ok) return;
-      const full = await res.json();
-      setCourses(prev => {
-        const next = prev.map(c => (c.id === full.id ? { ...c, ...full } : c));
-        latestCoursesRef.current = next;
-        return next;
-      });
-    } catch (error) {
-      console.error("Failed to load full course:", error);
-    }
-  }
-
   function cleanCourses(toSave: Course[]) {
-    // Safety net: drop any still-summary course so a stub can never overwrite
-    // (and wipe) the real lesson content stored in the database.
-    return toSave.filter(c => !isSummaryCourse(c)).map(course => {
+    return toSave.map(course => {
       const { _id, __v, createdAt, updatedAt, ...cleanCourse } = course as any;
       const cleanedPages = Array.isArray(cleanCourse.pages) ? cleanCourse.pages.map((page: any) => ({
         id: page.id, title: page.title, status: page.status,
@@ -182,7 +153,7 @@ const CourseManagementPage: NextPage = () => {
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
-      <CourseManagement courses={courses} onCoursesChange={handleCoursesChange} onDeleteCourse={handleDeleteCourse} onForceSave={doSave} cleanCourses={cleanCourses} onOpenCourse={loadFullCourse} />
+      <CourseManagement courses={courses} onCoursesChange={handleCoursesChange} onDeleteCourse={handleDeleteCourse} onForceSave={doSave} cleanCourses={cleanCourses} />
     </AdminPageWrapper>
   );
 };
