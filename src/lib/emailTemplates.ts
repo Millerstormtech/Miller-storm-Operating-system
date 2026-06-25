@@ -119,6 +119,19 @@ If you have any questions, please contact your administrator.
 © 2026-2027 Miller Storm. All Rights Reserved.`,
     variables: ["{{name}}", "{{email}}", "{{password}}", "{{role}}", "{{managerName}}", "{{loginUrl}}"],
   },
+  weeklyTeamDigest: {
+    subject: "Weekly Team Training Digest - Miller Storm OS",
+    body: `Hi {{managerName}},
+
+Here is your team's training progress for this week, broken down by assigned playlist:
+
+{{teamTable}}
+
+Please follow up with anyone who is behind, inside the Miller Storm Operating System.
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{managerName}}", "{{teamTable}}"],
+  },
   managerDeadlineMissed: {
     subject: "Training Deadline Missed - {{userName}}",
     body: `Hi {{managerName}},

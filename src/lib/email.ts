@@ -164,6 +164,20 @@ export async function sendManagerDeadlineMissedEmail(params: {
   return sendEmail({ to: params.managerEmail, subject, html, text });
 }
 
+export async function sendWeeklyTeamDigestEmail(params: {
+  managerName: string;
+  managerEmail: string;
+  teamTableHtml: string;
+}) {
+  const tmpl = await getEmailTemplate("weeklyTeamDigest");
+  if (tmpl.status === "draft") { console.log("[Email] weeklyTeamDigest is draft — skipping"); return; }
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{managerName}}": params.managerName,
+    "{{teamTable}}": params.teamTableHtml,
+  });
+  return sendEmail({ to: params.managerEmail, subject, html, text });
+}
+
 // ── Legacy static generators (kept for backward compatibility) ───────────────
 
 export function generatePasswordResetEmail(name: string, resetLink: string) {

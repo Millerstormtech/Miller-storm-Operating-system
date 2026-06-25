@@ -13,6 +13,7 @@ const EMAIL_LABELS: Record<string, string> = {
   userAccountUpdated: "User Account Updated",
   adminConfirmation: "Admin Confirmation",
   managerDeadlineMissed: "Training Deadline Missed (Manager)",
+  weeklyTeamDigest: "Weekly Team Digest (Manager)",
 };
 
 type ConfigMap = Record<string, { subject: string; body: string; status: string }>;
