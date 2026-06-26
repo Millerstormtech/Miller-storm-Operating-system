@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import ChatMessage from '../../../../src/lib/models/ChatMessage';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
+import { UserModel } from '../../../../src/lib/models/User';
 import { NotificationModel } from '../../../../src/lib/models/Notification';
 import { sendPushNotificationToMultiple } from '../../../../src/lib/firebase-admin';
 import { logToDb } from '../../../../src/lib/models/SystemLog';
@@ -30,11 +31,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const queryUserId = auth.sub;
       const queryUserRole = auth.role;
 
-      // Allow access if user is admin, group admin, or member
+      // auth.sub is the app id (e.g. "user-123") but group.members/admins store
+      // Mongo _ids — resolve this user's _id so membership matches either form.
+      const me = await UserModel.findOne({ id: queryUserId }, { _id: 1 }).lean() as any;
+      const myIds = [queryUserId, me?._id?.toString()].filter(Boolean) as string[];
+
       const isAdmin = queryUserRole?.toString().toLowerCase() === 'admin';
-      const isGroupAdmin = group.admins.includes(queryUserId as string);
-      const isMember = group.members.includes(queryUserId as string);
-      
+      const isGroupAdmin = group.admins.some((m: string) => myIds.includes(m));
+      const isMember = group.members.some((m: string) => myIds.includes(m));
+
       if (!isAdmin && !isGroupAdmin && !isMember) {
         return res.status(403).json({ error: 'You are not a member of this group' });
       }
@@ -68,9 +73,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Group not found' });
       }
 
+      // Resolve sender _id (group.members store Mongo _ids; senderId is app id).
+      const sender = await UserModel.findOne({ id: senderId }, { _id: 1 }).lean() as any;
+      const senderIds = [senderId, sender?._id?.toString()].filter(Boolean) as string[];
+
       // Check if user is a member or admin
-      if (!group.members.includes(senderId)) {
-        // Allow if user is admin
+      if (!group.members.some((m: string) => senderIds.includes(m))) {
+        // Allow if user is a system admin
         if (senderRole !== 'admin') {
           return res.status(403).json({ error: 'You are not a member of this group' });
         }
@@ -78,10 +87,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Check if only admin can chat
       if (group.onlyAdminCanChat) {
-        // Check if sender is admin or group admin
+        // Check if sender is system admin or group admin
         const isAdmin = senderRole === 'admin';
-        const isGroupAdmin = group.admins.includes(senderId);
-        
+        const isGroupAdmin = group.admins.some((m: string) => senderIds.includes(m));
+
         if (!isAdmin && !isGroupAdmin) {
           return res.status(403).json({ error: 'Only admins can send messages in this group' });
         }

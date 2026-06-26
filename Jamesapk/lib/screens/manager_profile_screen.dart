@@ -410,6 +410,11 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           ),
           actions: [
             IconButton(
+              icon: const Icon(Icons.confirmation_number_outlined, color: _white),
+              onPressed: () => Navigator.pushNamed(context, '/tickets'),
+              tooltip: 'Raise a Ticket',
+            ),
+            IconButton(
               icon: const Icon(Icons.logout, color: _white),
               onPressed: _logout,
               tooltip: 'Logout',

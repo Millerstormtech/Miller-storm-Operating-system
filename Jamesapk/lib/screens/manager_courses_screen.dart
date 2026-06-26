@@ -55,8 +55,10 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
       final userId = user?['id'] ?? '';
       final userRole = user?['role'] ?? '';
       
+      // list=1 → lightweight payload (no heavy page content) for a fast list.
+      // The course detail screen re-fetches the full course when opened.
       final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole'),
+        Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole&list=1'),
       );
 
       if (response.statusCode == 200) {

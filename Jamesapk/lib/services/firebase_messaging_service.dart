@@ -34,11 +34,13 @@ class FirebaseMessagingService {
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
 
-      // iOS: show notification banner/sound/badge even when app is in foreground
+      // Do NOT let the OS auto-present in foreground — we show our own local
+      // notification in _handleForegroundMessage. Leaving alert/sound on here
+      // would display the banner twice (OS banner + local notification).
       await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-        alert: true,
+        alert: false,
         badge: true,
-        sound: true,
+        sound: false,
       );
 
       // Initialize local notifications

@@ -30,6 +30,11 @@ export default async function handler(
     if (!auth) return;
     const userId = auth.sub;
     const userRole = auth.role;
+    // Lightweight list mode (mobile course list): strip heavy per-page content
+    // (HTML body, transcript, quiz questions) since the list only needs course
+    // title/cover/progress — the detail screen re-fetches the full course.
+    // Web does NOT pass this flag, so its payload is unchanged.
+    const listMode = !!req.query.list;
 
     console.log('📚 Courses API called with userId:', userId, 'userRole:', userRole);
 
@@ -118,9 +123,23 @@ export default async function handler(
       ).length;
       const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
 
+      // In list mode keep only light page metadata (drop heavy content fields
+      // that bloat the payload and slow the mobile list).
+      const pagesOut = listMode
+        ? publishedPages.map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            status: p.status,
+            folderId: p.folderId,
+            isQuiz: p.isQuiz,
+            videoUrl: p.videoUrl,
+            questionsToShow: p.questionsToShow,
+          }))
+        : publishedPages;
+
       return {
         ...course,
-        pages: publishedPages,
+        pages: pagesOut,
         folders: publishedFolders,
         progress: {
           completedLessons: completedPages,

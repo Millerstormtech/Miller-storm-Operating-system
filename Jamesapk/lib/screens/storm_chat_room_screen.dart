@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -378,13 +379,21 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           }
         });
         
-        // On initial load, go to bottom
+        // On initial load, go to the latest message. Re-jump after short delays
+        // so images/videos finishing layout don't leave the view above bottom.
         if (!silent) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
               _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
             }
           });
+          for (final ms in [150, 400, 800]) {
+            Future.delayed(Duration(milliseconds: ms), () {
+              if (mounted && _scrollController.hasClients) {
+                _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+              }
+            });
+          }
         } else if (wasAtBottom) {
           // If user was at bottom and new messages come, scroll to bottom
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -941,14 +950,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                             (replyingTo['mediaUrl'] ?? '').toString().isNotEmpty) ...[
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: Image.network(
-                              (replyingTo['mediaUrl'] as String).startsWith('http')
+                            child: CachedNetworkImage(
+                              imageUrl: (replyingTo['mediaUrl'] as String).startsWith('http')
                                   ? replyingTo['mediaUrl']
                                   : 'https://millerstorm.tech${replyingTo['mediaUrl']}',
                               width: 48,
                               height: 48,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const SizedBox(
+                              errorWidget: (_, __, ___) => const SizedBox(
                                 width: 48,
                                 height: 48,
                                 child: Icon(Icons.image, size: 28, color: Color(0xFF6B7280)),
@@ -1328,14 +1337,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                             if (effectiveReplyType == 'image' && effectiveReplyMediaUrl.isNotEmpty) ...[
                                               ClipRRect(
                                                 borderRadius: BorderRadius.circular(4),
-                                                child: Image.network(
-                                                  effectiveReplyMediaUrl.startsWith('http')
+                                                child: CachedNetworkImage(
+                                                  imageUrl: effectiveReplyMediaUrl.startsWith('http')
                                                       ? effectiveReplyMediaUrl
                                                       : 'https://millerstorm.tech$effectiveReplyMediaUrl',
                                                   width: 40,
                                                   height: 40,
                                                   fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) => const SizedBox(
+                                                  errorWidget: (_, __, ___) => const SizedBox(
                                                     width: 40,
                                                     height: 40,
                                                     child: Icon(Icons.image, size: 24, color: Colors.white54),
@@ -1755,47 +1764,40 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            imageUrl,
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
             width: 200,
             height: 150,
             fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                width: 200,
-                height: 150,
-                color: Colors.grey[200],
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                        : null,
-                    color: const Color(0xFFCB0002),
-                    strokeWidth: 2,
+            fadeInDuration: const Duration(milliseconds: 150),
+            placeholder: (context, url) => Container(
+              width: 200,
+              height: 150,
+              color: Colors.grey[200],
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFCB0002),
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+            errorWidget: (context, url, error) => Container(
+              width: 200,
+              height: 150,
+              color: Colors.grey[300],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.broken_image, size: 48, color: Colors.grey[600]),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Image failed to load',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: 200,
-                height: 150,
-                color: Colors.grey[300],
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.broken_image, size: 48, color: Colors.grey[600]),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Image failed to load',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
-            },
+                ],
+              ),
+            ),
           ),
         ),
       );
