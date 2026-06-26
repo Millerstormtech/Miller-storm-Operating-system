@@ -1,5 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Shared navigator key used by [MaterialApp] (and the FCM service) so that
+/// low-level code such as the API client can navigate — e.g. force a clean
+/// re-login when the server rejects an expired/invalid token.
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Global HTTP client that automatically attaches the server-issued JWT as an
 /// `Authorization: Bearer <token>` header on every request.
@@ -12,6 +18,8 @@ class AuthClient extends http.BaseClient {
   final http.Client _inner = http.Client();
   String? _cachedToken;
   bool _loaded = false;
+  // One-shot guard so a burst of parallel 401s triggers a single redirect.
+  bool _handlingUnauthorized = false;
 
   Future<String?> _getToken() async {
     if (_loaded) return _cachedToken;
@@ -26,6 +34,7 @@ class AuthClient extends http.BaseClient {
   void setToken(String? token) {
     _cachedToken = (token != null && token.isNotEmpty) ? token : null;
     _loaded = true;
+    _handlingUnauthorized = false; // fresh session — re-arm the 401 guard
   }
 
   void clearToken() {
@@ -36,11 +45,37 @@ class AuthClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final token = await _getToken();
-    if (token != null && token.isNotEmpty &&
-        !request.headers.containsKey('Authorization')) {
+    final sentToken = token != null && token.isNotEmpty;
+    if (sentToken && !request.headers.containsKey('Authorization')) {
       request.headers['Authorization'] = 'Bearer $token';
     }
-    return _inner.send(request);
+
+    final response = await _inner.send(request);
+
+    // We attached a token but the server rejected it (401 = expired/invalid;
+    // 403 = wrong role, which we deliberately ignore). Force a clean re-login
+    // instead of leaving the user staring at blank pages.
+    if (response.statusCode == 401 && sentToken) {
+      _handleUnauthorized();
+    }
+    return response;
+  }
+
+  Future<void> _handleUnauthorized() async {
+    if (_handlingUnauthorized) return;
+    _handlingUnauthorized = true;
+
+    clearToken();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+      await prefs.remove('user');
+    } catch (_) {}
+
+    final nav = appNavigatorKey.currentState;
+    if (nav != null) {
+      nav.pushNamedAndRemoveUntil('/login', (route) => false);
+    }
   }
 }
 

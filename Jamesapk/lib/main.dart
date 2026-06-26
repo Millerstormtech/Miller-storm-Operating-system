@@ -22,6 +22,7 @@ import 'screens/manager_view_team_screen.dart';
 import 'screens/manager_team_member_detail_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/ticket_screen.dart';
+import 'services/api_client.dart';
 import 'screens/apps_tools_items_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
 import 'screens/manager_apps_tools_items_screen.dart';
@@ -61,7 +62,8 @@ class MillerStormApp extends StatefulWidget {
 }
 
 class _MillerStormAppState extends State<MillerStormApp> {
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  // Shared with the API client (see api_client.dart) so a 401 can force re-login.
+  final GlobalKey<NavigatorState> navigatorKey = appNavigatorKey;
 
   @override
   void initState() {
