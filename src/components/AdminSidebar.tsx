@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar";
 import { useAuth } from "../contexts/AuthContext";
 
 const allSidebarItems = [
+  { id: "dashboard", label: "Dashboard", toggleKey: "dashboard" },
   { id: "socialMediaMetrics", label: "Social Media Executive View", toggleKey: "socialMediaMetrics" },
   { id: "businessUnits", label: "Business Planner Executive View", toggleKey: "businessUnits" },
   { id: "trainingExecutive", label: "Course Leaderboard", toggleKey: "trainingCenter" },

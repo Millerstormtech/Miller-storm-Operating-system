@@ -109,10 +109,13 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
 
   async function loadCourseProgress() {
     try {
-      const res = await fetch("/api/course-progress");
+      // Returns every user's per-course progress in one call:
+      // { courses, users, progress: [{ userId, courseId, completedPages,
+      //   quizResults, courseCompleted }] }
+      const res = await fetch("/api/admin/training-executive-data");
       if (res.ok) {
         const data = await res.json();
-        setCourseProgress(data);
+        setCourseProgress(data.progress || []);
       }
     } catch (error) {
       console.error("Failed to load course progress:", error);
@@ -184,18 +187,41 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
 
   const publishedCourses = courses.filter((course) => course.status !== "draft");
 
-  function getCourseCompletion(courseId: string) {
-    const progressForCourse = courseProgress.filter(p => p.courseId === courseId);
-    if (progressForCourse.length === 0) return 0;
-    const totalCompletion = progressForCourse.reduce((sum, p) => sum + (p.completionPercentage || 0), 0);
-    return Math.round(totalCompletion / progressForCourse.length);
+  // Non-admin users are the population for "course completion by module".
+  const eligibleUsers = users.filter(u => u.role !== "admin");
+
+  // A quiz counts complete only if a saved result scored >= 60% (app-wide rule).
+  function isQuizPassed(result: any) {
+    const score = result?.score;
+    const total = score?.total || 0;
+    return total > 0 && (score.correct || 0) / total >= 0.6;
   }
 
-  const allCompletionValues = courseProgress.map(p => p.completionPercentage || 0);
-  const totalCourseCompletionPercentage =
-    allCompletionValues.length > 0
-      ? Math.round(allCompletionValues.reduce((sum, value) => sum + value, 0) / allCompletionValues.length)
-      : 0;
+  // Average completion of a course across all eligible users — lessons watched
+  // + quizzes passed, out of all published items. No record counts as 0%.
+  function getCourseCompletion(course: any) {
+    const pages = (course.pages || []).filter((p: any) => p.status === "published");
+    const total = pages.length;
+    if (total === 0 || eligibleUsers.length === 0) return 0;
+    let sumPct = 0;
+    for (const u of eligibleUsers) {
+      const rec = courseProgress.find((r: any) => r.courseId === course.id && r.userId === u.id);
+      if (!rec) continue;
+      const completedSet = new Set(rec.completedPages || []);
+      const quizResults = rec.quizResults || [];
+      const done = pages.filter((p: any) =>
+        p.isQuiz
+          ? isQuizPassed(quizResults.find((q: any) => q.pageId === p.id))
+          : completedSet.has(p.id)
+      ).length;
+      sumPct += (done / total) * 100;
+    }
+    return Math.round(sumPct / eligibleUsers.length);
+  }
+
+  const totalCourseCompletionPercentage = publishedCourses.length > 0
+    ? Math.round(publishedCourses.reduce((s, c) => s + getCourseCompletion(c), 0) / publishedCourses.length)
+    : 0;
 
   const totalBots = botStats.totalBots || 0;
   const totalChatSessions = botStats.totalSessions || 0;
@@ -238,39 +264,45 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
         id: "course-completion",
         title: "Course Completion by Module",
         component: (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "60px 20px",
-            fontSize: 18,
-            fontWeight: 500,
-            color: "#6b7280",
-            backgroundColor: "#f9fafb",
-            borderRadius: 8,
-            border: "2px dashed #d1d5db"
-          }}>
-            🚧 Coming Soon
-          </div>
+          publishedCourses.length === 0 ? (
+            <div className="panel-empty">No published courses yet.</div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 14 }}>
+                Overall completion across {eligibleUsers.length} team member{eligibleUsers.length !== 1 ? "s" : ""}:{" "}
+                <strong style={{ color: "#111827" }}>{totalCourseCompletionPercentage}%</strong>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {publishedCourses.map(course => {
+                  const pct = getCourseCompletion(course);
+                  return (
+                    <div key={course.id}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#374151" }}>
+                        <span>{course.title}</span>
+                        <span style={{ color: pct >= 100 ? "#16a34a" : "#2563eb" }}>{pct}%</span>
+                      </div>
+                      <div style={{ height: 10, background: "#e5e7eb", borderRadius: 999, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: pct >= 100 ? "#22c55e" : "#3b82f6", borderRadius: 999, transition: "width .3s" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )
         )
       },
       {
         id: "bot-dashboard",
         title: "Bot Dashboard",
         component: (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "60px 20px",
-            fontSize: 18,
-            fontWeight: 500,
-            color: "#6b7280",
-            backgroundColor: "#f9fafb",
-            borderRadius: 8,
-            border: "2px dashed #d1d5db"
-          }}>
-            🚧 Coming Soon
+          <div className="grid grid-3">
+            <DashboardCard title="Total Bots" value={totalBots.toString()} description="AI Chat · Lesson Chat · Sales Chat" />
+            <DashboardCard title="Total Chat Sessions" value={totalChatSessions.toLocaleString()} />
+            <DashboardCard title="Total Messages" value={totalBotUpdates.toLocaleString()} />
+            <DashboardCard title="AI Chat Sessions" value={(botStats.aiChatSessions || 0).toLocaleString()} />
+            <DashboardCard title="Lesson Chat Sessions" value={(botStats.lessonChatSessions || 0).toLocaleString()} />
+            <DashboardCard title="Unique Users Engaged" value={(botStats.uniqueUsers || 0).toLocaleString()} />
           </div>
         )
       },
