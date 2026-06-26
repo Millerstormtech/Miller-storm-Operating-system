@@ -4667,3 +4667,50 @@ body {
   background: #e2e8f0;
   border-radius: 8px;
 }
+
+/* ============================================================================
+   Admin Dashboard — professional redesign (scoped to .admin-dashboard).
+   Styling only: drag-to-reorder, buttons and data flow are unchanged.
+   ========================================================================== */
+.admin-dashboard { display: flex; flex-direction: column; gap: 18px; }
+
+/* Page heading */
+.admin-dashboard-head { margin-bottom: 2px; }
+.admin-dashboard-head h1 { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em; }
+.admin-dashboard-head p { margin: 4px 0 0; font-size: 13px; color: #64748b; }
+
+/* Section panels */
+.admin-dashboard .panel {
+  border-radius: 16px;
+  border: 1px solid #eef2f7;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  transition: box-shadow .2s ease;
+}
+.admin-dashboard .panel:hover { box-shadow: 0 10px 30px rgba(15, 23, 42, 0.10); }
+.admin-dashboard .panel > .panel-header {
+  padding: 16px 20px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border-bottom: 1px solid #eef2f7;
+}
+.admin-dashboard .panel > .panel-header span { font-size: 16px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+.admin-dashboard .panel > .panel-body { padding: 20px; }
+
+/* Stat cards */
+.admin-dashboard .grid { gap: 16px; }
+.admin-dashboard .card {
+  position: relative;
+  height: auto;
+  min-height: 108px;
+  border-radius: 14px;
+  border: 1px solid #eef2f7;
+  background: linear-gradient(180deg, #ffffff, #fbfcff);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  padding: 20px 18px 16px;
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.admin-dashboard .card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12); }
+.admin-dashboard .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+.admin-dashboard .card-value { margin-top: 10px; font-size: 30px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+.admin-dashboard .card-description { margin-top: 6px; font-size: 12px; color: #94a3b8; }
