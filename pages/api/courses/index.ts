@@ -35,11 +35,17 @@ export default async function handler(
     // title/cover/progress — the detail screen re-fetches the full course.
     // Web does NOT pass this flag, so its payload is unchanged.
     const listMode = !!req.query.list;
+    // Summary mode (admin course list first paint): drop the heavy per-page
+    // content at the DB level so the grid loads fast. The admin page then
+    // re-fetches the full payload in the background for instant course open.
+    const summaryMode = !!req.query.summary;
 
     console.log('📚 Courses API called with userId:', userId, 'userRole:', userRole);
 
     // Fetch all necessary course and page fields
-    const courses = await CourseModel.find({}).lean();
+    const courseQuery = CourseModel.find({});
+    if (summaryMode) courseQuery.select('-pages -quizQuestions -links');
+    const courses = await courseQuery.lean();
     console.log('📚 Total courses in DB:', courses.length);
 
     // Admins manage every course (including drafts), so never filter for them.

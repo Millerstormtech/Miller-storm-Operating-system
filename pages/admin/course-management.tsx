@@ -11,23 +11,44 @@ const CourseManagementPage: NextPage = () => {
   const latestCoursesRef = useRef<Course[]>([]);
   const [deleting, setDeleting] = useState(false);
   const prevCountRef = useRef<number>(0);
+  // Until the full payload (with lesson pages) has loaded, the courses in state
+  // are summary-only. Saving then would wipe every course's pages, so guard it.
+  const fullLoadedRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
+    const sortByOrder = (data: Course[]) =>
+      [...data].sort((a, b) => (a.order ?? 999999) - (b.order ?? 999999));
+    const apply = (data: Course[]) => {
+      const sorted = sortByOrder(data);
+      setCourses(sorted);
+      latestCoursesRef.current = sorted;
+      prevCountRef.current = sorted.length;
+    };
+
     async function loadData() {
       try {
-        const res = await fetch(`/api/courses?t=${Date.now()}`);
+        // 1) Fast first paint: lightweight list without heavy lesson content.
+        const res = await fetch(`/api/courses?summary=1&t=${Date.now()}`);
         if (res.ok && mounted) {
-          const data = await res.json();
-          const sortedData = data.sort((a: Course, b: Course) => (a.order ?? 999999) - (b.order ?? 999999));
-          setCourses(sortedData);
-          latestCoursesRef.current = sortedData;
-          prevCountRef.current = sortedData.length;
+          apply(await res.json());
         }
       } catch (error) {
         console.error("Failed to load courses:", error);
       } finally {
         if (mounted) setIsLoading(false);
+      }
+
+      try {
+        // 2) Background: pull the full payload (with pages) so opening a course
+        //    is instant. The save flow only runs after this has replaced state.
+        const full = await fetch(`/api/courses?t=${Date.now()}`);
+        if (full.ok && mounted) {
+          apply(await full.json());
+          fullLoadedRef.current = true;
+        }
+      } catch (error) {
+        console.error("Failed to prefetch full courses:", error);
       }
     }
     loadData();
@@ -65,6 +86,12 @@ const CourseManagementPage: NextPage = () => {
   }
 
   async function doSave(toSave: Course[]) {
+    if (!fullLoadedRef.current) {
+      // Full lesson content is still loading — saving now would persist empty
+      // pages and wipe course content. Block until the background fetch lands.
+      console.warn('[Save] Skipped: full course content still loading');
+      throw new Error('Courses are still loading — please retry in a moment');
+    }
     console.log(`[Save] Starting save for ${toSave.length} courses`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
