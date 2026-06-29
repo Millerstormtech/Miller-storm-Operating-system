@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import '../widgets/notification_bell.dart';
 import 'storm_chat_room_screen.dart';
@@ -188,19 +189,27 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
     final unreadCount = unreadCounts[groupId] ?? 0;
     final mentionCount = mentionCounts[groupId] ?? 0;
 
+    final subtitle = description.isNotEmpty
+        ? description
+        : '$memberCount member${memberCount == 1 ? '' : 's'}';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           onTap: () async {
             await Navigator.push(
               context,
@@ -216,82 +225,138 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
             _fetchUnreadCounts();
           },
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
+                // Circular group avatar (image, or gradient + initial)
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 54,
+                  height: 54,
                   decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(10),
+                    shape: BoxShape.circle,
+                    gradient: imageUrl.isEmpty
+                        ? const LinearGradient(
+                            colors: [Color(0xFFCB0002), Color(0xFF7F0001)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
                     image: imageUrl.isNotEmpty
-                        ? DecorationImage(image: NetworkImage('https://millerstorm.tech$imageUrl'), fit: BoxFit.cover)
+                        ? DecorationImage(
+                            image: CachedNetworkImageProvider(
+                                'https://millerstorm.tech$imageUrl'),
+                            fit: BoxFit.cover,
+                          )
                         : null,
                   ),
-                  child: imageUrl.isEmpty ? const Center(child: Text('👥', style: TextStyle(fontSize: 24))) : null,
+                  child: imageUrl.isEmpty
+                      ? Center(
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : '#',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
+                // Group info: name + subtitle
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
                           Expanded(
-                            child: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           if (onlyAdminCanChat)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0xFFFEF2F2), borderRadius: BorderRadius.circular(6)),
-                              child: const Text('🔒 Admin', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFFCB0002))),
+                            const Padding(
+                              padding: EdgeInsets.only(left: 6),
+                              child: Icon(Icons.lock,
+                                  size: 14, color: Color(0xFFCB0002)),
                             ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          const Icon(Icons.people_outline,
+                              size: 13, color: Color(0xFF9CA3AF)),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              subtitle,
+                              style: const TextStyle(
+                                  fontSize: 13, color: Color(0xFF6B7280)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                // Badges
-                Row(
+                const SizedBox(width: 8),
+                // Badges (mention / unread) or chevron
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     if (mentionCount > 0)
                       Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           color: const Color(0xFFCB0002),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
                           '@${mentionCount > 99 ? '99+' : mentionCount}',
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700),
                         ),
                       ),
                     if (unreadCount > 0)
                       Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        constraints: const BoxConstraints(minWidth: 22),
                         decoration: BoxDecoration(
                           color: const Color(0xFFCB0002),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(11),
                         ),
                         child: Text(
                           unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700),
                         ),
                       ),
+                    if (mentionCount == 0 && unreadCount == 0)
+                      const Icon(Icons.chevron_right,
+                          color: Color(0xFFD1D5DB), size: 22),
                   ],
                 ),
-                const Icon(Icons.chevron_right, color: Colors.grey),
               ],
             ),
           ),

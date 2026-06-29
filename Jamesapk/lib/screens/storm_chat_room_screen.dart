@@ -44,6 +44,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   bool isUploading = false;
   Timer? _pollTimer;
   String? userName;
+  // The server stores message senderId as the app `id`, while widget.userId is
+  // the Mongo `_id`. Collect both so "is this my message?" matches either form.
+  final Set<String> _myIds = {};
   dynamic replyingTo; // Store the message being replied to
   String? _blinkingMessageId; // Track which message is blinking
   Timer? _blinkTimer;
@@ -148,10 +151,21 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     if (user != null) {
       setState(() {
         userName = user['name'];
+        _myIds
+          ..clear()
+          ..add(widget.userId)
+          ..addAll([user['_id'], user['id']]
+              .where((e) => e != null)
+              .map((e) => e.toString()));
       });
-      print('🔵 User loaded - Name: $userName');
+      print('🔵 User loaded - Name: $userName, ids: $_myIds');
     }
   }
+
+  /// True when [message] was sent by the current user. The server stores
+  /// senderId as the app `id`, so match against every id form we hold.
+  bool _isMine(dynamic message) =>
+      _myIds.contains(message['senderId']?.toString());
 
   Future<void> _fetchGroupMembers() async {
     setState(() {
@@ -667,30 +681,49 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
+  /// Returns true if [utc] falls inside US Eastern Daylight Time
+  /// (second Sunday of March 07:00 UTC → first Sunday of November 06:00 UTC).
+  bool _isUsEasternDst(DateTime utc) {
+    final year = utc.year;
+    // Second Sunday of March (DST begins at 02:00 EST = 07:00 UTC).
+    final firstSundayMarch =
+        1 + ((7 - DateTime.utc(year, 3, 1).weekday) % 7);
+    final dstStart =
+        DateTime.utc(year, 3, firstSundayMarch + 7, 7);
+    // First Sunday of November (DST ends at 02:00 EDT = 06:00 UTC).
+    final firstSundayNov =
+        1 + ((7 - DateTime.utc(year, 11, 1).weekday) % 7);
+    final dstEnd = DateTime.utc(year, 11, firstSundayNov, 6);
+    return utc.isAfter(dstStart) && utc.isBefore(dstEnd);
+  }
+
+  /// Convert any timestamp to US Eastern time (EDT/EST, DST-aware).
+  DateTime _toEastern(DateTime date) {
+    final utc = date.toUtc();
+    final offset = _isUsEasternDst(utc) ? 4 : 5; // EDT = UTC-4, EST = UTC-5
+    return utc.subtract(Duration(hours: offset));
+  }
+
   String _formatTime(String dateStr) {
-    // Parse the date string and convert to CT (UTC-5:00 for CDT)
-    final date = DateTime.parse(dateStr);
-    // Convert to UTC first, then subtract 5 hours for CDT (Central Daylight Time)
-    final ctDate = date.toUtc().subtract(const Duration(hours: 5));
-    final hour = ctDate.hour.toString().padLeft(2, '0');
-    final minute = ctDate.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    final etDate = _toEastern(DateTime.parse(dateStr));
+    final period = etDate.hour >= 12 ? 'PM' : 'AM';
+    var hour12 = etDate.hour % 12;
+    if (hour12 == 0) hour12 = 12;
+    final minute = etDate.minute.toString().padLeft(2, '0');
+    return '$hour12:$minute $period';
   }
 
   String _formatDate(String dateStr) {
-    // Parse the date string and convert to CT (UTC-5:00 for CDT)
-    final date = DateTime.parse(dateStr);
-    // Convert to UTC first, then subtract 5 hours for CDT (Central Daylight Time)
-    final ctDate = date.toUtc().subtract(const Duration(hours: 5));
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final etDate = _toEastern(DateTime.parse(dateStr));
+    final nowEt = _toEastern(DateTime.now());
+    final today = DateTime(nowEt.year, nowEt.month, nowEt.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(ctDate.year, ctDate.month, ctDate.day);
+    final messageDate = DateTime(etDate.year, etDate.month, etDate.day);
 
     if (messageDate == today) return 'Today';
     if (messageDate == yesterday) return 'Yesterday';
-    
-    return '${ctDate.day}/${ctDate.month}/${ctDate.year}';
+
+    return '${etDate.day}/${etDate.month}/${etDate.year}';
   }
 
   @override
@@ -1149,7 +1182,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   Widget _buildMessage(dynamic message, int index) {
-    final isMyMessage = message['senderId'] == widget.userId;
+    final isMyMessage = _isMine(message);
     final showDate = index == 0 ||
         _formatDate(messages[index - 1]['createdAt']) != _formatDate(message['createdAt']);
     final isBlinking = _blinkingMessageId == message['_id'];
@@ -1283,12 +1316,28 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           if (!isMyMessage)
                             Padding(
                               padding: const EdgeInsets.only(left: 8, bottom: 4),
-                              child: Text(
-                                message['senderName'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF6B7280),
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text(
+                                    message['senderName'] ?? 'Unknown',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _formatTime(message['createdAt']),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           // Different styling for different message types
@@ -1395,20 +1444,20 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           else
                             // No background for images/videos
                             _buildMessageContent(message, isMyMessage),
-                          Padding(
-                            padding: EdgeInsets.only(
-                              left: isMyMessage ? 0 : 8,
-                              right: isMyMessage ? 8 : 0,
-                              top: 4,
-                            ),
-                            child: Text(
-                              _formatTime(message['createdAt']),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Color(0xFF9CA3AF),
+                          if (isMyMessage)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                right: 8,
+                                top: 4,
+                              ),
+                              child: Text(
+                                _formatTime(message['createdAt']),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF9CA3AF),
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -1596,7 +1645,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   void _showMessageOptions(BuildContext context, dynamic message) {
-    final isMyMessage = message['senderId'] == widget.userId;
+    final isMyMessage = _isMine(message);
     final textColor = _isDarkTheme ? Colors.white : Colors.black;
     final bgColor = _isDarkTheme ? const Color(0xFF1C1C1E) : Colors.white;
 
