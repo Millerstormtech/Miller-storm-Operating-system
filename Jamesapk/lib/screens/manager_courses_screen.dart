@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
@@ -269,49 +270,111 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
         : [];
     final assignedUserIds = Set<String>.from(assignments.map((a) => a['assignedToUserId']));
     
+    final availableCount = salesUsers.where((u) => !assignedUserIds.contains(u['id'])).length;
+    final assignedCount = salesUsers.length - availableCount;
+
     showDialog(
       context: context,
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (context) => DefaultTabController(
         length: 2,
-        child: AlertDialog(
+        child: Dialog(
           backgroundColor: _white,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Manage Playlist Assignments'),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Playlist: ${playlist['name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Text('Course: ${playlist['courseName']}', style: TextStyle(fontSize: 12, color: _textLight)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 400,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 36),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460, maxHeight: 580),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                TabBar(
-                  labelColor: _blue,
-                  unselectedLabelColor: _textLight,
-                  indicatorColor: _blue,
-                  tabs: const [
-                    Tab(text: 'Assign Users'),
-                    Tab(text: 'Unassign Users'),
-                  ],
+                // ---- Branded header ----
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+                  color: _primary,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.playlist_play_rounded, color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Manage Assignments',
+                              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => Navigator.pop(context),
+                            borderRadius: BorderRadius.circular(20),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        playlist['name'] ?? '',
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.menu_book_rounded, size: 14, color: Colors.white.withOpacity(0.85)),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              playlist['courseName'] ?? '',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                Expanded(
+                // ---- Pill tabs ----
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: _bg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TabBar(
+                    indicator: BoxDecoration(
+                      color: _white,
+                      borderRadius: BorderRadius.circular(9),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2)),
+                      ],
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    splashFactory: NoSplash.splashFactory,
+                    labelColor: _primary,
+                    unselectedLabelColor: _textLight,
+                    labelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                    unselectedLabelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                    tabs: [
+                      Tab(height: 38, text: 'Assign  ($availableCount)'),
+                      Tab(height: 38, text: 'Assigned  ($assignedCount)'),
+                    ],
+                  ),
+                ),
+                Flexible(
                   child: TabBarView(
                     children: [
                       _buildAssignTab(salesUsers, assignedUserIds, playlist),
@@ -322,12 +385,6 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
         ),
       ),
     );
@@ -336,153 +393,494 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
   Widget _buildAssignTab(List salesUsers, Set<String> assignedUserIds, Map<String, dynamic> playlist) {
     final availableUsers = salesUsers.where((u) => !assignedUserIds.contains(u['id'])).toList();
     final selectedUsers = <String>{};
-    
+    String query = '';
+    DateTime? deadline;
+
     return StatefulBuilder(
-      builder: (context, setTabState) => Column(
-        children: [
-          Expanded(
-            child: availableUsers.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle, size: 64, color: Colors.green),
-                        SizedBox(height: 16),
-                        Text('All users already assigned'),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: availableUsers.length,
-                    itemBuilder: (context, index) {
-                      final user = availableUsers[index];
-                      final userId = user['id'];
-                      return CheckboxListTile(
-                        title: Text(user['name'] ?? ''),
-                        subtitle: Text(user['email'] ?? ''),
-                        value: selectedUsers.contains(userId),
-                        onChanged: (val) {
-                          setTabState(() {
-                            if (val == true) {
-                              selectedUsers.add(userId);
-                            } else {
-                              selectedUsers.remove(userId);
-                            }
-                          });
-                        },
-                      );
-                    },
-                  ),
-          ),
-          if (selectedUsers.isNotEmpty)
+      builder: (context, setTabState) {
+        if (availableUsers.isEmpty) {
+          return _assignEmptyState(
+            icon: Icons.verified_rounded,
+            color: const Color(0xFF059669),
+            title: "Everyone's assigned",
+            subtitle: 'All your team members already have this playlist.',
+          );
+        }
+
+        final filtered = query.isEmpty
+            ? availableUsers
+            : availableUsers.where((u) {
+                final name = (u['name'] ?? '').toString().toLowerCase();
+                final email = (u['email'] ?? '').toString().toLowerCase();
+                return name.contains(query) || email.contains(query);
+              }).toList();
+        final allFilteredSelected =
+            filtered.isNotEmpty && filtered.every((u) => selectedUsers.contains(u['id']));
+
+        return Column(
+          children: [
+            // Search + select-all row
             Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ElevatedButton(
-                onPressed: () async {
-                  try {
-                    for (final userId in selectedUsers) {
-                      final user = availableUsers.firstWhere((u) => u['id'] == userId);
-                      await api.post(
-                        Uri.parse('https://millerstorm.tech/api/playlist-assignments'),
-                        headers: {'Content-Type': 'application/json'},
-                        body: jsonEncode({
-                          'playlistId': playlist['_id'] ?? playlist['id'],
-                          'playlistName': playlist['name'],
-                          'courseId': playlist['courseId'],
-                          'courseName': playlist['courseName'],
-                          'selectedModules': playlist['selectedModules'],
-                          'managerId': _userId,
-                          'managerName': (await AuthService.getStoredUser())?['name'],
-                          'assignedToUserId': userId,
-                          'assignedToUserName': user['name'],
-                        }),
-                      );
-                    }
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Assigned to ${selectedUsers.length} user(s)')),
-                    );
-                  } catch (e) {
-                    print('Error assigning playlist: $e');
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primary,
-                  foregroundColor: _white,
-                ),
-                child: Text('Assign (${selectedUsers.length})'),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+              child: Column(
+                children: [
+                  TextField(
+                    onChanged: (v) => setTabState(() => query = v.trim().toLowerCase()),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'Search team members',
+                      hintStyle: TextStyle(color: _textLight, fontSize: 14),
+                      prefixIcon: Icon(Icons.search_rounded, size: 20, color: _textLight),
+                      filled: true,
+                      fillColor: _bg,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text('${filtered.length} available',
+                          style: TextStyle(fontSize: 12, color: _textLight)),
+                      const Spacer(),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: _primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: filtered.isEmpty
+                            ? null
+                            : () => setTabState(() {
+                                  if (allFilteredSelected) {
+                                    for (final u in filtered) {
+                                      selectedUsers.remove(u['id']);
+                                    }
+                                  } else {
+                                    for (final u in filtered) {
+                                      selectedUsers.add(u['id']);
+                                    }
+                                  }
+                                }),
+                        child: Text(allFilteredSelected ? 'Clear all' : 'Select all',
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-        ],
-      ),
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text('No matches found',
+                          style: TextStyle(color: _textLight, fontSize: 13)),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final user = filtered[index];
+                        final userId = user['id'];
+                        final selected = selectedUsers.contains(userId);
+                        return _selectableUserCard(
+                          name: user['name'],
+                          email: user['email'],
+                          selected: selected,
+                          onTap: () => setTabState(() {
+                            if (selected) {
+                              selectedUsers.remove(userId);
+                            } else {
+                              selectedUsers.add(userId);
+                            }
+                          }),
+                        );
+                      },
+                    ),
+            ),
+            // Sticky action bar
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              decoration: const BoxDecoration(
+                color: _white,
+                border: Border(top: BorderSide(color: Color(0xFFEEF0F3))),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Optional deadline picker (notifies the manager if not finished in time)
+                  InkWell(
+                    onTap: () async {
+                      final now = DateTime.now();
+                      final today = DateTime(now.year, now.month, now.day);
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: deadline ?? today.add(const Duration(days: 7)),
+                        firstDate: today,
+                        lastDate: today.add(const Duration(days: 365 * 2)),
+                        builder: (context, child) => Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: const ColorScheme.light(
+                              primary: _primary,
+                              onPrimary: _white,
+                              onSurface: _textDark,
+                            ),
+                          ),
+                          child: child!,
+                        ),
+                      );
+                      if (picked != null) setTabState(() => deadline = picked);
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: _bg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: deadline != null ? _primary.withOpacity(0.4) : const Color(0xFFE5E7EB),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.event_outlined,
+                              size: 18, color: deadline != null ? _primary : _textLight),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              deadline != null
+                                  ? 'Deadline: ${DateFormat('MMM d, yyyy').format(deadline!)}'
+                                  : 'Set deadline (optional)',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: deadline != null ? FontWeight.w600 : FontWeight.w500,
+                                color: deadline != null ? _textDark : _textLight,
+                              ),
+                            ),
+                          ),
+                          if (deadline != null)
+                            InkWell(
+                              onTap: () => setTabState(() => deadline = null),
+                              borderRadius: BorderRadius.circular(20),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(Icons.close_rounded, size: 16, color: _textLight),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: selectedUsers.isEmpty
+                      ? null
+                      : () async {
+                          try {
+                            final managerName = (await AuthService.getStoredUser())?['name'];
+                            for (final userId in selectedUsers) {
+                              final user = availableUsers.firstWhere((u) => u['id'] == userId);
+                              await api.post(
+                                Uri.parse('https://millerstorm.tech/api/playlist-assignments'),
+                                headers: {'Content-Type': 'application/json'},
+                                body: jsonEncode({
+                                  'playlistId': playlist['_id'] ?? playlist['id'],
+                                  'playlistName': playlist['name'],
+                                  'courseId': playlist['courseId'],
+                                  'courseName': playlist['courseName'],
+                                  'selectedModules': playlist['selectedModules'],
+                                  'managerId': _userId,
+                                  'managerName': managerName,
+                                  'assignedToUserId': userId,
+                                  'assignedToUserName': user['name'],
+                                  'deadline': deadline != null
+                                      ? DateFormat('yyyy-MM-dd').format(deadline!)
+                                      : null,
+                                }),
+                              );
+                            }
+                            final count = selectedUsers.length;
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Assigned to $count user(s)')),
+                            );
+                          } catch (e) {
+                            print('Error assigning playlist: $e');
+                          }
+                        },
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                  label: Text(
+                    selectedUsers.isEmpty
+                        ? 'Select members to assign'
+                        : 'Assign to ${selectedUsers.length} member${selectedUsers.length > 1 ? 's' : ''}',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: _white,
+                    disabledBackgroundColor: const Color(0xFFE5E7EB),
+                    disabledForegroundColor: _textLight,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildUnassignTab(List salesUsers, Set<String> assignedUserIds, List assignments, Map<String, dynamic> playlist) {
     final assignedUsers = salesUsers.where((u) => assignedUserIds.contains(u['id'])).toList();
-    
-    return assignedUsers.isEmpty
-        ? const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inbox, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No users assigned yet'),
-              ],
-            ),
-          )
-        : ListView.builder(
-            itemCount: assignedUsers.length,
-            itemBuilder: (context, index) {
-              final user = assignedUsers[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
-                child: Row(
+
+    if (assignedUsers.isEmpty) {
+      return _assignEmptyState(
+        icon: Icons.group_outlined,
+        color: _textLight,
+        title: 'No one assigned yet',
+        subtitle: 'Use the Assign tab to add team members to this playlist.',
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      itemCount: assignedUsers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final user = assignedUsers[index];
+        final assignment = assignments.firstWhere(
+          (a) => a['assignedToUserId'] == user['id'],
+          orElse: () => null,
+        );
+        final deadlineChip = _deadlineChip(assignment);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Row(
+            children: [
+              _userAvatar(user['name']),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(user['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                          Text(user['email'] ?? '', style: const TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        try {
-                          final assignment = assignments.firstWhere(
-                            (a) => a['assignedToUserId'] == user['id'],
-                          );
-                          await api.delete(
-                            Uri.parse('https://millerstorm.tech/api/playlist-assignments?id=${assignment['_id']}'),
-                          );
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Unassigned from ${user['name']}')),
-                          );
-                        } catch (e) {
-                          print('Error unassigning playlist: $e');
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade50,
-                        foregroundColor: Colors.red,
-                      ),
-                      child: const Text('Unassign'),
-                    ),
+                    Text(user['name'] ?? '',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _textDark)),
+                    if ((user['email'] ?? '').toString().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(user['email'] ?? '',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: _textLight)),
+                    ],
+                    if (deadlineChip != null) ...[
+                      const SizedBox(height: 5),
+                      deadlineChip,
+                    ],
                   ],
                 ),
-              );
-            },
-          );
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  try {
+                    final assignment = assignments.firstWhere(
+                      (a) => a['assignedToUserId'] == user['id'],
+                    );
+                    await api.delete(
+                      Uri.parse('https://millerstorm.tech/api/playlist-assignments?id=${assignment['_id']}'),
+                    );
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Unassigned from ${user['name']}')),
+                    );
+                  } catch (e) {
+                    print('Error unassigning playlist: $e');
+                  }
+                },
+                icon: const Icon(Icons.person_remove_alt_1_rounded, size: 16),
+                label: const Text('Remove', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _primary,
+                  side: BorderSide(color: _primary.withOpacity(0.4)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ---- Shared widgets for the assignment dialog ----
+
+  /// Deadline status pill shown on an assigned user (mirrors the web manager
+  /// panel): green "✓ Completed", red when overdue, amber when still upcoming.
+  Widget? _deadlineChip(dynamic assignment) {
+    if (assignment == null) return null;
+    final raw = assignment['deadline'];
+    if (raw == null) return null;
+    final due = DateTime.tryParse(raw.toString());
+    if (due == null) return null;
+
+    final completed = assignment['completedAt'] != null;
+    final overdue = !completed && due.isBefore(DateTime.now());
+    final color = completed
+        ? const Color(0xFF047857)
+        : (overdue ? const Color(0xFFDC2626) : const Color(0xFFB45309));
+    final label =
+        '${completed ? '✓ Completed' : '⏰ Due'} ${DateFormat('MMM d, yyyy').format(due)}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label,
+          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  String _initials(String? name) {
+    final n = (name ?? '').trim();
+    if (n.isEmpty) return '?';
+    final parts = n.split(RegExp(r'\s+'));
+    if (parts.length == 1) {
+      return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  Color _avatarColor(String seed) {
+    const palette = [
+      Color(0xFF2563EB), Color(0xFF7C3AED), Color(0xFFDB2777),
+      Color(0xFF059669), Color(0xFFD97706), Color(0xFF0891B2),
+    ];
+    var h = 0;
+    for (final c in seed.codeUnits) {
+      h = (h * 31 + c) & 0x7fffffff;
+    }
+    return palette[h % palette.length];
+  }
+
+  Widget _userAvatar(String? name, {double size = 40}) {
+    final color = _avatarColor(name ?? '?');
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
+      alignment: Alignment.center,
+      child: Text(
+        _initials(name),
+        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: size * 0.34),
+      ),
+    );
+  }
+
+  Widget _selectableUserCard({
+    required String? name,
+    required String? email,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? _primary.withOpacity(0.06) : _white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? _primary : const Color(0xFFE5E7EB),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            _userAvatar(name),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name ?? '',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _textDark)),
+                  if ((email ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(email ?? '',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: _textLight)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: selected ? _primary : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? _primary : const Color(0xFFCBD5E1),
+                  width: 1.5,
+                ),
+              ),
+              child: selected ? const Icon(Icons.check_rounded, size: 16, color: Colors.white) : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _assignEmptyState({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(icon, size: 40, color: color),
+            ),
+            const SizedBox(height: 16),
+            Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark)),
+            const SizedBox(height: 6),
+            Text(subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: _textLight, height: 1.4)),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
