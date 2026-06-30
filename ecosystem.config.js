@@ -53,6 +53,26 @@ module.exports = {
       out_file: '/var/www/millerstorm/logs/acculynx-sync-out.log',
       merge_logs: true,
       time: true
+    },
+    {
+      // Weekly team-training digest to every manager, Monday 08:00 (server time).
+      // PORT must be the MAIN app's port (6790) — the cron POSTs to
+      // http://localhost:$PORT/api/playlist-assignments/weekly-digest.
+      // Override DIGEST_DAY/DIGEST_HOUR via .env if you want a different slot.
+      name: 'weekly-digest',
+      script: 'scripts/weekly-digest-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 6790
+      },
+      error_file: '/var/www/millerstorm/logs/weekly-digest-err.log',
+      out_file: '/var/www/millerstorm/logs/weekly-digest-out.log',
+      merge_logs: true,
+      time: true
     }
   ]
 };

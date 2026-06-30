@@ -18,10 +18,15 @@ import { sendWeeklyTeamDigestEmail } from "../../../src/lib/email";
 async function authorize(req: NextApiRequest): Promise<boolean> {
   const secret = req.headers["x-sync-secret"];
   if (secret && secret === process.env.ACCULYNX_SYNC_SECRET) return true;
-  const userId = (req.body?.userId as string) || "";
-  if (!userId) return false;
+  const ident = (req.body?.userId as string) || "";
+  if (!ident) return false;
   await connectMongo();
-  const user = await UserModel.findOne({ id: userId, deleted: { $ne: true } }).lean<any>();
+  // Accept either a user id or an email so the cron's DIGEST_ADMIN_USER (which
+  // defaults to an email like marketing@millerstorm.com) resolves correctly.
+  const user = await UserModel.findOne({
+    deleted: { $ne: true },
+    $or: [{ id: ident }, { email: ident.toLowerCase() }],
+  }).lean<any>();
   return user?.role === "admin" || (user?.roles ?? []).includes("admin");
 }
 

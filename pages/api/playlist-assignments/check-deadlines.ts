@@ -19,12 +19,19 @@ import { requireRole, allowMethods } from '../../../src/lib/auth';
 // assignments so loading a single manager's portal stays cheap.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
-  if (!requireRole(req, res, 'admin')) return;
+
+  // Managers may trigger this (e.g. when their training portal loads) but only
+  // for their OWN team; admins may scope to any manager (or all when omitted).
+  // This is the fix for deadline emails never sending — the manager portal was
+  // calling an admin-only endpoint and silently getting a 403.
+  const session = requireRole(req, res, ['admin', 'manager']);
+  if (!session) return;
 
   await connectMongo();
 
   try {
-    const { managerId } = req.query;
+    const isManager = session.role === 'manager';
+    const managerId = isManager ? session.sub : req.query.managerId;
     const now = new Date();
 
     const query: any = {
