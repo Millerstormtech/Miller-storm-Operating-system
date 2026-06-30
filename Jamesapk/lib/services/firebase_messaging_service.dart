@@ -10,6 +10,7 @@ import '../firebase_options.dart';
 import '../screens/storm_chat_room_screen.dart';
 import '../screens/course_detail_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FirebaseMessagingService {
   static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -196,6 +197,23 @@ class FirebaseMessagingService {
     print('🔔 Notification tapped: ${message.data}');
     final data = message.data;
     final type = data['type'];
+
+    // App update -> open the relevant store listing (App Store on iOS,
+    // Play Store on Android). Handled before the navigator check because it
+    // launches an external URL rather than navigating in-app.
+    if (type == 'app_update') {
+      final url = Platform.isIOS
+          ? (data['iosUrl'] ?? data['androidUrl'])
+          : (data['androidUrl'] ?? data['iosUrl']);
+      if (url != null && url.toString().isNotEmpty) {
+        final uri = Uri.tryParse(url.toString());
+        if (uri != null) {
+          print('🚀 Opening store for app update: $uri');
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      }
+      return;
+    }
 
     if (_navigatorKey?.currentState == null) return;
 

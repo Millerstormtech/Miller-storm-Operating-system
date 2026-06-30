@@ -44,6 +44,8 @@ export function UserManagement(props: UserEditorProps) {
   const [importing, setImporting] = useState(false);
   const [pendingImportUsers, setPendingImportUsers] = useState<any[]>([]);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
+  const [notifyingUpdate, setNotifyingUpdate] = useState(false);
   const [showActiveUsers, setShowActiveUsers] = useState(true);
   const [showSuspendedUsers, setShowSuspendedUsers] = useState(true);
   const [showDeletedUsers, setShowDeletedUsers] = useState(true);
@@ -544,6 +546,33 @@ export function UserManagement(props: UserEditorProps) {
     }
   }
 
+  // Push a "new version available" notification (mobile push + in-app bell) to
+  // every app user. Tapping it opens the App Store / Play Store.
+  async function confirmNotifyUpdate() {
+    setNotifyingUpdate(true);
+    try {
+      const res = await fetch("/api/notify-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setSaveNotice(`Update notification sent to ${result.recipients} user(s) (${result.pushSuccess} push delivered)`);
+        if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
+        saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 4000);
+        setShowUpdateConfirm(false);
+      } else {
+        alert("Failed to send update notification");
+      }
+    } catch (error) {
+      console.error("Notify-update error:", error);
+      alert("Failed to send update notification");
+    } finally {
+      setNotifyingUpdate(false);
+    }
+  }
+
   return (
     <div className="admin-user-management">
       <div className="panel-header" style={{ marginBottom: 16 }}>
@@ -575,11 +604,34 @@ export function UserManagement(props: UserEditorProps) {
               {importing ? "Importing..." : "Import CSV"}
             </button>
             <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportCSV} />
+            <button type="button" className="btn-secondary btn-small" onClick={() => setShowUpdateConfirm(true)} disabled={notifyingUpdate}>
+              {notifyingUpdate ? "Sending..." : "Notify App Update"}
+            </button>
             <button type="button" className="btn-primary btn-success" onClick={createUser}>+ Add User</button>
           </div>
         </div>
       </div>
       <div className="admin-user-management-content">
+      {showUpdateConfirm && (
+        <div className="overlay">
+          <div className="dialog" style={{ width: 460, maxWidth: "90vw" }}>
+            <div className="dialog-title">Notify users to update the app</div>
+            <div style={{ fontSize: 13, color: "#6b7280", margin: "12px 0 20px", lineHeight: 1.5 }}>
+              This sends a push notification and an in-app alert to <strong>all app users</strong> letting
+              them know a new version is available. Tapping it opens the App Store (or Play Store on Android).
+              Only send this after the new version is live in the store.
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" className="btn-secondary btn-cancel" onClick={() => setShowUpdateConfirm(false)} disabled={notifyingUpdate}>
+                Cancel
+              </button>
+              <button type="button" className="btn-primary btn-success" onClick={confirmNotifyUpdate} disabled={notifyingUpdate}>
+                {notifyingUpdate ? "Sending..." : "Send notification"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showImportConfirm && (
         <div className="overlay">
           <div className="dialog" style={{ width: 600, maxWidth: "90vw" }}>
