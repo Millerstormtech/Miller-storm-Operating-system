@@ -8,7 +8,7 @@ type Notification = {
   title: string;
   message: string;
   read: boolean;
-  metadata?: { courseId?: string; courseName?: string; watchUrl?: string };
+  metadata?: { courseId?: string; courseName?: string; watchUrl?: string; lessonId?: string };
 };
 
 /**
@@ -60,7 +60,10 @@ export function NewCoursePopup() {
 
   if (!notif) return null;
 
-  const watchUrl = notif.metadata?.watchUrl || "/sales/training";
+  const baseWatchUrl = notif.metadata?.watchUrl || "/sales/training";
+  const lessonId = notif.metadata?.lessonId;
+  // Deep-link straight to the new lesson/quiz when we know which page it is.
+  const watchUrl = lessonId ? `${baseWatchUrl}?lessonId=${encodeURIComponent(lessonId)}` : baseWatchUrl;
   const courseName = notif.metadata?.courseName;
 
   async function watchNow() {

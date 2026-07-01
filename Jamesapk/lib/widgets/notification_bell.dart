@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart' as ns;
 import '../screens/storm_chat_room_screen.dart';
+import '../screens/course_detail_screen.dart';
 import 'package:intl/intl.dart';
 
 class NotificationBell extends StatefulWidget {
@@ -60,6 +61,28 @@ class _NotificationBellState extends State<NotificationBell> {
             ),
           );
         }
+      }
+    } else if (notification.type == 'course_added' ||
+        notification.type == 'new_training') {
+      // "New lesson/quiz" notification -> open the course and jump into the
+      // new page (when we know which one).
+      final courseId = notification.metadata?['courseId']?.toString();
+      final courseName =
+          notification.metadata?['courseName']?.toString() ?? 'Course';
+      final lessonId = notification.metadata?['lessonId']?.toString();
+
+      if (courseId != null && courseId.isNotEmpty && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CourseDetailScreen(
+              courseId: courseId,
+              courseTitle: courseName,
+              initialPageId:
+                  (lessonId != null && lessonId.isNotEmpty) ? lessonId : null,
+            ),
+          ),
+        );
       }
     }
   }

@@ -8,7 +8,7 @@ import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 type ContentAnnouncement = {
   course: any;
-  newPages: { title: string; isQuiz: boolean }[];
+  newPages: { id: string; title: string; isQuiz: boolean }[];
 };
 
 // Create an in-app "new training" notification for every sales + manager user
@@ -37,6 +37,10 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
     for (const { course, newPages } of announcements) {
       const lessons = newPages.filter((p) => !p.isQuiz);
       const quizzes = newPages.filter((p) => p.isQuiz);
+      // The page the notification deep-links to: the actual new item that was
+      // added — whether a lesson (video) or a quiz — so the tap lands exactly
+      // where the new content is.
+      const targetPageId = newPages[0]?.id || "";
 
       let message: string;
       if (newPages.length === 1) {
@@ -56,7 +60,7 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
             pushTokens,
             "🔥 New Training Added",
             message,
-            { courseId: course.id, courseName: course.title, type: "new_training" }
+            { courseId: course.id, courseName: course.title, type: "new_training", pageId: targetPageId }
           );
         } catch (pushErr) {
           console.error("[Bulk Save] Push notification failed:", pushErr);
@@ -76,7 +80,7 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
       if (haveUnread.size) {
         await NotificationModel.updateMany(
           { type: "course_added", read: false, "metadata.courseId": course.id },
-          { $set: { title: "🔥 New Training Just Added!", message } }
+          { $set: { title: "🔥 New Training Just Added!", message, "metadata.lessonId": targetPageId } }
         );
       }
 
@@ -91,7 +95,7 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
           title: "🔥 New Training Just Added!",
           message,
           read: false,
-          metadata: { courseId: course.id, courseName: course.title, watchUrl },
+          metadata: { courseId: course.id, courseName: course.title, watchUrl, lessonId: targetPageId },
         });
       }
     }
@@ -185,7 +189,7 @@ export default async function handler(
           if (!priorPageIds.has(p.id)) return true; // brand-new published lesson/quiz
           return priorPageStatus.get(p.id) === "draft"; // draft -> published
         })
-        .map((p: any) => ({ title: p.title || (p.isQuiz ? "Quiz" : "Lesson"), isQuiz: Boolean(p.isQuiz) }));
+        .map((p: any) => ({ id: String(p.id || ""), title: p.title || (p.isQuiz ? "Quiz" : "Lesson"), isQuiz: Boolean(p.isQuiz) }));
 
       if (newPages.length) announcements.push({ course, newPages });
     }

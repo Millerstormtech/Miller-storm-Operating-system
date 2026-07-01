@@ -217,14 +217,17 @@ class FirebaseMessagingService {
 
     if (_navigatorKey?.currentState == null) return;
 
-    // New training (new lesson/quiz published) -> open that course.
+    // New training (new lesson/quiz published) -> open that course and jump
+    // straight into the new lesson/quiz when we know which page it is.
     if (type == 'new_training' && data['courseId'] != null) {
       print('🚀 Navigating to course: ${data['courseId']}');
+      final pageId = data['pageId']?.toString();
       _navigatorKey!.currentState!.push(
         MaterialPageRoute(
           builder: (context) => CourseDetailScreen(
             courseId: data['courseId'].toString(),
             courseTitle: (data['courseName'] ?? 'Course').toString(),
+            initialPageId: (pageId != null && pageId.isNotEmpty) ? pageId : null,
           ),
         ),
       );

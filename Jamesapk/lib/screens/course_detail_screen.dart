@@ -9,12 +9,16 @@ class CourseDetailScreen extends StatefulWidget {
   final String courseId;
   final String courseTitle;
   final List<String>? playlistModules;
+  // When set (e.g. from a "new lesson/quiz" notification tap), auto-open this
+  // page's player once the course has loaded.
+  final String? initialPageId;
 
   const CourseDetailScreen({
     super.key,
     required this.courseId,
     required this.courseTitle,
     this.playlistModules,
+    this.initialPageId,
   });
 
   @override
@@ -52,6 +56,41 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     super.initState();
     _loadUserId();
     _fetchCourseDetail();
+  }
+
+  // Guard so the notification-driven page only auto-opens once, even though
+  // _fetchCourseDetail may run again (e.g. after returning from the player).
+  bool _autoOpenedLesson = false;
+
+  // When opened from a "new lesson/quiz" notification, jump straight into that
+  // page's player once the course has loaded.
+  void _maybeAutoOpenLesson() {
+    if (_autoOpenedLesson) return;
+    final targetId = widget.initialPageId;
+    if (targetId == null || targetId.isEmpty || _course == null) return;
+
+    final pages = (_course!['pages'] as List<dynamic>? ?? []);
+    final matches = pages.where((p) => p['id']?.toString() == targetId);
+    if (matches.isEmpty) return;
+    final page = matches.first;
+
+    _autoOpenedLesson = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LessonPlayerScreen(
+            courseId: widget.courseId,
+            courseTitle: widget.courseTitle,
+            lessonId: targetId,
+            lessonTitle: page['title']?.toString() ?? 'Lesson',
+            playlistModules: widget.playlistModules,
+          ),
+        ),
+      );
+      if (result == true || mounted) _fetchCourseDetail();
+    });
   }
 
   Future<void> _loadUserId() async {
@@ -107,6 +146,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         print('✅ Course loaded: ${data['title']}');
         print('📊 Progress: $_completedLessons/$_totalLessons ($_progressPercent%)');
         print('✅ Completed IDs: $_completedPageIds');
+        _maybeAutoOpenLesson();
       } else {
         setState(() {
           _isLoading = false;
