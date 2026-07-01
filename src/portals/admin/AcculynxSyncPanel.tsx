@@ -75,7 +75,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
             ["Last status", status.lastStatus],
             ["Last sync", fmtDate(status.lastSyncAt)],
             ["Jobs processed", status.jobsProcessed ?? 0],
-            ["Facts written", status.factsWritten ?? 0],
+            ["Records synced", status.factsWritten ?? 0],
             ["Unmatched reps", status.unmatchedCount ?? unmatched.length],
           ].map(([k, v]) => (
             <div key={String(k)} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
@@ -95,7 +95,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f1f5f9" }}>
-              {["AccuLynx rep", "Facts", "Link to Miller Storm user"].map((c) => (
+              {["AccuLynx rep", "Records", "Link to Miller Storm user"].map((c) => (
                 <th key={c} style={{ padding: "8px 12px", textAlign: "left", fontSize: 13 }}>{c}</th>
               ))}
             </tr>

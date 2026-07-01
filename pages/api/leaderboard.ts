@@ -104,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // AccuLynx sales leaderboard (window-aware: week / month / year-to-date)
-  const w = (["week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
+  const w = (["day", "week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
   const { start, end } = getWindowRange(w);
 
   const rows = await ScoringFactModel.aggregate([
@@ -120,7 +120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
         revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
     } },
-    { $sort: { won: -1, revenue: -1, filed: -1 } },
+    { $sort: { revenue: -1, won: -1, filed: -1 } },
   ]);
 
   const leaderboard = rows.map((r: any, i: number) => ({

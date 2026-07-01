@@ -10,14 +10,17 @@ export const METRICS: Metric[] = ["filed", "won", "revenue"];
 // UI labels for each metric column.
 export const METRIC_LABELS: Record<Metric, string> = {
   filed: "Claims Filed",
-  won: "Deals Won",
-  revenue: "Revenue",
+  won: "Contracts",
+  revenue: "Contract Amount",
 };
 
-// AccuLynx representative types that earn leaderboard credit, in PREFERENCE order:
-// use the SalesOwner when present, otherwise fall back to the CompanyRepresentative.
-// (Live data shows most jobs carry a CompanyRepresentative but no SalesOwner.)
-export const REP_TYPES = ["SalesOwner", "CompanyRepresentative"];
+// AccuLynx representative types that earn leaderboard credit, in PREFERENCE order.
+// The CompanyRepresentative is AccuLynx's "Primary Salesperson" (present on 100% of
+// jobs). SalesOwner is a separate secondary/manager role that appears on ~12% of jobs
+// and, when present, is a DIFFERENT person — so it must NOT take precedence; keep it
+// only as a fallback for the rare job with no CompanyRepresentative.
+// (Verified against live AccuLynx data via read-only probe, 2026-07-02.)
+export const REP_TYPES = ["CompanyRepresentative", "SalesOwner"];
 
 // Map an AccuLynx milestone (stage) name -> count metric.
 export const STAGE_TO_METRIC: Record<string, Exclude<Metric, "revenue">> = {

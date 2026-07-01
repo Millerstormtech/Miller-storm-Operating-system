@@ -1,8 +1,9 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useState, useCallback } from "react";
 
-type Window = "week" | "month" | "year";
+type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
+  { key: "day", label: "Today" },
   { key: "week", label: "Week to Date" },
   { key: "month", label: "Month to Date" },
   { key: "year", label: "Year to Date" },
@@ -53,7 +54,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
-                {["#", "Rep", "Branch", "Claims Filed", "Deals Won", "Revenue"].map((c) => (
+                {["#", "Rep", "Branch", "Claims Filed", "Contracts", "Contract Amount"].map((c) => (
                   <th key={c} style={{ padding: "10px 14px", textAlign: c === "Rep" || c === "Branch" ? "left" : "center", fontSize: 13, fontWeight: 600 }}>
                     {c}
                   </th>
