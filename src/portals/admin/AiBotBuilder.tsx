@@ -593,7 +593,13 @@ function WorldMapCard() {
 // ─── Overview Panel ──────────────────────────────────────────────────────────
 
 function OverviewPanel({ bot }: { bot: AiBot }) {
-  const totalChars = (bot.trainingLinks || []).reduce((s: number, l: any) => s + (l.chars || 0), 0);
+  // Count ALL training material, not just website/file links — course content
+  // (courseTrainingText) and Q&A were previously ignored, so adding courses
+  // didn't move the counter.
+  const totalChars =
+    (bot.trainingLinks || []).reduce((s: number, l: any) => s + (l.chars || 0), 0) +
+    (bot.courseTrainingText || "").length +
+    (bot.qaItems || []).reduce((s: number, q: any) => s + (q.question?.length || 0) + (q.answer?.length || 0), 0);
   const maxChars = 1_000_000;
 
   const statCards = [
@@ -1282,7 +1288,11 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const totalChars = links.reduce((s, l) => s + (l.chars || 0), 0);
+  // Include course content + Q&A, not just the website/file links below.
+  const totalChars =
+    links.reduce((s, l) => s + (l.chars || 0), 0) +
+    (bot.courseTrainingText || "").length +
+    (bot.qaItems || []).reduce((s, q) => s + (q.question?.length || 0) + (q.answer?.length || 0), 0);
   const maxChars = 1_000_000;
 
   async function addLink() {
