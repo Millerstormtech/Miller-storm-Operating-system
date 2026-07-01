@@ -6,6 +6,7 @@ import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { UserModel } from "../../../src/lib/models/User";
 import { isQuizResultPassing } from "../../../src/lib/quiz";
 import { sendWeeklyTeamDigestEmail } from "../../../src/lib/email";
+import { requireRole } from "../../../src/lib/auth";
 
 // Weekly digest: one email per manager summarizing, per assigned playlist, who
 // has completed / is in progress / has not started their assigned videos.
@@ -13,21 +14,11 @@ import { sendWeeklyTeamDigestEmail } from "../../../src/lib/email";
 // Trigger: the weekly cron (scripts/weekly-digest-cron.js) every Monday, or an
 // admin manually. Authorization mirrors the AccuLynx sync endpoint:
 //   1. x-sync-secret header === ACCULYNX_SYNC_SECRET (server-trusted, for cron)
-//   2. body.userId resolves to an admin (the existing client-trust pattern)
+//   2. a signed admin session (httpOnly cookie or Bearer token), proven by token
 // Pass { dryRun: true } to compute + return a preview without sending email.
-async function authorize(req: NextApiRequest): Promise<boolean> {
+function hasSyncSecret(req: NextApiRequest): boolean {
   const secret = req.headers["x-sync-secret"];
-  if (secret && secret === process.env.ACCULYNX_SYNC_SECRET) return true;
-  const ident = (req.body?.userId as string) || "";
-  if (!ident) return false;
-  await connectMongo();
-  // Accept either a user id or an email so the cron's DIGEST_ADMIN_USER (which
-  // defaults to an email like marketing@millerstorm.com) resolves correctly.
-  const user = await UserModel.findOne({
-    deleted: { $ne: true },
-    $or: [{ id: ident }, { email: ident.toLowerCase() }],
-  }).lean<any>();
-  return user?.role === "admin" || (user?.roles ?? []).includes("admin");
+  return !!secret && secret === process.env.ACCULYNX_SYNC_SECRET;
 }
 
 type Row = { userName: string; status: "completed" | "in_progress" | "not_started"; done: number; total: number };
@@ -68,7 +59,11 @@ function buildTeamTableHtml(playlists: { name: string; total: number; rows: Row[
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).end(); }
-  if (!(await authorize(req))) return res.status(401).json({ error: "unauthorized" });
+  // Cron authenticates with the shared secret; everyone else needs an admin session.
+  if (!hasSyncSecret(req)) {
+    const auth = requireRole(req, res, "admin");
+    if (!auth) return;
+  }
 
   const dryRun = req.body?.dryRun === true;
   await connectMongo();
