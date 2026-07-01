@@ -31,9 +31,16 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserData().then((_) {
-      _startNewChat();
-      _loadChatSessions();
+    _loadUserData().then((_) async {
+      await _loadChatSessions();
+      // Resume the most recent conversation (ChatGPT-style) instead of always
+      // opening a brand-new chat — that made related questions fragment into
+      // separate history entries. The "New Chat" button still starts fresh.
+      if (chatSessions.isNotEmpty) {
+        _loadSession(chatSessions.first);
+      } else {
+        _startNewChat();
+      }
     });
   }
 

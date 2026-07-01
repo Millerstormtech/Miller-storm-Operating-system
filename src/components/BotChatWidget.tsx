@@ -127,7 +127,19 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   async function loadChatSessions() {
     if (!user?.id || !selectedBot) return;
     const res = await fetch(`/api/ai-bots/chats?userId=${user.id}&botId=${selectedBot.id}`);
-    if (res.ok) setChatSessions(await res.json());
+    if (!res.ok) return;
+    const sessions: ChatSession[] = await res.json();
+    setChatSessions(sessions);
+    // ChatGPT-style: when opening with no active conversation, resume the most
+    // recent one instead of stranding the user in a fresh empty chat. Without
+    // this, every visit to the page started a new chat, so related questions
+    // fragmented into separate history entries. This only runs on the initial
+    // load (messages empty) — the post-send refresh keeps the current chat.
+    if (messages.length === 0 && sessions.length > 0) {
+      setMessages(sessions[0].messages || []);
+      setCurrentChatId(sessions[0].chatId);
+      setSuggestionsDismissed(true);
+    }
   }
 
   function startNewChat() {
