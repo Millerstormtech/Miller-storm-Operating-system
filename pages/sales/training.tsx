@@ -24,7 +24,11 @@ const Training: NextPage = () => {
       setIsLoading(true);
       
       try {
-        const coursesRes = await fetch(`/api/courses?userId=${user.id}&userRole=${user.role}&t=${Date.now()}`);
+        // Lightweight list (list=1): card grid + sidebar only need page
+        // metadata (id/title/status/folderId/isQuiz), not full lesson
+        // bodies/transcripts/quizzes. Full course content is loaded on demand
+        // when a course is opened (see enterCourse in TrainingCenter).
+        const coursesRes = await fetch(`/api/courses?userId=${user.id}&userRole=${user.role}&list=1&t=${Date.now()}`);
         if (coursesRes.ok && mounted) {
           const data = await coursesRes.json();
           // Sort courses by order field
