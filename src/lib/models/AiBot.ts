@@ -31,7 +31,7 @@ const aiBotSchema = new Schema({
   courseTrainingText: { type: String, default: "" },
   // Behaviour / Tune AI
   model: { type: String, default: "gpt-4o-mini" },
-  creativity: { type: Number, default: 0 },
+  creativity: { type: Number, default: 30 },
   systemPrompt: { type: String, default: "" },
   // Appearance
   botTitle: { type: String, default: "" },

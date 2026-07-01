@@ -3,6 +3,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
+import { reindexBotInBackground } from "../../../src/lib/rag";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET", "PATCH", "DELETE"])) return;
@@ -47,9 +48,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           for (const page of coursePages) {
             courseTrainingText += `\n--- LESSON: ${page.title} ---\n`;
             
-            // Add lesson content
+            // Add lesson content. page.body is rich-text HTML from the course
+            // builder — strip tags so the model gets clean prose (better
+            // accuracy) and we don't burn the char budget on markup.
             if (page.body) {
-              courseTrainingText += `Lesson Content:\n${page.body}\n\n`;
+              const cleanBody = String(page.body)
+                .replace(/<style[\s\S]*?<\/style>/gi, " ")
+                .replace(/<script[\s\S]*?<\/script>/gi, " ")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/&nbsp;/gi, " ")
+                .replace(/&amp;/gi, "&")
+                .replace(/&lt;/gi, "<")
+                .replace(/&gt;/gi, ">")
+                .replace(/[ \t]+/g, " ")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+              if (cleanBody) courseTrainingText += `Lesson Content:\n${cleanBody}\n\n`;
             }
             
             // Add transcript if available
@@ -83,6 +97,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await botDoc.save();
     const saved = botDoc.toObject();
     console.log('[Master Bot API] Bot saved successfully');
+
+    // Rebuild the RAG embedding index when any training material changed
+    // (course selection is handled above and rewrites courseTrainingText).
+    if (
+      safeUpdates.trainingText !== undefined ||
+      safeUpdates.courseTrainingText !== undefined ||
+      safeUpdates.qaItems !== undefined ||
+      safeUpdates.selectedPages !== undefined ||
+      safeUpdates.selectedCourses !== undefined ||
+      safeUpdates.selectedFolders !== undefined
+    ) {
+      reindexBotInBackground(id);
+    }
+
     return res.status(200).json(normalizeBot(saved));
   }
 

@@ -5,6 +5,7 @@ import path from "path";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
+import { reindexBotInBackground } from "../../../src/lib/rag";
 
 export const config = { api: { bodyParser: false } };
 
@@ -54,6 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       bot.trainingLinks.push(newLink);
       bot.trainingText = (bot.trainingText || "") + `\n\n[File: ${file.originalFilename}]\n${content}`;
       await bot.save();
+      reindexBotInBackground(bot.id);
 
       return res.status(200).json({ link: newLink, extractedChars: content.length });
     } catch (error) {

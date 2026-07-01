@@ -3,6 +3,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { BotChatModel } from "../../../src/lib/models/BotChat";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
+import { retrieveRelevant } from "../../../src/lib/rag";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["POST"])) return;
@@ -27,27 +28,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     systemContent += `\n\nIMPORTANT: You are limited to the topics and subject matter covered in the training content below. Always respond naturally to greetings, small talk, and conversational messages (like "hi", "hello", "how are you", "thanks", etc.). For actual questions or information requests, only answer if they are clearly related to the topics in the training content. If someone asks about a completely unrelated subject, politely say: "I can only assist with topics covered in my training material." Do not answer unrelated factual or technical questions.`;
   }
 
-  if (bot.trainingText?.trim()) {
-    systemContent += `\n\nTRAINING CONTENT:\n${bot.trainingText}`;
+  // Prefer RAG: embed the user's latest question and inject ONLY the most
+  // relevant chunks of training material. This is what makes large courses
+  // accurate — the model sees the pertinent lessons, not a truncated blob.
+  // Falls back to the full-material approach if the bot isn't indexed yet or
+  // retrieval/embeddings fail, so nothing breaks.
+  const lastUserMsg =
+    [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
+  let usedRag = false;
+  if (hasTrainingData) {
+    try {
+      const relevant = await retrieveRelevant(botId, lastUserMsg, 12, 60000);
+      if (relevant.length) {
+        systemContent += `\n\nRELEVANT TRAINING CONTENT:\n${relevant.join("\n\n---\n\n")}`;
+        usedRag = true;
+      }
+    } catch (e) {
+      console.error("[RAG] retrieval failed, using full training text:", e);
+    }
   }
 
-  if (bot.courseTrainingText?.trim()) {
-    const maxCourseChars = 60000; // ~15k tokens, safe for gpt-4o-mini 128k context
-    const courseText = bot.courseTrainingText.length > maxCourseChars
-      ? bot.courseTrainingText.substring(0, maxCourseChars) + "\n\n[Content truncated due to length...]"
-      : bot.courseTrainingText;
-    systemContent += `\n\nCOURSE TRAINING CONTENT:\n${courseText}`;
+  if (!usedRag) {
+    // Fallback: share one large budget across all sources (gpt-4o-mini ~128k
+    // token window ≈ 500k chars). Q&A first (small, high-signal), then docs,
+    // then course content.
+    const MAX_TRAINING_CHARS = 300000;
+    let remaining = MAX_TRAINING_CHARS;
+    const addSection = (label: string, text?: string) => {
+      const t = (text || "").trim();
+      if (!t || remaining <= 0) return;
+      const slice = t.length > remaining
+        ? t.substring(0, remaining) + "\n\n[Content truncated due to length...]"
+        : t;
+      remaining -= slice.length;
+      systemContent += `\n\n${label}:\n${slice}`;
+    };
+
+    if (bot.qaItems?.length > 0) {
+      const qaText = bot.qaItems
+        .filter((q: any) => q.question && q.answer)
+        .map((q: any) => `Q: ${q.question}\nA: ${q.answer}`)
+        .join("\n\n");
+      addSection("FREQUENTLY ASKED QUESTIONS", qaText);
+    }
+    addSection("TRAINING CONTENT", bot.trainingText);
+    addSection("COURSE TRAINING CONTENT", bot.courseTrainingText);
   }
 
-  if (bot.qaItems?.length > 0) {
-    const qaText = bot.qaItems
-      .filter((q: any) => q.question && q.answer)
-      .map((q: any) => `Q: ${q.question}\nA: ${q.answer}`)
-      .join("\n\n");
-    if (qaText) systemContent += `\n\nFREQUENTLY ASKED QUESTIONS:\n${qaText}`;
-  }
-
-  const temperature = (bot.creativity || 0) / 100;
+  // Creativity 0 = rigid, near-deterministic answers (the old default nobody
+  // tuned). When it was never set above 0, fall back to a balanced 30 so the
+  // bot answers naturally while staying grounded in its training material.
+  const creativity = bot.creativity && bot.creativity > 0 ? bot.creativity : 30;
+  const temperature = creativity / 100;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {

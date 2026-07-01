@@ -1808,7 +1808,7 @@ const DEFAULT_PROMPTS: Record<string, string> = {
 
 function TunePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean }) {
   const [model, setModel] = useState(bot.model || "gpt-4o-mini");
-  const [creativity, setCreativity] = useState(bot.creativity || 0);
+  const [creativity, setCreativity] = useState(bot.creativity || 30);
   const [systemPrompt, setSystemPrompt] = useState(bot.systemPrompt || "");
   const [selectedPreset, setSelectedPreset] = useState("General Customer Service");
   const { saved: tuneSaved, flash: tuneFlash } = useSaved();

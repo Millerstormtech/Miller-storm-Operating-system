@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
+import { reindexBotInBackground } from "../../../src/lib/rag";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("=== CRAWL API CALLED ===");
@@ -76,6 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log("Saving bot with new training data...");
     await bot.save();
     console.log("Bot saved successfully");
+    reindexBotInBackground(bot.id);
 
     return res.status(200).json({ link: newLink, extractedChars: content.length });
   } catch (error: any) {
