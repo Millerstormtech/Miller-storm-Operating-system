@@ -1220,7 +1220,6 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
                   <th style={thStyle}>User</th>
                   <th style={thStyle}>Role</th>
                   <th style={thStyle}>Language</th>
-                  <th style={thStyle}>Model</th>
                   <th style={thStyle}>Messages</th>
                   <th style={thStyle}>Action</th>
                 </tr>
@@ -1253,11 +1252,6 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
                         </span>
                       </td>
                       <td style={tdStyle}><span style={{ fontSize: "12px", color: "#6b7280" }}>English</span></td>
-                      <td style={tdStyle}>
-                        <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 600, color: "#374151" }}>
-                          🤖 {bot.model || "gpt-4o-mini"}
-                        </span>
-                      </td>
                       <td style={tdStyle}>{chat.messages?.length || 0}</td>
                       <td style={tdStyle}>
                         <button onClick={() => setSelectedChat(chat)}
