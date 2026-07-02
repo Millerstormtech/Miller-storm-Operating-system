@@ -93,6 +93,30 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [showCourseMenu, setShowCourseMenu] = useState(false);
   const [mobileCourseScreen, setMobileCourseScreen] = useState<'overview' | 'lesson'>('overview');
   const [courseBot, setCourseBot] = useState<{ trainingText?: string; selectedPages?: string[] } | null>(null);
+  // The course list is loaded "summary only" (no lesson bodies/transcripts/quizzes)
+  // for speed; when a course is opened we fetch its full content on demand.
+  const [isCourseLoading, setIsCourseLoading] = useState(false);
+
+  // Open a course: the list only carries lightweight page metadata, so fetch the
+  // full course (lesson bodies, transcripts, quiz questions) from the detail
+  // endpoint before showing CourseView. `initialPageId` is computed by the caller
+  // from the summary metadata (which lesson to land on).
+  async function enterCourse(baseCourse: Course, initialPageId: string | null, playlist: Playlist | null = null) {
+    setViewingPlaylist(playlist);
+    setActivePageId(initialPageId);
+    setCourseViewInitialized(null);
+    setIsCourseLoading(true);
+    try {
+      const res = await fetch(`/api/courses/${baseCourse.id}${user?.id ? `?userId=${user.id}` : ''}`);
+      const full = res.ok ? await res.json() : null;
+      setSelectedCourse(full && full.id ? full : baseCourse);
+    } catch (err) {
+      console.error('Failed to load full course, falling back to summary data:', err);
+      setSelectedCourse(baseCourse);
+    } finally {
+      setIsCourseLoading(false);
+    }
+  }
 
   // Refs for video sequencing (must live at top level, not inside CourseView)
   const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
@@ -123,8 +147,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           course.pages?.some(page => page.id === lessonId)
         );
         if (courseWithLesson) {
-          setSelectedCourse(courseWithLesson);
-          setActivePageId(lessonId);
+          enterCourse(courseWithLesson, lessonId);
         }
       }
     }
@@ -568,7 +591,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           )}
         </button>
       </div>
-      {selectedCourse ? (
+      {isCourseLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+            <div style={{ color: '#6b7280' }}>Loading course...</div>
+          </div>
+        </div>
+      ) : selectedCourse ? (
         CourseView()
       ) : (
         TabContent()
@@ -610,8 +640,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     className="training-card"
                     onClick={() => {
                       const firstPage = (course.pages ?? []).filter(p => p.status === 'published')[0];
-                      setActivePageId(firstPage?.id ?? null);
-                      setSelectedCourse(course);
+                      enterCourse(course, firstPage?.id ?? null);
                     }}
                     style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
                   >
@@ -699,12 +728,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                               const playlistPages = (course.pages ?? [])
                                 .filter(p => p.status === 'published' && playlist.selectedModules.includes(p.id))
                                 .sort((a, b) => playlist.selectedModules.indexOf(a.id) - playlist.selectedModules.indexOf(b.id));
-                              setActivePageId(playlistPages[0]?.id ?? null);
-                              setViewingPlaylist({
+                              enterCourse(course, playlistPages[0]?.id ?? null, {
                                 ...playlist,
                                 id: playlist._id || playlist.id,
                               });
-                              setSelectedCourse(course);
                             }
                           }}
                         >
@@ -800,9 +827,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                               const playlistPages = (course.pages ?? [])
                                 .filter(p => p.status === 'published' && assignment.selectedModules.includes(p.id))
                                 .sort((a, b) => assignment.selectedModules.indexOf(a.id) - assignment.selectedModules.indexOf(b.id));
-                              setActivePageId(playlistPages[0]?.id ?? null);
-                              setViewingPlaylist(playlist);
-                              setSelectedCourse(course);
+                              enterCourse(course, playlistPages[0]?.id ?? null, playlist);
                             }
                           }}
                         >
