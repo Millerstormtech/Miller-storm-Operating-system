@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 type OrgUser = {
@@ -72,8 +72,8 @@ function Node({ user, isYou }: { user: OrgUser; isYou: boolean }) {
   );
 }
 
-const ZOOM_MIN = 0.4;
-const ZOOM_MAX = 1.5;
+const ZOOM_MIN = 0.2;
+const ZOOM_MAX = 1.6;
 const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 100) / 100));
 
 export function TeamStructure() {
@@ -82,22 +82,30 @@ export function TeamStructure() {
   const [error, setError] = useState(false);
   const [query, setQuery] = useState("");
   const [zoom, setZoom] = useState(1);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const wheelOff = useRef<(() => void) | null>(null);
   const [hovered, setHovered] = useState(false);
   const drag = useRef<{ x: number; y: number; sl: number; st: number } | null>(null);
 
-  // Zoom with Ctrl/⌘ + mouse wheel (also trackpad pinch, which browsers report
-  // as ctrl+wheel). Non-passive listener so we can preventDefault the page zoom.
-  useEffect(() => {
-    const el = scrollRef.current;
+  // Callback ref: attach the wheel-zoom listener exactly when the scroll
+  // container mounts. (A plain useEffect ran once before the chart existed, so
+  // the listener never attached and Ctrl+scroll zoom did nothing.)
+  const setScrollEl = useCallback((el: HTMLDivElement | null) => {
+    wheelOff.current?.();
+    wheelOff.current = null;
+    scrollRef.current = el;
     if (!el) return;
+    // Plain wheel scrolls/pans the chart (native). Ctrl/⌘ + wheel (and trackpad
+    // pinch, reported as ctrl+wheel) zooms ONLY the chart — we scale .tree and
+    // preventDefault the browser's page zoom, so the sidebar, page header and
+    // stat cards stay fixed.
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return; // plain wheel = normal scroll
+      if (!e.ctrlKey && !e.metaKey) return; // plain wheel = scroll/pan
       e.preventDefault();
       setZoom((z) => clampZoom(z + (e.deltaY < 0 ? 0.08 : -0.08)));
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    wheelOff.current = () => el.removeEventListener("wheel", onWheel);
   }, []);
 
   // Zoom with the keyboard while hovering the chart: +/- to zoom, 0 to reset.
@@ -213,7 +221,7 @@ export function TeamStructure() {
       ) : (
         <div
           className="chart-scroll"
-          ref={scrollRef}
+          ref={setScrollEl}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => { setHovered(false); onDragEnd(); }}
           onMouseDown={onDragStart}
