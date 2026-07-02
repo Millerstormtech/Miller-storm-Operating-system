@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 type OrgUser = {
@@ -72,11 +72,66 @@ function Node({ user, isYou }: { user: OrgUser; isYou: boolean }) {
   );
 }
 
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 1.5;
+const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 100) / 100));
+
 export function TeamStructure() {
   const { user } = useAuth();
   const [users, setUsers] = useState<OrgUser[] | null>(null);
   const [error, setError] = useState(false);
   const [query, setQuery] = useState("");
+  const [zoom, setZoom] = useState(1);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const drag = useRef<{ x: number; y: number; sl: number; st: number } | null>(null);
+
+  // Zoom with Ctrl/⌘ + mouse wheel (also trackpad pinch, which browsers report
+  // as ctrl+wheel). Non-passive listener so we can preventDefault the page zoom.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return; // plain wheel = normal scroll
+      e.preventDefault();
+      setZoom((z) => clampZoom(z + (e.deltaY < 0 ? 0.08 : -0.08)));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  // Zoom with the keyboard while hovering the chart: +/- to zoom, 0 to reset.
+  useEffect(() => {
+    if (!hovered) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+      if (e.key === "+" || e.key === "=") { e.preventDefault(); setZoom((z) => clampZoom(z + 0.1)); }
+      else if (e.key === "-" || e.key === "_") { e.preventDefault(); setZoom((z) => clampZoom(z - 0.1)); }
+      else if (e.key === "0") { e.preventDefault(); setZoom(1); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hovered]);
+
+  // Click-and-drag to pan around the chart (easier than scrollbars).
+  function onDragStart(e: React.MouseEvent) {
+    const el = scrollRef.current;
+    if (!el) return;
+    drag.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop };
+    el.style.cursor = "grabbing";
+  }
+  function onDragMove(e: React.MouseEvent) {
+    const el = scrollRef.current;
+    if (!el || !drag.current) return;
+    el.scrollLeft = drag.current.sl - (e.clientX - drag.current.x);
+    el.scrollTop = drag.current.st - (e.clientY - drag.current.y);
+  }
+  function onDragEnd() {
+    const el = scrollRef.current;
+    if (el) el.style.cursor = "grab";
+    drag.current = null;
+  }
 
   useEffect(() => {
     let active = true;
@@ -156,8 +211,16 @@ export function TeamStructure() {
       {nothing ? (
         <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>No matching people.</div>
       ) : (
-        <div className="chart-scroll">
-          <div className="tree">
+        <div
+          className="chart-scroll"
+          ref={scrollRef}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => { setHovered(false); onDragEnd(); }}
+          onMouseDown={onDragStart}
+          onMouseMove={onDragMove}
+          onMouseUp={onDragEnd}
+        >
+          <div className="tree" style={{ zoom }}>
             {/* Tier 1: Admins */}
             {admins.length > 0 && (
               <div className="admin-row">
@@ -214,7 +277,7 @@ export function TeamStructure() {
       )}
 
       <style jsx>{`
-        .chart-scroll { overflow-x: auto; padding: 8px 0 12px; }
+        .chart-scroll { overflow: auto; padding: 8px 0 12px; cursor: grab; user-select: none; }
         .tree { display: inline-flex; flex-direction: column; align-items: center; min-width: 100%; }
         .admin-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
         .trunk { width: 2px; height: 26px; background: #d7dbe0; }
