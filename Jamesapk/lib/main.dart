@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/firebase_messaging_service.dart';
@@ -35,7 +36,20 @@ import 'screens/manager_training_leaderboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Android 15 (target SDK 35) enforces edge-to-edge display. Opt in globally
+  // so the app draws behind the system bars for ALL users (fixes Play Console's
+  // "edge-to-edge may not display for all users"). We set only the system-bar
+  // ICON brightness — not the bar COLORS — because setStatusBarColor /
+  // setNavigationBarColor are deprecated on Android 15 and would trigger the
+  // "deprecated APIs for edge-to-edge" warning. Under edge-to-edge the bars are
+  // transparent automatically, so no colors are needed.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
+
   try {
     // Initialize Firebase with platform-specific options
     await Firebase.initializeApp(
