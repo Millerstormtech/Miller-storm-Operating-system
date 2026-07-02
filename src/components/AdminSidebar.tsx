@@ -9,6 +9,7 @@ const allSidebarItems = [
   { id: "businessUnits", label: "Business Planner Executive View", toggleKey: "businessUnits" },
   { id: "trainingExecutive", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "userManagement", label: "User Management", toggleKey: "userManagement" },
+  { id: "teamStructure", label: "Team Structure", toggleKey: "teamStructure" },
   { id: "courseManagement", label: "Course Builder", toggleKey: "courseManagement" },
   { id: "appsTools", label: "Apps & Tool Builder", toggleKey: "appsTools" },
   { id: "stormChat", label: "StormChat", toggleKey: "stormChat" },

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 const baseItems = [
   { id: "dashboard", label: "Dashboard", toggleKey: "dashboard" },
+  { id: "team-structure", label: "Team Structure", toggleKey: "teamStructure" },
   { id: "plan", label: "Business Planner", toggleKey: "plan" },
   { id: "training", label: "Training Center", toggleKey: "training" },
   { id: "aiChat", label: "Jay's AI Clone", toggleKey: "aiChat" },

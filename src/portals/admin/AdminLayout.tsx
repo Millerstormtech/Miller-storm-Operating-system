@@ -25,6 +25,7 @@ type AdminViewId =
   | "messaging"
   | "leaderboard"
   | "emailConfig"
+  | "teamStructure"
   | "tickets";
 
 type AdminLayoutProps = {
