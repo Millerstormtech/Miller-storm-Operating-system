@@ -76,25 +76,25 @@ export function createClient(apiKey: string) {
   const fetchFinancials = (jobId: string) => get(`/jobs/${jobId}/financials`);
 
   // Paginate /users for one status filter, merging into `map`.
-  async function loadUsersInto(map: Record<string, { email: string; name: string }>, extra: Record<string, string>) {
+  async function loadUsersInto(map: Record<string, { email: string; name: string; phone: string }>, extra: Record<string, string>) {
     let pageStartIndex = 0;
     for (;;) {
       const page = await get("/users", { pageSize: USERS_PAGE, pageStartIndex, ...extra });
       const items = page?.items ?? [];
       for (const u of items) {
         const name = u.displayName || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email || u.id;
-        map[u.id] = { email: (u.email || "").toLowerCase(), name };
+        map[u.id] = { email: (u.email || "").toLowerCase(), name, phone: u.mobilePhone || u.phone || "" };
       }
       if (items.length < USERS_PAGE) break;
       pageStartIndex += USERS_PAGE;
     }
   }
 
-  // All users -> map of AccuLynx userId -> { email, name }.
+  // All users -> map of AccuLynx userId -> { email, name, phone }.
   // NOTE: /users returns only ACTIVE users by default; reps who were deactivated still
   // own old jobs, so we ALSO pull status=Inactive (else they show as "Unknown Rep").
-  async function fetchUserMap(): Promise<Record<string, { email: string; name: string }>> {
-    const map: Record<string, { email: string; name: string }> = {};
+  async function fetchUserMap(): Promise<Record<string, { email: string; name: string; phone: string }>> {
+    const map: Record<string, { email: string; name: string; phone: string }> = {};
     await loadUsersInto(map, {});                      // active users
     await loadUsersInto(map, { status: "Inactive" }); // former/deactivated reps
     return map;

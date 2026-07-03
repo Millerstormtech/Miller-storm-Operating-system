@@ -9,6 +9,7 @@ import type { AcculynxClient } from "./client";
 import { mapJobToFacts } from "./mapping";
 import type { MappingConfig } from "./mapping";
 import { getWindowRange } from "./windows";
+import { normEmail, normPhone } from "../leaderboard/identity";
 
 const MAPPING_CFG: MappingConfig = {
   repTypes: REP_TYPES,
@@ -146,6 +147,8 @@ async function syncOneLocation(
         // Resolve rep: AccuLynx id -> Miller Storm user (by acculynxUserId, else email).
         let repUserId: string | null = null;
         let repName = f.repExternalId ? (userMap[f.repExternalId]?.name ?? "Unknown Rep") : "Unassigned";
+        const repEmail = f.repExternalId ? normEmail(userMap[f.repExternalId]?.email) : "";
+        const repPhone = f.repExternalId ? normPhone(userMap[f.repExternalId]?.phone) : "";
 
         if (f.repExternalId) {
           const email = userMap[f.repExternalId]?.email;
@@ -165,7 +168,7 @@ async function syncOneLocation(
             { factKey: f.factKey },
             { $set: {
                 jobId: f.jobId, metric: f.metric, repExternalId: f.repExternalId,
-                repUserId, repNameSnapshot: repName, value: f.value,
+                repUserId, repNameSnapshot: repName, repEmail, repPhone, value: f.value,
                 occurredAt: f.occurredAt, location: f.location, city: f.city,
                 sourceCompanyId: companyId, lastSyncedAt: new Date(),
               } },
