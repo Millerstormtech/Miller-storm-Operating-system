@@ -8,6 +8,9 @@ import { requireUser, allowMethods } from "../../src/lib/auth";
 import { ScoringFactModel } from "../../src/lib/models/ScoringFact";
 import { getWindowRange } from "../../src/lib/acculynx/windows";
 import type { Window } from "../../src/lib/acculynx/windows";
+import { RepCardKnockFactModel } from "../../src/lib/models/RepCardKnockFact";
+import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
+import { normEmail, normName, normPhone } from "../../src/lib/leaderboard/identity";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -103,37 +106,66 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // AccuLynx sales leaderboard (window-aware: week / month / year-to-date)
-  const w = (["week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
+  // Union sales leaderboard: RepCard Verified Door Knocks (spine) + AccuLynx deals.
+  const w = (["day", "week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
   const { start, end } = getWindowRange(w);
 
-  const rows = await ScoringFactModel.aggregate([
+  // AccuLynx deals aggregated per rep for the window.
+  const acxRaw = await ScoringFactModel.aggregate([
     { $match: { occurredAt: { $gte: start, $lte: end }, repExternalId: { $ne: null } } },
-    // Deterministic order so $last below means "most recent fact" (newest name/branch/link).
     { $sort: { occurredAt: 1, _id: 1 } },
     { $group: {
         _id: "$repExternalId",
-        repName: { $last: "$repNameSnapshot" },
-        repUserId: { $last: "$repUserId" },
-        branch: { $last: "$location" },
+        email: { $last: "$repEmail" }, phone: { $last: "$repPhone" },
+        name: { $last: "$repNameSnapshot" }, branch: { $last: "$location" },
         filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
         won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
         revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
     } },
-    { $sort: { won: -1, revenue: -1, filed: -1 } },
   ]);
 
-  const leaderboard = rows.map((r: any, i: number) => ({
-    rank: i + 1,
-    repExternalId: r._id,
-    repUserId: r.repUserId ?? null,
-    name: r.repName,
-    branch: r.branch,
-    filed: r.filed,
-    won: r.won,
-    revenue: r.revenue,
-    linked: Boolean(r.repUserId),
+  // RepCard verified knocks aggregated per rep for the window.
+  const rcRaw = await RepCardKnockFactModel.aggregate([
+    { $match: { occurredAt: { $gte: start, $lte: end } } },
+    { $sort: { occurredAt: 1, _id: 1 } },
+    { $group: {
+        _id: "$repcardUserId",
+        email: { $last: "$repEmail" }, phone: { $last: "$repPhone" },
+        name: { $last: "$repNameSnapshot" }, branch: { $last: "$location" },
+        verifiedKnocks: { $sum: "$verifiedKnocks" },
+    } },
+  ]);
+
+  // Normalize keys, then merge (RepCard spine, email->phone->name cascade).
+  const acx = acxRaw.map((r: any) => ({
+    repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
+    nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
+    filed: r.filed, won: r.won, revenue: r.revenue,
   }));
+  const rc = rcRaw.map((r: any) => ({
+    repcardUserId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
+    nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
+    verifiedKnocks: r.verifiedKnocks,
+  }));
+  const merged = mergeLeaderboard(acx, rc);
+
+  // Light app enrichment (never gating): match a Miller Storm user by email for
+  // the profile photo + the "You" highlight.
+  const appUsers = await UserModel.find({ deleted: { $ne: true } }).select("id email headshotUrl").lean();
+  const byEmail = new Map<string, any>();
+  for (const u of appUsers) { const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u); }
+
+  merged.sort((a, b) => b.revenue - a.revenue || b.verifiedKnocks - a.verifiedKnocks || b.won - a.won || b.filed - a.filed);
+
+  const leaderboard = merged.map((m, i) => {
+    const u = m.email ? byEmail.get(m.email) : null;
+    return {
+      rank: i + 1, id: m.id, name: m.name, branch: m.branch,
+      verifiedKnocks: m.verifiedKnocks, filed: m.filed, won: m.won, revenue: m.revenue,
+      repUserId: u ? (u as any).id : null, headshotUrl: u ? (u as any).headshotUrl || "" : "",
+      source: m.source,
+    };
+  });
 
   return res.status(200).json({ window: w, leaderboard });
 }

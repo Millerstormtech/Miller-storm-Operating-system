@@ -1,8 +1,9 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useState, useCallback } from "react";
 
-type Window = "week" | "month" | "year";
+type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
+  { key: "day", label: "Today" },
   { key: "week", label: "Week to Date" },
   { key: "month", label: "Month to Date" },
   { key: "year", label: "Year to Date" },
@@ -53,7 +54,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
-                {["#", "Rep", "Branch", "Claims Filed", "Deals Won", "Revenue"].map((c) => (
+                {["#", "Rep", "Branch", "Verified Door Knocks", "Claims Filed", "Contracts", "Contract Amount"].map((c) => (
                   <th key={c} style={{ padding: "10px 14px", textAlign: c === "Rep" || c === "Branch" ? "left" : "center", fontSize: 13, fontWeight: 600 }}>
                     {c}
                   </th>
@@ -62,21 +63,20 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No data for this period yet.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No data for this period yet.</td></tr>
               ) : rows.map((r) => {
                 const isYou = currentUserId && r.repUserId === currentUserId;
                 return (
-                  <tr key={r.repExternalId} style={{ borderBottom: "1px solid #e5e7eb", background: isYou ? "#eff6ff" : "#fff" }}>
+                  <tr key={r.id} style={{ borderBottom: "1px solid #e5e7eb", background: isYou ? "#eff6ff" : "#fff" }}>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700 }}>{r.rank}</td>
                     <td style={{ padding: "10px 14px", fontWeight: 600 }}>
-                      {r.name}{isYou ? " (You)" : ""}
-                      {!r.linked && (
-                        <span title="Not linked to a Miller Storm user" style={{ marginLeft: 6, fontSize: 11, color: "#b45309", background: "#fef3c7", padding: "1px 6px", borderRadius: 8 }}>
-                          unlinked
-                        </span>
-                      )}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} /> : null}
+                        <span>{r.name}{isYou ? " (You)" : ""}</span>
+                      </span>
                     </td>
                     <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.branch}</td>
+                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center" }}>{r.filed}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.won}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#16a34a" }}>{fmtMoney(r.revenue)}</td>

@@ -1,10 +1,13 @@
 // src/lib/models/SyncState.ts
 import { Schema, model, models } from "mongoose";
 
-// Single document (key: "acculynx") holding the sync watermark + health.
+// One document PER LOCATION, key: "acculynx:<companyId>", holding that location's sync
+// watermark + health. (A legacy single-location key "acculynx" may still exist from the
+// pre-multi-location sync; the status endpoint reads the per-location "acculynx:*" docs.)
 const syncStateSchema = new Schema(
   {
     key: { type: String, required: true, unique: true, default: "acculynx" },
+    branch: { type: String, default: "" },         // human branch label for this location
     lastSyncAt: { type: Date, default: null },     // incremental watermark
     lastFullSyncAt: { type: Date, default: null },
     lastStatus: { type: String, enum: ["ok", "partial", "failed", "never"], default: "never" },

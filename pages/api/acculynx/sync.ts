@@ -22,6 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const mode = req.body?.mode === "backfill" ? "backfill" : "incremental";
   const dryRun = req.body?.dryRun === true;
-  const result = await runSync({ mode, dryRun });
+  // Optional cap on jobs per location — used only for a bounded dry-run smoke test.
+  const limitJobs = Number.isInteger(req.body?.limitJobs) && req.body.limitJobs > 0 ? req.body.limitJobs : undefined;
+  const result = await runSync({ mode, dryRun, limitJobs });
   return res.status(200).json(result);
 }

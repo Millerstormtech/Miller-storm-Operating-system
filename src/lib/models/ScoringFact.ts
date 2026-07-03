@@ -11,9 +11,13 @@ const scoringFactSchema = new Schema(
     repExternalId: { type: String, index: true }, // AccuLynx SalesOwner user id
     repUserId: { type: String, default: null },    // linked Miller Storm user id (nullable)
     repNameSnapshot: { type: String, default: "" }, // name shown even when unmatched
+    repEmail: { type: String, default: "", index: true }, // normalized; leaderboard union join key
+    repPhone: { type: String, default: "" },              // normalized 10-digit; fallback join key
     value: { type: Number, default: 0 },            // 1 for filed/won; dollars for revenue
     occurredAt: { type: Date, required: true, index: true },
-    location: { type: String, default: "Unknown" },
+    location: { type: String, default: "Unknown" }, // branch label (AccuLynx location name, cleaned)
+    city: { type: String, default: "" },            // customer city (for a future DFW -> Dallas/Fort Worth split)
+    sourceCompanyId: { type: String, index: true }, // AccuLynx company (location) this fact was synced from
     lastSyncedAt: { type: Date },
   },
   { timestamps: true }

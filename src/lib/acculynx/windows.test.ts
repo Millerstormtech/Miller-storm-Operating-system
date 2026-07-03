@@ -8,6 +8,13 @@ import { getWindowRange } from "./windows.ts";
 // = 2026-06-15T05:00:00Z. Month began 2026-06-01 00:00 CDT = 2026-06-01T05:00:00Z.
 const now = new Date("2026-06-18T15:00:00Z");
 
+test("day range starts today 00:00 Central", () => {
+  // Thu 2026-06-18 00:00 CDT = 2026-06-18T05:00:00Z
+  const { start, end } = getWindowRange("day", now);
+  assert.equal(start.toISOString(), "2026-06-18T05:00:00.000Z");
+  assert.equal(end.getTime(), now.getTime());
+});
+
 test("week range starts Monday 00:00 Central", () => {
   const { start, end } = getWindowRange("week", now);
   assert.equal(start.toISOString(), "2026-06-15T05:00:00.000Z");

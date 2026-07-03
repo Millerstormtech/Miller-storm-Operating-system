@@ -21,30 +21,32 @@ const milestoneHistory = { items: [
 const representatives = { items: [
   { type: "Additional", user: { id: "U-EXTRA" } },
   { type: "SalesOwner", user: { id: "U-SALES" } },
+  { type: "CompanyRepresentative", user: { id: "U-COMPANY" } },
 ] };
 const financials = { approvedJobValue: 90522.11 };
 
-test("pickRepUserId prefers SalesOwner", () => {
-  assert.equal(pickRepUserId(representatives, REP_TYPES), "U-SALES");
+test("pickRepUserId prefers CompanyRepresentative (AccuLynx 'Primary Salesperson') over SalesOwner", () => {
+  assert.equal(pickRepUserId(representatives, REP_TYPES), "U-COMPANY");
 });
 
-test("pickRepUserId falls back to CompanyRepresentative when no SalesOwner", () => {
+test("pickRepUserId falls back to SalesOwner when no CompanyRepresentative", () => {
   const reps = { items: [
     { type: "Additional", user: { id: "U-EXTRA" } },
-    { type: "CompanyRepresentative", user: { id: "U-COMPANY" } },
+    { type: "SalesOwner", user: { id: "U-SALES" } },
   ] };
-  assert.equal(pickRepUserId(reps, REP_TYPES), "U-COMPANY");
+  assert.equal(pickRepUserId(reps, REP_TYPES), "U-SALES");
 });
 
 test("maps a job to filed/won/revenue facts with correct dates", () => {
-  const facts = mapJobToFacts({ job, milestoneHistory, financials, representatives }, cfg);
+  const facts = mapJobToFacts({ job, milestoneHistory, financials, representatives }, cfg, "West Texas");
   const byMetric = Object.fromEntries(facts.map((f) => [f.metric, f]));
 
   assert.equal(byMetric.filed.factKey, buildFactKey("JOB1", "filed"));
   assert.equal(byMetric.filed.occurredAt.toISOString(), "2025-07-29T05:00:00.000Z");
   assert.equal(byMetric.filed.value, 1);
-  assert.equal(byMetric.filed.repExternalId, "U-SALES");
-  assert.equal(byMetric.filed.location, "Lubbock");
+  assert.equal(byMetric.filed.repExternalId, "U-COMPANY");
+  assert.equal(byMetric.filed.location, "West Texas"); // branch label (injected), not the city
+  assert.equal(byMetric.filed.city, "Lubbock");        // customer city (from the job), kept separately
 
   assert.equal(byMetric.won.occurredAt.toISOString(), "2025-07-30T05:00:00.000Z");
 
@@ -56,6 +58,6 @@ test("no Prospect milestone => no filed fact", () => {
   const facts = mapJobToFacts({
     job, representatives, financials,
     milestoneHistory: { items: [{ name: "Lead", date: "2025-07-29T05:00:00Z" }] },
-  }, cfg);
+  }, cfg, "West Texas");
   assert.equal(facts.find((f) => f.metric === "filed"), undefined);
 });
