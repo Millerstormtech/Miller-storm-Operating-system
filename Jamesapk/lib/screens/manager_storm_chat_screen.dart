@@ -168,18 +168,50 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
         await _fetchGroups();
         await _fetchUnreadCounts();
       },
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: groups.length,
-        itemBuilder: (context, index) {
-          final group = groups[index];
-          return _buildGroupCard(group);
+      child: Builder(
+        builder: (context) {
+          // Nest subgroups under their parent (orphan subgroups whose parent
+          // isn't in the user's list show at the top level).
+          final byId = { for (final g in groups) g['_id'].toString(): g };
+          final topLevel = groups.where((g) {
+            final pid = (g['parentGroupId'] ?? '').toString();
+            return pid.isEmpty || !byId.containsKey(pid);
+          }).toList();
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: topLevel.length,
+            itemBuilder: (context, index) {
+              final group = topLevel[index];
+              final subs = groups
+                  .where((g) => (g['parentGroupId'] ?? '').toString() == group['_id'].toString())
+                  .toList();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildGroupCard(group),
+                  ...subs.map((sub) => Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Row(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4, bottom: 6),
+                              child: Text('↳', style: TextStyle(color: Colors.grey[400], fontSize: 18)),
+                            ),
+                            Expanded(child: _buildGroupCard(sub, isSubgroup: true)),
+                          ],
+                        ),
+                      )),
+                ],
+              );
+            },
+          );
         },
       ),
     );
   }
 
-  Widget _buildGroupCard(dynamic group) {
+  Widget _buildGroupCard(dynamic group, {bool isSubgroup = false}) {
     final name = group['name'] ?? 'Unnamed Group';
     final description = group['description'] ?? '';
     final imageUrl = group['imageUrl'] ?? '';
@@ -194,9 +226,9 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
         : '$memberCount member${memberCount == 1 ? '' : 's'}';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: isSubgroup ? 6 : 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isSubgroup ? const Color(0xFFFAFAFA) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(

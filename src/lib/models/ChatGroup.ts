@@ -9,6 +9,9 @@ export interface IChatGroup extends Document {
   onlyAdminCanChat: boolean;
   createdBy: string;
   order: number;
+  // When set, this group is a SUBGROUP nested under the parent group's _id.
+  // Empty/absent = a top-level group.
+  parentGroupId: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +49,11 @@ const ChatGroupSchema = new Schema<IChatGroup>(
     order: {
       type: Number,
       default: 0
+    },
+    parentGroupId: {
+      type: String,
+      default: '',
+      index: true
     }
   },
   {

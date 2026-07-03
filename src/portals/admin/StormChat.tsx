@@ -18,6 +18,7 @@ type ChatGroup = {
   admins: string[];
   onlyAdminCanChat: boolean;
   createdBy: string;
+  parentGroupId?: string;
   createdAt: Date;
 };
 
@@ -41,7 +42,9 @@ export function StormChatManagement() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [selectedAdmins, setSelectedAdmins] = useState<string[]>([]);
   const [onlyAdminCanChat, setOnlyAdminCanChat] = useState(false);
-  
+  // When set, the create form is creating a SUBGROUP under this parent group.
+  const [parentGroupId, setParentGroupId] = useState<string>("");
+
   // Filter states
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -150,6 +153,7 @@ export function StormChatManagement() {
           members: selectedMembers,
           admins: selectedAdmins,
           onlyAdminCanChat,
+          parentGroupId,
           createdBy: user?._id || user?.id
         })
       });
@@ -231,6 +235,14 @@ export function StormChatManagement() {
     setOnlyAdminCanChat(group.onlyAdminCanChat);
   }
 
+  // Open the create form as a subgroup of the given parent group.
+  function startCreateSubgroup(parent: ChatGroup) {
+    resetForm();
+    setParentGroupId(parent._id);
+    setIsEditing(null);
+    setIsCreating(true);
+  }
+
   function resetForm() {
     setGroupName("");
     setGroupDescription("");
@@ -238,6 +250,7 @@ export function StormChatManagement() {
     setSelectedMembers([]);
     setSelectedAdmins([]);
     setOnlyAdminCanChat(false);
+    setParentGroupId("");
     setRoleFilter("all");
     setSearchQuery("");
   }
@@ -455,7 +468,11 @@ export function StormChatManagement() {
     return (
       <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16, paddingBottom: 16 }}>
         <h3 style={{ marginBottom: 16, color: "#374151" }}>
-          {isEditing ? 'Edit Group' : 'Create New Group'}
+          {isEditing
+            ? 'Edit Group'
+            : parentGroupId
+              ? `Create Subgroup${groups.find(g => g._id === parentGroupId) ? ` in "${groups.find(g => g._id === parentGroupId)!.name}"` : ''}`
+              : 'Create New Group'}
         </h3>
         
         <div className="form-grid">
@@ -664,7 +681,7 @@ export function StormChatManagement() {
               <button 
                 type="button" 
                 className="btn-primary btn-success btn-small" 
-                onClick={() => setIsCreating(true)}
+                onClick={() => { resetForm(); setIsCreating(true); }}
                 style={{ 
                   display: 'flex',
                   alignItems: 'center',
@@ -690,7 +707,7 @@ export function StormChatManagement() {
               <button 
                 type="button" 
                 className="btn-primary btn-success" 
-                onClick={() => setIsCreating(true)}
+                onClick={() => { resetForm(); setIsCreating(true); }}
               >
                 + Create Group
               </button>
@@ -701,9 +718,9 @@ export function StormChatManagement() {
               gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
               gap: 12
             }}>
-              {groups.map(group => (
-                <div 
-                  key={group._id} 
+              {groups.filter(g => !g.parentGroupId).map(group => (
+                <div
+                  key={group._id}
                   draggable={true}
                   onDragStart={(e) => handleGroupDragStart(e, group._id)}
                   onDragEnd={handleGroupDragEnd}
@@ -871,6 +888,31 @@ export function StormChatManagement() {
                         👑 {group.admins.length}
                       </span>
                     )}
+                  </div>
+
+                  {/* Subgroups */}
+                  <div style={{ paddingTop: 8, borderTop: '1px solid #f3f4f6' }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                      Subgroups
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {groups.filter(sg => sg.parentGroupId === group._id).map(sub => (
+                        <div key={sub._id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', background: '#f9fafb', border: '1px solid #eef0f3', borderRadius: 8 }}>
+                          <span style={{ fontSize: 13 }}>💬</span>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.name}</span>
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>👥 {sub.members.length}</span>
+                          <button type="button" className="btn-ghost btn-small" title="Edit subgroup" onClick={(e) => { e.stopPropagation(); startEdit(sub); }} style={{ color: '#6b7280', padding: '2px 5px', fontSize: 11 }}>✏️</button>
+                          <button type="button" className="btn-ghost btn-small" title="Delete subgroup" onClick={(e) => { e.stopPropagation(); deleteGroup(sub._id); }} style={{ color: '#dc2626', padding: '2px 5px', fontSize: 11 }}>🗑️</button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); startCreateSubgroup(group); }}
+                        style={{ marginTop: 2, padding: '6px 8px', border: '1px dashed #d1d5db', borderRadius: 8, background: '#fff', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                      >
+                        + Add Subgroup
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

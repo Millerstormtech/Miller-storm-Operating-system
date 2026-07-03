@@ -27,16 +27,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth = requireRole(req, res, ['admin', 'manager']);
     if (!auth) return;
     try {
-      const { name, description, imageUrl, members, admins, onlyAdminCanChat } = req.body;
+      const { name, description, imageUrl, members, admins, onlyAdminCanChat, parentGroupId } = req.body;
       const createdBy = auth.sub;
 
       if (!name || !members || members.length === 0) {
         return res.status(400).json({ error: 'Name and members are required' });
       }
 
-      // Get current max order to append new group at end
+      // A subgroup's order is scoped to its parent; top-level groups share the
+      // global order. Append the new (sub)group at the end of its own list.
       const db = mongoose.connection.db!;
-      const last = await db.collection('chatgroups').findOne({}, { sort: { order: -1 } });
+      const orderScope = parentGroupId ? { parentGroupId } : { parentGroupId: { $in: [null, ''] } };
+      const last = await db.collection('chatgroups').findOne(orderScope, { sort: { order: -1 } });
       const nextOrder = last && last.order != null ? last.order + 1 : 0;
 
       const group = await ChatGroup.create({
@@ -47,7 +49,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         admins: admins || [],
         onlyAdminCanChat: onlyAdminCanChat || false,
         createdBy,
-        order: nextOrder
+        order: nextOrder,
+        parentGroupId: parentGroupId || ''
       });
 
       res.status(201).json(group);
