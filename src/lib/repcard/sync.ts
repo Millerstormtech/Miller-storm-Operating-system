@@ -21,7 +21,7 @@ function* eachDayInclusive(startISO: string, endISO: string): Generator<string> 
   }
 }
 
-export interface RepCardSyncResult { status: "ok" | "failed"; daysProcessed: number; factsWritten: number; error?: string; }
+export interface RepCardSyncResult { status: "ok" | "failed" | "skipped"; daysProcessed: number; factsWritten: number; error?: string; }
 
 // Pull per-rep, per-day Verified Door Knocks from RepCard's D2D Leaderboard.
 // backfill = year-to-date (one /leaderboards call per day). incremental = re-pull
@@ -36,7 +36,15 @@ export async function runSync(opts: { mode?: "incremental" | "backfill"; dryRun?
 
   let state: any = await SyncStateModel.findOne({ key: "repcard" });
   if (!state) state = dryRun ? { lastSyncAt: null } : await SyncStateModel.create({ key: "repcard", branch: "RepCard" });
-  if (!dryRun && state.running) { return result; } // already running
+  // Self-heal a stuck lock: if a previous run crashed mid-sync, `running` can
+  // stick forever and every future run would return early. Treat it as stale
+  // after 15 min.
+  const STALE_LOCK_MS = 15 * 60 * 1000;
+  const lockStartedAt = state.runStartedAt ? new Date(state.runStartedAt).getTime() : 0;
+  if (!dryRun && state.running && Date.now() - lockStartedAt < STALE_LOCK_MS) {
+    result.status = "skipped";
+    return result; // another run is actively syncing
+  }
 
   const runStartedAt = new Date();
   if (!dryRun) { state.running = true; state.runStartedAt = runStartedAt; await state.save(); }

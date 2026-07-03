@@ -113,7 +113,15 @@ async function syncOneLocation(
     if (dryRun) state = { lastSyncAt: null };
     else state = await SyncStateModel.create({ key: stateKey, branch });
   }
-  if (!dryRun && state.running) { result.status = "skipped"; return result; } // already running
+  // A live run holds this per-location lock. But if a run crashed / was cut off
+  // mid-sync, `running` can stick forever and the location would be skipped on
+  // every future run. Treat the lock as stale after 15 min so it self-heals.
+  const STALE_LOCK_MS = 15 * 60 * 1000;
+  const lockStartedAt = state.runStartedAt ? new Date(state.runStartedAt).getTime() : 0;
+  if (!dryRun && state.running && Date.now() - lockStartedAt < STALE_LOCK_MS) {
+    result.status = "skipped";
+    return result; // another run is actively syncing this location
+  }
 
   const runStartedAt = new Date();
   if (!dryRun) {

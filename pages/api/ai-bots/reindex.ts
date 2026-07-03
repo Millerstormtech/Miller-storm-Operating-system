@@ -9,9 +9,19 @@ import { reindexBot } from "../../../src/lib/rag";
 //   POST { all: true } -> reindex every active bot (one-time backfill for bots
 //                         whose training material predates the RAG index)
 // Runs synchronously and reports how many chunks each bot produced.
+// Server-trusted secret (reuses ACCULYNX_SYNC_SECRET) so the backfill can be
+// triggered by a server-side curl without an admin browser session.
+function hasSyncSecret(req: NextApiRequest): boolean {
+  const secret = req.headers["x-sync-secret"];
+  return !!secret && secret === process.env.ACCULYNX_SYNC_SECRET;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["POST"])) return;
-  if (!requireRole(req, res, "admin")) return;
+  // The shared secret (used for the one-time backfill) OR an admin session.
+  if (!hasSyncSecret(req)) {
+    if (!requireRole(req, res, "admin")) return;
+  }
 
   await connectMongo();
   const { botId, all } = req.body || {};

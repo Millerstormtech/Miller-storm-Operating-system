@@ -55,6 +55,9 @@ module.exports = {
       time: true
     },
     {
+      // PORT must be the MAIN app's port (6790) — the cron POSTs to
+      // http://localhost:$PORT/api/repcard/sync, served by the Next app on
+      // 6790. (6789 is unrelated and caused the cron's "fetch failed".)
       name: 'repcard-sync',
       script: 'scripts/repcard-sync-cron.js',
       cwd: '/var/www/millerstorm',
@@ -63,7 +66,7 @@ module.exports = {
       watch: false,
       env: {
         NODE_ENV: 'production',
-        PORT: 6789
+        PORT: 6790
       },
       error_file: '/var/www/millerstorm/logs/repcard-sync-err.log',
       out_file: '/var/www/millerstorm/logs/repcard-sync-out.log',
