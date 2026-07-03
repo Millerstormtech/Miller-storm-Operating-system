@@ -24,6 +24,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const dryRun = req.body?.dryRun === true;
   // Optional cap on jobs per location — used only for a bounded dry-run smoke test.
   const limitJobs = Number.isInteger(req.body?.limitJobs) && req.body.limitJobs > 0 ? req.body.limitJobs : undefined;
+
+  // Background mode (the admin "Refresh now" button): a full sync takes minutes,
+  // and nginx cuts any request open past 60s with a 504 — which shows up as a
+  // console error even though the sync is fine. So kick the sync off and return
+  // immediately; the client polls /api/acculynx/status for progress. This runs
+  // on a long-lived Node process (PM2), so the work continues after we respond.
+  // dryRun always runs synchronously since the caller wants its result inline.
+  if (req.body?.background === true && !dryRun) {
+    runSync({ mode, dryRun, limitJobs }).catch((err) => {
+      console.error("[acculynx/sync] background run failed:", err?.message ?? err);
+    });
+    return res.status(202).json({ status: "started" });
+  }
+
   const result = await runSync({ mode, dryRun, limitJobs });
   return res.status(200).json(result);
 }

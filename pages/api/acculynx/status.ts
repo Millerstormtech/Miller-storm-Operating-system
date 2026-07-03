@@ -8,6 +8,16 @@ import { SyncStateModel } from "../../../src/lib/models/SyncState";
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
   await connectMongo();
 
+  // A lock older than this is treated as stale (a crashed/cut-off run that never
+  // released it) so the UI doesn't show "syncing…" forever. Mirrors the sync's
+  // own STALE_LOCK_MS self-heal.
+  const STALE_LOCK_MS = 15 * 60 * 1000;
+  const isLive = (s: any) => {
+    if (!s.running) return false;
+    const started = s.runStartedAt ? new Date(s.runStartedAt).getTime() : 0;
+    return Date.now() - started < STALE_LOCK_MS;
+  };
+
   const states = await SyncStateModel.find({ key: { $regex: /^acculynx:/ } }).lean();
 
   if (!states.length) {
@@ -24,7 +34,7 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       jobsProcessed: s.jobsProcessed ?? 0,
       factsWritten: s.factsWritten ?? 0,
       unmatchedCount: s.unmatchedCount ?? 0,
-      running: !!s.running,
+      running: isLive(s),
       lastError: s.lastError || "",
     }))
     .sort((a, b) => a.branch.localeCompare(b.branch));

@@ -7,6 +7,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
   const [users, setUsers] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [actionInfo, setActionInfo] = useState("");
 
   const load = useCallback(async () => {
     const [s, u, us] = await Promise.all([
@@ -17,28 +18,53 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
     setStatus(s);
     setUnmatched(Array.isArray(u) ? u : []);
     setUsers(Array.isArray(us) ? us : us?.users ?? []);
+    return s;
   }, [adminUserId]);
 
   useEffect(() => { load(); }, [load]);
 
+  // Poll status until the sync is no longer running (or we hit the cap). The
+  // sync keeps running server-side after the proxy cuts our request, so this
+  // is how we surface its real result instead of a false timeout error.
+  const pollUntilDone = useCallback(async () => {
+    for (let i = 0; i < 120; i++) { // ~10 min at 5s
+      await new Promise((r) => setTimeout(r, 5000));
+      const s = await load();
+      if (s && !s.running) return s;
+    }
+    return null;
+  }, [load]);
+
   async function refreshNow() {
     setBusy(true);
     setActionError("");
+    setActionInfo("");
     try {
+      // Kick the sync off in the background: the endpoint returns 202 right away
+      // so the request never stays open long enough for nginx to 504. We then
+      // poll status for progress. (A full sync takes minutes.)
       const res = await fetch("/api/acculynx/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: adminUserId, mode: "incremental" }),
+        body: JSON.stringify({ userId: adminUserId, mode: "incremental", background: true }),
       });
-      if (!res.ok) {
-        setActionError(`Sync failed (HTTP ${res.status}).`);
+      if (res.status === 202 || res.ok) {
+        setActionInfo("Sync is running in the background — this can take a few minutes…");
+        const s = await pollUntilDone();
+        if (s && s.lastStatus === "failed") setActionError(`Some locations failed: ${s.lastError ?? "unknown"}`);
+        setActionInfo("");
       } else {
-        const r = await res.json();
-        if (r?.status === "failed") setActionError(`Sync error: ${r.error ?? "unknown"}`);
+        setActionError(`Sync failed (HTTP ${res.status}).`);
+        await load();
       }
-      await load();
     } catch (e: any) {
-      setActionError(e?.message ?? "Sync request failed.");
+      // If the kickoff request itself dropped, the sync may still be running —
+      // poll rather than show a hard failure.
+      setActionInfo("Sync is running in the background — this can take a few minutes…");
+      const s = await pollUntilDone();
+      if (s && s.lastStatus === "failed") setActionError(`Some locations failed: ${s.lastError ?? "unknown"}`);
+      else if (!s) setActionError(e?.message ?? "Sync request failed.");
+      setActionInfo("");
     } finally {
       setBusy(false);
     }
@@ -113,6 +139,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
           </table>
         </div>
       ) : null}
+      {actionInfo ? <p style={{ color: "#2563eb" }}>{actionInfo}</p> : null}
       {actionError ? <p style={{ color: "#dc2626" }}>{actionError}</p> : null}
       {status?.lastError ? <p style={{ color: "#dc2626" }}>Last error: {status.lastError}</p> : null}
 
