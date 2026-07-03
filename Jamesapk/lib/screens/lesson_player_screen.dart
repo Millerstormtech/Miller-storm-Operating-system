@@ -1508,7 +1508,31 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                     // Video Player (only if not quiz and has video)
                     if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null && _lesson!['videoUrl'].toString().trim().isNotEmpty)
                       _buildVideoPlayer(),
-                    
+
+                    // Watch-to-unlock reminder (shown on every step)
+                    Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFBEB),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: const [
+                            Text('⚠️', style: TextStyle(fontSize: 15)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'You need to attempt the video/quiz till the very last second in order to unlock the next step.',
+                                style: TextStyle(fontSize: 12.5, color: Color(0xFF92400E), fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
                     // Content below video
                     Expanded(
                       child: SingleChildScrollView(

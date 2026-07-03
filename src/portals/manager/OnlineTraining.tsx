@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
+import { LessonWatchNote } from "../../components/LessonWatchNote";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
@@ -1604,6 +1605,7 @@ export function ManagerOnlineTrainingPage(props: {
               <div className="course-page-main-header">
                 <h2 className="course-page-title-input" style={{ border: 'none', background: 'none', padding: 0 }}>{activePage.title}</h2>
               </div>
+              <LessonWatchNote />
               {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                 <div className="course-page-editor-body">
                   {quizSubmitted && quizScore && (
@@ -1882,6 +1884,7 @@ export function ManagerOnlineTrainingPage(props: {
                     Share
                   </button>
                 </div>
+                <LessonWatchNote />
                 {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                   <div className="course-page-editor-body">
                     {quizSubmitted && quizScore && (
