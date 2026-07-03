@@ -24,9 +24,26 @@ export function createClient(apiKey: string) {
 
     for (let attempt = 0; attempt < 5; attempt++) {
       await pace();
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
-      });
+      // Per-request timeout so a hung AccuLynx response can never stall the
+      // whole sync forever (this was the DFW "syncing… never completes" cause).
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+          signal: controller.signal,
+        });
+      } catch (err: any) {
+        clearTimeout(timer);
+        // Timeout / network error → back off and retry instead of hanging.
+        if (attempt < 4) {
+          await new Promise((r) => setTimeout(r, Math.min(8000, 500 * 2 ** attempt) + Math.floor(Math.random() * 250)));
+          continue;
+        }
+        throw new Error(`AccuLynx request failed on ${path}: ${err?.message || err}`);
+      }
+      clearTimeout(timer);
       if (res.status === 404) return null;
       if (res.ok) return res.json();
       if (res.status === 429 || res.status >= 500) {

@@ -19,9 +19,24 @@ export function createClient(apiKey: string) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
     for (let attempt = 0; attempt < 5; attempt++) {
       await pace();
-      const res = await fetch(url, {
-        headers: { "x-api-key": apiKey, UserTimeZone: REPCARD_TIMEZONE, Accept: "application/json" },
-      });
+      // Per-request timeout so a hung response can't stall the whole sync.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          headers: { "x-api-key": apiKey, UserTimeZone: REPCARD_TIMEZONE, Accept: "application/json" },
+          signal: controller.signal,
+        });
+      } catch (err: any) {
+        clearTimeout(timer);
+        if (attempt < 4) {
+          await new Promise((r) => setTimeout(r, Math.min(8000, 500 * 2 ** attempt) + Math.floor(Math.random() * 250)));
+          continue;
+        }
+        throw new Error(`RepCard request failed on ${path}: ${err?.message || err}`);
+      }
+      clearTimeout(timer);
       if (res.status === 404) return null;
       if (res.ok) return res.json();
       if (res.status === 429 || res.status >= 500) {
