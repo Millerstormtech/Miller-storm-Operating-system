@@ -7,7 +7,6 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
   const [users, setUsers] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
-  const [actionInfo, setActionInfo] = useState("");
 
   const load = useCallback(async () => {
     const [s, u, us] = await Promise.all([
@@ -38,21 +37,18 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
   async function refreshNow() {
     setBusy(true);
     setActionError("");
-    setActionInfo("");
     try {
       // Kick the sync off in the background: the endpoint returns 202 right away
       // so the request never stays open long enough for nginx to 504. We then
-      // poll status for progress. (A full sync takes minutes.)
+      // poll status silently so the table updates. (A full sync takes minutes.)
       const res = await fetch("/api/acculynx/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: adminUserId, mode: "incremental", background: true }),
       });
       if (res.status === 202 || res.ok) {
-        setActionInfo("Sync is running in the background — this can take a few minutes…");
         const s = await pollUntilDone();
         if (s && s.lastStatus === "failed") setActionError(`Some locations failed: ${s.lastError ?? "unknown"}`);
-        setActionInfo("");
       } else {
         setActionError(`Sync failed (HTTP ${res.status}).`);
         await load();
@@ -60,11 +56,9 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
     } catch (e: any) {
       // If the kickoff request itself dropped, the sync may still be running —
       // poll rather than show a hard failure.
-      setActionInfo("Sync is running in the background — this can take a few minutes…");
       const s = await pollUntilDone();
       if (s && s.lastStatus === "failed") setActionError(`Some locations failed: ${s.lastError ?? "unknown"}`);
       else if (!s) setActionError(e?.message ?? "Sync request failed.");
-      setActionInfo("");
     } finally {
       setBusy(false);
     }
@@ -139,7 +133,6 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
           </table>
         </div>
       ) : null}
-      {actionInfo ? <p style={{ color: "#2563eb" }}>{actionInfo}</p> : null}
       {actionError ? <p style={{ color: "#dc2626" }}>{actionError}</p> : null}
       {status?.lastError ? <p style={{ color: "#dc2626" }}>Last error: {status.lastError}</p> : null}
 
