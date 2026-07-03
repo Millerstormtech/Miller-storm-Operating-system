@@ -18,7 +18,7 @@ export function LessonWatchNote() {
       }}
     >
       <span style={{ fontSize: 16, lineHeight: 1 }}>⚠️</span>
-      <span>You need to attempt the video/quiz till the very last second in order to unlock the next step.</span>
+      <span>You need to complete the video/quiz till the very last second in order to unlock the next step.</span>
     </div>
   );
 }

@@ -1525,7 +1525,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'You need to attempt the video/quiz till the very last second in order to unlock the next step.',
+                                'You need to complete the video/quiz till the very last second in order to unlock the next step.',
                                 style: TextStyle(fontSize: 12.5, color: Color(0xFF92400E), fontWeight: FontWeight.w500),
                               ),
                             ),
