@@ -55,6 +55,22 @@ module.exports = {
       time: true
     },
     {
+      name: 'repcard-sync',
+      script: 'scripts/repcard-sync-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 6789
+      },
+      error_file: '/var/www/millerstorm/logs/repcard-sync-err.log',
+      out_file: '/var/www/millerstorm/logs/repcard-sync-out.log',
+      merge_logs: true,
+      time: true
+    },
+    {
       // Weekly team-training digest to every manager, Monday 08:00 (server time).
       // PORT must be the MAIN app's port (6790) — the cron POSTs to
       // http://localhost:$PORT/api/playlist-assignments/weekly-digest.
