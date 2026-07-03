@@ -181,6 +181,13 @@ export default async function handler(
 
     // Save fcmToken (from Flutter app)
     if (fcmToken !== undefined) {
+      // A device token belongs to exactly ONE user. If this same token was left
+      // on another account (e.g. someone logged out and a different user logged
+      // in on the same phone), clear it there first — otherwise that device
+      // receives a duplicate push for every notification.
+      if (typeof fcmToken === 'string' && fcmToken) {
+        await UserModel.updateMany({ id: { $ne: id }, fcmToken }, { $set: { fcmToken: '' } });
+      }
       await UserModel.findOneAndUpdate({ id }, { fcmToken });
       console.log(`[FCM] Token updated for user ${id}`);
       res.status(200).json({ success: true });

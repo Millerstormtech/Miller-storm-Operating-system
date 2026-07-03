@@ -108,8 +108,12 @@ export async function sendPushNotificationToMultiple(
       return { successCount: 0, failureCount: fcmTokens.length };
     }
 
+    // Dedupe tokens so a single device is never sent the same push twice (the
+    // same token can end up in the list from more than one user record).
+    const uniqueTokens = Array.from(new Set(fcmTokens.filter(Boolean)));
+
     // Use individual sends in a loop to match test-push.js which is working
-    const results = await Promise.all(fcmTokens.map(token => 
+    const results = await Promise.all(uniqueTokens.map(token =>
       sendPushNotification(token, title, body, data)
     ));
 
