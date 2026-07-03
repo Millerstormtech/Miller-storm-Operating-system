@@ -45,6 +45,11 @@ export function createClient(apiKey: string) {
       }
       clearTimeout(timer);
       if (res.status === 404) return null;
+      // 416 "Range Not Satisfiable" = pageStartIndex is past the last record.
+      // AccuLynx returns this (instead of an empty page) when the total count is
+      // an exact multiple of pageSize, so paging one step past the end 416s.
+      // Treat it as "no more records" so pagination stops cleanly instead of failing.
+      if (res.status === 416) return null;
       if (res.ok) return res.json();
       if (res.status === 429 || res.status >= 500) {
         await new Promise((r) => setTimeout(r, Math.min(8000, 500 * 2 ** attempt) + Math.floor(Math.random() * 250)));
