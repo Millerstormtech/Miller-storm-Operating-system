@@ -128,11 +128,17 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       ..addJavaScriptChannel(
         'VideoEndChannel',
         onMessageReceived: (JavaScriptMessage message) {
-          print('🎬 Video ended - enabling next button');
-          if (mounted) {
-            setState(() {
-              _canGoNext = true;
+          if (!mounted) return;
+          // 'unlock' = last 5s reached → enable the Next button only (no
+          // redirect). 'ended' = video fully finished → enable + auto-advance.
+          setState(() => _canGoNext = true);
+          if (message.message == 'ended') {
+            print('🎬 Video fully complete - auto-advancing');
+            Future.delayed(const Duration(milliseconds: 800), () {
+              if (mounted && _canGoNext) _markCompleteAndNext();
             });
+          } else {
+            print('🎬 Last 5s reached - Next button enabled');
           }
         },
       )
@@ -359,6 +365,12 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     isSeeking = false;
   };
 
+  var unlockSent = false, endedSent = false;
+  function post(msg) { if (window.VideoEndChannel) { window.VideoEndChannel.postMessage(msg); } }
+  // 'unlock' = last 5s reached → only enable Next (no redirect).
+  function sendUnlock() { if (unlockSent) return; unlockSent = true; post('unlock'); }
+  // 'ended' = video fully finished → enable Next + auto-advance.
+  function sendEnded() { if (endedSent) return; endedSent = true; post('ended'); }
   video.ontimeupdate = function() {
     if (!isCompleted && !isSeeking) {
       if (video.currentTime > maxTimeWatched + 2) {
@@ -368,16 +380,18 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         maxTimeWatched = Math.max(maxTimeWatched, video.currentTime);
       }
     }
+    // Unlock (enable Next) once within the last 5 seconds — no auto-advance.
+    if (video.duration && video.currentTime >= video.duration - 5) {
+      sendUnlock();
+    }
   };
-  
+
   video.onerror = function() {
     console.log('Video error');
   };
-  
+
   video.onended = function() {
-    if (window.VideoEndChannel) {
-      window.VideoEndChannel.postMessage('ended');
-    }
+    sendEnded();
   };
   
   // Try to autoplay, but handle user gesture requirement
@@ -430,11 +444,17 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     lastBlockNotice = now;
     if (window.SeekBlockedChannel) { window.SeekBlockedChannel.postMessage('blocked'); }
   }
+  var unlockSent = false, endedSent = false;
+  function post(msg) { if (window.VideoEndChannel) { window.VideoEndChannel.postMessage(msg); } }
+  // 'unlock' = last 5s reached → only enable Next (no redirect).
+  function sendUnlock() { if (unlockSent) return; unlockSent = true; post('unlock'); }
+  // 'ended' = video fully finished → enable Next + auto-advance.
+  function sendEnded() { if (endedSent) return; endedSent = true; post('ended'); }
 
   function initVimeo() {
     if (window.Vimeo) {
       var player = new Vimeo.Player(iframe);
-      
+
       player.on('timeupdate', function(data) {
         if (!isCompleted) {
           if (data.seconds > maxTimeWatched + 2) {
@@ -443,6 +463,10 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           } else {
             maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
           }
+        }
+        // Unlock (enable Next) once within the last 5 seconds — no auto-advance.
+        if (data.duration && data.seconds >= data.duration - 5) {
+          sendUnlock();
         }
       });
 
@@ -454,9 +478,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       });
 
       player.on('ended', function() {
-        if (window.VideoEndChannel) {
-          window.VideoEndChannel.postMessage('ended');
-        }
+        sendEnded();
       });
     }
   }
@@ -470,24 +492,27 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     });
 
     function onPlayerReady() {
-      if (!isCompleted) {
-        checkInterval = setInterval(function() {
-          var currentTime = player.getCurrentTime();
+      checkInterval = setInterval(function() {
+        var currentTime = player.getCurrentTime();
+        if (!isCompleted) {
           if (currentTime > maxTimeWatched + 2) {
             player.seekTo(maxTimeWatched, true);
             notifyBlocked();
           } else {
             maxTimeWatched = Math.max(maxTimeWatched, currentTime);
           }
-        }, 500);
-      }
+        }
+        // Unlock (enable Next) once within the last 5 seconds — no auto-advance.
+        var dur = player.getDuration ? player.getDuration() : 0;
+        if (dur && currentTime >= dur - 5) {
+          sendUnlock();
+        }
+      }, 500);
     }
 
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.ENDED) {
-        if (window.VideoEndChannel) {
-          window.VideoEndChannel.postMessage('ended');
-        }
+        sendEnded();
       }
     }
   }

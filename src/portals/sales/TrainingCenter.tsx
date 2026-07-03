@@ -288,11 +288,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
   // ── Video auto-advance (parent level so effect is stable) ──────────────────
   // Use a ref for the callback so it always has fresh state without re-running the effect
-  const onVideoEndedRef = useRef<() => void>(() => {});
+  const onVideoEndedRef = useRef<(navigate: boolean) => void>(() => {});
 
   // Keep the ref updated on every render with fresh closure values
-  onVideoEndedRef.current = () => {
-    console.log('[TrainingCenter] onVideoEndedRef called - video sequence ended');
+  onVideoEndedRef.current = (navigate: boolean) => {
+    console.log('[TrainingCenter] onVideoEndedRef called - navigate:', navigate);
     if (!selectedCourse) {
       console.log('[TrainingCenter] No selected course, returning');
       return;
@@ -332,7 +332,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       }
     }
 
-    if (currentIndex < currentPages.length - 1) {
+    // navigate === false → the video hit its last 5s: only unlock/enable Next
+    // (done above via setCompletedPages). Auto-advance ONLY on the true end.
+    if (navigate && currentIndex < currentPages.length - 1) {
       autoTriggeredRef.current = true; // mark that this navigation came from video ending
       setActivePageId(currentPages[currentIndex + 1].id);
       const nextPage = currentPages[currentIndex + 1];
@@ -344,8 +346,6 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         });
       }
       document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      console.log('[TrainingCenter] This was the last lesson in the course');
     }
   };
 
@@ -374,7 +374,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       const isAlreadyCompleted = activePageId ? completedPages.has(activePageId) : false;
       const cleanup = await initVideoSequence(
         container,
-        () => onVideoEndedRef.current(),
+        (navigate: boolean) => onVideoEndedRef.current(navigate),
         autoPlayRef,
         shouldAutoStart,
         isAlreadyCompleted,

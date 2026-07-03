@@ -349,10 +349,10 @@ export function ManagerOnlineTrainingPage(props: {
 
   // ── Video auto-advance (parent level so effect is stable) ──────────────────
   // Use a ref for the callback so it always has fresh state without re-running the effect
-  const onVideoEndedRef = useRef<() => void>(() => {});
+  const onVideoEndedRef = useRef<(navigate: boolean) => void>(() => {});
 
   // Keep the ref updated on every render with fresh closure values
-  onVideoEndedRef.current = () => {
+  onVideoEndedRef.current = (navigate: boolean) => {
     if (!selectedCourse) return;
     let currentPages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
     if (viewingPlaylist) {
@@ -383,8 +383,9 @@ export function ManagerOnlineTrainingPage(props: {
       }).catch(() => {});
     }
 
-    // Navigate to next page (lesson or quiz)
-    if (currentIndex < currentPages.length - 1) {
+    // navigate === false → last 5s reached: only unlock/enable Next (above).
+    // Auto-advance to the next page ONLY on the true end of the video.
+    if (navigate && currentIndex < currentPages.length - 1) {
       setActivePageId(currentPages[currentIndex + 1].id);
       const nextPage = currentPages[currentIndex + 1];
       if (nextPage.folderId) {
@@ -421,7 +422,7 @@ export function ManagerOnlineTrainingPage(props: {
       const isAlreadyCompleted = activePageId ? completedPages.has(activePageId) : false;
       const cleanup = await initVideoSequence(
         container,
-        () => onVideoEndedRef.current(),
+        (navigate: boolean) => onVideoEndedRef.current(navigate),
         autoPlayRef,
         false, // shouldAutoStartFirst
         isAlreadyCompleted,

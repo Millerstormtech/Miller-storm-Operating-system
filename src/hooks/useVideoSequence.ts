@@ -322,7 +322,7 @@ function scrollToEntry(entry: Entry) {
  */
 export async function initVideoSequence(
   container: HTMLElement,
-  onAllEnded: () => void,
+  onAllEnded: (navigate: boolean) => void,
   autoPlayRef: { current: boolean },
   shouldAutoStartFirst = false,
   isAlreadyCompleted = false,
@@ -385,7 +385,7 @@ export async function initVideoSequence(
   // ── playItem: scroll to + play video at idx if autoPlay is on ───────────────
   function playItem(idx: number) {
     if (idx >= total) {
-      onAllEnded();
+      onAllEnded(true);
       return;
     }
     if (!autoPlayRef.current) return; // autoPlay off — don't chain
@@ -409,6 +409,28 @@ export async function initVideoSequence(
     }
   }
 
+  // Within the last few seconds of the LAST video we only UNLOCK the next
+  // step (enable the Next button) — we do NOT auto-advance. Auto-advance /
+  // navigation happens only when a video truly ends. So: reach the last 5s →
+  // Next becomes clickable; watch to the end → it advances on its own.
+  const UNLOCK_BEFORE_END = 5; // seconds before the end
+  let unlockedNextStep = false;
+  const advanced = new Set<number>();
+  function unlockNextStep(seqIdx: number) {
+    if (seqIdx !== total - 1 || unlockedNextStep) return;
+    unlockedNextStep = true;
+    onAllEnded(false); // mark watched + enable Next, but do NOT navigate
+  }
+  function finishVideo(seqIdx: number) {
+    if (advanced.has(seqIdx)) return;
+    advanced.add(seqIdx);
+    if (seqIdx === total - 1) {
+      onAllEnded(true); // true end of the last video → navigate to next step
+    } else if (autoPlayRef.current) {
+      playItem(seqIdx + 1); // auto-advance within the lesson's video sequence
+    }
+  }
+
   // Whether to auto-start the first video on this page
   const startFirst = shouldAutoStartFirst && autoPlayRef.current;
 
@@ -424,12 +446,16 @@ export async function initVideoSequence(
         vimeoEntry.player = vp;
 
         if (!isAlreadyCompleted) {
-          vp.on('timeupdate', (data: { seconds: number }) => {
+          vp.on('timeupdate', (data: { seconds: number; duration?: number }) => {
             if (data.seconds > vimeoEntry.maxTimeWatched + 2) {
               vp.setCurrentTime(vimeoEntry.maxTimeWatched);
               notifySeekBlocked();
             } else {
               vimeoEntry.maxTimeWatched = Math.max(vimeoEntry.maxTimeWatched, data.seconds);
+            }
+            // Reaching the last few seconds only UNLOCKS the next step.
+            if (data.duration && data.seconds >= data.duration - UNLOCK_BEFORE_END) {
+              unlockNextStep(seqIdx);
             }
           });
 
@@ -443,17 +469,7 @@ export async function initVideoSequence(
 
         vp.on('ended', () => {
           console.log(`[VideoSeq] Vimeo video ${seqIdx} ended. Total videos: ${total}`);
-          if (seqIdx === total - 1) {
-            console.log('[VideoSeq] Last video ended, calling onAllEnded');
-            onAllEnded();
-          } else {
-            if (autoPlayRef.current) {
-              console.log(`[VideoSeq] Auto-advancing to next video: ${seqIdx + 1}`);
-              playItem(seqIdx + 1);
-            } else {
-              console.log('[VideoSeq] AutoPlay is off, not advancing');
-            }
-          }
+          finishVideo(seqIdx);
         });
       } catch (err) {
         console.error('[VideoSeq] VimeoPlayer init failed for index', seqIdx, err);
@@ -491,20 +507,16 @@ export async function initVideoSequence(
             e.maxTimeWatched = Math.max(e.maxTimeWatched, e.video.currentTime);
           }
         }
+        // Reaching the last few seconds only UNLOCKS the next step.
+        if (e.video.duration && e.video.currentTime >= e.video.duration - UNLOCK_BEFORE_END) {
+          unlockNextStep(e.seqIdx);
+        }
       });
     }
 
     e.video.addEventListener('ended', () => {
       console.log(`[VideoSeq] HTML5 video ${e.seqIdx} ended. Total videos: ${total}`);
-      if (e.seqIdx === total - 1) {
-        console.log('[VideoSeq] Last HTML5 video ended, calling onAllEnded');
-        onAllEnded();
-      } else if (autoPlayRef.current) {
-        console.log(`[VideoSeq] Auto-advancing to next HTML5 video: ${e.seqIdx + 1}`);
-        playItem(e.seqIdx + 1);
-      } else {
-        console.log('[VideoSeq] AutoPlay is off, not advancing HTML5');
-      }
+      finishVideo(e.seqIdx);
     });
     if (e.seqIdx === 0 && startFirst) {
       e.video.muted = true;
@@ -555,6 +567,11 @@ export async function initVideoSequence(
                   } else {
                     ytEntry.maxTimeWatched = Math.max(ytEntry.maxTimeWatched, currentTime);
                   }
+                  // Reaching the last few seconds only UNLOCKS the next step.
+                  const dur = player.getDuration ? player.getDuration() : 0;
+                  if (dur && currentTime >= dur - UNLOCK_BEFORE_END) {
+                    unlockNextStep(seqIdx);
+                  }
                 }
               }, 500);
               intervals.push(interval);
@@ -575,15 +592,7 @@ export async function initVideoSequence(
           onStateChange: (ev: any) => {
             if (ev.data === 0) { // ended
               console.log(`[VideoSeq] YouTube video ${seqIdx} ended. Total videos: ${total}`);
-              if (seqIdx === total - 1) {
-                console.log('[VideoSeq] Last YouTube video ended, calling onAllEnded');
-                onAllEnded();
-              } else if (autoPlayRef.current) {
-                console.log(`[VideoSeq] Auto-advancing to next YouTube video: ${seqIdx + 1}`);
-                playItem(seqIdx + 1);
-              } else {
-                console.log('[VideoSeq] AutoPlay is off, not advancing YouTube');
-              }
+              finishVideo(seqIdx);
             }
           },
         },
