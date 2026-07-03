@@ -85,6 +85,34 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
           ))}
         </div>
       )}
+      {status?.locations?.length ? (
+        <div style={{ marginBottom: 20 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 8px" }}>By location</h3>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f1f5f9" }}>
+                {["Branch", "Last sync", "Jobs", "Records", "Unmatched", "Status"].map((c) => (
+                  <th key={c} style={{ padding: "6px 10px", textAlign: c === "Branch" ? "left" : "center", fontSize: 12 }}>{c}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {status.locations.map((l: any) => (
+                <tr key={l.branch} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                  <td style={{ padding: "6px 10px", fontWeight: 600 }}>{l.branch}</td>
+                  <td style={{ padding: "6px 10px", textAlign: "center", fontSize: 12 }}>{fmtDate(l.lastSyncAt)}</td>
+                  <td style={{ padding: "6px 10px", textAlign: "center" }}>{l.jobsProcessed}</td>
+                  <td style={{ padding: "6px 10px", textAlign: "center" }}>{l.factsWritten}</td>
+                  <td style={{ padding: "6px 10px", textAlign: "center" }}>{l.unmatchedCount}</td>
+                  <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 600, color: l.lastStatus === "failed" ? "#dc2626" : l.lastStatus === "ok" ? "#16a34a" : "#6b7280" }}>
+                    {l.running ? "syncing…" : l.lastStatus}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
       {actionError ? <p style={{ color: "#dc2626" }}>{actionError}</p> : null}
       {status?.lastError ? <p style={{ color: "#dc2626" }}>Last error: {status.lastError}</p> : null}
 

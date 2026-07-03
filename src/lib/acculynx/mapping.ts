@@ -17,7 +17,8 @@ export interface FactDraft {
   repExternalId: string | null;
   value: number;
   occurredAt: Date;
-  location: string;
+  location: string; // branch label (the AccuLynx location this job's account belongs to)
+  city: string;     // customer city, retained for a future DFW -> Dallas/Fort Worth split
 }
 
 export function buildFactKey(jobId: string, metric: string): string {
@@ -45,27 +46,30 @@ function extractCity(job: any): string {
   return job?.locationAddress?.city || "Unknown";
 }
 
+// `branch` is the leaderboard branch label (resolved by the sync from the location's
+// AccuLynx company name). The customer city is kept separately on each fact.
 export function mapJobToFacts(
   input: { job: any; milestoneHistory: any; financials: any; representatives: any },
-  cfg: MappingConfig
+  cfg: MappingConfig,
+  branch: string
 ): FactDraft[] {
   const { job, milestoneHistory, financials, representatives } = input;
   const jobId = job.id;
   const repExternalId = pickRepUserId(representatives, cfg.repTypes);
-  const location = extractCity(job);
+  const city = extractCity(job);
   const facts: FactDraft[] = [];
 
   // filed (Prospect) + won (Approved)
   for (const [stage, metric] of Object.entries(cfg.stageToMetric)) {
     const d = milestoneDate(milestoneHistory, stage);
-    if (d) facts.push({ factKey: buildFactKey(jobId, metric), jobId, metric, repExternalId, value: 1, occurredAt: d, location });
+    if (d) facts.push({ factKey: buildFactKey(jobId, metric), jobId, metric, repExternalId, value: 1, occurredAt: d, location: branch, city });
   }
 
   // revenue (approvedJobValue @ Approved date; fallback to job.milestoneDate)
   const value = Number(financials?.approvedJobValue ?? 0);
   if (value > 0) {
     const occurredAt = milestoneDate(milestoneHistory, cfg.revenueStage) ?? (job.milestoneDate ? new Date(job.milestoneDate) : null);
-    if (occurredAt) facts.push({ factKey: buildFactKey(jobId, "revenue"), jobId, metric: "revenue", repExternalId, value, occurredAt, location });
+    if (occurredAt) facts.push({ factKey: buildFactKey(jobId, "revenue"), jobId, metric: "revenue", repExternalId, value, occurredAt, location: branch, city });
   }
 
   return facts;
