@@ -114,8 +114,11 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
       final userId = user?['id'] ?? '';
       final userRole = user?['role'] ?? '';
       
+      // list=true → server strips heavy per-page content (HTML body, video
+      // transcript, quiz questions) that the list doesn't need, so it loads
+      // fast. The course detail screen re-fetches the full course on open.
       final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole'),
+        Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole&list=true'),
       );
 
       if (response.statusCode == 200) {

@@ -77,7 +77,9 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
 
   Future<void> _fetchCourses() async {
     try {
-      final response = await api.get(Uri.parse('https://millerstorm.tech/api/courses'));
+      // summary=true → only course id/title/status (no heavy page content); the
+      // leaderboard rows come from the optimized /api/leaderboard endpoint.
+      final response = await api.get(Uri.parse('https://millerstorm.tech/api/courses?summary=true'));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final published = data.where((c) => c['status'] == 'published').toList();
