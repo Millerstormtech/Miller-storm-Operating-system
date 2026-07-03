@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ManagerAppsToolsItemsScreen extends StatefulWidget {
@@ -20,12 +20,20 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
   static const _textLight = Color(0xFF6B7280);
   static const _border = Color(0xFFD1D5DB);
 
-  List<dynamic> _items = [];
+  // All published items are fetched ONCE and cached here; switching category
+  // tabs just filters this list locally (no network round-trip per tab).
+  List<dynamic> _allItems = [];
   List<dynamic> _categories = [];
   bool _loading = true;
-  bool _loadingItems = false;
   late TabController _tabController;
   int _selectedCategoryIndex = 0;
+
+  // Items for the currently selected category — computed from the cache.
+  List<dynamic> get _items {
+    if (_categories.isEmpty) return const [];
+    final slug = _categories[_selectedCategoryIndex]['slug'];
+    return _allItems.where((item) => item['category'] == slug).toList();
+  }
 
   @override
   void initState() {
@@ -56,16 +64,13 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
             _categories = publishedCategories;
             _tabController = TabController(length: publishedCategories.length, vsync: this);
             _tabController.addListener(() {
+              // Tab switch only re-filters the cached items — no network call.
               if (!_tabController.indexIsChanging) {
-                setState(() {
-                  _selectedCategoryIndex = _tabController.index;
-                  _loadingItems = true;
-                });
-                _fetchItems();
+                setState(() => _selectedCategoryIndex = _tabController.index);
               }
             });
           });
-          _fetchItems();
+          _fetchAllItems();
         } else {
           setState(() {
             _loading = false;
@@ -80,35 +85,25 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
     }
   }
 
-  Future<void> _fetchItems() async {
-    if (_categories.isEmpty) return;
-    
+  // Fetch every published item ONCE. Category tabs filter this cache locally.
+  Future<void> _fetchAllItems() async {
     try {
-      final selectedCategory = _categories[_selectedCategoryIndex];
-      final categorySlug = selectedCategory['slug'];
-      
       final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/apps-tools?published=true'),
       );
 
       if (response.statusCode == 200) {
         final allItems = json.decode(response.body) as List;
-        final categoryItems = allItems
-            .where((item) => item['category'] == categorySlug)
-            .toList();
-
         setState(() {
-          _items = categoryItems;
+          _allItems = allItems;
           _loading = false;
-          _loadingItems = false;
         });
+      } else {
+        setState(() => _loading = false);
       }
     } catch (e) {
       print('Error fetching items: $e');
-      setState(() {
-        _loading = false;
-        _loadingItems = false;
-      });
+      setState(() => _loading = false);
     }
   }
 
@@ -171,26 +166,24 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
                           style: TextStyle(color: _textLight, fontSize: 14),
                         ),
                       )
-                    : _loadingItems
-                        ? const Center(child: CircularProgressIndicator(color: _primary))
-                        : _items.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'No items available',
-                                  style: TextStyle(color: _textLight, fontSize: 14),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: _items.length,
-                                itemBuilder: (context, index) {
-                                  final item = _items[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: _buildItemCard(item),
-                                  );
-                                },
-                              ),
+                    : _items.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No items available',
+                              style: TextStyle(color: _textLight, fontSize: 14),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _items.length,
+                            itemBuilder: (context, index) {
+                              final item = _items[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: _buildItemCard(item),
+                              );
+                            },
+                          ),
           ),
           _buildBottomNav(context),
         ],
@@ -345,18 +338,18 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
               child: imageUrl.isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        fullImageUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: fullImageUrl,
                         width: 56,
                         height: 56,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.apps_outlined,
-                            color: _primary,
-                            size: 28,
-                          );
-                        },
+                        memCacheWidth: 112,
+                        fadeInDuration: const Duration(milliseconds: 150),
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.apps_outlined,
+                          color: _primary,
+                          size: 28,
+                        ),
                       ),
                     )
                   : const Icon(
