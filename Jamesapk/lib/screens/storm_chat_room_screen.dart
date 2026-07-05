@@ -537,7 +537,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               title: const Text('Choose from Gallery'),
               onTap: () async {
                 Navigator.pop(context);
-                final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                // Compress on pick: cap resolution + re-encode so a 5–15MB phone
+                // photo becomes a few hundred KB → fast upload AND fast display.
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  imageQuality: 70,
+                  maxWidth: 1920,
+                  maxHeight: 1920,
+                );
                 if (image != null) {
                   _editAndSendImage(File(image.path));
                 }
@@ -548,7 +555,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               title: const Text('Take Photo'),
               onTap: () async {
                 Navigator.pop(context);
-                final XFile? image = await picker.pickImage(source: ImageSource.camera);
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.camera,
+                  imageQuality: 70,
+                  maxWidth: 1920,
+                  maxHeight: 1920,
+                );
                 if (image != null) {
                   _editAndSendImage(File(image.path));
                 }
@@ -1818,6 +1830,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             width: 200,
             height: 150,
             fit: BoxFit.cover,
+            // Decode to a small thumbnail (not the full-res image) so the chat
+            // list stays fast and light on memory.
+            memCacheWidth: 400,
             fadeInDuration: const Duration(milliseconds: 150),
             placeholder: (context, url) => Container(
               width: 200,
