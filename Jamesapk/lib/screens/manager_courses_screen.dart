@@ -25,6 +25,9 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
   List<dynamic> _courses = [];
   List<dynamic> _myPlaylists = [];
   bool _isLoading = true;
+  // True when the last course fetch failed (network/API) — lets the UI show a
+  // "couldn't load, retry" state instead of a misleading "No courses available".
+  bool _loadError = false;
   late TabController _tabController;
   String? _userId;
 
@@ -51,36 +54,58 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
   }
 
   Future<void> _fetchCourses() async {
-    try {
-      final user = await AuthService.getStoredUser();
-      final userId = user?['id'] ?? '';
-      final userRole = user?['role'] ?? '';
-      
-      // list=1 → lightweight payload (no heavy page content) for a fast list.
-      // The course detail screen re-fetches the full course when opened.
-      final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole&list=1'),
-      );
+    final user = await AuthService.getStoredUser();
+    final userId = user?['id'] ?? '';
+    final userRole = user?['role'] ?? '';
+    final url = Uri.parse(
+        'https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole&list=1');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> courses = data is List ? data : [];
-        courses.sort((a, b) {
-          final orderA = a['order'] ?? 999;
-          final orderB = b['order'] ?? 999;
-          return orderA.compareTo(orderB);
-        });
-        
-        setState(() {
-          _courses = courses;
-          _isLoading = false;
-        });
-      } else {
-        setState(() => _isLoading = false);
+    // list=1 → lightweight payload (no heavy page content) for a fast list.
+    // Retry a few times with a per-request timeout so a slow/blip response
+    // doesn't leave the user on a false "No courses available" screen.
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final response =
+            await api.get(url).timeout(const Duration(seconds: 20));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          List<dynamic> courses = data is List ? data : [];
+          courses.sort((a, b) {
+            final orderA = a['order'] ?? 999;
+            final orderB = b['order'] ?? 999;
+            return orderA.compareTo(orderB);
+          });
+
+          if (mounted) {
+            setState(() {
+              _courses = courses;
+              _isLoading = false;
+              _loadError = false;
+            });
+          }
+          return; // success
+        }
+        if (attempt < 2) {
+          await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
+          continue;
+        }
+      } catch (e) {
+        print('Error fetching courses (attempt ${attempt + 1}): $e');
+        if (attempt < 2) {
+          await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
+          continue;
+        }
       }
-    } catch (e) {
-      print('Error fetching courses: $e');
-      setState(() => _isLoading = false);
+    }
+
+    // All attempts failed. Keep any courses already on screen; flag an error so
+    // the UI shows "couldn't load, retry" instead of "No courses available".
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (_courses.isEmpty) _loadError = true;
+      });
     }
   }
 
@@ -919,6 +944,40 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
       return const Center(child: CircularProgressIndicator(color: _primary));
     }
     if (_courses.isEmpty) {
+      if (_loadError) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.cloud_off, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                const Text("Couldn't load courses",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text('Check your internet connection and try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() { _isLoading = true; _loadError = false; });
+                    _loadData();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
       return const Center(child: Text('No courses available'));
     }
     return ListView.builder(

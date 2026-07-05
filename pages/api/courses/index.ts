@@ -44,7 +44,16 @@ export default async function handler(
 
     // Fetch all necessary course and page fields
     const courseQuery = CourseModel.find({});
-    if (summaryMode) courseQuery.select('-pages -quizQuestions -links');
+    if (summaryMode) {
+      courseQuery.select('-pages -quizQuestions -links');
+    } else if (listMode) {
+      // List mode only needs light page metadata (id/title/status/isQuiz/…), so
+      // exclude the heavy per-page content at the DB level. This keeps the query
+      // and payload small — previously the full HTML body/transcript/quiz for
+      // EVERY page of EVERY course was loaded just to be stripped in JS, which
+      // made the mobile course list slow and prone to timeouts.
+      courseQuery.select('-pages.body -pages.transcript -pages.quizQuestions -pages.resourceLinks -pages.fileUrls -pages.pinnedCommunityPostUrl -quizQuestions -links');
+    }
     const courses = await courseQuery.lean();
     console.log('📚 Total courses in DB:', courses.length);
 

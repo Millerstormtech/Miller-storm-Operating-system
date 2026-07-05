@@ -30,6 +30,9 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   List<dynamic> _assignedPlaylists = [];
   bool _isLoading = true;
   bool _hasCachedData = false;
+  // True when the last course fetch failed (network/API) — lets the UI show a
+  // "couldn't load, retry" state instead of a misleading "No courses available".
+  bool _loadError = false;
   late TabController _tabController;
   String? _userId;
   final TextEditingController _searchController = TextEditingController();
@@ -70,19 +73,20 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedJson = prefs.getString(_cacheKey);
-      final cacheTime = prefs.getInt(_cacheTimeKey);
-      
-      if (cachedJson != null && cacheTime != null) {
-        // Check if cache is less than 1 hour old
-        if (DateTime.now().millisecondsSinceEpoch - cacheTime < 3600000) {
-          final data = jsonDecode(cachedJson);
-          List<dynamic> courses = data is List ? data : [];
+
+      // Stale-while-revalidate: always show the last-known courses instantly
+      // (any age) so the user never sees a blank/"no courses" screen while the
+      // fresh fetch runs in the background. _fetchCourses refreshes right after.
+      if (cachedJson != null) {
+        final data = jsonDecode(cachedJson);
+        List<dynamic> courses = data is List ? data : [];
+        if (courses.isNotEmpty) {
           courses.sort((a, b) {
             final orderA = a['order'] ?? 999;
             final orderB = b['order'] ?? 999;
             return orderA.compareTo(orderB);
           });
-          
+
           if (mounted) {
             setState(() {
               _courses = courses;
@@ -109,49 +113,69 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   }
 
   Future<void> _fetchCourses() async {
-    try {
-      final user = await AuthService.getStoredUser();
-      final userId = user?['id'] ?? '';
-      final userRole = user?['role'] ?? '';
-      
-      // list=true → server strips heavy per-page content (HTML body, video
-      // transcript, quiz questions) that the list doesn't need, so it loads
-      // fast. The course detail screen re-fetches the full course on open.
-      final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole&list=true'),
-      );
+    final user = await AuthService.getStoredUser();
+    final userId = user?['id'] ?? '';
+    final userRole = user?['role'] ?? '';
+    final url = Uri.parse(
+        'https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole&list=true');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> courses = data is List ? data : [];
-        courses.sort((a, b) {
-          final orderA = a['order'] ?? 999;
-          final orderB = b['order'] ?? 999;
-          return orderA.compareTo(orderB);
-        });
-        
-        // Save to cache
-        await _saveCachedCourses(courses);
-        
-        if (mounted) {
-          setState(() {
-            _courses = courses;
-            _filteredCourses = courses;
-            _isLoading = false;
+    // list=true → server strips heavy per-page content (HTML body, video
+    // transcript, quiz questions) that the list doesn't need, so it loads fast.
+    // Retry a few times with a per-request timeout so a slow/blip response
+    // doesn't leave the user on a false "No courses available" screen.
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final response =
+            await api.get(url).timeout(const Duration(seconds: 20));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          List<dynamic> courses = data is List ? data : [];
+          courses.sort((a, b) {
+            final orderA = a['order'] ?? 999;
+            final orderB = b['order'] ?? 999;
+            return orderA.compareTo(orderB);
           });
+
+          await _saveCachedCourses(courses);
+
+          if (mounted) {
+            setState(() {
+              _courses = courses;
+              _filteredCourses = _searchQuery.isEmpty
+                  ? courses
+                  : courses.where((c) {
+                      final t = (c['title'] ?? '').toLowerCase();
+                      final d = (c['description'] ?? '').toLowerCase();
+                      return t.contains(_searchQuery) || d.contains(_searchQuery);
+                    }).toList();
+              _isLoading = false;
+              _loadError = false;
+            });
+          }
+          return; // success
         }
-      } else if (!_hasCachedData) {
-        if (mounted) {
-          setState(() => _isLoading = false);
+        // Non-200: retry unless it's the last attempt.
+        if (attempt < 2) {
+          await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
+          continue;
+        }
+      } catch (e) {
+        print('Error fetching courses (attempt ${attempt + 1}): $e');
+        if (attempt < 2) {
+          await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
+          continue;
         }
       }
-    } catch (e) {
-      print('Error fetching courses: $e');
-      if (!_hasCachedData) {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
+    }
+
+    // All attempts failed. Keep any cached courses on screen; only flag an error
+    // (so the UI shows "couldn't load, retry" instead of "No courses available").
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (_courses.isEmpty) _loadError = true;
+      });
     }
   }
 
@@ -312,7 +336,44 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
         ),
         Expanded(
           child: _filteredCourses.isEmpty
-              ? Center(
+              ? (_loadError && _searchQuery.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.cloud_off, size: 64, color: _textLight.withOpacity(0.4)),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Couldn't load courses",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _textDark),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Check your internet connection and try again.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, color: _textLight),
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() { _isLoading = true; _loadError = false; });
+                              _loadData();
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: Column(
@@ -333,7 +394,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                       ],
                     ),
                   ),
-                )
+                ))
               : RefreshIndicator(
                   color: _primary,
                   onRefresh: () async {
