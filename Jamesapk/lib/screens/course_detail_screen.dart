@@ -110,35 +110,25 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       
       print('🔵 Fetching course detail: ${widget.courseId}');
       
-      final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId'),
-      );
+      // list=1 → light payload (lesson titles/status/videoUrl only; the lesson
+      // player fetches full content per lesson). The response now also carries
+      // completed/unlocked/quiz progress, so this is a SINGLE fast round-trip
+      // instead of a heavy course fetch + a second /api/progress call.
+      final response = await api
+          .get(Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId&list=1'))
+          .timeout(const Duration(seconds: 20));
 
       print('🔵 Course detail response: ${response.statusCode}');
-      print('🔵 Course detail body: ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}...');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-        // Fetch actual completed pages from progress API to ensure accuracy
-        Set<String> completedIds = {};
-        Set<String> unlockedIds = {};
-        List<dynamic> quizResults = <dynamic>[];
-        try {
-          final progressResponse = await api.get(
-            Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
-          );
-          if (progressResponse.statusCode == 200) {
-            final progressData = jsonDecode(progressResponse.body);
-            final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
-            completedIds = completedPages.map((p) => p.toString()).toSet();
-            final unlockedPages = progressData['unlockedPages'] as List<dynamic>? ?? [];
-            unlockedIds = unlockedPages.map((p) => p.toString()).toSet();
-            quizResults = progressData['quizResults'] as List<dynamic>? ?? [];
-          }
-        } catch (e) {
-          print('⚠️ Could not load progress in detail: $e');
-        }
+
+        // Progress arrays come from the same response now.
+        final completedIds =
+            (data['completedPages'] as List<dynamic>? ?? []).map((p) => p.toString()).toSet();
+        final unlockedIds =
+            (data['unlockedPages'] as List<dynamic>? ?? []).map((p) => p.toString()).toSet();
+        final quizResults = data['quizResults'] as List<dynamic>? ?? [];
 
         setState(() {
           _course = data;

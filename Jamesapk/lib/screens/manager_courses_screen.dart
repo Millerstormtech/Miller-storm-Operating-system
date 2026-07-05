@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
@@ -30,12 +31,44 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
   bool _loadError = false;
   late TabController _tabController;
   String? _userId;
+  static const String _cacheKey = 'manager_courses_cache';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadCachedCourses();
     _loadData();
+  }
+
+  // Stale-while-revalidate: show the last-known courses instantly (any age) so
+  // the manager never waits on a blank screen; _fetchCourses refreshes after.
+  Future<void> _loadCachedCourses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_cacheKey);
+      if (cachedJson != null) {
+        final data = jsonDecode(cachedJson);
+        final List<dynamic> courses = data is List ? data : [];
+        if (courses.isNotEmpty && mounted) {
+          setState(() {
+            _courses = courses;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading cached courses: $e');
+    }
+  }
+
+  Future<void> _saveCachedCourses(List<dynamic> courses) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cacheKey, jsonEncode(courses));
+    } catch (e) {
+      print('Error saving cached courses: $e');
+    }
   }
 
   @override
@@ -76,6 +109,8 @@ class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with Single
             final orderB = b['order'] ?? 999;
             return orderA.compareTo(orderB);
           });
+
+          await _saveCachedCourses(courses);
 
           if (mounted) {
             setState(() {

@@ -33,9 +33,16 @@ export default async function handler(
     console.log('📚 Course detail API called for:', id, 'userId:', userId);
     
     try {
-      // Fetch course by ID with all fields
-      const course = await CourseModel.findOne({ id: id }).lean();
-      
+      // list=1 → the course DETAIL list only needs light page metadata (the
+      // lesson player re-fetches full content per lesson), so strip the heavy
+      // per-page content at the DB level for a fast, small response.
+      const listMode = !!req.query.list;
+      const courseQuery = CourseModel.findOne({ id: id });
+      if (listMode) {
+        courseQuery.select('-pages.body -pages.transcript -pages.quizQuestions -pages.resourceLinks -pages.fileUrls -pages.pinnedCommunityPostUrl -quizQuestions -links');
+      }
+      const course = await courseQuery.lean();
+
       if (!course) {
         console.log('❌ Course not found:', id);
         res.status(404).json({ error: 'Course not found' });
@@ -59,6 +66,12 @@ export default async function handler(
       const totalItems = publishedPages.length;
       progress.totalLessons = totalItems;
 
+      // Return these arrays too so the mobile course-detail screen gets progress
+      // in this SAME response (no separate /api/progress round-trip needed).
+      let completedPages: string[] = [];
+      let unlockedPages: string[] = [];
+      let quizResultsOut: any[] = [];
+
       if (userId) {
         try {
           // Get progress directly from UserProgressModel
@@ -68,6 +81,9 @@ export default async function handler(
           }).lean();
 
           if (userProgress) {
+            completedPages = (userProgress.completedPages || []) as string[];
+            unlockedPages = (userProgress.unlockedPages || []) as string[];
+            quizResultsOut = userProgress.quizResults || [];
             const completedSet = new Set(userProgress.completedPages || []);
             const quizResults = userProgress.quizResults || [];
             const completedCount = publishedPages.filter((p: any) =>
@@ -89,7 +105,10 @@ export default async function handler(
 
       const response = {
         ...course,
-        progress
+        progress,
+        completedPages,
+        unlockedPages,
+        quizResults: quizResultsOut
       };
 
       console.log('📊 Progress:', progress);
