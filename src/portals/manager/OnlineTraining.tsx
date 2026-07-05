@@ -2620,6 +2620,8 @@ function UnlockLessonPanel(props: {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Filter lessons/quizzes by name so managers don't have to scroll long lists.
+  const [search, setSearch] = useState('');
 
   const selectedMember = props.teamUsers.find(u => u.id === selectedMemberId) || null;
 
@@ -2629,6 +2631,7 @@ function UnlockLessonPanel(props: {
     let active = true;
     setLoading(true);
     setSelected(new Set());
+    setSearch('');
     (async () => {
       const map: Record<string, { completed: Set<string>; unlocked: Set<string>; quizResults: any[] }> = {};
       await Promise.all(
@@ -2779,13 +2782,46 @@ function UnlockLessonPanel(props: {
         </button>
       </div>
 
+      <div style={{ position: 'relative', marginBottom: 16 }}>
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 15 }}>🔍</span>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search a lesson or quiz by name…"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, outline: 'none' }}
+        />
+        {search && (
+          <button type="button" onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#9ca3af', fontSize: 16, cursor: 'pointer' }}>✕</button>
+        )}
+      </div>
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading…</div>
-      ) : (
+      ) : (() => {
+        const q = search.trim().toLowerCase();
+        const courseBlocks = props.publishedCourses.map(course => {
+          const allPages = (course.pages || []).filter((p: any) => p.status === 'published');
+          // When searching, keep pages whose title matches — or every page if the
+          // course title itself matches the query.
+          const courseMatches = q !== '' && (course.title || '').toLowerCase().includes(q);
+          const pages = q === ''
+            ? allPages
+            : (courseMatches ? allPages : allPages.filter((p: any) => (p.title || '').toLowerCase().includes(q)));
+          return { course, pages };
+        }).filter(b => b.pages.length > 0);
+
+        if (courseBlocks.length === 0) {
+          return (
+            <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+              {q ? `No lessons or quizzes match “${search}”.` : 'No courses found.'}
+            </div>
+          );
+        }
+
+        return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {props.publishedCourses.map(course => {
-            const pages = (course.pages || []).filter((p: any) => p.status === 'published');
-            if (pages.length === 0) return null;
+          {courseBlocks.map(({ course, pages }) => {
             return (
               <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 14, color: '#111827' }}>
@@ -2825,7 +2861,8 @@ function UnlockLessonPanel(props: {
             );
           })}
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
