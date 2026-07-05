@@ -44,6 +44,7 @@ export default async function handler(
         console.log('📊 No progress found, returning empty');
         res.status(200).json({
           completedPages: [],
+          unlockedPages: [],
           quizResults: [],
           courseCompleted: false
         });
@@ -58,6 +59,7 @@ export default async function handler(
       
       res.status(200).json({
         completedPages: progress.completedPages || [],
+        unlockedPages: progress.unlockedPages || [],
         quizResults: progress.quizResults || [],
         courseCompleted: progress.courseCompleted || false
       });

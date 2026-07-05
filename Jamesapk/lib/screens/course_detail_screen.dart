@@ -41,6 +41,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _progressPercent = 0;
   String? _userId;
   Set<String> _completedPageIds = <String>{};
+  // Pages a manager manually unlocked for this user (accessible without watching,
+  // but NOT counted as completed). Read from the progress API.
+  Set<String> _unlockedPageIds = <String>{};
   List<dynamic> _quizResults = <dynamic>[];
   
   // Track which sections are expanded
@@ -119,6 +122,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         
         // Fetch actual completed pages from progress API to ensure accuracy
         Set<String> completedIds = {};
+        Set<String> unlockedIds = {};
         List<dynamic> quizResults = <dynamic>[];
         try {
           final progressResponse = await api.get(
@@ -128,6 +132,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             final progressData = jsonDecode(progressResponse.body);
             final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
             completedIds = completedPages.map((p) => p.toString()).toSet();
+            final unlockedPages = progressData['unlockedPages'] as List<dynamic>? ?? [];
+            unlockedIds = unlockedPages.map((p) => p.toString()).toSet();
             quizResults = progressData['quizResults'] as List<dynamic>? ?? [];
           }
         } catch (e) {
@@ -140,6 +146,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           _totalLessons = data['progress']?['totalLessons'] ?? 0;
           _progressPercent = data['progress']?['progressPercent'] ?? 0;
           _completedPageIds = completedIds;
+          _unlockedPageIds = unlockedIds;
           _quizResults = quizResults;
           _isLoading = false;
         });
@@ -423,6 +430,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     // first incomplete item locks everything after it, so a newly-inserted
     // lesson/quiz re-locks the rest until it's done.
     bool isPageUnlocked(String pageId) {
+      // A manager can manually unlock this specific page for the user — it then
+      // opens without needing the preceding items done (only THIS page, nothing
+      // after it, is unlocked).
+      if (_unlockedPageIds.contains(pageId)) return true;
       final index = allPublishedPages.indexWhere((p) => p['id'] == pageId);
       if (index <= 0) return true; // First page is always unlocked
       for (var i = 0; i < index; i++) {

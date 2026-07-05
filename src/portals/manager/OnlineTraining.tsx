@@ -66,6 +66,8 @@ export function ManagerOnlineTrainingPage(props: {
   const [courseViewInitialized, setCourseViewInitialized] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
+  // Pages an admin/manager manually unlocked for this user (accessible without watching).
+  const [unlockedPages, setUnlockedPages] = useState<Set<string>>(new Set());
   const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
@@ -277,6 +279,7 @@ export function ManagerOnlineTrainingPage(props: {
         .then(res => res.json())
         .then(data => {
           setCompletedPages(new Set(data.completedPages || []));
+          setUnlockedPages(new Set(data.unlockedPages || []));
           setSavedQuizResults(data.quizResults || []);
           setCourseCompleted(data.courseCompleted || false);
         })
@@ -1248,6 +1251,9 @@ export function ManagerOnlineTrainingPage(props: {
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 
     const isPageUnlocked = (pageId: string) => {
+      // A manager/admin can manually unlock this specific page — it then opens
+      // without the preceding items done (only THIS page is unlocked).
+      if (unlockedPages.has(pageId)) return true;
       const currentIndex = pages.findIndex(p => p.id === pageId);
       if (currentIndex <= 0) return true;
       // Strict sequential: EVERY preceding item must be complete (lesson watched
