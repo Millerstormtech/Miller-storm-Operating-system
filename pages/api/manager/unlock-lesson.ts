@@ -77,7 +77,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         title,
         message,
         read: false,
-        metadata: { courseId, courseName: courseName || "", pageId: pages[0] },
+        // watchUrl lets the web bell deep-link to the training page on click;
+        // courseId/pageId let the mobile app open the exact course/lesson.
+        metadata: { courseId, courseName: courseName || "", pageId: pages[0], lessonId: pages[0], watchUrl: "/sales/training" },
       });
 
       const member = await UserModel.findOne({ id: memberUserId }, { fcmToken: 1 }).lean() as any;
