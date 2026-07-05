@@ -95,7 +95,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [assignDeadline, setAssignDeadline] = useState<string>('');
   const [assignmentsByUser, setAssignmentsByUser] = useState<Record<string, any>>({});
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists'>('courses');
+  const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists' | 'unlock'>('courses');
   const [playlistProgressData, setPlaylistProgressData] = useState<Record<string, { user: any; completed: number; total: number; pct: number }[]>>({});
   const [isLoadingPlaylistProgress, setIsLoadingPlaylistProgress] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280); // Default width
@@ -2431,6 +2431,24 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 Playlist Progress
               </button>
+              <button
+                type="button"
+                onClick={() => setTeamProgressView('unlock')}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: teamProgressView === 'unlock' ? '#fff' : 'transparent',
+                  color: teamProgressView === 'unlock' ? '#111827' : '#6b7280',
+                  boxShadow: teamProgressView === 'unlock' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🔓 Unlock Lesson
+              </button>
             </div>
           </div>
           <div className="panel-body">
@@ -2563,6 +2581,15 @@ export function ManagerOnlineTrainingPage(props: {
                     )}
                   </div>
                 )}
+
+                {/* Unlock Lesson Section */}
+                {teamProgressView === 'unlock' && (
+                  <UnlockLessonPanel
+                    managerId={props.currentUser.id}
+                    teamUsers={teamProgress.map(t => t.user)}
+                    publishedCourses={publishedCourses}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -2572,4 +2599,233 @@ export function ManagerOnlineTrainingPage(props: {
 
     return null;
   }
+}
+
+// ── Unlock Lesson panel ──────────────────────────────────────────────────────
+// Manager picks a team member, sees every course's lessons/quizzes with their
+// current lock state for that member, ticks the ones to unlock, and unlocks
+// them. Unlock is stored separately from completed pages (never counts toward
+// progress %); the member is notified. Completing an unlocked item later updates
+// their progress normally.
+function UnlockLessonPanel(props: {
+  managerId: string;
+  teamUsers: any[];
+  publishedCourses: Course[];
+}) {
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  // courseId -> { completed:Set, unlocked:Set, quizResults }
+  const [progress, setProgress] = useState<Record<string, { completed: Set<string>; unlocked: Set<string>; quizResults: any[] }>>({});
+  const [loading, setLoading] = useState(false);
+  // Pending selections as "courseId::pageId".
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const selectedMember = props.teamUsers.find(u => u.id === selectedMemberId) || null;
+
+  // Load the member's progress across all courses when one is selected.
+  useEffect(() => {
+    if (!selectedMemberId) return;
+    let active = true;
+    setLoading(true);
+    setSelected(new Set());
+    (async () => {
+      const map: Record<string, { completed: Set<string>; unlocked: Set<string>; quizResults: any[] }> = {};
+      await Promise.all(
+        props.publishedCourses.map(async (course) => {
+          try {
+            const res = await fetch(
+              `/api/manager/unlock-lesson?memberUserId=${encodeURIComponent(selectedMemberId)}&courseId=${encodeURIComponent(course.id)}`
+            );
+            const data = res.ok ? await res.json() : {};
+            map[course.id] = {
+              completed: new Set(data.completedPages || []),
+              unlocked: new Set(data.unlockedPages || []),
+              quizResults: data.quizResults || [],
+            };
+          } catch {
+            map[course.id] = { completed: new Set(), unlocked: new Set(), quizResults: [] };
+          }
+        })
+      );
+      if (active) { setProgress(map); setLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [selectedMemberId, props.publishedCourses]);
+
+  const isCompleted = (courseId: string, p: any) => {
+    const prog = progress[courseId];
+    if (!prog) return false;
+    if (p.isQuiz) return isQuizResultPassing(prog.quizResults.find((q: any) => q.pageId === p.id));
+    return prog.completed.has(p.id);
+  };
+  const isUnlocked = (courseId: string, pageId: string) => progress[courseId]?.unlocked.has(pageId) ?? false;
+
+  const toggleSelect = (courseId: string, pageId: string) => {
+    const key = `${courseId}::${pageId}`;
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const doUnlock = async () => {
+    if (selected.size === 0 || !selectedMemberId) return;
+    setBusy(true);
+    // Group selected page ids by course.
+    const byCourse: Record<string, string[]> = {};
+    selected.forEach(key => {
+      const [courseId, pageId] = key.split("::");
+      (byCourse[courseId] ||= []).push(pageId);
+    });
+    try {
+      for (const [courseId, pageIds] of Object.entries(byCourse)) {
+        const course = props.publishedCourses.find(c => c.id === courseId);
+        const res = await fetch("/api/manager/unlock-lesson", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            memberUserId: selectedMemberId,
+            courseId,
+            pageIds,
+            action: "unlock",
+            courseName: course?.title || "",
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProgress(prev => ({
+            ...prev,
+            [courseId]: { ...prev[courseId], unlocked: new Set(data.unlockedPages || []) },
+          }));
+        }
+      }
+      setSelected(new Set());
+      setToast("Unlocked — the team member has been notified.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleUnlockOne = async (courseId: string, pageId: string, unlock: boolean) => {
+    if (!selectedMemberId) return;
+    const course = props.publishedCourses.find(c => c.id === courseId);
+    const res = await fetch("/api/manager/unlock-lesson", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        memberUserId: selectedMemberId,
+        courseId,
+        pageId,
+        action: unlock ? "unlock" : "lock",
+        courseName: course?.title || "",
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setProgress(prev => ({
+        ...prev,
+        [courseId]: { ...prev[courseId], unlocked: new Set(data.unlockedPages || []) },
+      }));
+      if (unlock) setToast("Unlocked — the team member has been notified.");
+    }
+  };
+
+  // Member picker.
+  if (!selectedMember) {
+    return (
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>
+          Select a team member to unlock lessons or quizzes for them
+        </div>
+        {props.teamUsers.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No team members found.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {props.teamUsers.map(user => (
+              <button
+                key={user.id}
+                type="button"
+                onClick={() => setSelectedMemberId(user.id)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{user.name}</span>
+                <span style={{ fontSize: 13, color: '#6b7280' }}>Select →</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Member selected → show courses + lessons with checkboxes.
+  return (
+    <div>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <button type="button" onClick={() => setSelectedMemberId(null)} style={{ background: 'transparent', border: 'none', color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>← Team members</button>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginTop: 4 }}>{selectedMember.name}</div>
+        </div>
+        <button
+          type="button"
+          disabled={busy || selected.size === 0}
+          onClick={doUnlock}
+          style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: (busy || selected.size === 0) ? 'default' : 'pointer', background: (busy || selected.size === 0) ? '#9ca3af' : '#2563eb', color: '#fff' }}
+        >
+          {busy ? 'Unlocking…' : `🔓 Unlock selected${selected.size ? ` (${selected.size})` : ''}`}
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading…</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {props.publishedCourses.map(course => {
+            const pages = (course.pages || []).filter((p: any) => p.status === 'published');
+            if (pages.length === 0) return null;
+            return (
+              <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 14, color: '#111827' }}>
+                  {course.title}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {pages.map((p: any) => {
+                    const done = isCompleted(course.id, p);
+                    const unlocked = isUnlocked(course.id, p.id);
+                    const key = `${course.id}::${p.id}`;
+                    const checkable = !done;
+                    return (
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '1px solid #f1f5f9' }}>
+                        <input
+                          type="checkbox"
+                          disabled={!checkable}
+                          checked={selected.has(key)}
+                          onChange={() => toggleSelect(course.id, p.id)}
+                          style={{ width: 16, height: 16, cursor: checkable ? 'pointer' : 'not-allowed' }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 11, color: '#9ca3af', marginRight: 6 }}>{p.isQuiz ? 'Quiz' : 'Lesson'}</span>
+                          <span style={{ fontSize: 14, color: '#374151' }}>{p.title}</span>
+                        </div>
+                        {done ? (
+                          <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>✓ Completed</span>
+                        ) : unlocked ? (
+                          <button type="button" onClick={() => toggleUnlockOne(course.id, p.id, false)} style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>🔓 Unlocked ✕</button>
+                        ) : (
+                          <span style={{ background: '#f3f4f6', color: '#6b7280', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>🔒 Locked</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }

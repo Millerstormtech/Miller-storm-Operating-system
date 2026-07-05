@@ -8,9 +8,7 @@ export function TeamTrainingProgressPage(props: {
   courses: Course[];
 }) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  // Which course's lesson list is expanded (for the manager to unlock a lesson).
-  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
-
+  
   // Memoize publishedCourses to prevent infinite loop
   const publishedCourses = useMemo(() => 
     props.courses.filter((course) => course.status !== "draft"),
@@ -288,33 +286,17 @@ export function TeamTrainingProgressPage(props: {
               {publishedCourses.map((course, index) => {
                 const pct =
                   selectedMemberProgress.coursePercentages[index] ?? 0;
-                const isExpanded = expandedCourseId === course.id;
                 return (
                   <div key={course.id}>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedCourseId(isExpanded ? null : course.id)
-                      }
+                    <div
                       style={{
                         fontSize: 13,
                         fontWeight: 500,
-                        marginBottom: 4,
-                        border: "none",
-                        background: "transparent",
-                        padding: 0,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        color: "#111827"
+                        marginBottom: 4
                       }}
                     >
-                      <span style={{ fontSize: 11, color: "#9ca3af" }}>
-                        {isExpanded ? "▾" : "▸"}
-                      </span>
                       {course.title}
-                    </button>
+                    </div>
                     <div
                       style={{
                         display: "flex",
@@ -338,12 +320,6 @@ export function TeamTrainingProgressPage(props: {
                         />
                       </div>
                     </div>
-                    {isExpanded && (
-                      <MemberCourseLessons
-                        memberUserId={selectedMemberProgress.member.id}
-                        course={course}
-                      />
-                    )}
                   </div>
                 );
               })}
@@ -354,10 +330,7 @@ export function TeamTrainingProgressPage(props: {
                 <button
                   type="button"
                   className="btn-secondary btn-cancel"
-                  onClick={() => {
-                    setSelectedMemberId(null);
-                    setExpandedCourseId(null);
-                  }}
+                  onClick={() => setSelectedMemberId(null)}
                 >
                   Close
                 </button>
@@ -366,139 +339,6 @@ export function TeamTrainingProgressPage(props: {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Lesson list for ONE member + course, with a per-lesson unlock/lock toggle.
-// A manager can unlock any single lesson/quiz for the member without them
-// watching — the unlock is stored separately and never counts toward progress.
-function MemberCourseLessons(props: { memberUserId: string; course: Course }) {
-  const [loading, setLoading] = useState(true);
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
-  const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
-  const [quizResults, setQuizResults] = useState<any[]>([]);
-  const [busyPageId, setBusyPageId] = useState<string | null>(null);
-
-  const pages = useMemo(
-    () => (props.course.pages || []).filter((p: any) => p.status === "published"),
-    [props.course]
-  );
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    fetch(
-      `/api/manager/unlock-lesson?memberUserId=${encodeURIComponent(
-        props.memberUserId
-      )}&courseId=${encodeURIComponent(props.course.id)}`
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!active || !data) return;
-        setCompleted(new Set(data.completedPages || []));
-        setUnlocked(new Set(data.unlockedPages || []));
-        setQuizResults(data.quizResults || []);
-      })
-      .catch(() => {})
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [props.memberUserId, props.course.id]);
-
-  const isCompleted = (p: any) => {
-    if (p.isQuiz) {
-      const r = quizResults.find((q) => q.pageId === p.id);
-      const total = r?.score?.total ?? 0;
-      return total > 0 && (r.score.correct ?? 0) / total >= 0.6;
-    }
-    return completed.has(p.id);
-  };
-
-  const toggle = async (pageId: string, unlock: boolean) => {
-    setBusyPageId(pageId);
-    try {
-      const res = await fetch("/api/manager/unlock-lesson", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          memberUserId: props.memberUserId,
-          courseId: props.course.id,
-          pageId,
-          action: unlock ? "unlock" : "lock",
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUnlocked(new Set(data.unlockedPages || []));
-      }
-    } finally {
-      setBusyPageId(null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ fontSize: 12, color: "#9ca3af", padding: "6px 0 6px 16px" }}>
-        Loading lessons…
-      </div>
-    );
-  }
-  if (pages.length === 0) {
-    return (
-      <div style={{ fontSize: 12, color: "#9ca3af", padding: "6px 0 6px 16px" }}>
-        No published lessons.
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ margin: "6px 0 4px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
-      {pages.map((p: any) => {
-        const done = isCompleted(p);
-        const isUnlocked = unlocked.has(p.id);
-        return (
-          <div
-            key={p.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-              padding: "4px 8px",
-              borderRadius: 6,
-              background: "#f9fafb",
-            }}
-          >
-            <div style={{ fontSize: 12, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              <span style={{ color: "#9ca3af", marginRight: 6 }}>{p.isQuiz ? "Quiz" : "Lesson"}</span>
-              {p.title}
-            </div>
-            {done ? (
-              <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 600, whiteSpace: "nowrap" }}>✓ Completed</span>
-            ) : isUnlocked ? (
-              <button
-                type="button"
-                disabled={busyPageId === p.id}
-                onClick={() => toggle(p.id, false)}
-                style={{ fontSize: 11, fontWeight: 600, color: "#b45309", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, padding: "3px 8px", cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                {busyPageId === p.id ? "…" : "Unlocked ✕"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={busyPageId === p.id}
-                onClick={() => toggle(p.id, true)}
-                style={{ fontSize: 11, fontWeight: 600, color: "#2563eb", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 6, padding: "3px 8px", cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                {busyPageId === p.id ? "…" : "🔓 Unlock"}
-              </button>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }
