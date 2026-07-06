@@ -15,6 +15,9 @@ type Notification = {
     lessonId?: string;
     sharedBy?: string;
     sharedByName?: string;
+    watchUrl?: string;
+    courseId?: string;
+    courseName?: string;
   };
 };
 
@@ -105,8 +108,13 @@ export function NotificationBell({ userId }: { userId: string }) {
       const path = url.startsWith('http') ? new URL(url).pathname : url;
       console.log('Redirecting to:', path);
       router.push(path);
+    } else if (notif.metadata?.watchUrl) {
+      // Training notifications (e.g. a manager unlocking a lesson) deep-link to
+      // the training page so the user can go straight there.
+      setShowDropdown(false);
+      router.push(notif.metadata.watchUrl);
     } else {
-      console.log('Not a lesson_share notification or missing shareUrl');
+      console.log('No deep link for this notification');
     }
   }
 

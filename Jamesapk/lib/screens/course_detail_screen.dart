@@ -41,6 +41,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _progressPercent = 0;
   String? _userId;
   Set<String> _completedPageIds = <String>{};
+  // Pages a manager manually unlocked for this user (accessible without watching,
+  // but NOT counted as completed). Read from the progress API.
+  Set<String> _unlockedPageIds = <String>{};
   List<dynamic> _quizResults = <dynamic>[];
   
   // Track which sections are expanded
@@ -107,32 +110,25 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       
       print('🔵 Fetching course detail: ${widget.courseId}');
       
-      final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId'),
-      );
+      // list=1 → light payload (lesson titles/status/videoUrl only; the lesson
+      // player fetches full content per lesson). The response now also carries
+      // completed/unlocked/quiz progress, so this is a SINGLE fast round-trip
+      // instead of a heavy course fetch + a second /api/progress call.
+      final response = await api
+          .get(Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId&list=1'))
+          .timeout(const Duration(seconds: 20));
 
       print('🔵 Course detail response: ${response.statusCode}');
-      print('🔵 Course detail body: ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}...');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-        // Fetch actual completed pages from progress API to ensure accuracy
-        Set<String> completedIds = {};
-        List<dynamic> quizResults = <dynamic>[];
-        try {
-          final progressResponse = await api.get(
-            Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
-          );
-          if (progressResponse.statusCode == 200) {
-            final progressData = jsonDecode(progressResponse.body);
-            final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
-            completedIds = completedPages.map((p) => p.toString()).toSet();
-            quizResults = progressData['quizResults'] as List<dynamic>? ?? [];
-          }
-        } catch (e) {
-          print('⚠️ Could not load progress in detail: $e');
-        }
+
+        // Progress arrays come from the same response now.
+        final completedIds =
+            (data['completedPages'] as List<dynamic>? ?? []).map((p) => p.toString()).toSet();
+        final unlockedIds =
+            (data['unlockedPages'] as List<dynamic>? ?? []).map((p) => p.toString()).toSet();
+        final quizResults = data['quizResults'] as List<dynamic>? ?? [];
 
         setState(() {
           _course = data;
@@ -140,6 +136,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           _totalLessons = data['progress']?['totalLessons'] ?? 0;
           _progressPercent = data['progress']?['progressPercent'] ?? 0;
           _completedPageIds = completedIds;
+          _unlockedPageIds = unlockedIds;
           _quizResults = quizResults;
           _isLoading = false;
         });
@@ -423,6 +420,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     // first incomplete item locks everything after it, so a newly-inserted
     // lesson/quiz re-locks the rest until it's done.
     bool isPageUnlocked(String pageId) {
+      // A manager can manually unlock this specific page for the user — it then
+      // opens without needing the preceding items done (only THIS page, nothing
+      // after it, is unlocked).
+      if (_unlockedPageIds.contains(pageId)) return true;
       final index = allPublishedPages.indexWhere((p) => p['id'] == pageId);
       if (index <= 0) return true; // First page is always unlocked
       for (var i = 0; i < index; i++) {

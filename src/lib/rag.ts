@@ -150,8 +150,8 @@ export function reindexBotInBackground(botId: string): void {
 export async function retrieveRelevant(
   botId: string,
   query: string,
-  topK = 12,
-  maxChars = 60000
+  topK = 40,
+  maxChars = 120000
 ): Promise<string[]> {
   const q = (query || "").trim();
   if (!q) return [];

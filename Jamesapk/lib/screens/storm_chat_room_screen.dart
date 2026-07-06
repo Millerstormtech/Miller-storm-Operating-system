@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_compress/video_compress.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
@@ -537,7 +538,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               title: const Text('Choose from Gallery'),
               onTap: () async {
                 Navigator.pop(context);
-                final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                // Compress on pick: cap resolution + re-encode so a 5–15MB phone
+                // photo becomes a few hundred KB → fast upload AND fast display.
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  imageQuality: 70,
+                  maxWidth: 1920,
+                  maxHeight: 1920,
+                );
                 if (image != null) {
                   _editAndSendImage(File(image.path));
                 }
@@ -548,7 +556,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               title: const Text('Take Photo'),
               onTap: () async {
                 Navigator.pop(context);
-                final XFile? image = await picker.pickImage(source: ImageSource.camera);
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.camera,
+                  imageQuality: 70,
+                  maxWidth: 1920,
+                  maxHeight: 1920,
+                );
                 if (image != null) {
                   _editAndSendImage(File(image.path));
                 }
@@ -612,7 +625,28 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     setState(() { isUploading = true; });
 
     try {
-      final fileName = file.path.split('/').last;
+      // Compress videos before upload — a raw phone video can be 100–200MB,
+      // which is very slow to send. MediumQuality typically cuts it by ~70–85%.
+      File uploadFile = file;
+      if (type == 'video') {
+        try {
+          final info = await VideoCompress.compressVideo(
+            file.path,
+            quality: VideoQuality.MediumQuality,
+            deleteOrigin: false,
+            includeAudio: true,
+          );
+          if (info != null && info.file != null) {
+            uploadFile = info.file!;
+            final newMB = (await uploadFile.length()) / (1024 * 1024);
+            print('🎞️ Compressed video: ${fileSizeMB.toStringAsFixed(1)}MB → ${newMB.toStringAsFixed(1)}MB');
+          }
+        } catch (e) {
+          print('Video compress failed, uploading original: $e');
+        }
+      }
+
+      final fileName = uploadFile.path.split('/').last;
       final mimeType = type == 'video' ? 'video/mp4' : 'image/jpeg';
 
       var request = http.MultipartRequest(
@@ -623,12 +657,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       request.files.add(
         await http.MultipartFile.fromPath(
           'file',
-          file.path,
+          uploadFile.path,
           filename: fileName,
         ),
       );
 
-      print('📤 Uploading $type: $fileName (${fileSizeMB.toStringAsFixed(1)}MB)');
+      print('📤 Uploading $type: $fileName');
 
       final streamedResponse = await api.send(request).timeout(
         const Duration(minutes: 15),
@@ -1458,11 +1492,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 ),
                               ),
                             ),
+                          // Reactions below the bubble (no overlap with text)
+                          _buildReactions(message, isMyMessage),
                         ],
                       ),
                     ),
-                    // Reactions display
-                    _buildReactions(message, isMyMessage),
                   ],
                 ), // Stack
                   ], // Column children
@@ -1491,24 +1525,28 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
     
     if (reactionCounts.isEmpty) return const SizedBox();
-    
-    return Positioned(
-      bottom: 6,
-      left: 8,
+
+    // Rendered BELOW the bubble (not overlapping the text). Compact pill.
+    return Padding(
+      padding: EdgeInsets.only(
+        top: 4,
+        left: isMyMessage ? 0 : 8,
+        right: isMyMessage ? 8 : 0,
+      ),
       child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
           decoration: BoxDecoration(
             color: _isDarkTheme ? const Color(0xFF2C2C2E) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _isDarkTheme ? Colors.grey[700]! : Colors.grey[300]!,
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 3,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
@@ -1520,19 +1558,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               return GestureDetector(
                 onTap: () => _showReactionDetails(message, emoji),
                 child: Container(
-                  margin: EdgeInsets.only(right: entry != reactionCounts.entries.last ? 4 : 0),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  margin: EdgeInsets.only(right: entry != reactionCounts.entries.last ? 3 : 0),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(emoji, style: const TextStyle(fontSize: 14)),
+                      Text(emoji, style: const TextStyle(fontSize: 11)),
                       const SizedBox(width: 2),
                       Text(
                         count.toString(),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 9,
                           color: _isDarkTheme ? Colors.white70 : Colors.black54,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -1818,6 +1855,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             width: 200,
             height: 150,
             fit: BoxFit.cover,
+            // Decode to a small thumbnail (not the full-res image) so the chat
+            // list stays fast and light on memory.
+            memCacheWidth: 400,
             fadeInDuration: const Duration(milliseconds: 150),
             placeholder: (context, url) => Container(
               width: 200,

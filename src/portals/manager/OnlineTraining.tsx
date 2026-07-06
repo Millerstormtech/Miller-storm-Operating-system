@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
@@ -21,6 +22,30 @@ function orderPagesByFolder(pages: any[], folders: any[]): any[] {
     ...(folders || []).flatMap((f: any) => pages.filter((p: any) => p.folderId === f.id)),
     ...pages.filter((p: any) => p.folderId && !known.has(p.folderId)),
   ];
+}
+
+// Whether a page is unlocked: a manager unlock always opens it, otherwise
+// strict sequential — every preceding item (lesson watched / quiz passed) must
+// be complete. Used by the deep-link resolver to decide open-lesson vs overview.
+function isPageUnlockedFor(
+  pageId: string,
+  orderedPages: any[],
+  unlockedPages: Set<string>,
+  completedPages: Set<string>,
+  savedQuizResults: any[]
+): boolean {
+  if (unlockedPages.has(pageId)) return true;
+  const idx = orderedPages.findIndex((p) => p.id === pageId);
+  if (idx <= 0) return true;
+  for (let i = 0; i < idx; i++) {
+    const prev = orderedPages[i];
+    if (prev.isQuiz) {
+      if (!isQuizResultPassing(savedQuizResults.find((r) => r.pageId === prev.id))) return false;
+    } else if (!completedPages.has(prev.id)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // Progress counts BOTH lessons (completed) and quizzes (passed) out of ALL
@@ -60,12 +85,20 @@ export function ManagerOnlineTrainingPage(props: {
 }) {
   const publishedCourses = props.courses;
   const isLoading = props.isLoading || false;
+  const router = useRouter();
+  // Lesson a deep link (notification / pop-up) wants to open, pending a lock check.
+  const pendingDeepLinkRef = useRef<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [courseViewInitialized, setCourseViewInitialized] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
+  // Pages an admin/manager manually unlocked for this user (accessible without watching).
+  const [unlockedPages, setUnlockedPages] = useState<Set<string>>(new Set());
+  // Course id whose progress (lock status) has finished loading — lets the
+  // deep-link resolver wait until it knows whether the target is unlocked.
+  const [progressLoadedCourseId, setProgressLoadedCourseId] = useState<string | null>(null);
   const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
@@ -93,7 +126,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [assignDeadline, setAssignDeadline] = useState<string>('');
   const [assignmentsByUser, setAssignmentsByUser] = useState<Record<string, any>>({});
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists'>('courses');
+  const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists' | 'unlock'>('courses');
   const [playlistProgressData, setPlaylistProgressData] = useState<Record<string, { user: any; completed: number; total: number; pct: number }[]>>({});
   const [isLoadingPlaylistProgress, setIsLoadingPlaylistProgress] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280); // Default width
@@ -118,23 +151,41 @@ export function ManagerOnlineTrainingPage(props: {
   const autoPlayRef = useRef(autoPlay);
   autoPlayRef.current = autoPlay;
 
-  // Handle lessonId from query parameter (shared lesson)
+  // Handle lessonId from query parameter (the "Check it out" pop-up / a shared
+  // lesson). Depends on router.query.lessonId — NOT just publishedCourses — so
+  // it fires even when the URL changes while already on this page (router.push
+  // to the same route does not remount, so a courses-only dependency never
+  // re-ran and the redirect silently did nothing).
+  const handledLessonRef = useRef<string | null>(null);
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const lessonId = params.get('lessonId');
-      if (lessonId) {
-        // Find the course that contains this lesson
-        const courseWithLesson = publishedCourses.find(course =>
-          course.pages?.some(page => page.id === lessonId)
-        );
-        if (courseWithLesson) {
-          setSelectedCourse(courseWithLesson);
-          setActivePageId(lessonId);
-        }
-      }
-    }
-  }, [publishedCourses]);
+    const getParam = (key: string) => {
+      const v = router.query[key];
+      const fromRouter = Array.isArray(v) ? v[0] : v;
+      return fromRouter ?? (typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get(key)
+        : null);
+    };
+    const courseId = getParam('courseId');
+    const lessonId = getParam('lessonId');
+    if (publishedCourses.length === 0) return;
+
+    // Prefer courseId (always present on the notification, even older ones);
+    // fall back to finding the course that contains the lesson.
+    const targetCourse = courseId
+      ? publishedCourses.find(c => c.id === courseId)
+      : (lessonId ? publishedCourses.find(c => c.pages?.some(p => p.id === lessonId)) : undefined);
+    if (!targetCourse) return;
+
+    const key = `${courseId || ''}::${lessonId || ''}`;
+    if (handledLessonRef.current === key) return;
+    handledLessonRef.current = key;
+
+    // Enter the course now; a resolver opens the lesson only if it's unlocked
+    // (a locked lesson — or no lesson id — just lands on the course overview).
+    pendingDeepLinkRef.current = lessonId || null;
+    setSelectedCourse(targetCourse);
+    setActivePageId(lessonId ?? (targetCourse.pages?.[0]?.id ?? null));
+  }, [publishedCourses, router.query.courseId, router.query.lessonId]);
 
   // Check for missed playlist deadlines and notify the manager (idempotent;
   // only notifies once per overdue, incomplete assignment).
@@ -249,7 +300,25 @@ export function ManagerOnlineTrainingPage(props: {
 
   useEffect(() => {
     if (selectedCourse) {
+      // Enter on the overview; the deep-link resolver upgrades to the lesson
+      // view only when the target lesson is actually unlocked.
       setMobileCourseScreen('overview');
+    }
+  }, [selectedCourse?.id]);
+
+  // When the user leaves a course they opened via a deep link, strip the
+  // courseId/lessonId params so the URL reflects the course list (and a refresh
+  // on the list doesn't silently re-open the course).
+  const wasInCourseRef = useRef(false);
+  useEffect(() => {
+    if (selectedCourse) { wasInCourseRef.current = true; return; }
+    if (!wasInCourseRef.current) return;
+    wasInCourseRef.current = false;
+    if (router.query.courseId || router.query.lessonId) {
+      const q = { ...router.query };
+      delete q.courseId;
+      delete q.lessonId;
+      router.replace({ pathname: router.pathname, query: q }, undefined, { shallow: true });
     }
   }, [selectedCourse?.id]);
 
@@ -277,12 +346,32 @@ export function ManagerOnlineTrainingPage(props: {
         .then(res => res.json())
         .then(data => {
           setCompletedPages(new Set(data.completedPages || []));
+          setUnlockedPages(new Set(data.unlockedPages || []));
           setSavedQuizResults(data.quizResults || []);
           setCourseCompleted(data.courseCompleted || false);
+          if (selectedCourse) setProgressLoadedCourseId(selectedCourse.id);
         })
         .catch(err => console.error("Failed to load progress:", err));
     }
   }, [selectedCourse, props.currentUser]);
+
+  // Deep-link resolver: once this course's progress (lock status) is known, open
+  // the target lesson if it's unlocked; a locked target leaves the manager on
+  // the course overview (they still land inside the course, where the lesson is).
+  useEffect(() => {
+    const target = pendingDeepLinkRef.current;
+    if (!target || !selectedCourse) return;
+    if (progressLoadedCourseId !== selectedCourse.id) return; // wait for lock status
+    const ordered = orderPagesByFolder(
+      (selectedCourse.pages ?? []).filter(p => p.status === 'published'),
+      selectedCourse.folders ?? []
+    );
+    if (!ordered.some(p => p.id === target)) { pendingDeepLinkRef.current = null; return; }
+    const unlocked = isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
+    setActivePageId(target);
+    setMobileCourseScreen(unlocked ? 'lesson' : 'overview');
+    pendingDeepLinkRef.current = null;
+  }, [progressLoadedCourseId, selectedCourse, unlockedPages, completedPages, savedQuizResults]);
 
   // Collapse all folders by default when entering a course
   useEffect(() => {
@@ -1248,6 +1337,9 @@ export function ManagerOnlineTrainingPage(props: {
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 
     const isPageUnlocked = (pageId: string) => {
+      // A manager/admin can manually unlock this specific page — it then opens
+      // without the preceding items done (only THIS page is unlocked).
+      if (unlockedPages.has(pageId)) return true;
       const currentIndex = pages.findIndex(p => p.id === pageId);
       if (currentIndex <= 0) return true;
       // Strict sequential: EVERY preceding item must be complete (lesson watched
@@ -2425,6 +2517,24 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 Playlist Progress
               </button>
+              <button
+                type="button"
+                onClick={() => setTeamProgressView('unlock')}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: teamProgressView === 'unlock' ? '#fff' : 'transparent',
+                  color: teamProgressView === 'unlock' ? '#111827' : '#6b7280',
+                  boxShadow: teamProgressView === 'unlock' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🔓 Unlock Lesson
+              </button>
             </div>
           </div>
           <div className="panel-body">
@@ -2557,6 +2667,15 @@ export function ManagerOnlineTrainingPage(props: {
                     )}
                   </div>
                 )}
+
+                {/* Unlock Lesson Section */}
+                {teamProgressView === 'unlock' && (
+                  <UnlockLessonPanel
+                    managerId={props.currentUser.id}
+                    teamUsers={teamProgress.map(t => t.user)}
+                    publishedCourses={publishedCourses}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -2566,4 +2685,301 @@ export function ManagerOnlineTrainingPage(props: {
 
     return null;
   }
+}
+
+// ── Unlock Lesson panel ──────────────────────────────────────────────────────
+// Manager picks a team member, sees every course's lessons/quizzes with their
+// current lock state for that member, ticks the ones to unlock, and unlocks
+// them. Unlock is stored separately from completed pages (never counts toward
+// progress %); the member is notified. Completing an unlocked item later updates
+// their progress normally.
+function UnlockLessonPanel(props: {
+  managerId: string;
+  teamUsers: any[];
+  publishedCourses: Course[];
+}) {
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  // courseId -> { completed:Set, unlocked:Set, quizResults }
+  const [progress, setProgress] = useState<Record<string, { completed: Set<string>; unlocked: Set<string>; quizResults: any[] }>>({});
+  const [loading, setLoading] = useState(false);
+  // Pending selections as "courseId::pageId".
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  // Filter lessons/quizzes by name so managers don't have to scroll long lists.
+  const [search, setSearch] = useState('');
+
+  const selectedMember = props.teamUsers.find(u => u.id === selectedMemberId) || null;
+
+  // Load the member's progress across all courses when one is selected.
+  useEffect(() => {
+    if (!selectedMemberId) return;
+    let active = true;
+    setLoading(true);
+    setSelected(new Set());
+    setSearch('');
+    (async () => {
+      const map: Record<string, { completed: Set<string>; unlocked: Set<string>; quizResults: any[] }> = {};
+      await Promise.all(
+        props.publishedCourses.map(async (course) => {
+          try {
+            const res = await fetch(
+              `/api/manager/unlock-lesson?memberUserId=${encodeURIComponent(selectedMemberId)}&courseId=${encodeURIComponent(course.id)}`
+            );
+            const data = res.ok ? await res.json() : {};
+            map[course.id] = {
+              completed: new Set(data.completedPages || []),
+              unlocked: new Set(data.unlockedPages || []),
+              quizResults: data.quizResults || [],
+            };
+          } catch {
+            map[course.id] = { completed: new Set(), unlocked: new Set(), quizResults: [] };
+          }
+        })
+      );
+      if (active) { setProgress(map); setLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [selectedMemberId, props.publishedCourses]);
+
+  const isCompleted = (courseId: string, p: any) => {
+    const prog = progress[courseId];
+    if (!prog) return false;
+    if (p.isQuiz) return isQuizResultPassing(prog.quizResults.find((q: any) => q.pageId === p.id));
+    return prog.completed.has(p.id);
+  };
+  const isUnlocked = (courseId: string, pageId: string) => progress[courseId]?.unlocked.has(pageId) ?? false;
+
+  const toggleSelect = (courseId: string, pageId: string) => {
+    const key = `${courseId}::${pageId}`;
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  // Select (or clear) every unlockable page in a course at once — a completed
+  // page is skipped since it can't be unlocked. Lets a manager unlock a whole
+  // course in one go via the existing "Unlock selected" button.
+  const toggleSelectWholeCourse = (courseId: string, pages: any[]) => {
+    const keys = pages
+      .filter(p => !isCompleted(courseId, p))
+      .map(p => `${courseId}::${p.id}`);
+    if (keys.length === 0) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      const allSelected = keys.every(k => next.has(k));
+      if (allSelected) keys.forEach(k => next.delete(k));
+      else keys.forEach(k => next.add(k));
+      return next;
+    });
+  };
+
+  const doUnlock = async () => {
+    if (selected.size === 0 || !selectedMemberId) return;
+    setBusy(true);
+    // Group selected page ids by course.
+    const byCourse: Record<string, string[]> = {};
+    selected.forEach(key => {
+      const [courseId, pageId] = key.split("::");
+      (byCourse[courseId] ||= []).push(pageId);
+    });
+    try {
+      for (const [courseId, pageIds] of Object.entries(byCourse)) {
+        const course = props.publishedCourses.find(c => c.id === courseId);
+        const res = await fetch("/api/manager/unlock-lesson", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            memberUserId: selectedMemberId,
+            courseId,
+            pageIds,
+            action: "unlock",
+            courseName: course?.title || "",
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProgress(prev => ({
+            ...prev,
+            [courseId]: { ...prev[courseId], unlocked: new Set(data.unlockedPages || []) },
+          }));
+        }
+      }
+      setSelected(new Set());
+      setToast("Unlocked — the team member has been notified.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleUnlockOne = async (courseId: string, pageId: string, unlock: boolean) => {
+    if (!selectedMemberId) return;
+    const course = props.publishedCourses.find(c => c.id === courseId);
+    const res = await fetch("/api/manager/unlock-lesson", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        memberUserId: selectedMemberId,
+        courseId,
+        pageId,
+        action: unlock ? "unlock" : "lock",
+        courseName: course?.title || "",
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setProgress(prev => ({
+        ...prev,
+        [courseId]: { ...prev[courseId], unlocked: new Set(data.unlockedPages || []) },
+      }));
+      if (unlock) setToast("Unlocked — the team member has been notified.");
+    }
+  };
+
+  // Member picker.
+  if (!selectedMember) {
+    return (
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>
+          Select a team member to unlock lessons or quizzes for them
+        </div>
+        {props.teamUsers.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No team members found.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {props.teamUsers.map(user => (
+              <button
+                key={user.id}
+                type="button"
+                onClick={() => setSelectedMemberId(user.id)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{user.name}</span>
+                <span style={{ fontSize: 13, color: '#6b7280' }}>Select →</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Member selected → show courses + lessons with checkboxes.
+  return (
+    <div>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <button type="button" onClick={() => setSelectedMemberId(null)} style={{ background: 'transparent', border: 'none', color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>← Team members</button>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginTop: 4 }}>{selectedMember.name}</div>
+        </div>
+        <button
+          type="button"
+          disabled={busy || selected.size === 0}
+          onClick={doUnlock}
+          style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: (busy || selected.size === 0) ? 'default' : 'pointer', background: (busy || selected.size === 0) ? '#9ca3af' : '#2563eb', color: '#fff' }}
+        >
+          {busy ? 'Unlocking…' : `🔓 Unlock selected${selected.size ? ` (${selected.size})` : ''}`}
+        </button>
+      </div>
+
+      <div style={{ position: 'relative', marginBottom: 16 }}>
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 15 }}>🔍</span>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search a lesson or quiz by name…"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, outline: 'none' }}
+        />
+        {search && (
+          <button type="button" onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#9ca3af', fontSize: 16, cursor: 'pointer' }}>✕</button>
+        )}
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading…</div>
+      ) : (() => {
+        const q = search.trim().toLowerCase();
+        const courseBlocks = props.publishedCourses.map(course => {
+          const allPages = (course.pages || []).filter((p: any) => p.status === 'published');
+          // When searching, keep pages whose title matches — or every page if the
+          // course title itself matches the query.
+          const courseMatches = q !== '' && (course.title || '').toLowerCase().includes(q);
+          const pages = q === ''
+            ? allPages
+            : (courseMatches ? allPages : allPages.filter((p: any) => (p.title || '').toLowerCase().includes(q)));
+          return { course, pages };
+        }).filter(b => b.pages.length > 0);
+
+        if (courseBlocks.length === 0) {
+          return (
+            <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+              {q ? `No lessons or quizzes match “${search}”.` : 'No courses found.'}
+            </div>
+          );
+        }
+
+        return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {courseBlocks.map(({ course, pages }) => {
+            return (
+              <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{course.title}</span>
+                  {(() => {
+                    const checkable = pages.filter((p: any) => !isCompleted(course.id, p));
+                    if (checkable.length === 0) return null;
+                    const allSelected = checkable.every((p: any) => selected.has(`${course.id}::${p.id}`));
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => toggleSelectWholeCourse(course.id, pages)}
+                        style={{ background: allSelected ? '#e0e7ff' : '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {allSelected ? 'Deselect all' : '🔓 Unlock whole course'}
+                      </button>
+                    );
+                  })()}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {pages.map((p: any) => {
+                    const done = isCompleted(course.id, p);
+                    const unlocked = isUnlocked(course.id, p.id);
+                    const key = `${course.id}::${p.id}`;
+                    const checkable = !done;
+                    return (
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '1px solid #f1f5f9' }}>
+                        <input
+                          type="checkbox"
+                          disabled={!checkable}
+                          checked={selected.has(key)}
+                          onChange={() => toggleSelect(course.id, p.id)}
+                          style={{ width: 16, height: 16, cursor: checkable ? 'pointer' : 'not-allowed' }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 11, color: '#9ca3af', marginRight: 6 }}>{p.isQuiz ? 'Quiz' : 'Lesson'}</span>
+                          <span style={{ fontSize: 14, color: '#374151' }}>{p.title}</span>
+                        </div>
+                        {done ? (
+                          <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>✓ Completed</span>
+                        ) : unlocked ? (
+                          <button type="button" onClick={() => toggleUnlockOne(course.id, p.id, false)} style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>🔓 Unlocked ✕</button>
+                        ) : (
+                          <span style={{ background: '#f3f4f6', color: '#6b7280', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>🔒 Locked</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        );
+      })()}
+    </div>
+  );
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { LessonWatchNote } from "../../components/LessonWatchNote";
@@ -22,6 +23,32 @@ function orderPagesByFolder(pages: any[], folders: any[]): any[] {
     ...(folders || []).flatMap((f: any) => pages.filter((p: any) => p.folderId === f.id)),
     ...pages.filter((p: any) => p.folderId && !known.has(p.folderId)),
   ];
+}
+
+// Whether a page is unlocked for the user: a manager unlock always opens it,
+// otherwise strict sequential — every preceding item (lesson watched / quiz
+// passed) must be complete. Kept in sync with the in-view isPageUnlocked; used
+// by the deep-link resolver to decide whether to open the lesson or just land
+// on the course overview.
+function isPageUnlockedFor(
+  pageId: string,
+  orderedPages: any[],
+  unlockedPages: Set<string>,
+  completedPages: Set<string>,
+  savedQuizResults: any[]
+): boolean {
+  if (unlockedPages.has(pageId)) return true;
+  const idx = orderedPages.findIndex((p) => p.id === pageId);
+  if (idx <= 0) return true;
+  for (let i = 0; i < idx; i++) {
+    const prev = orderedPages[i];
+    if (prev.isQuiz) {
+      if (!isQuizResultPassing(savedQuizResults.find((r) => r.pageId === prev.id))) return false;
+    } else if (!completedPages.has(prev.id)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // Progress counts BOTH lessons (completed) and quizzes (passed) out of ALL
@@ -56,6 +83,7 @@ type Playlist = {
 
 export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }) {
   const { user } = useAuth();
+  const router = useRouter();
   const courses = props.courses;
   const isLoading = props.isLoading || false;
   const [search, setSearch] = useState("");
@@ -66,6 +94,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [showAIChat, setShowAIChat] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
+  // Pages a manager manually unlocked for this user (accessible without watching).
+  const [unlockedPages, setUnlockedPages] = useState<Set<string>>(new Set());
+  // Course id whose progress (completed/unlocked/quiz) has finished loading —
+  // lets the deep-link resolver wait until lock status is actually known.
+  const [progressLoadedCourseId, setProgressLoadedCourseId] = useState<string | null>(null);
+  // Lesson a deep link (notification / pop-up) wants to open, pending a lock check.
+  const pendingDeepLinkRef = useRef<string | null>(null);
   const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
@@ -134,25 +169,45 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const autoPlayRef = useRef(autoPlay);
   autoPlayRef.current = autoPlay;
 
-  // Handle lessonId from query parameter (shared lesson)
+  // Handle lessonId from query parameter (e.g. the "Check it out" pop-up or a
+  // shared lesson link). Depends on router.query.lessonId — NOT just courses —
+  // so it fires even when the URL changes while the user is already on this
+  // page (router.push to the same route does not remount, so a courses-only
+  // dependency never re-ran and the redirect silently did nothing).
+  const handledLessonRef = useRef<string | null>(null);
   useEffect(() => {
     // Enable global autoplay for all devices
     enableGlobalAutoplay();
-    
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const lessonId = params.get('lessonId');
-      if (lessonId) {
-        // Find the course that contains this lesson
-        const courseWithLesson = courses.find(course =>
-          course.pages?.some(page => page.id === lessonId)
-        );
-        if (courseWithLesson) {
-          enterCourse(courseWithLesson, lessonId);
-        }
-      }
-    }
-  }, [courses]);
+
+    const getParam = (key: string) => {
+      const v = router.query[key];
+      const fromRouter = Array.isArray(v) ? v[0] : v;
+      return fromRouter ?? (typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get(key)
+        : null);
+    };
+    const courseId = getParam('courseId');
+    const lessonId = getParam('lessonId');
+    if (courses.length === 0) return;
+
+    // Prefer courseId (always present on the notification, even older ones);
+    // fall back to finding the course that contains the lesson.
+    const targetCourse = courseId
+      ? courses.find(c => c.id === courseId)
+      : (lessonId ? courses.find(c => c.pages?.some(p => p.id === lessonId)) : undefined);
+    if (!targetCourse) return;
+
+    // Handle a given course/lesson only once — courses re-fetches (progress
+    // saves, etc.) must not yank the user back into the player.
+    const key = `${courseId || ''}::${lessonId || ''}`;
+    if (handledLessonRef.current === key) return;
+    handledLessonRef.current = key;
+
+    // Enter the course now; a resolver opens the lesson only if it's unlocked
+    // (a locked lesson — or no lesson id — just lands on the course overview).
+    pendingDeepLinkRef.current = lessonId || null;
+    enterCourse(targetCourse, lessonId ?? (targetCourse.pages?.[0]?.id ?? null));
+  }, [courses, router.query.courseId, router.query.lessonId]);
   // Load playlists from database
   useEffect(() => {
     if (user?.id) {
@@ -190,6 +245,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
   useEffect(() => {
     if (selectedCourse) {
+      // Enter on the overview; the deep-link resolver upgrades to the lesson
+      // view only when the target lesson is actually unlocked.
       setMobileCourseScreen('overview');
       fetch('/api/course-ai-bots')
         .then(r => r.json())
@@ -209,18 +266,54 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     }
   }, [selectedCourse?.id]);
 
+  // When the user leaves a course they opened via a deep link, strip the
+  // courseId/lessonId params so the URL reflects the course list (and a refresh
+  // on the list doesn't silently re-open the course).
+  const wasInCourseRef = useRef(false);
+  useEffect(() => {
+    if (selectedCourse) { wasInCourseRef.current = true; return; }
+    if (!wasInCourseRef.current) return;
+    wasInCourseRef.current = false;
+    if (router.query.courseId || router.query.lessonId) {
+      const q = { ...router.query };
+      delete q.courseId;
+      delete q.lessonId;
+      router.replace({ pathname: router.pathname, query: q }, undefined, { shallow: true });
+    }
+  }, [selectedCourse?.id]);
+
   useEffect(() => {
     if (selectedCourse && user) {
       fetch(`/api/progress?userId=${user.id}&courseId=${selectedCourse.id}`)
         .then(res => res.json())
         .then(data => {
           setCompletedPages(new Set(data.completedPages || []));
+          setUnlockedPages(new Set(data.unlockedPages || []));
           setSavedQuizResults(data.quizResults || []);
           setCourseCompleted(data.courseCompleted || false);
+          if (selectedCourse) setProgressLoadedCourseId(selectedCourse.id);
         })
         .catch(err => console.error("Failed to load progress:", err));
     }
   }, [selectedCourse, user]);
+
+  // Deep-link resolver: once this course's progress (lock status) is known,
+  // open the target lesson if it's unlocked; a locked target leaves the user on
+  // the course overview (they still land inside the course, where the lesson is).
+  useEffect(() => {
+    const target = pendingDeepLinkRef.current;
+    if (!target || !selectedCourse) return;
+    if (progressLoadedCourseId !== selectedCourse.id) return; // wait for lock status
+    const ordered = orderPagesByFolder(
+      (selectedCourse.pages ?? []).filter(p => p.status === 'published'),
+      selectedCourse.folders ?? []
+    );
+    if (!ordered.some(p => p.id === target)) { pendingDeepLinkRef.current = null; return; }
+    const unlocked = isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
+    setActivePageId(target);
+    setMobileCourseScreen(unlocked ? 'lesson' : 'overview');
+    pendingDeepLinkRef.current = null;
+  }, [progressLoadedCourseId, selectedCourse, unlockedPages, completedPages, savedQuizResults]);
 
   // Collapse all folders by default when entering a course; expand only the active lesson's folder
   // Collapse all folders by default when entering a course
@@ -865,6 +958,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     pages = orderPagesByFolder(pages, folders);
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
     const isPageUnlocked = (pageId: string) => {
+      // A manager can manually unlock this specific page — it then opens without
+      // the preceding items done (only THIS page, nothing after it, is unlocked).
+      if (unlockedPages.has(pageId)) return true;
       const currentIndex = pages.findIndex(p => p.id === pageId);
       if (currentIndex <= 0) return true;
       // Strict sequential: EVERY preceding item must be complete (lesson watched

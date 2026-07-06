@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import 'manager_unlock_lesson_screen.dart';
 
 class ManagerViewTeamScreen extends StatefulWidget {
   const ManagerViewTeamScreen({super.key});
@@ -141,6 +142,7 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
           : Column(
               children: [
                 _buildSearchBar(),
+                _buildUnlockButton(),
                 Expanded(
                   child: _filteredMembers.isEmpty
                       ? _buildEmptyState()
@@ -183,6 +185,34 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: _primary.withOpacity(0.5), width: 1),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnlockButton() {
+    return Container(
+      color: _white,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManagerUnlockLessonScreen()),
+            );
+          },
+          icon: const Icon(Icons.lock_open, size: 20),
+          label: const Text('Unlock Lesson for a Team Member',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 0,
           ),
         ),
       ),

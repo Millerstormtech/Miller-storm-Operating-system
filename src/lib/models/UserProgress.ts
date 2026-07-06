@@ -15,6 +15,10 @@ const userProgressSchema = new Schema(
     userId: { type: String, required: true },
     courseId: { type: String, required: true },
     completedPages: [String],
+    // Pages a manager has manually unlocked for this user WITHOUT them watching.
+    // Kept SEPARATE from completedPages so unlocking never counts toward progress
+    // %/leaderboard — only actually watching a video marks a page completed.
+    unlockedPages: [String],
     quizResults: [quizResultSchema],
     courseCompleted: { type: Boolean, default: false },
     completedAt: Date
