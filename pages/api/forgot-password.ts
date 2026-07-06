@@ -15,7 +15,7 @@ export default async function handler(
   await connectMongo();
 
   try {
-    const { email } = req.body;
+    const { email, source } = req.body;
 
     if (!email || !email.trim()) {
       res.status(400).json({ error: "Email is required" });
@@ -67,8 +67,14 @@ export default async function handler(
       expiresAt
     });
 
-    // Generate reset link
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${token}`;
+    // Generate reset link. Requests originating from the mobile app send
+    // `source: "app"`, in which case we hand back a custom-scheme deep link so
+    // the emailed link opens the native Reset Password screen in the app.
+    // Web requests keep the normal https link.
+    const resetLink =
+      source === "app"
+        ? `millerstorm://reset-password?token=${token}`
+        : `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${token}`;
 
     // Send email
     try {

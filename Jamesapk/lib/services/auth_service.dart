@@ -54,6 +54,98 @@ class AuthService {
     }
   }
 
+  /// Requests a password reset link for [email]. Mirrors the web
+  /// `/api/forgot-password` flow: the server always responds with a generic
+  /// success message (anti-enumeration) and emails a reset link when the
+  /// account is eligible. Returns the server message on success.
+  static Future<String> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        // `source: 'app'` tells the server to email a `millerstorm://` deep
+        // link so the reset opens inside this app instead of the website.
+        body: jsonEncode({'email': email, 'source': 'app'}),
+      );
+
+      if (response.body.trim().startsWith('<')) {
+        throw Exception('Server returned HTML instead of JSON. Please check if backend is running properly.');
+      }
+
+      final data = jsonDecode(response.body);
+
+      if (!response.statusCode.toString().startsWith('2')) {
+        throw Exception(data['error'] ?? 'Failed to send reset link');
+      }
+
+      return data['message'] as String? ??
+          'If an account exists with this email, you will receive a password reset link shortly.';
+    } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        throw Exception('Cannot connect to server. Please check your internet connection.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Verifies a password-reset [token] (from the emailed deep link). Mirrors
+  /// the web `GET /api/reset-password?token=`. Returns `{valid, email, name}`
+  /// on success; throws with the server error message if invalid/expired.
+  static Future<Map<String, dynamic>> verifyResetToken(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/reset-password?token=$token'),
+      );
+
+      if (response.body.trim().startsWith('<')) {
+        throw Exception('Server returned HTML instead of JSON. Please check if backend is running properly.');
+      }
+
+      final data = jsonDecode(response.body);
+
+      if (!response.statusCode.toString().startsWith('2')) {
+        throw Exception(data['error'] ?? 'Invalid or expired token');
+      }
+
+      return data;
+    } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        throw Exception('Cannot connect to server. Please check your internet connection.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Sets a new [password] for the given reset [token]. Mirrors the web
+  /// `POST /api/reset-password`. Returns the server success message.
+  static Future<String> resetPassword(String token, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'token': token, 'password': password}),
+      );
+
+      if (response.body.trim().startsWith('<')) {
+        throw Exception('Server returned HTML instead of JSON. Please check if backend is running properly.');
+      }
+
+      final data = jsonDecode(response.body);
+
+      if (!response.statusCode.toString().startsWith('2')) {
+        throw Exception(data['error'] ?? 'Failed to reset password');
+      }
+
+      return data['message'] as String? ??
+          'Password reset successfully. You can now login with your new password.';
+    } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        throw Exception('Cannot connect to server. Please check your internet connection.');
+      }
+      rethrow;
+    }
+  }
+
   static Future<Map<String, dynamic>?> getStoredUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString('user');

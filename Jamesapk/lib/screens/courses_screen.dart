@@ -126,7 +126,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
     for (int attempt = 0; attempt < 3; attempt++) {
       try {
         final response =
-            await api.get(url).timeout(const Duration(seconds: 20));
+            await api.get(url).timeout(const Duration(seconds: 10));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/firebase_messaging_service.dart';
@@ -31,6 +33,8 @@ import 'screens/manager_apps_tools_detail_screen.dart';
 import 'screens/manager_all_plans_screen.dart';
 import 'screens/ai_clone_chat_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'screens/training_leaderboard_screen.dart';
 import 'screens/manager_training_leaderboard_screen.dart';
 
@@ -79,11 +83,44 @@ class _MillerStormAppState extends State<MillerStormApp> {
   // Shared with the API client (see api_client.dart) so a 401 can force re-login.
   final GlobalKey<NavigatorState> navigatorKey = appNavigatorKey;
 
+  final AppLinks _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSub;
+
   @override
   void initState() {
     super.initState();
     // Pass navigator key to messaging service
     FirebaseMessagingService.setNavigatorKey(navigatorKey);
+    _initDeepLinks();
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
+  }
+
+  /// Listens for `millerstorm://reset-password?token=...` deep links (emailed
+  /// when a reset is requested from the app) and routes to the native Reset
+  /// Password screen. Handles both a cold start (initial link) and links that
+  /// arrive while the app is already running.
+  Future<void> _initDeepLinks() async {
+    _linkSub = _appLinks.uriLinkStream.listen(_handleUri, onError: (_) {});
+    try {
+      final initial = await _appLinks.getInitialLink();
+      if (initial != null) _handleUri(initial);
+    } catch (_) {
+      // Ignore malformed initial links.
+    }
+  }
+
+  void _handleUri(Uri uri) {
+    if (uri.scheme == 'millerstorm' && uri.host == 'reset-password') {
+      final token = uri.queryParameters['token'] ?? '';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigatorKey.currentState?.pushNamed('/reset-password', arguments: token);
+      });
+    }
   }
 
   @override
@@ -106,6 +143,11 @@ class _MillerStormAppState extends State<MillerStormApp> {
             return MaterialPageRoute(builder: (_) => const LoginScreen());
           case '/register':
             return MaterialPageRoute(builder: (_) => const RegisterScreen());
+          case '/forgot-password':
+            return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
+          case '/reset-password':
+            final token = settings.arguments as String? ?? '';
+            return MaterialPageRoute(builder: (_) => ResetPasswordScreen(token: token));
           case '/training':
             return MaterialPageRoute(builder: (_) => const TrainingScreen());
           case '/manager-dashboard':
