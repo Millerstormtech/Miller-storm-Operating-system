@@ -266,6 +266,22 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     }
   }, [selectedCourse?.id]);
 
+  // When the user leaves a course they opened via a deep link, strip the
+  // courseId/lessonId params so the URL reflects the course list (and a refresh
+  // on the list doesn't silently re-open the course).
+  const wasInCourseRef = useRef(false);
+  useEffect(() => {
+    if (selectedCourse) { wasInCourseRef.current = true; return; }
+    if (!wasInCourseRef.current) return;
+    wasInCourseRef.current = false;
+    if (router.query.courseId || router.query.lessonId) {
+      const q = { ...router.query };
+      delete q.courseId;
+      delete q.lessonId;
+      router.replace({ pathname: router.pathname, query: q }, undefined, { shallow: true });
+    }
+  }, [selectedCourse?.id]);
+
   useEffect(() => {
     if (selectedCourse && user) {
       fetch(`/api/progress?userId=${user.id}&courseId=${selectedCourse.id}`)
