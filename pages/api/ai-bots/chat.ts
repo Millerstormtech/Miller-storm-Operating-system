@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!auth) return;
 
   await connectMongo();
-  const { botId, messages, chatId, userName, userEmail } = req.body;
+  const { botId, messages, chatId, userName, userEmail, voiceMode } = req.body;
   const userId = auth.sub;
   const userRole = auth.role;
 
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const hasTrainingData = bot.trainingText?.trim() || bot.courseTrainingText?.trim() || bot.trainingLinks?.length > 0 || bot.qaItems?.length > 0;
 
   if (hasTrainingData) {
-    systemContent += `\n\nIMPORTANT: You are limited to the topics and subject matter covered in the training content below. Always respond naturally to greetings, small talk, and conversational messages (like "hi", "hello", "how are you", "thanks", etc.). For actual questions or information requests, only answer if they are clearly related to the topics in the training content. If someone asks about a completely unrelated subject, politely say: "I can only assist with topics covered in my training material." Do not answer unrelated factual or technical questions.`;
+    systemContent += `\n\nIMPORTANT: The training content below may be only the most relevant excerpts of a larger body of material — NOT the complete set. So answer any question that relates to this subject area, using your best understanding of the material even if a specific detail isn't quoted word-for-word in the excerpts. Respond naturally to greetings, small talk, and conversational messages (like "hi", "hello", "thanks"). ONLY decline when a question is clearly about a completely unrelated subject (e.g. general trivia, other domains, or topics with no connection to this material) — in that case politely say: "I can only assist with topics covered in my training material." Do NOT refuse a relevant question just because its exact wording doesn't appear in the excerpts; if it's on-topic, do your best to answer from the material.`;
   }
 
   // Prefer RAG: embed the user's latest question and inject ONLY the most
@@ -38,7 +38,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let usedRag = false;
   if (hasTrainingData) {
     try {
-      const relevant = await retrieveRelevant(botId, lastUserMsg, 12, 60000);
+      // Retrieve broadly (many chunks, large budget) so the model sees enough
+      // of the material to answer — a small top-K made it miss content that was
+      // actually in the training and then wrongly claim it wasn't covered.
+      const relevant = await retrieveRelevant(botId, lastUserMsg, 40, 120000);
       if (relevant.length) {
         systemContent += `\n\nRELEVANT TRAINING CONTENT:\n${relevant.join("\n\n---\n\n")}`;
         usedRag = true;
@@ -75,6 +78,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     addSection("COURSE TRAINING CONTENT", bot.courseTrainingText);
   }
 
+  // Voice conversation: the reply will be spoken aloud, so make it sound like a
+  // real person on a phone call — short, natural, spoken sentences rather than a
+  // written document.
+  if (voiceMode) {
+    systemContent += `\n\nVOICE MODE: The user is speaking to you and your reply will be READ ALOUD. Respond the way a real person would on a phone call: warm, natural, conversational, and CONCISE (usually 1-3 short sentences). Do NOT use markdown, bullet points, numbered lists, headings, emojis, or code blocks — just plain spoken words. If a full answer is long, give the key point first and offer to go deeper. Keep it easy to follow by ear.`;
+  }
+
   // Creativity 0 = rigid, near-deterministic answers (the old default nobody
   // tuned). When it was never set above 0, fall back to a balanced 30 so the
   // bot answers naturally while staying grounded in its training material.
@@ -92,7 +102,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         model: bot.model || "gpt-4o-mini",
         messages: [{ role: "system", content: systemContent }, ...messages.map((m: any) => ({ role: m.role, content: m.content }))],
         temperature,
-        max_tokens: 1500
+        // Voice replies are short and conversational — a small cap makes them
+        // generate (and speak) much faster.
+        max_tokens: voiceMode ? 300 : 1500
       })
     });
 
@@ -100,10 +112,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
     const reply = data.choices[0].message.content;
 
-    // Auto-generate title from conversation using OpenAI
-    let title = "New Chat";
+    // Auto-generate a title ONLY on the first turn — doing it on every message
+    // added a second, blocking OpenAI round-trip that slowed every reply.
+    // undefined = leave the existing title untouched.
+    let title: string | undefined = undefined;
+    const userTurns = messages.filter((m: any) => m.role === "user").length;
     const firstUserMsg = messages.find((m: any) => m.role === "user");
-    if (firstUserMsg) {
+    if (firstUserMsg && userTurns <= 1) {
+      title = "New Chat";
       try {
         const titleRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
@@ -131,11 +147,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Save chat to DB
     if (chatId && userId) {
       const allMessages = [...messages, { role: "assistant", content: reply, timestamp: new Date() }];
-      await BotChatModel.findOneAndUpdate(
-        { chatId },
-        { chatId, botId, userId, userName: userName || "User", userEmail: userEmail || "", userRole: userRole || "", title, messages: allMessages },
-        { upsert: true, new: true }
-      );
+      const update: any = { chatId, botId, userId, userName: userName || "User", userEmail: userEmail || "", userRole: userRole || "", messages: allMessages };
+      if (title !== undefined) update.title = title; // only set on the first turn
+      else update.$setOnInsert = { title: "New Chat" }; // safety for a brand-new doc
+      await BotChatModel.findOneAndUpdate({ chatId }, update, { upsert: true, new: true });
     }
 
     // Update bot stats

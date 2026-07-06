@@ -64,28 +64,39 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
   }
 
   Future<void> _fetchTeam() async {
-    try {
-      final res = await api.get(Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_managerId'))
-          .timeout(const Duration(seconds: 20));
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        _team = data is List ? data.where((u) => u['deleted'] != true).toList() : [];
+    final url = Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_managerId');
+    // Retry a few times — on the iOS simulator the initial request burst can
+    // make a single call time out, which would leave the list empty.
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final res = await api.get(url).timeout(const Duration(seconds: 12));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          _team = data is List ? data.where((u) => u['deleted'] != true).toList() : [];
+          return;
+        }
+      } catch (e) {
+        print('Unlock fetchTeam error (attempt ${attempt + 1}): $e');
       }
-    } catch (e) {
-      print('Unlock fetchTeam error: $e');
+      if (attempt < 2) await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
     }
   }
 
   Future<void> _fetchCourses() async {
-    try {
-      final res = await api.get(Uri.parse('https://millerstorm.tech/api/courses?userId=$_managerId&userRole=manager&list=1'))
-          .timeout(const Duration(seconds: 20));
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        _courses = data is List ? data : [];
+    final url = Uri.parse('https://millerstorm.tech/api/courses?userId=$_managerId&userRole=manager&list=1');
+    // Retry so a timed-out first attempt doesn't show a false "No courses found".
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final res = await api.get(url).timeout(const Duration(seconds: 12));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          _courses = data is List ? data : [];
+          return;
+        }
+      } catch (e) {
+        print('Unlock fetchCourses error (attempt ${attempt + 1}): $e');
       }
-    } catch (e) {
-      print('Unlock fetchCourses error: $e');
+      if (attempt < 2) await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
     }
   }
 
@@ -148,6 +159,28 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
         _selected.remove(key);
       } else {
         _selected.add(key);
+      }
+    });
+  }
+
+  // Keys of every unlockable (not-yet-completed) page in a course. Completed
+  // pages are skipped since they can't be unlocked.
+  List<String> _unlockableKeys(String courseId, List pages) => pages
+      .where((p) => !_isCompleted(courseId, p))
+      .map((p) => '$courseId::${(p['id'] ?? '').toString()}')
+      .toList();
+
+  // Select (or clear) the whole course at once, so a manager can unlock every
+  // lesson/quiz in one go via the existing "Unlock selected" button.
+  void _toggleSelectWholeCourse(String courseId, List pages) {
+    final keys = _unlockableKeys(courseId, pages);
+    if (keys.isEmpty) return;
+    setState(() {
+      final allSelected = keys.every(_selected.contains);
+      if (allSelected) {
+        _selected.removeAll(keys);
+      } else {
+        _selected.addAll(keys);
       }
     });
   }
@@ -396,6 +429,8 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
   }
 
   Widget _courseCard(dynamic course, String cid, List pages) {
+    final unlockableKeys = _unlockableKeys(cid, pages);
+    final allSelected = unlockableKeys.isNotEmpty && unlockableKeys.every(_selected.contains);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -413,8 +448,32 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
               color: Color(0xFFF8FAFC),
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
-            child: Text((course['title'] ?? 'Course').toString(),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text((course['title'] ?? 'Course').toString(),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
+                ),
+                if (unlockableKeys.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _toggleSelectWholeCourse(cid, pages),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: allSelected ? const Color(0xFFE0E7FF) : const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Text(
+                        allSelected ? 'Deselect all' : '🔓 Unlock whole course',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _blue),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           ...pages.map<Widget>((p) {
             final pid = (p['id'] ?? '').toString();

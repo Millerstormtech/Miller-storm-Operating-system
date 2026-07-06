@@ -59,6 +59,30 @@ const ANIM_MAP: Record<string, string> = {
   Bounce: "bcw-bounce", Pulse: "bcw-pulse", Shake: "bcw-shake", Wiggle: "bcw-wiggle",
 };
 
+// Pick the clearest available English voice. The browser default is often a
+// robotic low-quality voice, so we prefer the known natural ones (Google /
+// Microsoft Natural / Apple Samantha), then any non-local (network) en-US voice.
+function pickBestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  if (!voices.length) return null;
+  const en = voices.filter(v => v.lang?.toLowerCase().startsWith("en"));
+  const pool = en.length ? en : voices;
+  const prefer = [
+    /google us english/i,
+    /microsoft.*(aria|jenny|natural)/i,
+    /samantha/i,
+    /google uk english female/i,
+    /google/i,
+    /natural/i,
+  ];
+  for (const re of prefer) {
+    const found = pool.find(v => re.test(v.name));
+    if (found) return found;
+  }
+  return pool.find(v => v.localService === false)
+    || pool.find(v => /en[-_]us/i.test(v.lang))
+    || pool[0];
+}
+
 export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoaded?: (bots: AiBot[], selected: AiBot | null, select: (b: AiBot) => void) => void }) {
   const { user } = useAuth();
   const [bots, setBots] = useState<AiBot[]>([]);
@@ -73,6 +97,29 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  // Voice conversation: listening = mic capturing the user, speaking = the bot's
+  // reply is being read aloud. Uses the browser's built-in Web Speech API
+  // (SpeechRecognition for STT + speechSynthesis for TTS) — no backend change.
+  const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  // conversing = hands-free mode: the mic stays open (listen → answer → listen)
+  // until the user taps the button again to end it.
+  const [conversing, setConversing] = useState(false);
+  const conversingRef = useRef(false);
+  const speakingRef = useRef(false);
+  const loadingRef = useRef(false);
+  const recognitionRef = useRef<any>(null);
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  // Audio recording of the whole voice conversation (your mic + the bot's
+  // spoken reply) → downloadable file. recordingUrl holds the finished audio.
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const recordDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const micNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const ttsSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -103,6 +150,35 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Load the browser's TTS voices and keep the clearest one selected. Voices
+  // often aren't ready on first call, so we also listen for `voiceschanged`.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const load = () => {
+      const v = pickBestVoice(window.speechSynthesis.getVoices());
+      if (v) voiceRef.current = v;
+    };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    return () => { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
+
+  // Keep a ref copy of `loading` so the recognition callbacks (which close over
+  // stale state) can check whether a reply is still being fetched.
+  useEffect(() => { loadingRef.current = loading; }, [loading]);
+
+  // Stop any mic capture / speech / recording when leaving the chat.
+  useEffect(() => {
+    return () => {
+      conversingRef.current = false;
+      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+      try { ttsSourceRef.current?.stop(); } catch { /* ignore */ }
+      try { recorderRef.current?.state === "recording" && recorderRef.current.stop(); } catch { /* ignore */ }
+      try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    };
   }, []);
 
   function newChatId() { return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
@@ -173,7 +249,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  async function send(prefill?: string) {
+  async function send(prefill?: string, speakReply?: boolean) {
     const text = prefill ?? input.trim();
     if ((!text && attachments.length === 0) || loading || !selectedBot || !user) return;
     const userMsg: Message = {
@@ -191,15 +267,219 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           botId: selectedBot.id, messages: newMessages, chatId: currentChatId,
-          userId: user.id, userName: user.name, userEmail: user.email, userRole: user.role
+          userId: user.id, userName: user.name, userEmail: user.email, userRole: user.role,
+          voiceMode: !!speakReply
         })
       });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data.message || "Sorry, I couldn't respond.", timestamp: new Date().toISOString() }]);
+      const replyText = data.message || "Sorry, I couldn't respond.";
+      setMessages(prev => [...prev, { role: "assistant", content: replyText, timestamp: new Date().toISOString() }]);
+      // Voice mode: read the bot's reply aloud so it's a spoken conversation.
+      if (speakReply) speakText(replyText);
       loadChatSessions();
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Failed to get a response. Please try again." }]);
     } finally { setLoading(false); }
+  }
+
+  // ── Voice conversation (OpenAI TTS + mic, recordable) ────────────────────
+  function getAudioCtx(): AudioContext {
+    if (!audioCtxRef.current) {
+      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      audioCtxRef.current = new Ctx();
+    }
+    return audioCtxRef.current!;
+  }
+
+  function detachMicFromRecording() {
+    if (micNodeRef.current && recordDestRef.current) {
+      try { micNodeRef.current.disconnect(recordDestRef.current); } catch { /* not connected */ }
+    }
+  }
+  function attachMicToRecording() {
+    if (micNodeRef.current && recordDestRef.current) {
+      try { micNodeRef.current.connect(recordDestRef.current); } catch { /* already connected */ }
+    }
+  }
+
+  // Speak the reply in a natural OpenAI voice, routed through the AudioContext
+  // so it's both heard AND captured into the conversation recording. Falls back
+  // to the browser voice if TTS fails. When done (in conversation mode) it
+  // re-opens the mic for the next question.
+  async function speakText(text: string) {
+    const clean = (text || "").trim();
+    const afterSpeak = () => {
+      speakingRef.current = false;
+      setSpeaking(false);
+      ttsSourceRef.current = null;
+      if (conversingRef.current) beginListening();
+    };
+    if (!clean || typeof window === "undefined") { afterSpeak(); return; }
+    speakingRef.current = true;
+    setSpeaking(true);
+    detachMicFromRecording(); // don't record the bot's voice twice via the mic
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean, voice: "nova" })
+      });
+      if (!res.ok) throw new Error("tts failed");
+      const arrayBuf = await res.arrayBuffer();
+      const ctx = getAudioCtx();
+      if (ctx.state === "suspended") await ctx.resume();
+      const audioBuf = await ctx.decodeAudioData(arrayBuf);
+      const src = ctx.createBufferSource();
+      src.buffer = audioBuf;
+      src.connect(ctx.destination);                                   // hear it
+      if (recordDestRef.current) src.connect(recordDestRef.current);  // record it
+      src.onended = afterSpeak;
+      ttsSourceRef.current = src;
+      src.start();
+    } catch {
+      speakBrowser(clean, afterSpeak); // fallback (not captured in the recording)
+    }
+  }
+
+  function speakBrowser(text: string, done: () => void) {
+    if (typeof window === "undefined" || !window.speechSynthesis) { done(); return; }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if (!voiceRef.current) { const v = pickBestVoice(window.speechSynthesis.getVoices()); if (v) voiceRef.current = v; }
+    if (voiceRef.current) { u.voice = voiceRef.current; u.lang = voiceRef.current.lang; }
+    u.rate = 0.95;
+    u.onend = done;
+    u.onerror = done;
+    window.speechSynthesis.speak(u);
+  }
+
+  function stopSpeaking() {
+    try { ttsSourceRef.current?.stop(); } catch { /* ignore */ }
+    ttsSourceRef.current = null;
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    speakingRef.current = false;
+    setSpeaking(false);
+  }
+
+  // One listening turn. A silent turn just re-listens (in conversation mode) so
+  // the mic stays open until the user ends it.
+  function beginListening() {
+    if (typeof window === "undefined") return;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Voice input isn't supported in this browser. Please use Google Chrome."); stopConversation(); return; }
+    stopSpeaking(); // never listen to our own voice
+    attachMicToRecording(); // record the user's turn
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    let gotResult = false;
+    rec.onresult = (e: any) => {
+      const transcript = e.results?.[0]?.[0]?.transcript?.trim();
+      if (transcript) { gotResult = true; setListening(false); send(transcript, true); }
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => {
+      setListening(false);
+      // Silent turn (no speech) → keep listening so the mic stays open. Skip if
+      // a reply is being fetched/spoken (those paths re-listen when done).
+      if (conversingRef.current && !gotResult && !speakingRef.current && !loadingRef.current) {
+        beginListening();
+      }
+    };
+    recognitionRef.current = rec;
+    setListening(true);
+    try { rec.start(); } catch { setListening(false); }
+  }
+
+  // Set up mic capture + a MediaRecorder that records the mixed conversation
+  // audio (your mic + the bot's voice). Best-effort — if the mic is blocked the
+  // voice chat still works, just without a downloadable recording.
+  async function setupRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      const ctx = getAudioCtx();
+      if (ctx.state === "suspended") await ctx.resume();
+      const dest = ctx.createMediaStreamDestination();
+      recordDestRef.current = dest;
+      micNodeRef.current = ctx.createMediaStreamSource(stream);
+      chunksRef.current = [];
+      const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
+      const rec = mime ? new MediaRecorder(dest.stream, { mimeType: mime }) : new MediaRecorder(dest.stream);
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        if (!chunksRef.current.length) return;
+        const blob = new Blob(chunksRef.current, { type: chunksRef.current[0].type || "audio/webm" });
+        const url = URL.createObjectURL(blob);
+        setRecordingUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
+      };
+      recorderRef.current = rec;
+      rec.start();
+    } catch (e) {
+      console.warn("[voice] recording unavailable:", e);
+    }
+  }
+
+  function teardownRecording() {
+    try { if (recorderRef.current && recorderRef.current.state === "recording") recorderRef.current.stop(); } catch { /* ignore */ }
+    try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+    recorderRef.current = null;
+    micNodeRef.current = null;
+    recordDestRef.current = null;
+    micStreamRef.current = null;
+  }
+
+  async function startConversation() {
+    if (typeof window === "undefined") return;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Voice input isn't supported in this browser. Please use Google Chrome."); return; }
+    if (recordingUrl) { URL.revokeObjectURL(recordingUrl); setRecordingUrl(null); }
+    conversingRef.current = true;
+    setConversing(true);
+    await setupRecording();
+    beginListening();
+  }
+
+  function stopConversation() {
+    conversingRef.current = false;
+    setConversing(false);
+    try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    setListening(false);
+    stopSpeaking();
+    teardownRecording();
+  }
+
+  // The mic button toggles the whole hands-free conversation on/off.
+  function toggleVoice() {
+    if (conversingRef.current) stopConversation();
+    else startConversation();
+  }
+
+  // Download the recorded audio of the voice conversation (playable in any media player).
+  function downloadAudio() {
+    if (!recordingUrl) return;
+    const a = document.createElement("a");
+    a.href = recordingUrl;
+    a.download = `voice-conversation-${Date.now()}.webm`;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // Download the current conversation as a plain-text transcript.
+  function downloadConversation() {
+    if (messages.length === 0) return;
+    const botName = selectedBot?.botTitle || selectedBot?.name || "AI";
+    const title = chatSessions.find(s => s.chatId === currentChatId)?.title || "Conversation";
+    const body = messages
+      .filter(m => m.content)
+      .map(m => `${m.role === "user" ? "You" : botName}: ${m.content}`)
+      .join("\n\n");
+    const blob = new Blob([`${title}\n${new Date().toLocaleString()}\n\n${body}\n`], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "conversation"}.txt`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -296,6 +576,18 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
           <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgba(255,255,255,0.8)", padding: "4px" }}>☰</button>
           <AvatarImg size={34} fontSize="16px" />
           <div style={{ fontWeight: 700, fontSize: "15px", color: "#fff", flex: 1 }}>{botTitle}</div>
+          {recordingUrl && (
+            <button onClick={downloadAudio} title="Download the voice recording (audio file)"
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+              🎧 Audio
+            </button>
+          )}
+          {messages.length > 0 && (
+            <button onClick={downloadConversation} title="Download the transcript (text)"
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+              ⬇ Text
+            </button>
+          )}
         </div>
 
         {/* Messages */}
@@ -387,6 +679,14 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
               <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFileAttach} />
               <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
                 style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "#1f2937", alignSelf: "center" }} />
+              {/* Talk: hands-free voice conversation. Tap once to start, tap
+                  again to end. It keeps listening → answering → listening. */}
+              <button onClick={toggleVoice}
+                title={conversing ? "End voice conversation" : "Talk — start a voice conversation"}
+                className={conversing && !speaking ? "bcw-pulse" : ""}
+                style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: "pointer", background: conversing ? (speaking ? "#f59e0b" : "#ef4444") : "#e5e7eb", color: conversing ? "#fff" : "#374151", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0, transition: "background 0.15s" }}>
+                {!conversing ? "🎤" : speaking ? "🔊" : "🎙"}
+              </button>
               <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}
                 style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "#e5e7eb" : theme, color: loading || (!input.trim() && attachments.length === 0) ? "#9ca3af" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0, transition: "background 0.15s" }}>↑</button>
             </div>

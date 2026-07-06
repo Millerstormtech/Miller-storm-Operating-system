@@ -2759,6 +2759,23 @@ function UnlockLessonPanel(props: {
     });
   };
 
+  // Select (or clear) every unlockable page in a course at once — a completed
+  // page is skipped since it can't be unlocked. Lets a manager unlock a whole
+  // course in one go via the existing "Unlock selected" button.
+  const toggleSelectWholeCourse = (courseId: string, pages: any[]) => {
+    const keys = pages
+      .filter(p => !isCompleted(courseId, p))
+      .map(p => `${courseId}::${p.id}`);
+    if (keys.length === 0) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      const allSelected = keys.every(k => next.has(k));
+      if (allSelected) keys.forEach(k => next.delete(k));
+      else keys.forEach(k => next.add(k));
+      return next;
+    });
+  };
+
   const doUnlock = async () => {
     if (selected.size === 0 || !selectedMemberId) return;
     setBusy(true);
@@ -2910,8 +2927,22 @@ function UnlockLessonPanel(props: {
           {courseBlocks.map(({ course, pages }) => {
             return (
               <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 14, color: '#111827' }}>
-                  {course.title}
+                <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{course.title}</span>
+                  {(() => {
+                    const checkable = pages.filter((p: any) => !isCompleted(course.id, p));
+                    if (checkable.length === 0) return null;
+                    const allSelected = checkable.every((p: any) => selected.has(`${course.id}::${p.id}`));
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => toggleSelectWholeCourse(course.id, pages)}
+                        style={{ background: allSelected ? '#e0e7ff' : '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {allSelected ? 'Deselect all' : '🔓 Unlock whole course'}
+                      </button>
+                    );
+                  })()}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {pages.map((p: any) => {
