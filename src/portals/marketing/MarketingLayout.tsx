@@ -5,7 +5,7 @@ import { MarketingSidebar } from "../../components/MarketingSidebar";
 import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
 
-type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "ai-bot-builder";
+type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "ai-bot-builder" | "rankings";
 
 type MarketingLayoutProps = {
   children: React.ReactNode;

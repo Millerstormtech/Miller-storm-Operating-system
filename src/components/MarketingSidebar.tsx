@@ -9,6 +9,7 @@ const baseItems = [
   { id: "approvals", label: "Approval Queue", toggleKey: "approvals" },
   { id: "socialMetrics", label: "Social Metrics", toggleKey: "socialMetrics" },
   { id: "apps-tools", label: "Apps & Tools", toggleKey: "appsTools" },
+  { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "ai-chat", label: "AI Assistant", toggleKey: "aiAssistant" },
 ];
 

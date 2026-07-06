@@ -39,6 +39,10 @@ export function mergeLeaderboard(acx: AcxAgg[], rc: RcAgg[]): MergedRow[] {
       null;
     if (target) {
       target.filed += a.filed; target.won += a.won; target.revenue += a.revenue; target.matched = true;
+      // RepCard doesn't carry a branch/office, so its spine rows are branchless.
+      // Adopt the AccuLynx branch for any matched rep that has one — this is what
+      // fills the Branch column for everyone with AccuLynx sales.
+      if (!target.branch && a.branch) target.branch = a.branch;
     } else {
       acxOnly.push({
         id: `acx:${a.repExternalId}`, name: a.name, branch: a.branch, email: a.email,

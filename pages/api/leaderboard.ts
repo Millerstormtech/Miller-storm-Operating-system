@@ -150,19 +150,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const merged = mergeLeaderboard(acx, rc);
 
   // Light app enrichment (never gating): match a Miller Storm user by email for
-  // the profile photo + the "You" highlight.
-  const appUsers = await UserModel.find({ deleted: { $ne: true } }).select("id email headshotUrl").lean();
+  // the profile photo, the "You" highlight, and the rep's team (manager).
+  const appUsers = await UserModel.find({ deleted: { $ne: true } }).select("id email headshotUrl name managerId").lean();
   const byEmail = new Map<string, any>();
-  for (const u of appUsers) { const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u); }
+  const byId = new Map<string, any>();
+  for (const u of appUsers) {
+    byId.set(String((u as any).id), u);
+    const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);
+  }
 
   merged.sort((a, b) => b.revenue - a.revenue || b.verifiedKnocks - a.verifiedKnocks || b.won - a.won || b.filed - a.filed);
 
   const leaderboard = merged.map((m, i) => {
     const u = m.email ? byEmail.get(m.email) : null;
+    const managerId = u ? (u as any).managerId ?? null : null;
+    const mgr = managerId ? byId.get(String(managerId)) : null;
     return {
       rank: i + 1, id: m.id, name: m.name, branch: m.branch,
       verifiedKnocks: m.verifiedKnocks, filed: m.filed, won: m.won, revenue: m.revenue,
       repUserId: u ? (u as any).id : null, headshotUrl: u ? (u as any).headshotUrl || "" : "",
+      // Team = the rep's manager. Null when the rep isn't linked to an account
+      // or their account has no manager. Used by the board's Team filter.
+      managerId, managerName: mgr ? (mgr as any).name || null : null,
       source: m.source,
     };
   });

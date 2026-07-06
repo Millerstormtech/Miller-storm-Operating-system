@@ -143,7 +143,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f1f5f9" }}>
-              {["AccuLynx rep", "Records", "Link to Miller Storm user"].map((c) => (
+              {["AccuLynx rep", "Email", "Records", "Link to Miller Storm user"].map((c) => (
                 <th key={c} style={{ padding: "8px 12px", textAlign: "left", fontSize: 13 }}>{c}</th>
               ))}
             </tr>
@@ -152,6 +152,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
             {unmatched.map((r) => (
               <tr key={r.repExternalId} style={{ borderBottom: "1px solid #e5e7eb" }}>
                 <td style={{ padding: "8px 12px", fontWeight: 600 }}>{r.name}</td>
+                <td style={{ padding: "8px 12px", color: r.email ? "#374151" : "#9ca3af" }}>{r.email || "—"}</td>
                 <td style={{ padding: "8px 12px" }}>{r.facts}</td>
                 <td style={{ padding: "8px 12px" }}>
                   <select defaultValue="" onChange={(e) => link(r.repExternalId, e.target.value)} style={{ padding: 6, minWidth: 220 }}>

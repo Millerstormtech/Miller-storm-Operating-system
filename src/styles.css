@@ -3935,16 +3935,6 @@ body {
 }
 
 
-.powered-by-footer {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  font-size: 11px;
-  color: #9ca3af;
-  z-index: 1000;
-  pointer-events: none;
-}
-
 /* Drag and Drop Styles */
 .course-pages-sidebar.drag-active .course-folder-group {
   transition: all 0.2s ease;

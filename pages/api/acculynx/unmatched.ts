@@ -26,8 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     { $match: { repUserId: null, repExternalId: { $ne: null } } },
     // Deterministic order so $last picks the newest name snapshot.
     { $sort: { occurredAt: 1, _id: 1 } },
-    { $group: { _id: "$repExternalId", name: { $last: "$repNameSnapshot" }, facts: { $sum: 1 } } },
+    { $group: { _id: "$repExternalId", name: { $last: "$repNameSnapshot" }, email: { $last: "$repEmail" }, facts: { $sum: 1 } } },
     { $sort: { facts: -1 } },
   ]);
-  return res.status(200).json(rows.map((r: any) => ({ repExternalId: r._id, name: r.name, facts: r.facts })));
+  return res.status(200).json(rows.map((r: any) => ({ repExternalId: r._id, name: r.name, email: r.email || "", facts: r.facts })));
 }
