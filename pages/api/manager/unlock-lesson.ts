@@ -23,6 +23,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectMongo();
 
+  // Object-level authorization: requireRole above only proves the caller is a
+  // manager/admin — NOT that this member belongs to them. Without this, any
+  // manager could read/modify ANY user in the company (IDOR). Admins are
+  // org-wide; managers are scoped to their own team via User.managerId.
+  const targetMemberId = (req.method === "GET" ? req.query.memberUserId : req.body?.memberUserId) as string | undefined;
+  if (auth.role === "manager") {
+    if (!targetMemberId) {
+      return res.status(400).json({ error: "memberUserId is required" });
+    }
+    const member = await UserModel.findOne({ id: targetMemberId }).select("managerId").lean() as any;
+    if (!member || String(member.managerId) !== String(auth.sub)) {
+      return res.status(403).json({ error: "Forbidden: member is not on your team" });
+    }
+  }
+
   if (req.method === "GET") {
     const { memberUserId, courseId } = req.query;
     if (!memberUserId || !courseId) {
