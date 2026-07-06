@@ -61,9 +61,16 @@ export function NewCoursePopup() {
   if (!notif) return null;
 
   const baseWatchUrl = notif.metadata?.watchUrl || "/sales/training";
+  const courseId = notif.metadata?.courseId;
   const lessonId = notif.metadata?.lessonId;
-  // Deep-link straight to the new lesson/quiz when we know which page it is.
-  const watchUrl = lessonId ? `${baseWatchUrl}?lessonId=${encodeURIComponent(lessonId)}` : baseWatchUrl;
+  // Deep-link into the course (courseId is always present, even on older
+  // notifications) and straight to the new lesson/quiz when we also have the
+  // page id. This guarantees "Check it out" at least opens the course.
+  const params = new URLSearchParams();
+  if (courseId) params.set("courseId", courseId);
+  if (lessonId) params.set("lessonId", lessonId);
+  const qs = params.toString();
+  const watchUrl = qs ? `${baseWatchUrl}?${qs}` : baseWatchUrl;
   const courseName = notif.metadata?.courseName;
 
   async function watchNow() {

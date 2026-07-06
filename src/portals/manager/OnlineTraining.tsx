@@ -158,24 +158,34 @@ export function ManagerOnlineTrainingPage(props: {
   // re-ran and the redirect silently did nothing).
   const handledLessonRef = useRef<string | null>(null);
   useEffect(() => {
-    const q = router.query.lessonId;
-    const lessonId = Array.isArray(q) ? q[0] : q
-      ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('lessonId') : null);
-    if (!lessonId || publishedCourses.length === 0) return;
-    if (handledLessonRef.current === lessonId) return;
-    // Find the course that contains this lesson
-    const courseWithLesson = publishedCourses.find(course =>
-      course.pages?.some(page => page.id === lessonId)
-    );
-    if (courseWithLesson) {
-      handledLessonRef.current = lessonId;
-      // Enter the course now; a resolver opens the lesson only if it's unlocked
-      // (a locked target just lands the manager on the course overview).
-      pendingDeepLinkRef.current = lessonId;
-      setSelectedCourse(courseWithLesson);
-      setActivePageId(lessonId);
-    }
-  }, [publishedCourses, router.query.lessonId]);
+    const getParam = (key: string) => {
+      const v = router.query[key];
+      const fromRouter = Array.isArray(v) ? v[0] : v;
+      return fromRouter ?? (typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get(key)
+        : null);
+    };
+    const courseId = getParam('courseId');
+    const lessonId = getParam('lessonId');
+    if (publishedCourses.length === 0) return;
+
+    // Prefer courseId (always present on the notification, even older ones);
+    // fall back to finding the course that contains the lesson.
+    const targetCourse = courseId
+      ? publishedCourses.find(c => c.id === courseId)
+      : (lessonId ? publishedCourses.find(c => c.pages?.some(p => p.id === lessonId)) : undefined);
+    if (!targetCourse) return;
+
+    const key = `${courseId || ''}::${lessonId || ''}`;
+    if (handledLessonRef.current === key) return;
+    handledLessonRef.current = key;
+
+    // Enter the course now; a resolver opens the lesson only if it's unlocked
+    // (a locked lesson — or no lesson id — just lands on the course overview).
+    pendingDeepLinkRef.current = lessonId || null;
+    setSelectedCourse(targetCourse);
+    setActivePageId(lessonId ?? (targetCourse.pages?.[0]?.id ?? null));
+  }, [publishedCourses, router.query.courseId, router.query.lessonId]);
 
   // Check for missed playlist deadlines and notify the manager (idempotent;
   // only notifies once per overdue, incomplete assignment).

@@ -179,26 +179,35 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     // Enable global autoplay for all devices
     enableGlobalAutoplay();
 
-    const q = router.query.lessonId;
-    const lessonId = Array.isArray(q) ? q[0] : q
-      ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('lessonId') : null);
-    if (!lessonId || courses.length === 0) return;
-    // Only auto-open a given lesson once — courses re-fetches (progress saves,
-    // etc.) must not yank the user back into the player.
-    if (handledLessonRef.current === lessonId) return;
+    const getParam = (key: string) => {
+      const v = router.query[key];
+      const fromRouter = Array.isArray(v) ? v[0] : v;
+      return fromRouter ?? (typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get(key)
+        : null);
+    };
+    const courseId = getParam('courseId');
+    const lessonId = getParam('lessonId');
+    if (courses.length === 0) return;
 
-    // Find the course that contains this lesson
-    const courseWithLesson = courses.find(course =>
-      course.pages?.some(page => page.id === lessonId)
-    );
-    if (courseWithLesson) {
-      handledLessonRef.current = lessonId;
-      // Enter the course now; a resolver opens the lesson only if it's unlocked
-      // (a locked target just lands the user on the course overview).
-      pendingDeepLinkRef.current = lessonId;
-      enterCourse(courseWithLesson, lessonId);
-    }
-  }, [courses, router.query.lessonId]);
+    // Prefer courseId (always present on the notification, even older ones);
+    // fall back to finding the course that contains the lesson.
+    const targetCourse = courseId
+      ? courses.find(c => c.id === courseId)
+      : (lessonId ? courses.find(c => c.pages?.some(p => p.id === lessonId)) : undefined);
+    if (!targetCourse) return;
+
+    // Handle a given course/lesson only once — courses re-fetches (progress
+    // saves, etc.) must not yank the user back into the player.
+    const key = `${courseId || ''}::${lessonId || ''}`;
+    if (handledLessonRef.current === key) return;
+    handledLessonRef.current = key;
+
+    // Enter the course now; a resolver opens the lesson only if it's unlocked
+    // (a locked lesson — or no lesson id — just lands on the course overview).
+    pendingDeepLinkRef.current = lessonId || null;
+    enterCourse(targetCourse, lessonId ?? (targetCourse.pages?.[0]?.id ?? null));
+  }, [courses, router.query.courseId, router.query.lessonId]);
   // Load playlists from database
   useEffect(() => {
     if (user?.id) {
