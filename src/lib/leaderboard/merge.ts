@@ -1,12 +1,17 @@
 // src/lib/leaderboard/merge.ts
-// Pure, import-free. RepCard is the SPINE: one bucket per RepCard rep. AccuLynx deal
-// rows attach onto a bucket via email -> phone -> name, but ONLY when that key maps to
-// exactly one RepCard rep (ambiguity guard). Unmatched AccuLynx rows become their own
-// "acculynx" rows (flagged). Inputs are already normalized by the caller.
+// Pure, import-free. RepCard is the SOLE GATE for who appears: a person is a sales rep
+// only if they have a RepCard account with >= 1 verified knock. One bucket per RepCard
+// rep. AccuLynx deal rows attach onto a bucket via email -> phone -> name (ONLY when that
+// key maps to exactly one RepCard rep — ambiguity guard) to supply the sales numbers.
+// AccuLynx credits with NO RepCard match are dropped entirely (they aren't door-knocking
+// reps — e.g. managers-only, office/PM accounts, vendors, departed non-RepCard reps).
+// Inputs are already normalized by the caller.
 
 export interface AcxAgg { repExternalId: string; email: string; phone: string; nameKey: string; name: string; branch: string; filed: number; won: number; revenue: number; }
 export interface RcAgg { repcardUserId: string; email: string; phone: string; nameKey: string; name: string; branch: string; verifiedKnocks: number; }
-export interface MergedRow { id: string; name: string; branch: string; email: string; verifiedKnocks: number; filed: number; won: number; revenue: number; source: "both" | "repcard" | "acculynx"; }
+// source: "both" = RepCard rep with matched AccuLynx sales; "repcard" = RepCard rep with
+// no matching AccuLynx sales (door-knocks only). There is no AccuLynx-only row anymore.
+export interface MergedRow { id: string; name: string; branch: string; email: string; verifiedKnocks: number; filed: number; won: number; revenue: number; source: "both" | "repcard"; }
 
 interface Bucket { id: string; name: string; branch: string; email: string; phone: string; nameKey: string; verifiedKnocks: number; filed: number; won: number; revenue: number; matched: boolean; }
 
@@ -30,7 +35,6 @@ export function mergeLeaderboard(acx: AcxAgg[], rc: RcAgg[]): MergedRow[] {
   const byPhone = uniqueIndex(buckets, (b) => b.phone);
   const byName = uniqueIndex(buckets, (b) => b.nameKey);
 
-  const acxOnly: MergedRow[] = [];
   for (const a of acx) {
     const target =
       (a.email && byEmail.get(a.email)) ||
@@ -43,19 +47,17 @@ export function mergeLeaderboard(acx: AcxAgg[], rc: RcAgg[]): MergedRow[] {
       // Adopt the AccuLynx branch for any matched rep that has one — this is what
       // fills the Branch column for everyone with AccuLynx sales.
       if (!target.branch && a.branch) target.branch = a.branch;
-    } else {
-      acxOnly.push({
-        id: `acx:${a.repExternalId}`, name: a.name, branch: a.branch, email: a.email,
-        verifiedKnocks: 0, filed: a.filed, won: a.won, revenue: a.revenue, source: "acculynx",
-      });
     }
+    // No `else`: AccuLynx credits with no RepCard rep are intentionally dropped —
+    // they aren't door-knocking sales reps, so they don't belong on the board.
   }
 
-  const spine: MergedRow[] = buckets.map((b) => ({
-    id: b.id, name: b.name, branch: b.branch, email: b.email,
-    verifiedKnocks: b.verifiedKnocks, filed: b.filed, won: b.won, revenue: b.revenue,
-    source: b.matched ? "both" : "repcard",
-  }));
-
-  return [...spine, ...acxOnly];
+  // Only RepCard reps with at least one verified knock make the board.
+  return buckets
+    .filter((b) => b.verifiedKnocks >= 1)
+    .map((b) => ({
+      id: b.id, name: b.name, branch: b.branch, email: b.email,
+      verifiedKnocks: b.verifiedKnocks, filed: b.filed, won: b.won, revenue: b.revenue,
+      source: b.matched ? "both" : "repcard",
+    }));
 }

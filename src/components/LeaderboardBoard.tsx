@@ -155,6 +155,18 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </span>
       </div>
 
+      {/* Legend for the source dot next to each rep name. */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#6b7280", flexWrap: "wrap" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />
+          RepCard + AccuLynx (door-knocks &amp; sales)
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+          RepCard only (door-knocks, no matched sales)
+        </span>
+      </div>
+
       {loading ? (
         <p style={{ color: "#6b7280" }}>Loading leaderboard…</p>
       ) : (
@@ -190,6 +202,10 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     <td style={{ padding: "10px 14px", fontWeight: 600 }}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                         {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} /> : null}
+                        <span
+                          title={r.source === "both" ? "RepCard + AccuLynx" : "RepCard only (no matched AccuLynx sales)"}
+                          style={{ width: 9, height: 9, borderRadius: "50%", background: r.source === "both" ? "#16a34a" : "#f59e0b", display: "inline-block", flexShrink: 0 }}
+                        />
                         <span>{r.name}{isYou ? " (You)" : ""}</span>
                       </span>
                     </td>
