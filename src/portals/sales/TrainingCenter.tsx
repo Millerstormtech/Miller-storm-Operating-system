@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { LessonWatchNote } from "../../components/LessonWatchNote";
@@ -56,6 +57,7 @@ type Playlist = {
 
 export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }) {
   const { user } = useAuth();
+  const router = useRouter();
   const courses = props.courses;
   const isLoading = props.isLoading || false;
   const [search, setSearch] = useState("");
@@ -136,25 +138,33 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const autoPlayRef = useRef(autoPlay);
   autoPlayRef.current = autoPlay;
 
-  // Handle lessonId from query parameter (shared lesson)
+  // Handle lessonId from query parameter (e.g. the "Check it out" pop-up or a
+  // shared lesson link). Depends on router.query.lessonId — NOT just courses —
+  // so it fires even when the URL changes while the user is already on this
+  // page (router.push to the same route does not remount, so a courses-only
+  // dependency never re-ran and the redirect silently did nothing).
+  const handledLessonRef = useRef<string | null>(null);
   useEffect(() => {
     // Enable global autoplay for all devices
     enableGlobalAutoplay();
-    
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const lessonId = params.get('lessonId');
-      if (lessonId) {
-        // Find the course that contains this lesson
-        const courseWithLesson = courses.find(course =>
-          course.pages?.some(page => page.id === lessonId)
-        );
-        if (courseWithLesson) {
-          enterCourse(courseWithLesson, lessonId);
-        }
-      }
+
+    const q = router.query.lessonId;
+    const lessonId = Array.isArray(q) ? q[0] : q
+      ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('lessonId') : null);
+    if (!lessonId || courses.length === 0) return;
+    // Only auto-open a given lesson once — courses re-fetches (progress saves,
+    // etc.) must not yank the user back into the player.
+    if (handledLessonRef.current === lessonId) return;
+
+    // Find the course that contains this lesson
+    const courseWithLesson = courses.find(course =>
+      course.pages?.some(page => page.id === lessonId)
+    );
+    if (courseWithLesson) {
+      handledLessonRef.current = lessonId;
+      enterCourse(courseWithLesson, lessonId);
     }
-  }, [courses]);
+  }, [courses, router.query.lessonId]);
   // Load playlists from database
   useEffect(() => {
     if (user?.id) {
