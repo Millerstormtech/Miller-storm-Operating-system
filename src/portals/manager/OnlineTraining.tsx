@@ -24,6 +24,30 @@ function orderPagesByFolder(pages: any[], folders: any[]): any[] {
   ];
 }
 
+// Whether a page is unlocked: a manager unlock always opens it, otherwise
+// strict sequential — every preceding item (lesson watched / quiz passed) must
+// be complete. Used by the deep-link resolver to decide open-lesson vs overview.
+function isPageUnlockedFor(
+  pageId: string,
+  orderedPages: any[],
+  unlockedPages: Set<string>,
+  completedPages: Set<string>,
+  savedQuizResults: any[]
+): boolean {
+  if (unlockedPages.has(pageId)) return true;
+  const idx = orderedPages.findIndex((p) => p.id === pageId);
+  if (idx <= 0) return true;
+  for (let i = 0; i < idx; i++) {
+    const prev = orderedPages[i];
+    if (prev.isQuiz) {
+      if (!isQuizResultPassing(savedQuizResults.find((r) => r.pageId === prev.id))) return false;
+    } else if (!completedPages.has(prev.id)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Progress counts BOTH lessons (completed) and quizzes (passed) out of ALL
 // published pages — so adding a new quiz drops % below 100% until it's passed.
 function computeItemProgress(
@@ -62,9 +86,8 @@ export function ManagerOnlineTrainingPage(props: {
   const publishedCourses = props.courses;
   const isLoading = props.isLoading || false;
   const router = useRouter();
-  // True when a course is opened via a deep link (notification / shared lesson)
-  // so the mobile view jumps straight to the lesson, not the course overview.
-  const openLessonViewRef = useRef(false);
+  // Lesson a deep link (notification / pop-up) wants to open, pending a lock check.
+  const pendingDeepLinkRef = useRef<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
@@ -73,6 +96,9 @@ export function ManagerOnlineTrainingPage(props: {
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
   // Pages an admin/manager manually unlocked for this user (accessible without watching).
   const [unlockedPages, setUnlockedPages] = useState<Set<string>>(new Set());
+  // Course id whose progress (lock status) has finished loading — lets the
+  // deep-link resolver wait until it knows whether the target is unlocked.
+  const [progressLoadedCourseId, setProgressLoadedCourseId] = useState<string | null>(null);
   const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
@@ -143,7 +169,9 @@ export function ManagerOnlineTrainingPage(props: {
     );
     if (courseWithLesson) {
       handledLessonRef.current = lessonId;
-      openLessonViewRef.current = true; // jump straight to the lesson on mobile
+      // Enter the course now; a resolver opens the lesson only if it's unlocked
+      // (a locked target just lands the manager on the course overview).
+      pendingDeepLinkRef.current = lessonId;
       setSelectedCourse(courseWithLesson);
       setActivePageId(lessonId);
     }
@@ -262,9 +290,9 @@ export function ManagerOnlineTrainingPage(props: {
 
   useEffect(() => {
     if (selectedCourse) {
-      // Deep link opens the lesson directly; a normal card tap lands on overview.
-      setMobileCourseScreen(openLessonViewRef.current ? 'lesson' : 'overview');
-      openLessonViewRef.current = false;
+      // Enter on the overview; the deep-link resolver upgrades to the lesson
+      // view only when the target lesson is actually unlocked.
+      setMobileCourseScreen('overview');
     }
   }, [selectedCourse?.id]);
 
@@ -295,10 +323,29 @@ export function ManagerOnlineTrainingPage(props: {
           setUnlockedPages(new Set(data.unlockedPages || []));
           setSavedQuizResults(data.quizResults || []);
           setCourseCompleted(data.courseCompleted || false);
+          if (selectedCourse) setProgressLoadedCourseId(selectedCourse.id);
         })
         .catch(err => console.error("Failed to load progress:", err));
     }
   }, [selectedCourse, props.currentUser]);
+
+  // Deep-link resolver: once this course's progress (lock status) is known, open
+  // the target lesson if it's unlocked; a locked target leaves the manager on
+  // the course overview (they still land inside the course, where the lesson is).
+  useEffect(() => {
+    const target = pendingDeepLinkRef.current;
+    if (!target || !selectedCourse) return;
+    if (progressLoadedCourseId !== selectedCourse.id) return; // wait for lock status
+    const ordered = orderPagesByFolder(
+      (selectedCourse.pages ?? []).filter(p => p.status === 'published'),
+      selectedCourse.folders ?? []
+    );
+    if (!ordered.some(p => p.id === target)) { pendingDeepLinkRef.current = null; return; }
+    const unlocked = isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
+    setActivePageId(target);
+    setMobileCourseScreen(unlocked ? 'lesson' : 'overview');
+    pendingDeepLinkRef.current = null;
+  }, [progressLoadedCourseId, selectedCourse, unlockedPages, completedPages, savedQuizResults]);
 
   // Collapse all folders by default when entering a course
   useEffect(() => {

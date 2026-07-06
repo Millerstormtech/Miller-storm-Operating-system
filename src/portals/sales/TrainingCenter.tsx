@@ -25,6 +25,32 @@ function orderPagesByFolder(pages: any[], folders: any[]): any[] {
   ];
 }
 
+// Whether a page is unlocked for the user: a manager unlock always opens it,
+// otherwise strict sequential — every preceding item (lesson watched / quiz
+// passed) must be complete. Kept in sync with the in-view isPageUnlocked; used
+// by the deep-link resolver to decide whether to open the lesson or just land
+// on the course overview.
+function isPageUnlockedFor(
+  pageId: string,
+  orderedPages: any[],
+  unlockedPages: Set<string>,
+  completedPages: Set<string>,
+  savedQuizResults: any[]
+): boolean {
+  if (unlockedPages.has(pageId)) return true;
+  const idx = orderedPages.findIndex((p) => p.id === pageId);
+  if (idx <= 0) return true;
+  for (let i = 0; i < idx; i++) {
+    const prev = orderedPages[i];
+    if (prev.isQuiz) {
+      if (!isQuizResultPassing(savedQuizResults.find((r) => r.pageId === prev.id))) return false;
+    } else if (!completedPages.has(prev.id)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Progress counts BOTH lessons (completed) and quizzes (passed) out of ALL
 // published pages — so adding a new quiz drops % below 100% until it's passed.
 function computeItemProgress(
@@ -70,6 +96,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
   // Pages a manager manually unlocked for this user (accessible without watching).
   const [unlockedPages, setUnlockedPages] = useState<Set<string>>(new Set());
+  // Course id whose progress (completed/unlocked/quiz) has finished loading —
+  // lets the deep-link resolver wait until lock status is actually known.
+  const [progressLoadedCourseId, setProgressLoadedCourseId] = useState<string | null>(null);
+  // Lesson a deep link (notification / pop-up) wants to open, pending a lock check.
+  const pendingDeepLinkRef = useRef<string | null>(null);
   const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
@@ -106,12 +137,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // full course (lesson bodies, transcripts, quiz questions) from the detail
   // endpoint before showing CourseView. `initialPageId` is computed by the caller
   // from the summary metadata (which lesson to land on).
-  // Set true when a course is opened via a deep link (the "Check it out"
-  // pop-up / a shared lesson) so the mobile view jumps STRAIGHT to the lesson
-  // instead of the course overview. Read + cleared by the course-init effect.
-  const openLessonViewRef = useRef(false);
-  async function enterCourse(baseCourse: Course, initialPageId: string | null, playlist: Playlist | null = null, deepLinkToLesson: boolean = false) {
-    openLessonViewRef.current = deepLinkToLesson;
+  async function enterCourse(baseCourse: Course, initialPageId: string | null, playlist: Playlist | null = null) {
     setViewingPlaylist(playlist);
     setActivePageId(initialPageId);
     setCourseViewInitialized(null);
@@ -167,7 +193,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     );
     if (courseWithLesson) {
       handledLessonRef.current = lessonId;
-      enterCourse(courseWithLesson, lessonId, null, true);
+      // Enter the course now; a resolver opens the lesson only if it's unlocked
+      // (a locked target just lands the user on the course overview).
+      pendingDeepLinkRef.current = lessonId;
+      enterCourse(courseWithLesson, lessonId);
     }
   }, [courses, router.query.lessonId]);
   // Load playlists from database
@@ -207,10 +236,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
   useEffect(() => {
     if (selectedCourse) {
-      // Deep link (notification / shared lesson) opens the lesson directly;
-      // a normal course-card tap still lands on the overview list.
-      setMobileCourseScreen(openLessonViewRef.current ? 'lesson' : 'overview');
-      openLessonViewRef.current = false;
+      // Enter on the overview; the deep-link resolver upgrades to the lesson
+      // view only when the target lesson is actually unlocked.
+      setMobileCourseScreen('overview');
       fetch('/api/course-ai-bots')
         .then(r => r.json())
         .then((bots: any[]) => {
@@ -238,10 +266,29 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           setUnlockedPages(new Set(data.unlockedPages || []));
           setSavedQuizResults(data.quizResults || []);
           setCourseCompleted(data.courseCompleted || false);
+          if (selectedCourse) setProgressLoadedCourseId(selectedCourse.id);
         })
         .catch(err => console.error("Failed to load progress:", err));
     }
   }, [selectedCourse, user]);
+
+  // Deep-link resolver: once this course's progress (lock status) is known,
+  // open the target lesson if it's unlocked; a locked target leaves the user on
+  // the course overview (they still land inside the course, where the lesson is).
+  useEffect(() => {
+    const target = pendingDeepLinkRef.current;
+    if (!target || !selectedCourse) return;
+    if (progressLoadedCourseId !== selectedCourse.id) return; // wait for lock status
+    const ordered = orderPagesByFolder(
+      (selectedCourse.pages ?? []).filter(p => p.status === 'published'),
+      selectedCourse.folders ?? []
+    );
+    if (!ordered.some(p => p.id === target)) { pendingDeepLinkRef.current = null; return; }
+    const unlocked = isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
+    setActivePageId(target);
+    setMobileCourseScreen(unlocked ? 'lesson' : 'overview');
+    pendingDeepLinkRef.current = null;
+  }, [progressLoadedCourseId, selectedCourse, unlockedPages, completedPages, savedQuizResults]);
 
   // Collapse all folders by default when entering a course; expand only the active lesson's folder
   // Collapse all folders by default when entering a course
