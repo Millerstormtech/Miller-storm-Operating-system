@@ -155,15 +155,11 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </span>
       </div>
 
-      {/* Legend for the source dot next to each rep name. */}
+      {/* Legend for the RepCard-only flag next to a rep's name. */}
       <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#6b7280", flexWrap: "wrap" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />
-          RepCard + AccuLynx (door-knocks &amp; sales)
-        </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-          RepCard only (door-knocks, no matched sales)
+          RepCard only (door-knocks, no matched AccuLynx sales)
         </span>
       </div>
 
@@ -202,10 +198,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     <td style={{ padding: "10px 14px", fontWeight: 600 }}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                         {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} /> : null}
-                        <span
-                          title={r.source === "both" ? "RepCard + AccuLynx" : "RepCard only (no matched AccuLynx sales)"}
-                          style={{ width: 9, height: 9, borderRadius: "50%", background: r.source === "both" ? "#16a34a" : "#f59e0b", display: "inline-block", flexShrink: 0 }}
-                        />
+                        {r.source === "repcard" ? (
+                          <span
+                            title="RepCard only (no matched AccuLynx sales)"
+                            style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }}
+                          />
+                        ) : null}
                         <span>{r.name}{isYou ? " (You)" : ""}</span>
                       </span>
                     </td>
