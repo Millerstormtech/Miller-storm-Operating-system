@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
@@ -60,6 +61,10 @@ export function ManagerOnlineTrainingPage(props: {
 }) {
   const publishedCourses = props.courses;
   const isLoading = props.isLoading || false;
+  const router = useRouter();
+  // True when a course is opened via a deep link (notification / shared lesson)
+  // so the mobile view jumps straight to the lesson, not the course overview.
+  const openLessonViewRef = useRef(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
@@ -120,23 +125,29 @@ export function ManagerOnlineTrainingPage(props: {
   const autoPlayRef = useRef(autoPlay);
   autoPlayRef.current = autoPlay;
 
-  // Handle lessonId from query parameter (shared lesson)
+  // Handle lessonId from query parameter (the "Check it out" pop-up / a shared
+  // lesson). Depends on router.query.lessonId — NOT just publishedCourses — so
+  // it fires even when the URL changes while already on this page (router.push
+  // to the same route does not remount, so a courses-only dependency never
+  // re-ran and the redirect silently did nothing).
+  const handledLessonRef = useRef<string | null>(null);
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const lessonId = params.get('lessonId');
-      if (lessonId) {
-        // Find the course that contains this lesson
-        const courseWithLesson = publishedCourses.find(course =>
-          course.pages?.some(page => page.id === lessonId)
-        );
-        if (courseWithLesson) {
-          setSelectedCourse(courseWithLesson);
-          setActivePageId(lessonId);
-        }
-      }
+    const q = router.query.lessonId;
+    const lessonId = Array.isArray(q) ? q[0] : q
+      ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('lessonId') : null);
+    if (!lessonId || publishedCourses.length === 0) return;
+    if (handledLessonRef.current === lessonId) return;
+    // Find the course that contains this lesson
+    const courseWithLesson = publishedCourses.find(course =>
+      course.pages?.some(page => page.id === lessonId)
+    );
+    if (courseWithLesson) {
+      handledLessonRef.current = lessonId;
+      openLessonViewRef.current = true; // jump straight to the lesson on mobile
+      setSelectedCourse(courseWithLesson);
+      setActivePageId(lessonId);
     }
-  }, [publishedCourses]);
+  }, [publishedCourses, router.query.lessonId]);
 
   // Check for missed playlist deadlines and notify the manager (idempotent;
   // only notifies once per overdue, incomplete assignment).
@@ -251,7 +262,9 @@ export function ManagerOnlineTrainingPage(props: {
 
   useEffect(() => {
     if (selectedCourse) {
-      setMobileCourseScreen('overview');
+      // Deep link opens the lesson directly; a normal card tap lands on overview.
+      setMobileCourseScreen(openLessonViewRef.current ? 'lesson' : 'overview');
+      openLessonViewRef.current = false;
     }
   }, [selectedCourse?.id]);
 

@@ -106,7 +106,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // full course (lesson bodies, transcripts, quiz questions) from the detail
   // endpoint before showing CourseView. `initialPageId` is computed by the caller
   // from the summary metadata (which lesson to land on).
-  async function enterCourse(baseCourse: Course, initialPageId: string | null, playlist: Playlist | null = null) {
+  // Set true when a course is opened via a deep link (the "Check it out"
+  // pop-up / a shared lesson) so the mobile view jumps STRAIGHT to the lesson
+  // instead of the course overview. Read + cleared by the course-init effect.
+  const openLessonViewRef = useRef(false);
+  async function enterCourse(baseCourse: Course, initialPageId: string | null, playlist: Playlist | null = null, deepLinkToLesson: boolean = false) {
+    openLessonViewRef.current = deepLinkToLesson;
     setViewingPlaylist(playlist);
     setActivePageId(initialPageId);
     setCourseViewInitialized(null);
@@ -162,7 +167,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     );
     if (courseWithLesson) {
       handledLessonRef.current = lessonId;
-      enterCourse(courseWithLesson, lessonId);
+      enterCourse(courseWithLesson, lessonId, null, true);
     }
   }, [courses, router.query.lessonId]);
   // Load playlists from database
@@ -202,7 +207,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
   useEffect(() => {
     if (selectedCourse) {
-      setMobileCourseScreen('overview');
+      // Deep link (notification / shared lesson) opens the lesson directly;
+      // a normal course-card tap still lands on the overview list.
+      setMobileCourseScreen(openLessonViewRef.current ? 'lesson' : 'overview');
+      openLessonViewRef.current = false;
       fetch('/api/course-ai-bots')
         .then(r => r.json())
         .then((bots: any[]) => {
