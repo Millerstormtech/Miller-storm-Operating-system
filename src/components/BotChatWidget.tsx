@@ -125,11 +125,19 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const soundPlayedRef = useRef<string>("");
+  // Always-current copies so callbacks (esp. voice, which capture stale state)
+  // build each turn on the LATEST conversation/chat instead of overwriting it.
+  const messagesRef = useRef<Message[]>([]);
+  const currentChatIdRef = useRef<string>("");
+  // One-shot guard: only auto-resume the most-recent chat on first open, never
+  // after a send (that overwrote the active chat with an old one).
+  const resumeDoneRef = useRef(false);
 
   useEffect(() => { loadBots(); }, [role]);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { messagesRef.current = messages; bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { currentChatIdRef.current = currentChatId; }, [currentChatId]);
   useEffect(() => {
-    if (selectedBot && user?.id) loadChatSessions();
+    if (selectedBot && user?.id) loadChatSessions(true);
   }, [selectedBot?.id, user?.id]);
 
   // Play attention sound once when bot loads
@@ -200,18 +208,18 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
     } finally { setLoadingBots(false); }
   }
 
-  async function loadChatSessions() {
+  // Refresh the chat list. Pass allowResume=true ONLY on the first open so the
+  // most-recent chat is restored. After a send we call it with resume off so it
+  // just updates the sidebar and NEVER replaces the active conversation (doing
+  // so overwrote the current chat with an old one — messages "disappeared").
+  async function loadChatSessions(allowResume = false) {
     if (!user?.id || !selectedBot) return;
     const res = await fetch(`/api/ai-bots/chats?userId=${user.id}&botId=${selectedBot.id}`);
     if (!res.ok) return;
     const sessions: ChatSession[] = await res.json();
     setChatSessions(sessions);
-    // ChatGPT-style: when opening with no active conversation, resume the most
-    // recent one instead of stranding the user in a fresh empty chat. Without
-    // this, every visit to the page started a new chat, so related questions
-    // fragmented into separate history entries. This only runs on the initial
-    // load (messages empty) — the post-send refresh keeps the current chat.
-    if (messages.length === 0 && sessions.length > 0) {
+    if (allowResume && !resumeDoneRef.current && messagesRef.current.length === 0 && sessions.length > 0) {
+      resumeDoneRef.current = true;
       setMessages(sessions[0].messages || []);
       setCurrentChatId(sessions[0].chatId);
       setSuggestionsDismissed(true);
@@ -219,12 +227,17 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   }
 
   function startNewChat() {
+    resumeDoneRef.current = true; // an explicit new chat must never be auto-resumed away
+    messagesRef.current = [];
     setMessages([]); setAttachments([]);
     setCurrentChatId(newChatId());
     setSuggestionsDismissed(false);
   }
 
   function loadSession(session: ChatSession) {
+    resumeDoneRef.current = true;
+    messagesRef.current = session.messages || [];
+    currentChatIdRef.current = session.chatId;
     setMessages(session.messages);
     setCurrentChatId(session.chatId);
     setSuggestionsDismissed(true);
@@ -257,7 +270,11 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       attachments: attachments.length > 0 ? [...attachments] : undefined,
       timestamp: new Date().toISOString()
     };
-    const newMessages = [...messages, userMsg];
+    // Build on the LATEST conversation (ref), not the closure — in voice mode
+    // the callback that calls send() captured an older `messages`, so using the
+    // closure here wiped out the turns added since (earlier Q&A "deleted").
+    const newMessages = [...messagesRef.current, userMsg];
+    messagesRef.current = newMessages;
     setMessages(newMessages); setInput(""); setAttachments([]);
     setLoading(true);
     if (selectedBot.removeSuggestionsAfterFirst) setSuggestionsDismissed(true);
@@ -266,19 +283,26 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       const res = await fetch("/api/ai-bots/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          botId: selectedBot.id, messages: newMessages, chatId: currentChatId,
+          botId: selectedBot.id, messages: newMessages, chatId: currentChatIdRef.current || currentChatId,
           userId: user.id, userName: user.name, userEmail: user.email, userRole: user.role,
           voiceMode: !!speakReply
         })
       });
       const data = await res.json();
       const replyText = data.message || "Sorry, I couldn't respond.";
-      setMessages(prev => [...prev, { role: "assistant", content: replyText, timestamp: new Date().toISOString() }]);
+      // Append the reply to the LATEST conversation (ref) and keep the ref in
+      // sync — otherwise the next voice turn rebuilds from a ref that's missing
+      // this answer, dropping it from history and wiping it off screen.
+      const withReply = [...messagesRef.current, { role: "assistant" as const, content: replyText, timestamp: new Date().toISOString() }];
+      messagesRef.current = withReply;
+      setMessages(withReply);
       // Voice mode: read the bot's reply aloud so it's a spoken conversation.
       if (speakReply) speakText(replyText);
       loadChatSessions();
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "Failed to get a response. Please try again." }]);
+      const withError = [...messagesRef.current, { role: "assistant" as const, content: "Failed to get a response. Please try again.", timestamp: new Date().toISOString() }];
+      messagesRef.current = withError;
+      setMessages(withError);
     } finally { setLoading(false); }
   }
 
