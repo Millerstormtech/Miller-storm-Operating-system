@@ -59,6 +59,15 @@ const ANIM_MAP: Record<string, string> = {
   Bounce: "bcw-bounce", Pulse: "bcw-pulse", Shake: "bcw-shake", Wiggle: "bcw-wiggle",
 };
 
+// Voice-activity detection tuning for the hands-free voice conversation. We
+// record the user's spoken turn and stop it automatically when they go quiet,
+// then transcribe with Whisper. Values are conservative and can be tuned.
+const VAD_SPEECH_LEVEL = 0.025; // mic RMS (0..1) above this counts as speech
+const VAD_SILENCE_MS = 1000;    // stop this long after the last speech
+const VAD_MIN_SPEECH_MS = 250;  // ignore blips shorter than this
+const VAD_MAX_MS = 20000;       // hard cap on a single spoken turn
+const VAD_NO_SPEECH_MS = 12000; // total silence this long → re-arm the mic
+
 // Pick the clearest available English voice. The browser default is often a
 // robotic low-quality voice, so we prefer the known natural ones (Google /
 // Microsoft Natural / Apple Samantha), then any non-local (network) en-US voice.
@@ -98,8 +107,8 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   // Voice conversation: listening = mic capturing the user, speaking = the bot's
-  // reply is being read aloud. Uses the browser's built-in Web Speech API
-  // (SpeechRecognition for STT + speechSynthesis for TTS) — no backend change.
+  // reply is being read aloud. Capture records each turn and transcribes it with
+  // Whisper (/api/transcribe); the reply is spoken with OpenAI TTS (/api/tts).
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   // conversing = hands-free mode: the mic stays open (listen → answer → listen)
@@ -108,8 +117,15 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   const conversingRef = useRef(false);
   const speakingRef = useRef(false);
   const loadingRef = useRef(false);
-  const recognitionRef = useRef<any>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  // Voice capture (STT) is done by recording each spoken turn and transcribing
+  // it with Whisper (/api/transcribe) — NOT the browser SpeechRecognition, which
+  // is Chrome-only, English-only, and fights the recorder for the mic.
+  const uttRecorderRef = useRef<MediaRecorder | null>(null);
+  const uttChunksRef = useRef<Blob[]>([]);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const vadRafRef = useRef<number | null>(null);
+  const utteranceActiveRef = useRef(false);
   // Audio recording of the whole voice conversation (your mic + the bot's
   // spoken reply) → downloadable file. recordingUrl holds the finished audio.
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
@@ -134,7 +150,11 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   const resumeDoneRef = useRef(false);
 
   useEffect(() => { loadBots(); }, [role]);
-  useEffect(() => { messagesRef.current = messages; bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // Only auto-scroll here. messagesRef is maintained by the functions that
+  // actually mutate the conversation (send/startNewChat/loadSession/resume) so a
+  // late-firing effect can never revert it to a stale value mid-turn (which
+  // dropped the previous answer when the next question was asked).
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
   useEffect(() => { currentChatIdRef.current = currentChatId; }, [currentChatId]);
   useEffect(() => {
     if (selectedBot && user?.id) loadChatSessions(true);
@@ -181,7 +201,9 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   useEffect(() => {
     return () => {
       conversingRef.current = false;
-      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+      utteranceActiveRef.current = false;
+      if (vadRafRef.current) { cancelAnimationFrame(vadRafRef.current); vadRafRef.current = null; }
+      try { uttRecorderRef.current?.state === "recording" && uttRecorderRef.current.stop(); } catch { /* ignore */ }
       try { ttsSourceRef.current?.stop(); } catch { /* ignore */ }
       try { recorderRef.current?.state === "recording" && recorderRef.current.stop(); } catch { /* ignore */ }
       try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
@@ -220,6 +242,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
     setChatSessions(sessions);
     if (allowResume && !resumeDoneRef.current && messagesRef.current.length === 0 && sessions.length > 0) {
       resumeDoneRef.current = true;
+      messagesRef.current = sessions[0].messages || []; // keep the ref in sync so the next send builds on the resumed history
       setMessages(sessions[0].messages || []);
       setCurrentChatId(sessions[0].chatId);
       setSuggestionsDismissed(true);
@@ -262,6 +285,17 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
     if (fileRef.current) fileRef.current.value = "";
   }
 
+  // Append a bot reply using React's authoritative latest state as the base, and
+  // keep messagesRef in sync inside the updater. Basing on `prev` (not the ref)
+  // guarantees the previous answer is never dropped, even under fast/voice turns.
+  function appendAssistant(content: string) {
+    setMessages(prev => {
+      const next = [...prev, { role: "assistant" as const, content, timestamp: new Date().toISOString() }];
+      messagesRef.current = next;
+      return next;
+    });
+  }
+
   async function send(prefill?: string, speakReply?: boolean) {
     const text = prefill ?? input.trim();
     if ((!text && attachments.length === 0) || loading || !selectedBot || !user) return;
@@ -290,19 +324,18 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       });
       const data = await res.json();
       const replyText = data.message || "Sorry, I couldn't respond.";
-      // Append the reply to the LATEST conversation (ref) and keep the ref in
-      // sync — otherwise the next voice turn rebuilds from a ref that's missing
-      // this answer, dropping it from history and wiping it off screen.
-      const withReply = [...messagesRef.current, { role: "assistant" as const, content: replyText, timestamp: new Date().toISOString() }];
-      messagesRef.current = withReply;
-      setMessages(withReply);
+      // Append onto React's authoritative latest state (prev), not the ref —
+      // this can never drop the prior answer even if the ref lagged — and sync
+      // the ref inside the updater so the next turn builds on the full history.
+      appendAssistant(replyText);
       // Voice mode: read the bot's reply aloud so it's a spoken conversation.
       if (speakReply) speakText(replyText);
       loadChatSessions();
     } catch {
-      const withError = [...messagesRef.current, { role: "assistant" as const, content: "Failed to get a response. Please try again.", timestamp: new Date().toISOString() }];
-      messagesRef.current = withError;
-      setMessages(withError);
+      appendAssistant("Failed to get a response. Please try again.");
+      // Voice mode: don't let a failed reply freeze the hands-free loop — re-open
+      // the mic so the conversation can continue.
+      if (speakReply && conversingRef.current) setTimeout(() => listenUtterance(), 0);
     } finally { setLoading(false); }
   }
 
@@ -336,7 +369,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       speakingRef.current = false;
       setSpeaking(false);
       ttsSourceRef.current = null;
-      if (conversingRef.current) beginListening();
+      if (conversingRef.current) listenUtterance();
     };
     if (!clean || typeof window === "undefined") { afterSpeak(); return; }
     speakingRef.current = true;
@@ -384,49 +417,127 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
     setSpeaking(false);
   }
 
-  // One listening turn. A silent turn just re-listens (in conversation mode) so
-  // the mic stays open until the user ends it.
-  function beginListening() {
-    if (typeof window === "undefined") return;
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice input isn't supported in this browser. Please use Google Chrome."); stopConversation(); return; }
-    stopSpeaking(); // never listen to our own voice
-    attachMicToRecording(); // record the user's turn
-    const rec = new SR();
-    rec.lang = "en-US";
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-    let gotResult = false;
-    rec.onresult = (e: any) => {
-      const transcript = e.results?.[0]?.[0]?.transcript?.trim();
-      if (transcript) { gotResult = true; setListening(false); send(transcript, true); }
-    };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => {
-      setListening(false);
-      // Silent turn (no speech) → keep listening so the mic stays open. Skip if
-      // a reply is being fetched/spoken (those paths re-listen when done).
-      if (conversingRef.current && !gotResult && !speakingRef.current && !loadingRef.current) {
-        beginListening();
-      }
-    };
-    recognitionRef.current = rec;
-    setListening(true);
-    try { rec.start(); } catch { setListening(false); }
+  // Current mic loudness (0..~1) from the analyser's time-domain samples — used
+  // to tell when the user is speaking vs silent.
+  function micLevel(): number {
+    const an = analyserRef.current;
+    if (!an) return 0;
+    const buf = new Uint8Array(an.fftSize);
+    an.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128;
+      sum += v * v;
+    }
+    return Math.sqrt(sum / buf.length);
   }
 
-  // Set up mic capture + a MediaRecorder that records the mixed conversation
-  // audio (your mic + the bot's voice). Best-effort — if the mic is blocked the
-  // voice chat still works, just without a downloadable recording.
+  // Send one recorded spoken turn to Whisper and get the transcript back.
+  async function transcribeBlob(blob: Blob): Promise<string> {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+    const res = await fetch("/api/transcribe", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audio: dataUrl, mime: blob.type })
+    });
+    if (!res.ok) throw new Error("transcribe failed");
+    const data = await res.json();
+    return (data.text || "").trim();
+  }
+
+  // One listening turn: record from the mic until the user goes quiet, then
+  // transcribe with Whisper and send it. A silent turn just re-arms so the mic
+  // stays open (hands-free) until the user ends the conversation.
+  function listenUtterance() {
+    if (!conversingRef.current || speakingRef.current || loadingRef.current) return;
+    const stream = micStreamRef.current;
+    if (!stream || !analyserRef.current) { stopConversation(); return; }
+    stopSpeaking();          // never record our own voice
+    attachMicToRecording();  // also capture the user's turn into the download
+
+    const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
+      : MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+    let rec: MediaRecorder;
+    try { rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
+    catch { stopConversation(); return; }
+
+    uttChunksRef.current = [];
+    let hadSpeech = false;
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) uttChunksRef.current.push(e.data); };
+    rec.onstop = async () => {
+      if (!hadSpeech || !uttChunksRef.current.length) {
+        // Nothing said → keep listening (unless a reply is now in flight).
+        if (conversingRef.current && !speakingRef.current && !loadingRef.current) listenUtterance();
+        return;
+      }
+      const blob = new Blob(uttChunksRef.current, { type: uttChunksRef.current[0].type || "audio/webm" });
+      try {
+        const text = await transcribeBlob(blob);
+        // Whisper sometimes returns filler ("you", ".") for noise — ignore it.
+        if (text && text.replace(/[^a-z0-9-￿]/gi, "").length >= 2) {
+          send(text, true);
+        } else if (conversingRef.current) {
+          listenUtterance();
+        }
+      } catch {
+        if (conversingRef.current) listenUtterance();
+      }
+    };
+
+    const start = Date.now();
+    let speechStartAt = 0;
+    let lastLoud = start;
+    utteranceActiveRef.current = true;
+    setListening(true);
+
+    const tick = () => {
+      if (!utteranceActiveRef.current) return;
+      const now = Date.now();
+      if (micLevel() > VAD_SPEECH_LEVEL) {
+        if (!hadSpeech) { hadSpeech = true; speechStartAt = now; }
+        lastLoud = now;
+      }
+      const spokeEnough = hadSpeech && (lastLoud - speechStartAt >= VAD_MIN_SPEECH_MS);
+      const finish = () => {
+        utteranceActiveRef.current = false;
+        if (vadRafRef.current) { cancelAnimationFrame(vadRafRef.current); vadRafRef.current = null; }
+        setListening(false);
+        try { if (rec.state === "recording") rec.stop(); } catch { /* ignore */ }
+      };
+      if (hadSpeech && spokeEnough && now - lastLoud > VAD_SILENCE_MS) return finish();
+      if (!hadSpeech && now - start > VAD_NO_SPEECH_MS) return finish();
+      if (now - start > VAD_MAX_MS) return finish();
+      vadRafRef.current = requestAnimationFrame(tick);
+    };
+
+    uttRecorderRef.current = rec;
+    try { rec.start(); } catch { utteranceActiveRef.current = false; setListening(false); stopConversation(); return; }
+    vadRafRef.current = requestAnimationFrame(tick);
+  }
+
+  // Grab the mic and set up: (1) an analyser for speech detection and (2) a
+  // MediaRecorder for the downloadable conversation audio. The mic + analyser
+  // are REQUIRED for voice capture, so getUserMedia failure throws to the
+  // caller; the download recorder is best-effort.
   async function setupRecording() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStreamRef.current = stream;
+    const ctx = getAudioCtx();
+    if (ctx.state === "suspended") await ctx.resume();
+    micNodeRef.current = ctx.createMediaStreamSource(stream);
+    // Analyser for voice-activity detection (knowing when the user is talking).
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    micNodeRef.current.connect(analyser);
+    analyserRef.current = analyser;
+    // Best-effort: mixed-audio recording (mic + bot voice) for download.
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
-      const ctx = getAudioCtx();
-      if (ctx.state === "suspended") await ctx.resume();
       const dest = ctx.createMediaStreamDestination();
       recordDestRef.current = dest;
-      micNodeRef.current = ctx.createMediaStreamSource(stream);
       chunksRef.current = [];
       const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
       const rec = mime ? new MediaRecorder(dest.stream, { mimeType: mime }) : new MediaRecorder(dest.stream);
@@ -440,34 +551,47 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       recorderRef.current = rec;
       rec.start();
     } catch (e) {
-      console.warn("[voice] recording unavailable:", e);
+      console.warn("[voice] download recording unavailable:", e);
     }
   }
 
   function teardownRecording() {
+    if (vadRafRef.current) { cancelAnimationFrame(vadRafRef.current); vadRafRef.current = null; }
+    utteranceActiveRef.current = false;
+    try { if (uttRecorderRef.current?.state === "recording") uttRecorderRef.current.stop(); } catch { /* ignore */ }
     try { if (recorderRef.current && recorderRef.current.state === "recording") recorderRef.current.stop(); } catch { /* ignore */ }
     try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+    uttRecorderRef.current = null;
     recorderRef.current = null;
     micNodeRef.current = null;
+    analyserRef.current = null;
     recordDestRef.current = null;
     micStreamRef.current = null;
   }
 
   async function startConversation() {
     if (typeof window === "undefined") return;
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice input isn't supported in this browser. Please use Google Chrome."); return; }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      alert("Voice chat isn't supported in this browser. Please use a modern browser like Chrome, Edge, or Safari.");
+      return;
+    }
     if (recordingUrl) { URL.revokeObjectURL(recordingUrl); setRecordingUrl(null); }
     conversingRef.current = true;
     setConversing(true);
-    await setupRecording();
-    beginListening();
+    try {
+      await setupRecording();
+    } catch (e) {
+      console.error("[voice] mic unavailable:", e);
+      alert("Couldn't access your microphone. Please allow microphone access for this site and try again.");
+      stopConversation();
+      return;
+    }
+    listenUtterance();
   }
 
   function stopConversation() {
     conversingRef.current = false;
     setConversing(false);
-    try { recognitionRef.current?.stop(); } catch { /* ignore */ }
     setListening(false);
     stopSpeaking();
     teardownRecording();
