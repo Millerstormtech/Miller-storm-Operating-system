@@ -24,6 +24,8 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
 
   int _stormChatGroupCount = 0;
   String? _userId;
+  String? _headshotUrl;
+  String? _userName;
 
   @override
   void initState() {
@@ -39,6 +41,8 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
         final user = jsonDecode(userStr);
         setState(() {
           _userId = user['_id'] ?? user['id'];
+          _headshotUrl = user['headshotUrl'];
+          _userName = user['name'];
         });
         await _fetchStormChatGroups();
       }
@@ -89,14 +93,17 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                 color: _white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Miller Storm Training Center',
-                      style: TextStyle(
-                        color: _textDark,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                    const Expanded(
+                      child: Text(
+                        'Miller Storm Training Center',
+                        style: TextStyle(
+                          color: _textDark,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
@@ -107,6 +114,8 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                         Navigator.pushNamed(context, '/manager-training-leaderboard');
                       },
                     ),
+                    const SizedBox(width: 14),
+                    _buildProfileAvatar(),
                   ],
                 ),
               ),
@@ -115,6 +124,31 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
           ),
         ),
         bottomNavigationBar: _buildBottomNav(context),
+      ),
+    );
+  }
+
+  // Circular user photo → tap opens the Profile page.
+  Widget _buildProfileAvatar() {
+    final img = (_headshotUrl ?? '').toString();
+    final initial = (_userName ?? '').isNotEmpty ? _userName!.trim()[0].toUpperCase() : '?';
+    return GestureDetector(
+      onTap: () => Navigator.pushReplacementNamed(context, '/manager-profile'),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF374151),
+          border: Border.all(color: _primary, width: 2),
+          image: img.isNotEmpty
+              ? DecorationImage(image: NetworkImage('https://millerstorm.tech$img'), fit: BoxFit.cover)
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: img.isEmpty
+            ? Text(initial, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))
+            : null,
       ),
     );
   }
