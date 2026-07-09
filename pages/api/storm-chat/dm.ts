@@ -40,7 +40,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let group = await ChatGroup.findOne({ dmKey });
     if (!group) {
       group = await ChatGroup.create({
-        name: '',
+        // Placeholder — the schema requires a non-empty name, but clients always
+        // display the OTHER participant's name (dmOther), so this is never shown.
+        name: 'Direct Message',
         description: '',
         imageUrl: '',
         members: [myId, otherId],
