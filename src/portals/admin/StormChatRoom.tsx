@@ -47,6 +47,9 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const isDirect = !!group.isDirect;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  // @mention autocomplete: the group's members and the current "@…" query.
+  const [members, setMembers] = useState<{ _id: string; name: string; headshotUrl?: string }[]>([]);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -108,6 +111,23 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     const interval = setInterval(fetchMessages, 3000); // Poll every 3 seconds
     return () => clearInterval(interval);
   }, [group._id]);
+
+  // Load the group's members for @mention autocomplete (not needed in a DM).
+  useEffect(() => {
+    if (isDirect) { setMembers([]); return; }
+    const ids = group.members.join(',');
+    if (!ids) return;
+    fetch(`/api/users/by-mongo-ids?ids=${ids}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((list) => setMembers(Array.isArray(list) ? list : []))
+      .catch(() => {});
+  }, [group._id]);
+
+  // Replace the "@…" the user is typing (at the end of the box) with @Name.
+  function insertMention(name: string) {
+    setNewMessage(prev => prev.replace(/@([^\s@]*)$/, `@${name} `));
+    setMentionQuery(null);
+  }
 
   useEffect(() => {
     if (shouldAutoScroll) {
@@ -779,6 +799,27 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 </button>
               </div>
             )}
+            <div style={{ position: 'relative' }}>
+            {mentionQuery !== null && (() => {
+              const q = (mentionQuery || '').toLowerCase();
+              const matches = members.filter(mm => mm.name.toLowerCase().includes(q)).slice(0, 6);
+              if (matches.length === 0) return null;
+              return (
+                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 200, overflowY: 'auto', zIndex: 60 }}>
+                  {matches.map(mm => (
+                    <button key={mm._id} type="button" onClick={() => insertMention(mm.name)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f4f6')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 12 }}>
+                        {mm.headshotUrl ? <img src={mm.headshotUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (mm.name?.[0]?.toUpperCase() || '?')}
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: '#1f2937' }}>{mm.name}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <button
               type="button"
@@ -808,7 +849,13 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             
             <textarea
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNewMessage(val);
+                // Show the @mention list while typing "@…" at the end (groups only).
+                const m = val.match(/@([^\s@]*)$/);
+                setMentionQuery(!isDirect && m ? m[1] : null);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -849,6 +896,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               {sending ? '⏳' : '➤'}
             </button>
           </div>
+            </div>
           </div>
         )}
       </div>
