@@ -59,6 +59,26 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [menuMessageId, setMenuMessageId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  // Fullscreen image viewer (with a Download button), like the app's viewer.
+  const [viewerImage, setViewerImage] = useState<string | null>(null);
+
+  // Save a photo/video to the user's device. Fetch the blob so it downloads
+  // (with a filename) instead of just navigating to it.
+  async function downloadMedia(url: string) {
+    const name = (url.split('/').pop() || 'download').split('?')[0];
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      window.open(url, '_blank'); // fallback
+    }
+  }
 
   // Check if user can send messages
   const isGroupMember = isMember || group.members.includes(user?._id || user?.id || '');
@@ -533,35 +553,33 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             )}
             
             {msg.messageType === 'image' && msg.mediaUrl && (
-              <div 
-                onClick={() => window.open(msg.mediaUrl, '_blank')}
-                style={{ cursor: 'pointer' }}
-              >
-                <img 
-                  src={msg.mediaUrl} 
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <img
+                  src={msg.mediaUrl}
                   alt="Image"
-                  style={{ 
-                    maxWidth: 300,
-                    maxHeight: 300,
-                    borderRadius: 8,
-                    display: 'block'
-                  }}
+                  onClick={() => setViewerImage(msg.mediaUrl!)}
+                  style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block', cursor: 'pointer' }}
                 />
+                <button
+                  onClick={() => downloadMedia(msg.mediaUrl!)}
+                  title="Save"
+                  style={{ position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >⬇</button>
               </div>
             )}
-            
+
             {msg.messageType === 'video' && msg.mediaUrl && (
-              <div>
-                <video 
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <video
                   src={msg.mediaUrl}
                   controls
-                  style={{ 
-                    maxWidth: 300,
-                    maxHeight: 300,
-                    borderRadius: 8,
-                    display: 'block'
-                  }}
+                  style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block' }}
                 />
+                <button
+                  onClick={() => downloadMedia(msg.mediaUrl!)}
+                  title="Save"
+                  style={{ position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >⬇</button>
               </div>
             )}
             
@@ -808,6 +826,33 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
           </div>
         )}
       </div>
+
+      {/* Fullscreen image viewer with a Save button (like the app's viewer) */}
+      {viewerImage && (
+        <div
+          onClick={() => setViewerImage(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 10 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); downloadMedia(viewerImage); }}
+              title="Save"
+              style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+            >⬇ Save</button>
+            <button
+              onClick={() => setViewerImage(null)}
+              title="Close"
+              style={{ width: 38, height: 38, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}
+            >×</button>
+          </div>
+          <img
+            src={viewerImage}
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '92vw', maxHeight: '88vh', objectFit: 'contain', borderRadius: 8 }}
+          />
+        </div>
+      )}
     </div>
   );
 }
