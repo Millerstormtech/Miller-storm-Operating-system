@@ -17,7 +17,14 @@ export default async function handler(
   if (req.method === "GET") {
     // A user reads their OWN notifications — identity comes from the session.
     const userId = auth.sub;
-    const notifications = await NotificationModel.find({ userId }).sort({ createdAt: -1 }).lean();
+    // Both consumers (NotificationBell, NewCoursePopup) show ONLY unread items,
+    // so return unread only. Read notifications are dead weight in the payload
+    // and the reason the collection grows without bound. Cap at 200 as a safety
+    // valve — the bell badge already renders "99+", so more than that is moot.
+    const notifications = await NotificationModel.find({ userId, read: false })
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
     res.status(200).json(notifications);
     return;
   }

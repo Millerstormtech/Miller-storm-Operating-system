@@ -89,7 +89,9 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
 
   // Load courses for leaderboard picker
   useEffect(() => {
-    fetch("/api/courses")
+    // Picker only needs id + title, so use summary mode (drops the heavy
+    // per-lesson HTML/transcript/quiz payload) instead of the full course list.
+    fetch("/api/courses?summary=1")
       .then((r) => r.ok ? r.json() : [])
       .then((data: any[]) => {
         const published = data

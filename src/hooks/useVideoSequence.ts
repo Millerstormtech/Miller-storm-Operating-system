@@ -17,7 +17,10 @@
  *        then waits for the iframe to reload before attaching the SDK.
  */
 
-import VimeoPlayer from '@vimeo/player';
+// Type-only import: erased at build time, so the ~100 KB Vimeo SDK is NOT in the
+// bundle. The actual constructor is loaded on demand via import() below, only
+// when a lesson really has a Vimeo video.
+import type VimeoPlayer from '@vimeo/player';
 
 declare global {
   interface Window {
@@ -436,11 +439,13 @@ export async function initVideoSequence(
 
   // ── Vimeo: enable API, wait for reload, attach SDK ────────────────────────
   if (vimeoRaw.length > 0) {
+    // Fetch the Vimeo SDK now (once), only because this lesson has Vimeo videos.
+    const { default: VimeoPlayerImpl } = await import('@vimeo/player');
     await Promise.all(vimeoRaw.map(async ({ iframe, seqIdx }) => {
       enableVimeoApi(iframe); // rewrites src → triggers reload
       await waitForLoad(iframe); // wait for reload to complete
       try {
-        const vp = new VimeoPlayer(iframe);
+        const vp = new VimeoPlayerImpl(iframe);
         vimeoPlayers.push(vp);
         const vimeoEntry = entries[seqIdx] as Extract<Entry, { type: 'vimeo' }>;
         vimeoEntry.player = vp;
