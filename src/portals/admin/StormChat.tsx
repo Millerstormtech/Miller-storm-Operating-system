@@ -238,9 +238,9 @@ export function StormChatManagement() {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(u => 
-        u.name.toLowerCase().includes(query) || 
-        u.email.toLowerCase().includes(query)
+      filtered = filtered.filter(u =>
+        (u.name || '').toLowerCase().includes(query) ||
+        (u.email || '').toLowerCase().includes(query)
       );
     }
     
@@ -797,7 +797,7 @@ export function StormChatManagement() {
   const dmq = dmUserSearch.trim().toLowerCase();
   const dmPickable = dmUsers
     .filter(u => u.id !== user?.id)
-    .filter(u => !dmq || u.name.toLowerCase().includes(dmq) || (u.email || '').toLowerCase().includes(dmq));
+    .filter(u => !dmq || (u.name || '').toLowerCase().includes(dmq) || (u.email || '').toLowerCase().includes(dmq));
 
   return (
     <div>

@@ -802,7 +802,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <div style={{ position: 'relative' }}>
             {mentionQuery !== null && (() => {
               const q = (mentionQuery || '').toLowerCase();
-              const matches = members.filter(mm => mm.name.toLowerCase().includes(q)).slice(0, 6);
+              const matches = members.filter(mm => (mm.name || '').toLowerCase().includes(q)).slice(0, 6);
               if (matches.length === 0) return null;
               return (
                 <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 200, overflowY: 'auto', zIndex: 60 }}>
