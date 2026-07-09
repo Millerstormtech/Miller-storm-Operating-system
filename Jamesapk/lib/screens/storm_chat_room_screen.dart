@@ -1732,6 +1732,16 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                   });
                 },
               ),
+              // Message this sender privately (groups only, others' messages).
+              if (!isMyMessage && widget.group['isDirect'] != true)
+                ListTile(
+                  leading: Icon(Icons.mail_outline, color: textColor),
+                  title: Text('Message privately', style: TextStyle(color: textColor)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _messagePrivatelyToSender(message);
+                  },
+                ),
               if (message['messageType'] == 'text')
                 ListTile(
                   leading: Icon(Icons.copy, color: textColor),
@@ -1793,6 +1803,38 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete message')));
+    }
+  }
+
+  // Open (or create) a private DM with the sender of a group message.
+  Future<void> _messagePrivatelyToSender(dynamic message) async {
+    final targetId = (message['senderId'])?.toString() ?? '';
+    if (targetId.isEmpty) return;
+    try {
+      final res = await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/dm'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'userId': targetId}),
+      );
+      if (res.statusCode == 200) {
+        final dm = json.decode(res.body);
+        final other = dm['dmOther'] as Map<String, dynamic>?;
+        final name = (other?['name'] ?? message['senderName'] ?? 'Direct message').toString();
+        final g = Map<String, dynamic>.from(dm as Map);
+        g['name'] = name;
+        g['isDirect'] = true;
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StormChatRoomScreen(group: g, userId: widget.userId, userRole: widget.userRole),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the conversation')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the conversation')));
     }
   }
 
