@@ -37,6 +37,7 @@ export function StormChatManagement() {
   // Admin's own private messages (DMs) — admin participates like any other user.
   const [myDms, setMyDms] = useState<ChatGroup[]>([]);
   const [dmUnread, setDmUnread] = useState<Record<string, number>>({});
+  const [groupUnread, setGroupUnread] = useState<Record<string, number>>({});
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const [dmUsers, setDmUsers] = useState<PickUser[]>([]);
   const [dmUserSearch, setDmUserSearch] = useState("");
@@ -113,9 +114,19 @@ export function StormChatManagement() {
     } else {
       groupClickTimer.current = setTimeout(() => {
         groupClickTimer.current = null;
-        setSelectedGroup(group);
+        openGroupChat(group);
       }, 240);
     }
+  }
+
+  // Open a group's chat: clear its unread badge, mark it read, show the room.
+  function openGroupChat(group: ChatGroup) {
+    setGroupUnread(prev => ({ ...prev, [group._id]: 0 }));
+    setSelectedGroup(group);
+    fetch('/api/storm-chat/mark-read', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId: group._id })
+    }).catch(() => {});
   }
 
   // Open an existing DM: clear its unread badge, mark it read, show the room.
@@ -163,8 +174,14 @@ export function StormChatManagement() {
     try {
       const response = await fetch('/api/storm-chat/groups');
       if (response.ok) {
-        const data = await response.json();
+        const data: ChatGroup[] = await response.json();
         setGroups(data);
+        // Unread counts (red badges) for the top-level groups.
+        const ids = data.filter(g => !g.parentGroupId).map(g => g._id).join(',');
+        if (ids) {
+          const ur = await fetch(`/api/storm-chat/unread-counts?groupIds=${ids}`);
+          if (ur.ok) setGroupUnread(await ur.json());
+        }
       }
     } catch (error) {
       console.error('Error fetching groups:', error);
@@ -747,7 +764,7 @@ export function StormChatManagement() {
         isMember={isDm || undefined}
         title={isDm ? (selectedGroup.dmOther?.name || 'Direct Message') : undefined}
         onMessagePrivately={isDm ? undefined : (id) => openDmWith(id)}
-        onBack={() => { setSelectedGroup(null); fetchMyDms(); }}
+        onBack={() => { setSelectedGroup(null); fetchMyDms(); fetchGroups(); }}
       />
     );
   }
@@ -820,6 +837,7 @@ export function StormChatManagement() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {groups.filter(g => !g.parentGroupId).map(group => {
                 const subCount = groups.filter(sg => sg.parentGroupId === group._id).length;
+                const unread = groupUnread[group._id] || 0;
                 return (
                   <button key={group._id} type="button"
                     onClick={() => handleGroupClick(group)}
@@ -832,6 +850,11 @@ export function StormChatManagement() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</div>
                       <div style={{ fontSize: 12, color: '#9ca3af' }}>👥 {group.members.length}{group.admins.length > 0 ? ` · 👑 ${group.admins.length}` : ''}{subCount > 0 ? ` · ${subCount} subgroup${subCount === 1 ? '' : 's'}` : ''}</div>
                     </div>
+                    {unread > 0 && (
+                      <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', flexShrink: 0 }}>
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
                     <span title="Manage" onClick={(e) => { e.stopPropagation(); setInfoGroup(group); }}
                       style={{ color: '#9ca3af', fontSize: 18, padding: '2px 6px', flexShrink: 0 }}>ⓘ</span>
                   </button>
