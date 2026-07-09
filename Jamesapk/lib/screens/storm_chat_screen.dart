@@ -759,6 +759,8 @@ class _StormChatScreenState extends State<StormChatScreen> {
               const SizedBox(width: 2),
               _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items'),
               const SizedBox(width: 2),
+              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/rankings'),
+              const SizedBox(width: 2),
               _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
             ],
           ),

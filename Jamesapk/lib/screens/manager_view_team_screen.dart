@@ -347,7 +347,7 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
               _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat', context),
               _navItem(Icons.apps_outlined, 'Apps & Tools', '/manager-apps-tools-items', context),
               _navItemActive(Icons.group_outlined, 'View Team'),
-              _navItem(Icons.person_outline, 'Profile', '/manager-profile', context),
+              _navItem(Icons.leaderboard_outlined, 'Leaderboard', '/manager-rankings', context),
             ],
           ),
         ),

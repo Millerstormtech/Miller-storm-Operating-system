@@ -461,7 +461,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
               const SizedBox(width: 2),
               _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
               const SizedBox(width: 2),
-              _navItemActive(Icons.person_outline, 'Profile'),
+              _navItem(Icons.leaderboard_outlined, 'Leaderboard', false, '/manager-rankings', context),
             ],
           ),
         ),

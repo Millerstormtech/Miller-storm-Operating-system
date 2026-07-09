@@ -504,6 +504,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(width: 2),
               _navItem(Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items', context),
               const SizedBox(width: 2),
+              _navItem(Icons.leaderboard_outlined, 'Leaderboard', false, '/rankings', context),
+              const SizedBox(width: 2),
               _navItemActive(Icons.person_outline, 'Profile'),
             ],
           ),

@@ -717,7 +717,7 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
               const SizedBox(width: 2),
               _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
               const SizedBox(width: 2),
-              _navItem(context, Icons.person_outline, 'Profile', false, '/manager-profile'),
+              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/manager-rankings'),
             ],
           ),
         ),
