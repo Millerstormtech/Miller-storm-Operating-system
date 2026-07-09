@@ -393,25 +393,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             position: 'relative'
           }}>
             {!isMyMessage && (
-              <div style={{
-                fontSize: 11,
-                color: '#6b7280',
-                marginBottom: 4,
-                marginLeft: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}>
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4, marginLeft: 8 }}>
                 {msg.senderName}
-                {/* Group option 1: message this sender privately */}
-                {!isDirect && onMessagePrivately && (
-                  <button
-                    onClick={() => onMessagePrivately(msg.senderId, msg.senderName)}
-                    title={`Message ${msg.senderName} privately`}
-                    style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline' }}>
-                    Message privately
-                  </button>
-                )}
               </div>
             )}
             
@@ -470,6 +453,17 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       overflow: 'hidden'
                     }}
                   >
+                    {/* Message this sender privately (groups only, others' messages) */}
+                    {!isDirect && !isMyMessage && onMessagePrivately && (
+                      <button
+                        onClick={() => { onMessagePrivately(msg.senderId, msg.senderName); setMenuMessageId(null); }}
+                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        ✉️ Message privately
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setReplyingTo(msg);

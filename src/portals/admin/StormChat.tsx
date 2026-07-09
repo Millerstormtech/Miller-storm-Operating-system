@@ -746,6 +746,7 @@ export function StormChatManagement() {
         group={selectedGroup}
         isMember={isDm || undefined}
         title={isDm ? (selectedGroup.dmOther?.name || 'Direct Message') : undefined}
+        onMessagePrivately={isDm ? undefined : (id) => openDmWith(id)}
         onBack={() => { setSelectedGroup(null); fetchMyDms(); }}
       />
     );
