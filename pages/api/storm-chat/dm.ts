@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import mongoose from 'mongoose';
 import { connectMongo } from '../../../src/lib/mongodb';
-import ChatGroup from '../../../src/lib/models/ChatGroup';
 import { UserModel } from '../../../src/lib/models/User';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
 
@@ -8,6 +8,11 @@ import { requireUser, allowMethods } from '../../../src/lib/auth';
 // a target user. Any authenticated user (including sales) can start a DM with
 // anyone. A DM is just a ChatGroup with isDirect=true and exactly 2 members; the
 // canonical dmKey (sorted member ids) guarantees a single thread per pair.
+//
+// We write with the NATIVE driver (not the mongoose model) so the newly added
+// isDirect/dmKey fields are always persisted even when a long-running dev server
+// still holds a mongoose model compiled from the older schema — the same reason
+// the group list endpoint reads chatgroups natively.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['POST'])) return;
 
@@ -37,12 +42,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const dmKey = [myId, otherId].sort().join('__');
 
-    let group = await ChatGroup.findOne({ dmKey });
+    const col = mongoose.connection.db!.collection('chatgroups');
+    let group = await col.findOne({ dmKey });
     if (!group) {
-      group = await ChatGroup.create({
-        // Placeholder — the schema requires a non-empty name, but clients always
-        // display the OTHER participant's name (dmOther), so this is never shown.
-        name: 'Direct Message',
+      const now = new Date();
+      const doc: any = {
+        name: 'Direct Message', // placeholder; clients render the other person's name
         description: '',
         imageUrl: '',
         members: [myId, otherId],
@@ -53,14 +58,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         parentGroupId: '',
         isDirect: true,
         dmKey,
-      });
+        createdAt: now,
+        updatedAt: now,
+      };
+      try {
+        const result = await col.insertOne(doc);
+        group = { _id: result.insertedId, ...doc };
+      } catch (e: any) {
+        // Lost a race to create the same pair's DM — just load the existing one.
+        if (e?.code === 11000) group = await col.findOne({ dmKey });
+        else throw e;
+      }
     }
 
     // Enrich with the other participant's display info so the client can render
     // the DM tile/header without another lookup.
-    const g = group.toObject();
     return res.status(200).json({
-      ...g,
+      ...group,
       dmOther: { _id: otherId, name: target.name, imageUrl: target.headshotUrl || '', role: target.role },
     });
   } catch (error) {
