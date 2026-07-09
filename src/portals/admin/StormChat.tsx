@@ -846,8 +846,9 @@ export function StormChatManagement() {
                 const unread = dmUnread[dm._id] || 0;
                 return (
                   <button key={dm._id} type="button" className="sc-tile" onClick={() => openDm(dm)}>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#6b7280,#374151)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-                      {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👤'}
+                    <div style={{ position: 'relative', width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#6b7280,#374151)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 17, fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                      <span>{name?.[0]?.toUpperCase() || '👤'}</span>
+                      {img && <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
@@ -908,8 +909,9 @@ export function StormChatManagement() {
               ) : dmPickable.map(u => (
                 <button key={u.id} type="button" disabled={dmOpening} onClick={() => openDmWith(u._id || u.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'none', border: 'none', cursor: dmOpening ? 'wait' : 'pointer', width: '100%', textAlign: 'left', borderRadius: 10 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 16 }}>
-                    {u.headshotUrl ? <img src={u.headshotUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (u.name?.[0]?.toUpperCase() || '👤')}
+                  <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#6b7280,#374151)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 16, fontWeight: 600 }}>
+                    <span>{u.name?.[0]?.toUpperCase() || '👤'}</span>
+                    {u.headshotUrl && <img src={u.headshotUrl} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
