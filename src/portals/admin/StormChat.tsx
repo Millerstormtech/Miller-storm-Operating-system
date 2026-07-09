@@ -828,7 +828,9 @@ export function StormChatManagement() {
           )}
 
           {/* Groups — single click opens the chat, double click opens the info/manage panel */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, margin: '16px 0 8px' }}>Groups</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, margin: '16px 0 8px' }}>
+            Groups ({groups.filter(g => !g.parentGroupId).length}){groups.filter(g => g.parentGroupId).length > 0 ? ` · ${groups.filter(g => g.parentGroupId).length} Subgroup${groups.filter(g => g.parentGroupId).length === 1 ? '' : 's'}` : ''}
+          </div>
           {groups.filter(g => !g.parentGroupId).length === 0 ? (
             <div style={{ padding: '4px 4px', color: '#9ca3af', fontSize: 13 }}>
               No groups yet. Use “Create group” to make one.
