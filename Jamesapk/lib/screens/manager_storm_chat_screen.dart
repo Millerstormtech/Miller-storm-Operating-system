@@ -117,26 +117,26 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                    const Text(
-                      'StormChat',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
-                      ),
+                  const Text(
+                    'StormChat',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _newMessageButton(),
-                        const SizedBox(width: 8),
-                        _communityButton(),
-                      ],
-                    ),
-                  ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      _newMessageButton(),
+                      const SizedBox(width: 10),
+                      _communityButton(),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
