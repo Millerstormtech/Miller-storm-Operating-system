@@ -432,28 +432,28 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   wordBreak: 'break-word',
                   position: 'relative'
                 }}>
-                {/* Menu button on hover */}
-                {isHovered && (
-                  <button
-                    onClick={() => setMenuMessageId(showMenu ? null : msg._id)}
-                    style={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      background: 'none',
-                      border: 'none',
-                      color: isMyMessage ? '#fff' : '#6b7280',
-                      cursor: 'pointer',
-                      padding: 4,
-                      fontSize: 18,
-                      lineHeight: 1,
-                      fontWeight: 'bold',
-                      letterSpacing: '2px'
-                    }}
-                  >
-                    ⋯
-                  </button>
-                )}
+                {/* Always-visible menu button, positioned just OUTSIDE the
+                    bubble (on the inner side) so it never overlaps the text. */}
+                <button
+                  onClick={() => setMenuMessageId(showMenu ? null : msg._id)}
+                  title="More"
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    ...(isMyMessage ? { left: -26 } : { right: -26 }),
+                    background: 'none',
+                    border: 'none',
+                    color: '#9ca3af',
+                    cursor: 'pointer',
+                    padding: 4,
+                    fontSize: 18,
+                    lineHeight: 1,
+                    fontWeight: 'bold'
+                  }}
+                >
+                  ⋮
+                </button>
                 
                 {/* Popup menu */}
                 {showMenu && (
