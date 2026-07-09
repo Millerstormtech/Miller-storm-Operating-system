@@ -1744,11 +1744,56 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     );
                   },
                 ),
+              // Delete (own messages only — text, photo or video).
+              if (isMyMessage)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text('Delete', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmDeleteMessage(message);
+                  },
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  void _confirmDeleteMessage(dynamic message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete message?'),
+        content: const Text('This message will be removed for everyone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () { Navigator.pop(ctx); _deleteMessage(message); },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteMessage(dynamic message) async {
+    final messageId = message['_id'];
+    try {
+      final res = await api.delete(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'messageId': messageId}),
+      );
+      if (res.statusCode == 200) {
+        setState(() => messages.removeWhere((m) => m['_id'] == messageId));
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete message')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete message')));
+    }
   }
 
   Widget _buildEmojiOption(String emoji, VoidCallback onTap) {

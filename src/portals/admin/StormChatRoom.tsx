@@ -80,6 +80,22 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     }
   }
 
+  // Delete a message (text/photo/video). Server allows the sender always, and a
+  // system admin in a group. Removes it from the list on success.
+  async function deleteMessage(messageId: string) {
+    if (!window.confirm('Delete this message?')) return;
+    try {
+      const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId }),
+      });
+      if (res.ok) setMessages(prev => prev.filter(m => m._id !== messageId));
+      else alert('Failed to delete message');
+    } catch {
+      alert('Failed to delete message');
+    }
+  }
+
   // Check if user can send messages
   const isGroupMember = isMember || group.members.includes(user?._id || user?.id || '');
   const isAdmin = user?.role === 'admin';
@@ -501,6 +517,16 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     >
                       📋 Copy
                     </button>
+                    {(isMyMessage || (isAdmin && !isDirect)) && (
+                      <button
+                        onClick={() => { deleteMessage(msg._id); setMenuMessageId(null); }}
+                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        🗑 Delete
+                      </button>
+                    )}
                   </div>
                 )}
                 
@@ -560,11 +586,14 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   onClick={() => setViewerImage(msg.mediaUrl!)}
                   style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block', cursor: 'pointer' }}
                 />
-                <button
-                  onClick={() => downloadMedia(msg.mediaUrl!)}
-                  title="Save"
-                  style={{ position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >⬇</button>
+                <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+                  {(isMyMessage || (isAdmin && !isDirect)) && (
+                    <button onClick={() => deleteMessage(msg._id)} title="Delete"
+                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
+                  )}
+                  <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
+                    style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
+                </div>
               </div>
             )}
 
@@ -575,11 +604,14 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   controls
                   style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block' }}
                 />
-                <button
-                  onClick={() => downloadMedia(msg.mediaUrl!)}
-                  title="Save"
-                  style={{ position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >⬇</button>
+                <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+                  {(isMyMessage || (isAdmin && !isDirect)) && (
+                    <button onClick={() => deleteMessage(msg._id)} title="Delete"
+                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
+                  )}
+                  <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
+                    style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
+                </div>
               </div>
             )}
             

@@ -9,7 +9,7 @@ import { logToDb } from '../../../../src/lib/models/SystemLog';
 import { requireUser, allowMethods } from '../../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!allowMethods(req, res, ['GET', 'POST', 'PATCH'])) return;
+  if (!allowMethods(req, res, ['GET', 'POST', 'PATCH', 'DELETE'])) return;
 
   const auth = requireUser(req, res);
   if (!auth) return;
@@ -307,6 +307,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error) {
       console.error('Error saving reaction:', error);
       res.status(500).json({ error: 'Failed to save reaction' });
+    }
+  } else if (req.method === 'DELETE') {
+    // Delete a message (text/photo/video). The sender can always delete their
+    // own; a system admin may also delete any message in a GROUP (moderation),
+    // but NOT inside a private DM they aren't part of.
+    try {
+      const { messageId } = req.body;
+      if (!messageId) return res.status(400).json({ error: 'messageId is required' });
+
+      const msg = await ChatMessage.findById(messageId);
+      if (!msg) return res.status(404).json({ error: 'Message not found' });
+
+      const isSender = (msg as any).senderId === auth.sub;
+      let adminCanModerate = false;
+      if (auth.role === 'admin') {
+        const grp = await ChatGroup.findById(groupId);
+        adminCanModerate = !!grp && !grp.isDirect;
+      }
+      if (!isSender && !adminCanModerate) {
+        return res.status(403).json({ error: 'You can only delete your own messages' });
+      }
+
+      await ChatMessage.findByIdAndDelete(messageId);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      res.status(500).json({ error: 'Failed to delete message' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

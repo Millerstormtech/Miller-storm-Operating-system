@@ -36,6 +36,7 @@ export function StormChatManagement() {
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
   // Admin's own private messages (DMs) — admin participates like any other user.
   const [myDms, setMyDms] = useState<ChatGroup[]>([]);
+  const [dmUnread, setDmUnread] = useState<Record<string, number>>({});
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const [dmUsers, setDmUsers] = useState<PickUser[]>([]);
   const [dmUserSearch, setDmUserSearch] = useState("");
@@ -75,7 +76,14 @@ export function StormChatManagement() {
       const res = await fetch('/api/storm-chat/groups?mine=1');
       if (res.ok) {
         const data: ChatGroup[] = await res.json();
-        setMyDms(data.filter(g => g.isDirect));
+        const dms = data.filter(g => g.isDirect);
+        setMyDms(dms);
+        // Unread counts (red badges) for the admin's own DMs.
+        const ids = dms.map(g => g._id).join(',');
+        if (ids) {
+          const ur = await fetch(`/api/storm-chat/unread-counts?groupIds=${ids}`);
+          if (ur.ok) setDmUnread(await ur.json());
+        }
       }
     } catch (error) {
       console.error('Error fetching DMs:', error);
@@ -90,6 +98,18 @@ export function StormChatManagement() {
         if (res.ok) setDmUsers(await res.json());
       } catch { /* ignore */ }
     }
+  }
+
+  // Open an existing DM: clear its unread badge, mark it read, show the room.
+  async function openDm(dm: ChatGroup) {
+    setDmUnread(prev => ({ ...prev, [dm._id]: 0 }));
+    setSelectedGroup(dm);
+    try {
+      await fetch('/api/storm-chat/mark-read', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId: dm._id })
+      });
+    } catch { /* ignore */ }
   }
 
   // Open (or create) a DM and jump straight into the chat room.
@@ -741,8 +761,9 @@ export function StormChatManagement() {
               {myDms.map(dm => {
                 const name = dm.dmOther?.name || 'Direct Message';
                 const img = dm.dmOther?.imageUrl || '';
+                const unread = dmUnread[dm._id] || 0;
                 return (
-                  <button key={dm._id} type="button" onClick={() => setSelectedGroup(dm)}
+                  <button key={dm._id} type="button" onClick={() => openDm(dm)}
                     style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                     <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 18 }}>
                       {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👤'}
@@ -751,6 +772,11 @@ export function StormChatManagement() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
                       <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{dm.dmOther?.role || 'Private message'}</div>
                     </div>
+                    {unread > 0 && (
+                      <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', flexShrink: 0 }}>
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
                   </button>
                 );
               })}
