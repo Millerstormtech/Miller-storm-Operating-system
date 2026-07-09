@@ -22,7 +22,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get messages for a group
     try {
       // Check if group exists
-      const group = await ChatGroup.findById(groupId);
+      // .lean() returns the raw doc so newly-added fields like isDirect are
+      // present even if a long-running server holds a stale compiled model.
+      const group = await ChatGroup.findById(groupId).lean() as any;
       if (!group) {
         await logToDb('error', 'STORM-CHAT', `Group not found: ${groupId}`);
         return res.status(404).json({ error: 'Group not found' });
@@ -69,7 +71,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Check if group exists
-      const group = await ChatGroup.findById(groupId);
+      // .lean() returns the raw doc so newly-added fields like isDirect are
+      // present even if a long-running server holds a stale compiled model.
+      const group = await ChatGroup.findById(groupId).lean() as any;
       if (!group) {
         await logToDb('error', 'STORM-CHAT', `Group not found: ${groupId}`);
         return res.status(404).json({ error: 'Group not found' });
@@ -178,23 +182,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       console.log(`[CHAT] Notifying ${otherMemberIds.length} other members (Sender: ${senderId})`);
 
+      // A private DM reads "<sender> sent you a message"; a group keeps the
+      // "New message in <group>: <sender>: …" format.
+      const isDm = !!group.isDirect;
+      const bodyPreview = messageType === 'text'
+        ? (message?.substring(0, 100) || 'New message')
+        : (messageType === 'image' ? 'Sent a photo' : messageType === 'video' ? 'Sent a video' : 'Sent a file');
+      const memberTitle = isDm ? `${senderName} sent you a message` : `New message in ${group.name}`;
+      const memberBody = isDm ? bodyPreview : `${senderName}: ${bodyPreview}`;
+
       for (const memberId of otherMemberIds) {
         notificationPromises.push(
           NotificationModel.create({
             id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             userId: memberId,
             type: 'stormchat_message',
-            title: `New message in ${group.name}`,
-            message: `${senderName}: ${
-              messageType === 'text' 
-                ? (message?.substring(0, 100) || 'New message')
-                : (messageType === 'image' ? 'Shared an image' : 'New message')
-            }`,
+            title: memberTitle,
+            message: memberBody,
             read: false,
             metadata: {
               groupId,
               groupName: group.name,
-              messageId: newMessage._id
+              messageId: newMessage._id,
+              isDirect: isDm
             }
           })
         );
@@ -248,17 +258,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await logToDb('info', 'PUSH-NOTIFICATION', `🚀 Sending push to ${otherTokens.length} other members`);
           const result = await sendPushNotificationToMultiple(
             otherTokens,
-            `New message in ${group.name}`,
-            `${senderName}: ${
-              messageType === 'text' 
-                ? (message?.substring(0, 100) || 'New message')
-                : (messageType === 'image' ? 'Shared an image' : 'New message')
-            }`,
+            memberTitle,
+            memberBody,
             {
               groupId: groupId as string,
               groupName: group.name,
               messageId: newMessage._id.toString(),
-              type: 'message'
+              type: 'message',
+              isDirect: isDm ? 'true' : 'false'
             }
           );
           pushStatus.memberCount = result.successCount;
@@ -322,7 +329,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const isSender = (msg as any).senderId === auth.sub;
       let adminCanModerate = false;
       if (auth.role === 'admin') {
-        const grp = await ChatGroup.findById(groupId);
+        const grp = await ChatGroup.findById(groupId).lean() as any;
         adminCanModerate = !!grp && !grp.isDirect;
       }
       if (!isSender && !adminCanModerate) {
