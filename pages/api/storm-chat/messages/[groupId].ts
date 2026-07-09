@@ -327,9 +327,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!msg) return res.status(404).json({ error: 'Message not found' });
 
       const isSender = (msg as any).senderId === auth.sub;
+      // Derive the moderation context from the message's OWN group, never the
+      // URL param — otherwise an admin could pass a normal group's id in the URL
+      // while deleting a message that actually lives in a private DM, bypassing
+      // the "admins can't touch DMs" rule.
       let adminCanModerate = false;
-      if (auth.role === 'admin') {
-        const grp = await ChatGroup.findById(groupId).lean() as any;
+      if (!isSender && auth.role === 'admin') {
+        const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
         adminCanModerate = !!grp && !grp.isDirect;
       }
       if (!isSender && !adminCanModerate) {
