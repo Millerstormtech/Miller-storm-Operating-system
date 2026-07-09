@@ -9,6 +9,8 @@ type User = {
   role: string;
 };
 
+type DmOther = { _id: string; name: string; imageUrl: string; role: string } | null;
+type PickUser = { _id?: string; id: string; name: string; email?: string; role: string; headshotUrl?: string };
 type ChatGroup = {
   _id: string;
   name: string;
@@ -20,6 +22,8 @@ type ChatGroup = {
   createdBy: string;
   parentGroupId?: string;
   createdAt: Date;
+  isDirect?: boolean;
+  dmOther?: DmOther;
 };
 
 export function StormChatManagement() {
@@ -30,6 +34,12 @@ export function StormChatManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
+  // Admin's own private messages (DMs) — admin participates like any other user.
+  const [myDms, setMyDms] = useState<ChatGroup[]>([]);
+  const [dmPickerOpen, setDmPickerOpen] = useState(false);
+  const [dmUsers, setDmUsers] = useState<PickUser[]>([]);
+  const [dmUserSearch, setDmUserSearch] = useState("");
+  const [dmOpening, setDmOpening] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
@@ -54,7 +64,58 @@ export function StormChatManagement() {
   useEffect(() => {
     fetchGroups();
     fetchUsers();
+    fetchMyDms();
   }, []);
+
+  // The admin's own private messages (server returns only DMs the admin is in,
+  // enriched with the other person's name/avatar). Admins never see DMs they
+  // aren't part of — this is participation, not oversight.
+  async function fetchMyDms() {
+    try {
+      const res = await fetch('/api/storm-chat/groups?mine=1');
+      if (res.ok) {
+        const data: ChatGroup[] = await res.json();
+        setMyDms(data.filter(g => g.isDirect));
+      }
+    } catch (error) {
+      console.error('Error fetching DMs:', error);
+    }
+  }
+
+  async function openDmPicker() {
+    setDmPickerOpen(true);
+    if (dmUsers.length === 0) {
+      try {
+        const res = await fetch('/api/users/directory');
+        if (res.ok) setDmUsers(await res.json());
+      } catch { /* ignore */ }
+    }
+  }
+
+  // Open (or create) a DM and jump straight into the chat room.
+  async function openDmWith(id: string) {
+    if (dmOpening) return;
+    setDmOpening(true);
+    try {
+      const res = await fetch('/api/storm-chat/dm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id })
+      });
+      if (res.ok) {
+        const dm: ChatGroup = await res.json();
+        setDmPickerOpen(false);
+        setDmUserSearch('');
+        setMyDms(prev => prev.some(g => g._id === dm._id) ? prev.map(g => g._id === dm._id ? dm : g) : [dm, ...prev]);
+        setSelectedGroup(dm);
+      } else {
+        alert("Couldn't open the conversation. Please try again.");
+      }
+    } catch {
+      alert("Couldn't open the conversation. Please try again.");
+    } finally {
+      setDmOpening(false);
+    }
+  }
 
   useEffect(() => {
     filterUsers();
@@ -637,13 +698,101 @@ export function StormChatManagement() {
     return <div style={{ padding: 24, textAlign: 'center' }}>Loading...</div>;
   }
 
-  // Show chat room if a group is selected
+  // Show chat room if a group/DM is selected. For a DM pass the other person's
+  // name as the title and isMember (the admin's app id can't be matched against
+  // the Mongo _ids in members client-side, but they ARE a member).
   if (selectedGroup) {
-    return <StormChatRoom group={selectedGroup} onBack={() => setSelectedGroup(null)} />;
+    const isDm = !!selectedGroup.isDirect;
+    return (
+      <StormChatRoom
+        group={selectedGroup}
+        isMember={isDm || undefined}
+        title={isDm ? (selectedGroup.dmOther?.name || 'Direct Message') : undefined}
+        onBack={() => { setSelectedGroup(null); fetchMyDms(); }}
+      />
+    );
   }
+
+  const dmq = dmUserSearch.trim().toLowerCase();
+  const dmPickable = dmUsers
+    .filter(u => u.id !== user?.id)
+    .filter(u => !dmq || u.name.toLowerCase().includes(dmq) || (u.email || '').toLowerCase().includes(dmq));
 
   return (
     <div>
+      {/* ── Messages (private DMs) — admin chats like any other user ── */}
+      <div className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel-header">
+          <div className="panel-header-row">
+            <span style={{ fontSize: 16, fontWeight: 600 }}>💬 Messages ({myDms.length})</span>
+            <button type="button" className="btn-primary btn-small" onClick={openDmPicker}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 14 }}>
+              ✏️ New message
+            </button>
+          </div>
+        </div>
+        <div className="panel-body">
+          {myDms.length === 0 ? (
+            <div style={{ padding: '16px 4px', color: '#9ca3af', fontSize: 14 }}>
+              No private messages yet. Use “New message” to start one with any user.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {myDms.map(dm => {
+                const name = dm.dmOther?.name || 'Direct Message';
+                const img = dm.dmOther?.imageUrl || '';
+                return (
+                  <button key={dm._id} type="button" onClick={() => setSelectedGroup(dm)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 18 }}>
+                      {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👤'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{dm.dmOther?.role || 'Private message'}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* New-message people picker (any user) */}
+      {dmPickerOpen && (
+        <div onClick={() => setDmPickerOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1f2937' }}>New message</div>
+              <button type="button" onClick={() => setDmPickerOpen(false)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ padding: '12px 18px' }}>
+              <input autoFocus value={dmUserSearch} onChange={e => setDmUserSearch(e.target.value)} placeholder="Search people"
+                style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none' }} />
+            </div>
+            <div style={{ overflowY: 'auto', padding: '0 8px 12px' }}>
+              {dmPickable.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#9ca3af', padding: '30px 0', fontSize: 13 }}>No people found</div>
+              ) : dmPickable.map(u => (
+                <button key={u.id} type="button" disabled={dmOpening} onClick={() => openDmWith(u._id || u.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'none', border: 'none', cursor: dmOpening ? 'wait' : 'pointer', width: '100%', textAlign: 'left', borderRadius: 10 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 16 }}>
+                    {u.headshotUrl ? <img src={u.headshotUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (u.name?.[0]?.toUpperCase() || '👤')}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{u.role}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create/Edit Form - Only show when creating or editing */}
       {(isCreating || isEditing) && (
         <div className="panel" style={{ marginBottom: 24 }}>
