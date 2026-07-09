@@ -49,26 +49,20 @@ class _StormCommunitiesScreenState extends State<StormCommunitiesScreen> {
     }
   }
 
-  // Communities = groups (in the user's list) that have at least one subgroup.
-  List<Map<String, dynamic>> _communities() {
-    final parentIds = <String>{};
-    for (final g in _groups) {
+  // Subgroups = the actual chats inside communities. We show ONLY these (no
+  // parent/community name) — a group in the user's list whose parentGroupId
+  // points to another group that's also in the list.
+  List<dynamic> _subgroups() {
+    final ids = { for (final g in _groups) g['_id'].toString() };
+    return _groups.where((g) {
       final pid = (g['parentGroupId'] ?? '').toString();
-      if (pid.isNotEmpty) parentIds.add(pid);
-    }
-    final result = <Map<String, dynamic>>[];
-    for (final g in _groups) {
-      final id = g['_id'].toString();
-      if (!parentIds.contains(id)) continue; // not a community
-      final subs = _groups.where((s) => (s['parentGroupId'] ?? '').toString() == id).toList();
-      result.add({'community': g, 'subs': subs});
-    }
-    return result;
+      return pid.isNotEmpty && ids.contains(pid);
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final communities = _communities();
+    final subs = _subgroups();
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -79,19 +73,15 @@ class _StormCommunitiesScreenState extends State<StormCommunitiesScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
-          : communities.isEmpty
+          : subs.isEmpty
               ? _emptyState()
               : RefreshIndicator(
                   color: _primary,
                   onRefresh: () async { setState(() => _loading = true); await _fetchGroups(); },
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: communities.length,
-                    itemBuilder: (context, i) {
-                      final community = communities[i]['community'];
-                      final subs = communities[i]['subs'] as List<dynamic>;
-                      return _communitySection(community, subs);
-                    },
+                    itemCount: subs.length,
+                    itemBuilder: (context, i) => _subgroupTile(subs[i]),
                   ),
                 ),
     );
@@ -112,83 +102,52 @@ class _StormCommunitiesScreenState extends State<StormCommunitiesScreen> {
     );
   }
 
-  Widget _communitySection(dynamic community, List<dynamic> subs) {
-    final name = community['name'] ?? 'Community';
-    final imageUrl = (community['imageUrl'] ?? '').toString();
+  // A single subgroup shown as its own card (no parent/community name).
+  Widget _subgroupTile(dynamic sub) {
+    final name = sub['name'] ?? 'Chat';
+    final imageUrl = (sub['imageUrl'] ?? '').toString();
+    final memberCount = (sub['members'] as List?)?.length ?? 0;
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Community header
-          Row(
-            children: [
-              _avatar(name, imageUrl, 44),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)), overflow: TextOverflow.ellipsis),
-                    Text('${subs.length} chat${subs.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                  ],
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => StormChatRoomScreen(
+                  group: sub,
+                  userId: widget.userId,
+                  userRole: widget.userRole,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Divider(height: 1),
-          const SizedBox(height: 4),
-          // Subgroups
-          ...subs.map((sub) => _subgroupTile(sub)),
-        ],
-      ),
-    );
-  }
-
-  Widget _subgroupTile(dynamic sub) {
-    final name = sub['name'] ?? 'Chat';
-    final imageUrl = (sub['imageUrl'] ?? '').toString();
-    final memberCount = (sub['members'] as List?)?.length ?? 0;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => StormChatRoomScreen(
-                group: sub,
-                userId: widget.userId,
-                userRole: widget.userRole,
-              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            child: Row(
+              children: [
+                _avatar(name, imageUrl, 44),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)), overflow: TextOverflow.ellipsis),
+                      Text('$memberCount member${memberCount == 1 ? '' : 's'}', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Color(0xFFBDBDBD)),
+              ],
             ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          child: Row(
-            children: [
-              _avatar(name, imageUrl, 40),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)), overflow: TextOverflow.ellipsis),
-                    Text('$memberCount member${memberCount == 1 ? '' : 's'}', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFFBDBDBD)),
-            ],
           ),
         ),
       ),
