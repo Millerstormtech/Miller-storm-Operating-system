@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import 'image_viewer_screen.dart';
 import 'video_viewer_screen.dart';
+import 'storm_chat_room_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StormChatGroupInfoScreen extends StatefulWidget {
@@ -27,6 +28,38 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
   static const _textDark = Color(0xFF111827);
   static const _textLight = Color(0xFF6B7280);
   static const _border = Color(0xFFE5E7EB);
+
+  // Option 1: open (or create) a 1-on-1 private DM with a group member.
+  Future<void> _messagePrivately(dynamic member) async {
+    final targetId = (member['_id'] ?? member['id'])?.toString() ?? '';
+    if (targetId.isEmpty) return;
+    try {
+      final res = await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/dm'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'userId': targetId}),
+      );
+      if (res.statusCode == 200) {
+        final dm = json.decode(res.body);
+        final other = dm['dmOther'] as Map<String, dynamic>?;
+        final name = (other?['name'] ?? member['name'] ?? 'Direct message').toString();
+        final g = Map<String, dynamic>.from(dm as Map);
+        g['name'] = name;
+        g['isDirect'] = true;
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StormChatRoomScreen(group: g, userId: widget.userId, userRole: widget.userRole),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the conversation')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the conversation')));
+    }
+  }
 
   List<dynamic> _members = [];
   List<dynamic> _mediaMessages = [];
@@ -392,13 +425,24 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
                           ),
                           title: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                           subtitle: Text(role, style: const TextStyle(fontSize: 12, color: _textLight)),
-                          trailing: isAdmin
-                              ? Container(
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isAdmin)
+                                Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(color: _primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
                                   child: const Text('Admin', style: TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600)),
-                                )
-                              : null,
+                                ),
+                              // Option 1: message this member privately.
+                              if (member['_id']?.toString() != widget.userId)
+                                IconButton(
+                                  icon: const Icon(Icons.chat_bubble_outline, size: 20, color: _primary),
+                                  tooltip: 'Message privately',
+                                  onPressed: () => _messagePrivately(member),
+                                ),
+                            ],
+                          ),
                         );
                       },
                     ),

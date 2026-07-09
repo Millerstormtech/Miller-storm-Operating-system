@@ -826,7 +826,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                       ),
                     ),
                     Text(
-                      '${(widget.group['members'] as List?)?.length ?? 0} members',
+                      widget.group['isDirect'] == true
+                          ? 'Private message'
+                          : '${(widget.group['members'] as List?)?.length ?? 0} members',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,

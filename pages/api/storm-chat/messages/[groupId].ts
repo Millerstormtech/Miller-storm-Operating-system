@@ -36,7 +36,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const me = await UserModel.findOne({ id: queryUserId }, { _id: 1 }).lean() as any;
       const myIds = [queryUserId, me?._id?.toString()].filter(Boolean) as string[];
 
-      const isAdmin = queryUserRole?.toString().toLowerCase() === 'admin';
+      // System admins can read any GROUP, but NOT private DMs — a 1-on-1 thread
+      // is readable only by its two members, even to an admin.
+      const isAdmin = !group.isDirect && queryUserRole?.toString().toLowerCase() === 'admin';
       const isGroupAdmin = group.admins.some((m: string) => myIds.includes(m));
       const isMember = group.members.some((m: string) => myIds.includes(m));
 
@@ -79,8 +81,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Check if user is a member or admin
       if (!group.members.some((m: string) => senderIds.includes(m))) {
-        // Allow if user is a system admin
-        if (senderRole !== 'admin') {
+        // A system admin may post into a normal group, but NOT into a private
+        // DM — only its two members can send there.
+        if (senderRole !== 'admin' || group.isDirect) {
           return res.status(403).json({ error: 'You are not a member of this group' });
         }
       }

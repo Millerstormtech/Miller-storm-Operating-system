@@ -20,16 +20,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .find({})
         .sort({ order: 1, createdAt: -1 })
         .toArray();
-      // ?mine=1 → only the groups the current user belongs to. Used by the
-      // sales/manager chat UI so a user sees only their own groups (the admin
-      // management view still requests the full, unfiltered list).
+      // ?mine=1 → only the groups the current user belongs to (including their
+      // DMs). Used by the sales/manager chat UI. Without it (admin management
+      // view / app all-groups fetch) DMs are excluded entirely, so a user's
+      // private threads are never exposed to non-members.
       if (req.query.mine) {
         const me = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
-        const myIds = [auth.sub, me?._id?.toString()].filter(Boolean) as string[];
+        const myId = me?._id?.toString();
+        const myIds = [auth.sub, myId].filter(Boolean) as string[];
         groups = groups.filter((g: any) =>
           (g.members || []).some((m: string) => myIds.includes(m)) ||
           (g.admins || []).some((m: string) => myIds.includes(m))
         );
+        // Enrich DMs with the OTHER participant's display info so the client can
+        // render the thread with that person's name/avatar (DMs have no name).
+        const otherIds = groups
+          .filter((g: any) => g.isDirect)
+          .map((g: any) => (g.members || []).find((m: string) => m !== myId))
+          .filter(Boolean);
+        if (otherIds.length) {
+          const others = await UserModel.find(
+            { _id: { $in: otherIds } }, { _id: 1, name: 1, headshotUrl: 1, role: 1 }
+          ).lean() as any[];
+          const byId = new Map(others.map(u => [u._id.toString(), u]));
+          groups = groups.map((g: any) => {
+            if (!g.isDirect) return g;
+            const otherId = (g.members || []).find((m: string) => m !== myId);
+            const u = otherId ? byId.get(otherId) : null;
+            return { ...g, dmOther: u ? { _id: otherId, name: u.name, imageUrl: u.headshotUrl || '', role: u.role } : null };
+          });
+        }
+      } else {
+        // Never leak private DM threads into the unfiltered list.
+        groups = groups.filter((g: any) => !g.isDirect);
       }
       res.status(200).json(groups);
     } catch (error) {

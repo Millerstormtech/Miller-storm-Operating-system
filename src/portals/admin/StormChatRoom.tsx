@@ -24,6 +24,7 @@ type ChatGroup = {
   members: string[];
   admins: string[];
   onlyAdminCanChat: boolean;
+  isDirect?: boolean;
 };
 
 type Props = {
@@ -34,10 +35,16 @@ type Props = {
   // member can't be matched client-side; the sales/manager StormChat list is
   // already server-filtered to the user's own groups, so it passes isMember.
   isMember?: boolean;
+  // Header label override (a DM has no name — show the other person's name).
+  title?: string;
+  // When provided (in a group), each other member's message shows a "Message
+  // privately" action that starts a 1-on-1 DM with that sender.
+  onMessagePrivately?: (userId: string, name: string) => void;
 };
 
-export function StormChatRoom({ group, onBack, isMember }: Props) {
+export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivately }: Props) {
   const { user } = useAuth();
+  const isDirect = !!group.isDirect;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -350,13 +357,25 @@ export function StormChatRoom({ group, onBack, isMember }: Props) {
             position: 'relative'
           }}>
             {!isMyMessage && (
-              <div style={{ 
-                fontSize: 11, 
+              <div style={{
+                fontSize: 11,
                 color: '#6b7280',
                 marginBottom: 4,
-                marginLeft: 8
+                marginLeft: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
               }}>
                 {msg.senderName}
+                {/* Group option 1: message this sender privately */}
+                {!isDirect && onMessagePrivately && (
+                  <button
+                    onClick={() => onMessagePrivately(msg.senderId, msg.senderName)}
+                    title={`Message ${msg.senderName} privately`}
+                    style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline' }}>
+                    Message privately
+                  </button>
+                )}
               </div>
             )}
             
@@ -627,11 +646,11 @@ export function StormChatRoom({ group, onBack, isMember }: Props) {
         
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>
-            {group.name}
+            {title || group.name}
           </div>
           <div style={{ fontSize: 12, color: '#6b7280' }}>
-            {group.members.length} members
-            {group.onlyAdminCanChat && ' • Admin-only chat'}
+            {isDirect ? 'Private message' : `${group.members.length} members`}
+            {!isDirect && group.onlyAdminCanChat && ' • Admin-only chat'}
           </div>
         </div>
       </div>
