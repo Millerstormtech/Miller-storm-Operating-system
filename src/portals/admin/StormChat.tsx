@@ -135,24 +135,21 @@ export function StormChatManagement() {
     const subCount = groups.filter(sg => sg.parentGroupId === group._id).length;
     const unread = groupUnread[group._id] || 0;
     return (
-      <button type="button"
+      <button type="button" className="sc-tile"
         onClick={() => handleGroupClick(group)}
         title="Click to open chat · double-click to manage"
-        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: isSub ? '#fafafa' : '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-        <div style={{ width: isSub ? 34 : 42, height: isSub ? 34 : 42, borderRadius: 10, background: '#000', backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: isSub ? 15 : 18 }}>
+        style={isSub ? { background: '#fafbfc' } : undefined}>
+        <div style={{ width: isSub ? 36 : 44, height: isSub ? 36 : 44, borderRadius: 12, background: 'linear-gradient(135deg,#374151,#111827)', backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: isSub ? 15 : 18, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
           {!group.imageUrl && '👥'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isSub ? '↳ ' : ''}{group.name}</div>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isSub ? '↳ ' : ''}{group.name}</div>
           <div style={{ fontSize: 12, color: '#9ca3af' }}>{isSub ? 'Subgroup · ' : ''}👥 {group.members.length}{group.admins.length > 0 ? ` · 👑 ${group.admins.length}` : ''}{!isSub && subCount > 0 ? ` · ${subCount} subgroup${subCount === 1 ? '' : 's'}` : ''}</div>
         </div>
         {unread > 0 && (
-          <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', flexShrink: 0 }}>
-            {unread > 99 ? '99+' : unread}
-          </span>
+          <span className="sc-badge">{unread > 99 ? '99+' : unread}</span>
         )}
-        <span title="Manage" onClick={(e) => { e.stopPropagation(); setInfoGroup(group); }}
-          style={{ color: '#9ca3af', fontSize: 18, padding: '2px 6px', flexShrink: 0 }}>ⓘ</span>
+        <span className="sc-info" title="Manage" onClick={(e) => { e.stopPropagation(); setInfoGroup(group); }}>ⓘ</span>
       </button>
     );
   }
@@ -804,28 +801,41 @@ export function StormChatManagement() {
 
   return (
     <div>
-      {/* ── Messages (private DMs) — admin chats like any other user ── */}
-      <div className="panel" style={{ marginBottom: 24 }}>
-        <div className="panel-header">
-          <div className="panel-header-row">
-            <span style={{ fontSize: 16, fontWeight: 600 }}>💬 StormChat</span>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="btn-primary btn-small" onClick={openDmPicker}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 14 }}>
-                ✏️ New message
-              </button>
-              <button type="button" className="btn-primary btn-success btn-small" onClick={() => { resetForm(); setIsCreating(true); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 14, fontWeight: 600 }}>
-                + Create group
-              </button>
-            </div>
+      <style>{`
+        .sc-wrap { background:#fff; border:1px solid #eef0f3; border-radius:18px; overflow:hidden; box-shadow:0 12px 40px rgba(17,24,39,0.06); }
+        .sc-head { background:linear-gradient(135deg,#DC2626 0%,#991b1b 100%); padding:20px 24px; display:flex; align-items:center; gap:16px; }
+        .sc-head-badge { width:48px; height:48px; border-radius:14px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; font-size:24px; }
+        .sc-btn { border:none; cursor:pointer; font-weight:700; font-size:13.5px; border-radius:999px; padding:9px 18px; display:inline-flex; align-items:center; gap:7px; transition:transform .15s, box-shadow .15s, background .15s; white-space:nowrap; }
+        .sc-btn-ghost { background:rgba(255,255,255,0.16); color:#fff; }
+        .sc-btn-ghost:hover { background:rgba(255,255,255,0.28); transform:translateY(-1px); }
+        .sc-btn-solid { background:#fff; color:#DC2626; box-shadow:0 4px 14px rgba(0,0,0,0.14); }
+        .sc-btn-solid:hover { transform:translateY(-1px); box-shadow:0 7px 20px rgba(0,0,0,0.2); }
+        .sc-label { font-size:11px; font-weight:800; color:#9ca3af; text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:8px; }
+        .sc-label::before { content:''; width:14px; height:2px; background:#DC2626; border-radius:2px; }
+        .sc-tile { display:flex; align-items:center; gap:13px; padding:11px 13px; background:#fff; border:1px solid #eef0f3; border-radius:14px; cursor:pointer; text-align:left; width:100%; transition:transform .14s, box-shadow .14s, border-color .14s; }
+        .sc-tile:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgba(17,24,39,0.09); border-color:#fecaca; }
+        .sc-badge { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; font-size:11.5px; font-weight:800; min-width:22px; height:22px; border-radius:11px; display:flex; align-items:center; justify-content:center; padding:0 6px; box-shadow:0 2px 6px rgba(220,38,38,0.4); flex-shrink:0; }
+        .sc-info { color:#c4c9d2; font-size:18px; padding:2px 6px; flex-shrink:0; transition:color .15s; }
+        .sc-info:hover { color:#DC2626; }
+      `}</style>
+      {/* ── StormChat — DMs + groups ── */}
+      <div className="sc-wrap" style={{ marginBottom: 24 }}>
+        <div className="sc-head">
+          <div className="sc-head-badge">💬</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 19, fontWeight: 800, color: '#fff', letterSpacing: 0.2 }}>StormChat</div>
+            <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.82)' }}>Direct messages &amp; group channels</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="sc-btn sc-btn-ghost" onClick={openDmPicker}>✏️ New message</button>
+            <button type="button" className="sc-btn sc-btn-solid" onClick={() => { resetForm(); setIsCreating(true); }}>+ Create group</button>
           </div>
         </div>
-        <div className="panel-body">
+        <div style={{ padding: '18px 20px' }}>
           {/* Direct Messages */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Direct Messages</div>
+          <div className="sc-label" style={{ marginBottom: 10 }}>Direct Messages</div>
           {myDms.length === 0 ? (
-            <div style={{ padding: '4px 4px 12px', color: '#9ca3af', fontSize: 13 }}>
+            <div style={{ padding: '6px 4px 14px', color: '#9ca3af', fontSize: 13 }}>
               No private messages yet. Use “New message” to start one with any user.
             </div>
           ) : (
@@ -835,19 +845,16 @@ export function StormChatManagement() {
                 const img = dm.dmOther?.imageUrl || '';
                 const unread = dmUnread[dm._id] || 0;
                 return (
-                  <button key={dm._id} type="button" onClick={() => openDm(dm)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 18 }}>
+                  <button key={dm._id} type="button" className="sc-tile" onClick={() => openDm(dm)}>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#6b7280,#374151)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                       {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👤'}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                      <div style={{ fontSize: 14.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
                       <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{dm.dmOther?.role || 'Private message'}</div>
                     </div>
                     {unread > 0 && (
-                      <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', flexShrink: 0 }}>
-                        {unread > 99 ? '99+' : unread}
-                      </span>
+                      <span className="sc-badge">{unread > 99 ? '99+' : unread}</span>
                     )}
                   </button>
                 );
@@ -856,7 +863,7 @@ export function StormChatManagement() {
           )}
 
           {/* Groups — single click opens the chat, double click opens the info/manage panel */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, margin: '16px 0 8px' }}>
+          <div className="sc-label" style={{ margin: '20px 0 10px' }}>
             Groups ({groups.filter(g => !g.parentGroupId).length}){groups.filter(g => g.parentGroupId).length > 0 ? ` · ${groups.filter(g => g.parentGroupId).length} Subgroup${groups.filter(g => g.parentGroupId).length === 1 ? '' : 's'}` : ''}
           </div>
           {groups.filter(g => !g.parentGroupId).length === 0 ? (
