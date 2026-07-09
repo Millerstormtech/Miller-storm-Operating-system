@@ -129,6 +129,34 @@ export function StormChatManagement() {
     }).catch(() => {});
   }
 
+  // One group/subgroup row: click = chat, double-click / ⓘ = manage. Subgroups
+  // render smaller and indented under their parent.
+  function groupTile(group: ChatGroup, isSub: boolean) {
+    const subCount = groups.filter(sg => sg.parentGroupId === group._id).length;
+    const unread = groupUnread[group._id] || 0;
+    return (
+      <button type="button"
+        onClick={() => handleGroupClick(group)}
+        title="Click to open chat · double-click to manage"
+        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: isSub ? '#fafafa' : '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+        <div style={{ width: isSub ? 34 : 42, height: isSub ? 34 : 42, borderRadius: 10, background: '#000', backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: isSub ? 15 : 18 }}>
+          {!group.imageUrl && '👥'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isSub ? '↳ ' : ''}{group.name}</div>
+          <div style={{ fontSize: 12, color: '#9ca3af' }}>{isSub ? 'Subgroup · ' : ''}👥 {group.members.length}{group.admins.length > 0 ? ` · 👑 ${group.admins.length}` : ''}{!isSub && subCount > 0 ? ` · ${subCount} subgroup${subCount === 1 ? '' : 's'}` : ''}</div>
+        </div>
+        {unread > 0 && (
+          <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', flexShrink: 0 }}>
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
+        <span title="Manage" onClick={(e) => { e.stopPropagation(); setInfoGroup(group); }}
+          style={{ color: '#9ca3af', fontSize: 18, padding: '2px 6px', flexShrink: 0 }}>ⓘ</span>
+      </button>
+    );
+  }
+
   // Open an existing DM: clear its unread badge, mark it read, show the room.
   async function openDm(dm: ChatGroup) {
     setDmUnread(prev => ({ ...prev, [dm._id]: 0 }));
@@ -176,8 +204,8 @@ export function StormChatManagement() {
       if (response.ok) {
         const data: ChatGroup[] = await response.json();
         setGroups(data);
-        // Unread counts (red badges) for the top-level groups.
-        const ids = data.filter(g => !g.parentGroupId).map(g => g._id).join(',');
+        // Unread counts (red badges) for all groups + subgroups.
+        const ids = data.map(g => g._id).join(',');
         if (ids) {
           const ur = await fetch(`/api/storm-chat/unread-counts?groupIds=${ids}`);
           if (ur.ok) setGroupUnread(await ur.json());
@@ -838,28 +866,14 @@ export function StormChatManagement() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {groups.filter(g => !g.parentGroupId).map(group => {
-                const subCount = groups.filter(sg => sg.parentGroupId === group._id).length;
-                const unread = groupUnread[group._id] || 0;
+                const subs = groups.filter(sg => sg.parentGroupId === group._id);
                 return (
-                  <button key={group._id} type="button"
-                    onClick={() => handleGroupClick(group)}
-                    title="Click to open chat · double-click to manage"
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-                    <div style={{ width: 42, height: 42, borderRadius: 10, background: '#000', backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
-                      {!group.imageUrl && '👥'}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</div>
-                      <div style={{ fontSize: 12, color: '#9ca3af' }}>👥 {group.members.length}{group.admins.length > 0 ? ` · 👑 ${group.admins.length}` : ''}{subCount > 0 ? ` · ${subCount} subgroup${subCount === 1 ? '' : 's'}` : ''}</div>
-                    </div>
-                    {unread > 0 && (
-                      <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', flexShrink: 0 }}>
-                        {unread > 99 ? '99+' : unread}
-                      </span>
-                    )}
-                    <span title="Manage" onClick={(e) => { e.stopPropagation(); setInfoGroup(group); }}
-                      style={{ color: '#9ca3af', fontSize: 18, padding: '2px 6px', flexShrink: 0 }}>ⓘ</span>
-                  </button>
+                  <div key={group._id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {groupTile(group, false)}
+                    {subs.map(sub => (
+                      <div key={sub._id} style={{ marginLeft: 28 }}>{groupTile(sub, true)}</div>
+                    ))}
+                  </div>
                 );
               })}
             </div>
@@ -935,6 +949,7 @@ export function StormChatManagement() {
         const g = infoGroup;
         const memberUsers = users.filter(u => g.members.includes(u._id));
         const subgroups = groups.filter(sg => sg.parentGroupId === g._id);
+        const parent = g.parentGroupId ? groups.find(pg => pg._id === g.parentGroupId) : null;
         return (
           <div onClick={() => setInfoGroup(null)}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -944,6 +959,7 @@ export function StormChatManagement() {
                 <div style={{ width: 44, height: 44, borderRadius: 10, background: '#000', backgroundImage: g.imageUrl ? `url(${g.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{!g.imageUrl && '👥'}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 17, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                  {parent && <div style={{ fontSize: 12, color: '#2563eb', fontWeight: 600 }}>↳ Subgroup of “{parent.name}”</div>}
                   {g.description && <div style={{ fontSize: 12, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.description}</div>}
                 </div>
                 <button type="button" onClick={() => setInfoGroup(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>×</button>
