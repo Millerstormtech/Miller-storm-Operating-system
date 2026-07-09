@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
+import { UserModel } from '../../../../src/lib/models/User';
 import mongoose from 'mongoose';
 import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
 
@@ -10,14 +11,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   if (req.method === 'GET') {
-    if (!requireUser(req, res)) return;
+    const auth = requireUser(req, res);
+    if (!auth) return;
     try {
       // Use native driver so the `order` field (added after initial schema compile) is always read
       const db = mongoose.connection.db!;
-      const groups = await db.collection('chatgroups')
+      let groups = await db.collection('chatgroups')
         .find({})
         .sort({ order: 1, createdAt: -1 })
         .toArray();
+      // ?mine=1 → only the groups the current user belongs to. Used by the
+      // sales/manager chat UI so a user sees only their own groups (the admin
+      // management view still requests the full, unfiltered list).
+      if (req.query.mine) {
+        const me = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
+        const myIds = [auth.sub, me?._id?.toString()].filter(Boolean) as string[];
+        groups = groups.filter((g: any) =>
+          (g.members || []).some((m: string) => myIds.includes(m)) ||
+          (g.admins || []).some((m: string) => myIds.includes(m))
+        );
+      }
       res.status(200).json(groups);
     } catch (error) {
       console.error('Error fetching groups:', error);

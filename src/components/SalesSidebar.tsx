@@ -9,6 +9,7 @@ const baseItems = [
   { id: "plan", label: "Business Planner", toggleKey: "plan" },
   { id: "training", label: "Training Center", toggleKey: "training" },
   { id: "aiChat", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "task-tracker", label: "Task Tracker", toggleKey: "taskTracker" },
   { id: "apps-tools", label: "Apps & Tools", toggleKey: "appsTools" },
   { id: "rankings", label: "Sales Rankings", toggleKey: "rankings" },

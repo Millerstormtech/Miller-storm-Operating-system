@@ -5,7 +5,7 @@ import { SalesSidebar } from "../../components/SalesSidebar";
 import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
 
-type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "ai-bot-builder" | "task-tracker" | "rankings" | "team-structure";
+type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "ai-bot-builder" | "task-tracker" | "rankings" | "team-structure" | "storm-chat";
 
 type SalesLayoutProps = {
   children: React.ReactNode;
@@ -30,6 +30,7 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
     profile: "profile",
     "ai-bot-builder": "aiBots",
     "task-tracker": "taskTracker",
+    "storm-chat": "stormChat",
   };
 
   useEffect(() => {

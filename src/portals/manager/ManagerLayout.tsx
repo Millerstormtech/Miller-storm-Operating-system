@@ -5,7 +5,7 @@ import { ManagerSidebar } from "../../components/ManagerSidebar";
 import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
 
-type ManagerViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager" | "ai-bot-builder" | "team-structure" | "rankings";
+type ManagerViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager" | "ai-bot-builder" | "team-structure" | "rankings" | "storm-chat";
 
 type ManagerLayoutProps = {
   children: React.ReactNode;
@@ -27,6 +27,7 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
     "my-profile": "profile",
     "task-manager": "taskTracker",
     "ai-bot-builder": "aiBots",
+    "storm-chat": "stormChat",
   };
 
   useEffect(() => {

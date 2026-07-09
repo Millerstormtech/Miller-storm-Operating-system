@@ -29,9 +29,14 @@ type ChatGroup = {
 type Props = {
   group: ChatGroup;
   onBack: () => void;
+  // Optional membership hint from the caller. The web auth user carries only the
+  // app id (not the Mongo _id that group.members stores), so a sales/manager
+  // member can't be matched client-side; the sales/manager StormChat list is
+  // already server-filtered to the user's own groups, so it passes isMember.
+  isMember?: boolean;
 };
 
-export function StormChatRoom({ group, onBack }: Props) {
+export function StormChatRoom({ group, onBack, isMember }: Props) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -49,7 +54,7 @@ export function StormChatRoom({ group, onBack }: Props) {
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
 
   // Check if user can send messages
-  const isGroupMember = group.members.includes(user?._id || user?.id || '');
+  const isGroupMember = isMember || group.members.includes(user?._id || user?.id || '');
   const isAdmin = user?.role === 'admin';
   const isGroupAdmin = group.admins.includes(user?._id || user?.id || '');
   
