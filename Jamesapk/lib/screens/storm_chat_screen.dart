@@ -625,7 +625,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
 
     Future<void> loadUsers(StateSetter setSheet) async {
       try {
-        final res = await api.get(Uri.parse('https://millerstorm.tech/api/users'));
+        final res = await api.get(Uri.parse('https://millerstorm.tech/api/users/directory'));
         if (res.statusCode == 200) allUsers = json.decode(res.body) as List;
       } catch (_) {}
       setSheet(() => loading = false);

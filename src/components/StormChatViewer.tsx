@@ -77,7 +77,9 @@ export function StormChatViewer() {
     setPickerOpen(true);
     if (users.length === 0) {
       try {
-        const res = await fetch("/api/users");
+        // Directory endpoint is readable by ALL roles (sales included), so
+        // anyone can start a DM — /api/users is admin/manager only.
+        const res = await fetch("/api/users/directory");
         if (res.ok) setUsers(await res.json());
       } catch { /* ignore */ }
     }
