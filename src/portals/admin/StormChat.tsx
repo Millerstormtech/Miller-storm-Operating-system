@@ -41,6 +41,9 @@ export function StormChatManagement() {
   const [dmUsers, setDmUsers] = useState<PickUser[]>([]);
   const [dmUserSearch, setDmUserSearch] = useState("");
   const [dmOpening, setDmOpening] = useState(false);
+  // Double-clicking a group opens its info/manage panel; single click opens chat.
+  const [infoGroup, setInfoGroup] = useState<ChatGroup | null>(null);
+  const groupClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
@@ -97,6 +100,21 @@ export function StormChatManagement() {
         const res = await fetch('/api/users/directory');
         if (res.ok) setDmUsers(await res.json());
       } catch { /* ignore */ }
+    }
+  }
+
+  // Group tile: single click → open the chat room; double click → open the
+  // group's info/manage panel (admins, members, edit, delete, subgroups).
+  function handleGroupClick(group: ChatGroup) {
+    if (groupClickTimer.current) {
+      clearTimeout(groupClickTimer.current);
+      groupClickTimer.current = null;
+      setInfoGroup(group);
+    } else {
+      groupClickTimer.current = setTimeout(() => {
+        groupClickTimer.current = null;
+        setSelectedGroup(group);
+      }, 240);
     }
   }
 
@@ -744,20 +762,28 @@ export function StormChatManagement() {
       <div className="panel" style={{ marginBottom: 24 }}>
         <div className="panel-header">
           <div className="panel-header-row">
-            <span style={{ fontSize: 16, fontWeight: 600 }}>💬 Messages ({myDms.length})</span>
-            <button type="button" className="btn-primary btn-small" onClick={openDmPicker}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 14 }}>
-              ✏️ New message
-            </button>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>💬 StormChat</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn-primary btn-small" onClick={openDmPicker}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 14 }}>
+                ✏️ New message
+              </button>
+              <button type="button" className="btn-primary btn-success btn-small" onClick={() => { resetForm(); setIsCreating(true); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 14, fontWeight: 600 }}>
+                + Create group
+              </button>
+            </div>
           </div>
         </div>
         <div className="panel-body">
+          {/* Direct Messages */}
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Direct Messages</div>
           {myDms.length === 0 ? (
-            <div style={{ padding: '16px 4px', color: '#9ca3af', fontSize: 14 }}>
+            <div style={{ padding: '4px 4px 12px', color: '#9ca3af', fontSize: 13 }}>
               No private messages yet. Use “New message” to start one with any user.
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
               {myDms.map(dm => {
                 const name = dm.dmOther?.name || 'Direct Message';
                 const img = dm.dmOther?.imageUrl || '';
@@ -777,6 +803,36 @@ export function StormChatManagement() {
                         {unread > 99 ? '99+' : unread}
                       </span>
                     )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Groups — single click opens the chat, double click opens the info/manage panel */}
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, margin: '16px 0 8px' }}>Groups</div>
+          {groups.filter(g => !g.parentGroupId).length === 0 ? (
+            <div style={{ padding: '4px 4px', color: '#9ca3af', fontSize: 13 }}>
+              No groups yet. Use “Create group” to make one.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {groups.filter(g => !g.parentGroupId).map(group => {
+                const subCount = groups.filter(sg => sg.parentGroupId === group._id).length;
+                return (
+                  <button key={group._id} type="button"
+                    onClick={() => handleGroupClick(group)}
+                    title="Click to open chat · double-click to manage"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 10, background: '#000', backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
+                      {!group.imageUrl && '👥'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af' }}>👥 {group.members.length}{group.admins.length > 0 ? ` · 👑 ${group.admins.length}` : ''}{subCount > 0 ? ` · ${subCount} subgroup${subCount === 1 ? '' : 's'}` : ''}</div>
+                    </div>
+                    <span title="Manage" onClick={(e) => { e.stopPropagation(); setInfoGroup(group); }}
+                      style={{ color: '#9ca3af', fontSize: 18, padding: '2px 6px', flexShrink: 0 }}>ⓘ</span>
                   </button>
                 );
               })}
@@ -847,254 +903,67 @@ export function StormChatManagement() {
         </div>
       )}
 
-      {/* Groups List - Always visible */}
-      <div className="panel">
-        <div className="panel-header">
-          <div className="panel-header-row">
-            <span style={{ fontSize: 16, fontWeight: 600 }}>Groups ({groups.length})</span>
-            {!isCreating && !isEditing && (
-              <button 
-                type="button" 
-                className="btn-primary btn-success btn-small" 
-                onClick={() => { resetForm(); setIsCreating(true); }}
-                style={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 16px',
-                  fontSize: 14,
-                  fontWeight: 600
-                }}
-              >
-                + Create New
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="panel-body">
-          {groups.length === 0 ? (
-            <div className="panel-empty">
-              <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
-              <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>No groups yet</div>
-              <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 16 }}>
-                Create your first group to get started
-              </div>
-              <button 
-                type="button" 
-                className="btn-primary btn-success" 
-                onClick={() => { resetForm(); setIsCreating(true); }}
-              >
-                + Create Group
-              </button>
-            </div>
-          ) : (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: 12
-            }}>
-              {groups.filter(g => !g.parentGroupId).map(group => (
-                <div
-                  key={group._id}
-                  draggable={true}
-                  onDragStart={(e) => handleGroupDragStart(e, group._id)}
-                  onDragEnd={handleGroupDragEnd}
-                  onDragOver={(e) => handleGroupDragOver(e, group._id)}
-                  onDrop={(e) => handleGroupDrop(e, group._id)}
-                  style={{ 
-                    padding: 12, 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    gap: 10,
-                    border: dragOverGroupId === group._id ? '2px dashed #DC2626' : '1px solid #e5e7eb',
-                    borderRadius: 10,
-                    backgroundColor: dragOverGroupId === group._id ? '#fef2f2' : '#fff',
-                    transition: 'all 0.2s',
-                    position: 'relative',
-                    cursor: 'grab',
-                    opacity: draggedGroupId === group._id ? 0.45 : 1,
-                    transform: draggedGroupId === group._id ? 'rotate(2deg) scale(0.97)' : 'none',
-                  }}
-                  onClick={() => setSelectedGroup(group)}
-                  onMouseEnter={(e) => {
-                    if (!draggedGroupId) {
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                      e.currentTarget.style.borderColor = '#d1d5db';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!draggedGroupId) {
-                      e.currentTarget.style.boxShadow = 'none';
-                      e.currentTarget.style.borderColor = '#e5e7eb';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }
-                  }}
-                >
-                  {/* Header with Image and Actions */}
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    {/* Drag handle */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      color: '#d1d5db',
-                      fontSize: 16,
-                      cursor: 'grab',
-                      paddingTop: 2,
-                      flexShrink: 0,
-                      userSelect: 'none'
-                    }} title="Drag to reorder">
-                      ⠿
-                    </div>
-                    {/* Group Image */}
-                    <div style={{ 
-                      width: 48, 
-                      height: 48, 
-                      borderRadius: 8,
-                      backgroundColor: '#000',
-                      backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : 'none',
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      flexShrink: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 20,
-                      color: '#fff'
-                    }}>
-                      {!group.imageUrl && '👥'}
-                    </div>
-                    
-                    {/* Group Name */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ 
-                        fontSize: 14, 
-                        fontWeight: 600, 
-                        marginBottom: 2, 
-                        color: '#111827',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {group.name}
-                      </div>
-                      {group.onlyAdminCanChat && (
-                        <div style={{ 
-                          fontSize: 11, 
-                          color: '#dc2626', 
-                          fontWeight: 500,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4
-                        }}>
-                          🔒 Admin-only
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button 
-                        type="button" 
-                        className="btn-ghost btn-small" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startEdit(group);
-                        }}
-                        title="Edit Group"
-                        style={{ 
-                          color: '#6b7280', 
-                          padding: '4px 8px',
-                          fontSize: 12
-                        }}
-                      >
-                        ✏️
-                      </button>
-                      <button 
-                        type="button" 
-                        className="btn-ghost btn-small" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteGroup(group._id);
-                        }}
-                        title="Delete Group"
-                        style={{ 
-                          color: '#dc2626', 
-                          padding: '4px 8px',
-                          fontSize: 12
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Description */}
-                  {group.description && (
-                    <div style={{ 
-                      fontSize: 12, 
-                      color: '#6b7280',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      lineHeight: '1.4',
-                      minHeight: '33.6px'
-                    }}>
-                      {group.description}
-                    </div>
-                  )}
-                  
-                  {/* Stats */}
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: 10, 
-                    fontSize: 11, 
-                    color: '#6b7280',
-                    paddingTop: 8,
-                    borderTop: '1px solid #f3f4f6'
-                  }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      👥 {group.members.length}
-                    </span>
-                    {group.admins.length > 0 && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        👑 {group.admins.length}
-                      </span>
-                    )}
-                  </div>
 
-                  {/* Subgroups */}
-                  <div style={{ paddingTop: 8, borderTop: '1px solid #f3f4f6' }} onClick={(e) => e.stopPropagation()}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                      Subgroups
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {groups.filter(sg => sg.parentGroupId === group._id).map(sub => (
-                        <div key={sub._id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', background: '#f9fafb', border: '1px solid #eef0f3', borderRadius: 8 }}>
-                          <span style={{ fontSize: 13 }}>💬</span>
-                          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.name}</span>
-                          <span style={{ fontSize: 11, color: '#9ca3af' }}>👥 {sub.members.length}</span>
-                          <button type="button" className="btn-ghost btn-small" title="Edit subgroup" onClick={(e) => { e.stopPropagation(); startEdit(sub); }} style={{ color: '#6b7280', padding: '2px 5px', fontSize: 11 }}>✏️</button>
-                          <button type="button" className="btn-ghost btn-small" title="Delete subgroup" onClick={(e) => { e.stopPropagation(); deleteGroup(sub._id); }} style={{ color: '#dc2626', padding: '2px 5px', fontSize: 11 }}>🗑️</button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); startCreateSubgroup(group); }}
-                        style={{ marginTop: 2, padding: '6px 8px', border: '1px dashed #d1d5db', borderRadius: 8, background: '#fff', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
-                      >
-                        + Add Subgroup
-                      </button>
-                    </div>
-                  </div>
+      {/* Group info / manage panel — opens on double-click or the ⓘ button */}
+      {infoGroup && (() => {
+        const g = infoGroup;
+        const memberUsers = users.filter(u => g.members.includes(u._id));
+        const subgroups = groups.filter(sg => sg.parentGroupId === g._id);
+        return (
+          <div onClick={() => setInfoGroup(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ padding: '16px 18px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: '#000', backgroundImage: g.imageUrl ? `url(${g.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{!g.imageUrl && '👥'}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                  {g.description && <div style={{ fontSize: 12, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.description}</div>}
                 </div>
-              ))}
+                <button type="button" onClick={() => setInfoGroup(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>×</button>
+              </div>
+
+              <div style={{ overflowY: 'auto', padding: '14px 18px' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <button type="button" className="btn-primary btn-small" onClick={() => { setSelectedGroup(g); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13 }}>💬 Open chat</button>
+                  <button type="button" className="btn-ghost btn-small" onClick={() => { startEdit(g); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13 }}>✏️ Edit group</button>
+                  <button type="button" className="btn-ghost btn-small" onClick={() => { startCreateSubgroup(g); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13 }}>+ Add subgroup</button>
+                  <button type="button" className="btn-ghost btn-small" onClick={() => { deleteGroup(g._id); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13, color: '#dc2626' }}>🗑️ Delete group</button>
+                </div>
+
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Members ({memberUsers.length})</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                  {memberUsers.length === 0 ? <div style={{ fontSize: 13, color: '#9ca3af' }}>No members</div> : memberUsers.map(u => (
+                    <div key={u._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', background: '#f9fafb', borderRadius: 8 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13 }}>{u.name?.[0]?.toUpperCase() || '?'}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
+                        <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'capitalize' }}>{u.role}</div>
+                      </div>
+                      {g.admins.includes(u._id) && <span style={{ fontSize: 11, fontWeight: 600, color: '#DC2626', background: 'rgba(220,38,38,0.1)', padding: '2px 8px', borderRadius: 4 }}>Admin</span>}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Subgroups ({subgroups.length})</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {subgroups.map(sub => (
+                    <div key={sub._id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f9fafb', border: '1px solid #eef0f3', borderRadius: 8 }}>
+                      <span style={{ fontSize: 13 }}>💬</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.name}</span>
+                      <span style={{ fontSize: 11, color: '#9ca3af' }}>👥 {sub.members.length}</span>
+                      <button type="button" title="Open chat" onClick={() => { setSelectedGroup(sub); setInfoGroup(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#6b7280', padding: '2px 5px' }}>💬</button>
+                      <button type="button" title="Edit" onClick={() => { startEdit(sub); setInfoGroup(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b7280', padding: '2px 5px' }}>✏️</button>
+                      <button type="button" title="Delete" onClick={() => { deleteGroup(sub._id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#dc2626', padding: '2px 5px' }}>🗑️</button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => { startCreateSubgroup(g); setInfoGroup(null); }} style={{ marginTop: 2, padding: '6px 8px', border: '1px dashed #d1d5db', borderRadius: 8, background: '#fff', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>+ Add Subgroup</button>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
