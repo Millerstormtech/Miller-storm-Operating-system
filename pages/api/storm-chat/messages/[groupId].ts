@@ -48,9 +48,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: 'You are not a member of this group' });
       }
 
+      // Take the NEWEST 500 (sort desc + limit), then flip back to ascending for
+      // the client. The old `sort({createdAt:1}).limit(500)` returned the OLDEST
+      // 500 — so any group past 500 messages never showed recent chat. Uses the
+      // existing {groupId, createdAt:-1} index; .lean() skips Mongoose hydration
+      // of 500 docs on every 3s poll (same JSON shape — no toJSON transforms).
       const messages = await ChatMessage.find({ groupId })
-        .sort({ createdAt: 1 })
-        .limit(500); // Last 500 messages
+        .sort({ createdAt: -1 })
+        .limit(500)
+        .lean();
+      messages.reverse();
 
       res.status(200).json(messages);
     } catch (error) {

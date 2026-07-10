@@ -40,14 +40,19 @@ export default async function handler(
       
       const courseIdArray = (courseIds as string).split(',');
       
-      // Get progress from database
-      const progressRecords = await UserProgressModel.find({ 
-        userId, 
-        courseId: { $in: courseIdArray } 
-      });
-      
-      // Get course details to calculate percentages
-      const courses = await CourseModel.find({ id: { $in: courseIdArray } });
+      // Read-only, and we only need courseId + completedPages to count progress.
+      const progressRecords = await UserProgressModel.find({
+        userId,
+        courseId: { $in: courseIdArray }
+      }).select('courseId completedPages').lean();
+
+      // We only need id/title + each page's status/isQuiz to count published
+      // lessons. Selecting these at the DB level avoids loading every lesson's
+      // full HTML body, transcript and quiz questions (the heaviest docs in the
+      // DB) just to take a .length.
+      const courses = await CourseModel.find({ id: { $in: courseIdArray } })
+        .select('id title pages.status pages.isQuiz')
+        .lean();
       
       const result: Record<string, number> = {};
       

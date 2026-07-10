@@ -55,5 +55,9 @@ const ChatMessageSchema = new Schema<IChatMessage>(
 );
 
 ChatMessageSchema.index({ groupId: 1, createdAt: -1 });
+// Supports the per-group mention-count aggregation (mention-counts.ts), which
+// matches on groupId + mentions and bounds by createdAt. `mentions` is an array,
+// so this is a multikey index.
+ChatMessageSchema.index({ groupId: 1, mentions: 1, createdAt: -1 });
 
 export default mongoose.models.ChatMessage || mongoose.model<IChatMessage>('ChatMessage', ChatMessageSchema);

@@ -40,11 +40,12 @@ export default async function handler(
       const courseIdArray = (courseIds as string).split(',');
       const result: Record<string, any> = {};
       
-      // Fetch progress for all courses from database
-      const progressRecords = await UserProgressModel.find({ 
-        userId, 
-        courseId: { $in: courseIdArray } 
-      });
+      // Read-only: select just the fields the response maps below, and .lean()
+      // to skip Mongoose document hydration.
+      const progressRecords = await UserProgressModel.find({
+        userId,
+        courseId: { $in: courseIdArray }
+      }).select('courseId completedPages quizResults courseCompleted').lean();
       
       // Create a map of courseId -> progress
       const progressMap = new Map();

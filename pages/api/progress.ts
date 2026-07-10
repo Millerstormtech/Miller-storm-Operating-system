@@ -37,8 +37,10 @@ export default async function handler(
     }
 
     try {
-      // Get user progress from database
-      const progress = await UserProgressModel.findOne({ userId, courseId });
+      // Read-only GET — .lean() skips document hydration (the response below is
+      // built by hand, so no toJSON behaviour is lost). The POST path keeps a
+      // real document because it calls .save().
+      const progress = await UserProgressModel.findOne({ userId, courseId }).lean() as any;
       
       if (!progress) {
         console.log('📊 No progress found, returning empty');

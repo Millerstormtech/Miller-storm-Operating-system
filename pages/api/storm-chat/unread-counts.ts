@@ -22,29 +22,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const groupIdArray = (groupIds as string).split(',');
     
-    // Get unread counts for each group
+    // Batch instead of the old N+1 loop (which ran 2 queries PER group). One
+    // query pulls every read receipt; one aggregation counts unread messages per
+    // group using an $or of per-group conditions, so each group still applies
+    // its own lastReadAt cutoff.
+    const receipts = await GroupReadReceipt
+      .find({ userId, groupId: { $in: groupIdArray } })
+      .select('groupId lastReadAt')
+      .lean();
+    const lastReadByGroup = new Map<string, Date>(
+      (receipts as any[]).map((r) => [r.groupId, r.lastReadAt])
+    );
+
+    const orConditions = groupIdArray.map((groupId) => {
+      const lastReadAt = lastReadByGroup.get(groupId);
+      const cond: any = { groupId, senderId: { $ne: userId } };
+      if (lastReadAt) cond.createdAt = { $gt: lastReadAt };
+      return cond;
+    });
+
+    // Default every requested group to 0 so groups with no unread still appear.
     const unreadCounts: { [key: string]: number } = {};
-    
-    for (const groupId of groupIdArray) {
-      // Get user's last read timestamp for this group
-      const readReceipt = await GroupReadReceipt.findOne({ userId, groupId });
-      
-      if (!readReceipt) {
-        // If no read receipt, count all messages not sent by user
-        const count = await ChatMessage.countDocuments({
-          groupId,
-          senderId: { $ne: userId }
-        });
-        unreadCounts[groupId] = count;
-      } else {
-        // Count messages after last read time, not sent by user
-        const count = await ChatMessage.countDocuments({
-          groupId,
-          senderId: { $ne: userId },
-          createdAt: { $gt: readReceipt.lastReadAt }
-        });
-        unreadCounts[groupId] = count;
-      }
+    groupIdArray.forEach((g) => { unreadCounts[g] = 0; });
+
+    if (orConditions.length > 0) {
+      const grouped = await ChatMessage.aggregate([
+        { $match: { $or: orConditions } },
+        { $group: { _id: '$groupId', count: { $sum: 1 } } }
+      ]);
+      grouped.forEach((row: any) => { unreadCounts[row._id] = row.count; });
     }
 
     res.status(200).json(unreadCounts);
