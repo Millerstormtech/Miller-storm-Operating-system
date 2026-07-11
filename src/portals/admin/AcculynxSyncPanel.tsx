@@ -5,6 +5,7 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
   const [status, setStatus] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [, setTick] = useState(0); // ticks periodically so the "x minutes ago" label stays current
 
   const load = useCallback(async () => {
     const s = await fetch("/api/acculynx/status").then((r) => (r.ok ? r.json() : null));
@@ -13,6 +14,12 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Keep the "Last updated x minutes ago" label current without re-fetching.
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   // Poll status until the sync is no longer running (or we hit the cap). The
   // sync keeps running server-side after the proxy cuts our request, so this
@@ -58,11 +65,24 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
 
   const fmtDate = (d?: string) => (d ? new Date(d).toLocaleString() : "—");
 
+  // Relative "x minutes ago" — timezone-independent, so every viewer sees the same.
+  const timeAgo = (d?: string) => {
+    if (!d) return null;
+    const secs = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if (secs < 45) return "just now";
+    const mins = Math.round(secs / 60);
+    if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+    const days = Math.round(hrs / 24);
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  };
+
   return (
     <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e5e7eb" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 14, color: "#6b7280" }}>
-          {status?.lastSyncAt ? `Last updated on ${fmtDate(status.lastSyncAt)}` : "Not updated yet"}
+        <span style={{ fontSize: 14, color: "#6b7280" }} title={status?.lastSyncAt ? fmtDate(status.lastSyncAt) : undefined}>
+          {status?.lastSyncAt ? `Last updated ${timeAgo(status.lastSyncAt)}` : "Not updated yet"}
         </span>
         <button
           onClick={refreshNow}
