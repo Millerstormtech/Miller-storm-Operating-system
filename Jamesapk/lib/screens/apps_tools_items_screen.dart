@@ -273,6 +273,27 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
               const SizedBox(width: 2),
               Expanded(
                 child: GestureDetector(
+                  onTap: () => Navigator.pushReplacementNamed(context, '/rankings'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.leaderboard_outlined, color: Color(0xFF9CA3AF), size: 24),
+                        SizedBox(height: 4),
+                        Text('Leaderboard', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: GestureDetector(
                   onTap: () => Navigator.pushReplacementNamed(context, '/profile'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),

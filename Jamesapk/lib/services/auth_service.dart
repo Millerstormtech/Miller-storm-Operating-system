@@ -157,6 +157,49 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user');
     await prefs.remove('token');
+    // Keep the biometric preference so the user can still Face-ID sign back in.
     api.clearToken();
+  }
+
+  // ── Biometric (Face ID / fingerprint) login ──────────────────────────────
+  // We don't store the password. After a successful password login we set a
+  // flag; biometric login then just re-primes the already-stored token, which
+  // the API client refreshes on its own. If the token has fully expired the next
+  // request 401s and the app falls back to the normal login — safe by design.
+
+  static const String _biometricFlagKey = 'biometric_enabled';
+
+  /// Remember (after a password login) that this user opted into biometric login.
+  static Future<void> enableBiometricLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_biometricFlagKey, true);
+  }
+
+  static Future<void> disableBiometricLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_biometricFlagKey, false);
+  }
+
+  /// Whether we can offer the "Login with Face ID" button: the user enabled it
+  /// AND we still have a stored token + user to sign them back in with.
+  static Future<bool> canUseBiometricLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_biometricFlagKey) ?? false;
+    final hasToken = (prefs.getString('token') ?? '').isNotEmpty;
+    final hasUser = (prefs.getString('user') ?? '').isNotEmpty;
+    return enabled && hasToken && hasUser;
+  }
+
+  /// Re-prime the API client with the stored token after a passed biometric
+  /// check and return the stored user (for role-based navigation).
+  static Future<Map<String, dynamic>?> restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token != null && token.isNotEmpty) {
+      api.setToken(token);
+    }
+    final userStr = prefs.getString('user');
+    if (userStr == null) return null;
+    return jsonDecode(userStr);
   }
 }

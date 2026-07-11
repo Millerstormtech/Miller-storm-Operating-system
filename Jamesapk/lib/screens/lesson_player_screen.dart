@@ -177,9 +177,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       // Fetch course AI bot configuration
       _fetchCourseBot();
       
-      // Get course data with lesson details
+      // Get course data with lesson details. pageId → the server returns the
+      // FULL content of only this lesson and light metadata for the rest (for
+      // Next/Prev + counts), so the per-lesson payload stays small and loads fast.
       final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId'),
+        Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId&pageId=${widget.lessonId}'),
       );
 
       if (response.statusCode == 200) {

@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import html2canvas from "html2canvas";
 
 type LeaderRow = {
   id: string;
@@ -95,7 +94,10 @@ export function CourseLeaderboard() {
 
   // Load courses on mount
   useEffect(() => {
-    fetch("/api/courses")
+    // Uses light page metadata (status/isQuiz/folderId) for the override modal,
+    // so list mode is enough — it strips the heavy per-lesson HTML/transcript/quiz
+    // content at the DB level while keeping the lightweight page fields.
+    fetch("/api/courses?list=1")
       .then((r) => r.ok ? r.json() : [])
       .then((data: any[]) => {
         setAllCoursesRaw(data);
@@ -217,6 +219,9 @@ export function CourseLeaderboard() {
   async function takeScreenshot(format: "jpeg" | "png") {
     if (!tableRef.current) return;
     setShowFormatPicker(false);
+    // Lazy-load html2canvas (~200 KB) only when the user actually exports an
+    // image, instead of shipping it in the admin leaderboard's page chunk.
+    const html2canvas = (await import("html2canvas")).default;
     const canvas = await html2canvas(tableRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
     const mimeType = format === "png" ? "image/png" : "image/jpeg";
     const ext = format === "jpeg" ? "jpg" : "png";

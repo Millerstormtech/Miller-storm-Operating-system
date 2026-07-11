@@ -103,8 +103,33 @@ export default async function handler(
         }
       }
 
+      // Lazy per-lesson mode: the lesson player passes ?pageId=<open lesson>. It
+      // needs the FULL heavy content (body/transcript/quiz) of ONLY that one
+      // lesson, plus light metadata for the rest to build Next/Prev + counts.
+      // Trimming the other pages here cuts the per-lesson response from "every
+      // lesson's full content" down to one — so lessons/quiz load fast on tap.
+      const pageId = req.query.pageId ? String(req.query.pageId) : null;
+      let pagesOut: any = course.pages;
+      if (pageId) {
+        pagesOut = (course.pages || []).map((p: any) =>
+          p.id === pageId
+            ? p
+            : {
+                id: p.id,
+                title: p.title,
+                status: p.status,
+                folderId: p.folderId,
+                isQuiz: p.isQuiz,
+                videoUrl: p.videoUrl,
+                order: p.order,
+                questionsToShow: p.questionsToShow,
+              }
+        );
+      }
+
       const response = {
         ...course,
+        pages: pagesOut,
         progress,
         completedPages,
         unlockedPages,

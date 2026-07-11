@@ -220,7 +220,7 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
               const SizedBox(width: 2),
               _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
               const SizedBox(width: 2),
-              _navItem(Icons.person_outline, 'Profile', false, '/manager-profile', context),
+              _navItem(Icons.leaderboard_outlined, 'Leaderboard', false, '/manager-rankings', context),
             ],
           ),
         ),

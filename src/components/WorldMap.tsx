@@ -9,8 +9,27 @@ import {
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-export default function WorldMap() {
+// data: ISO numeric id (matches geo.id) -> distinct user count.
+type WorldMapProps = { data?: Record<string, number> };
+
+// Colour a country by its share of the busiest country: a light→saturated blue
+// ramp, matching the legend under the map. Countries with no usage stay grey.
+function fillFor(count: number | undefined, max: number): string {
+  if (!count || count <= 0 || max <= 0) return "#CBD5E1";
+  const t = Math.min(count / max, 1);
+  // #e0f2fe (very light) -> #0369a1 (deep blue)
+  const from = [224, 242, 254];
+  const to = [3, 105, 161];
+  const c = from.map((f, i) => Math.round(f + (to[i] - f) * t));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
+export default function WorldMap({ data }: WorldMapProps) {
   const [position, setPosition] = useState({ coordinates: [0, 20] as [number, number], zoom: 1 });
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+
+  const counts = data ?? {};
+  const max = Object.values(counts).reduce((m, v) => Math.max(m, v), 0);
 
   const handleMoveEnd = useCallback((pos: any) => {
     setPosition(pos);
@@ -45,21 +64,60 @@ export default function WorldMap() {
         >
           <Geographies geography={GEO_URL}>
             {({ geographies }) =>
-              geographies.map((geo) => (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  style={{
-                    default: { fill: "#CBD5E1", stroke: "#fff", strokeWidth: 0.4, outline: "none" },
-                    hover:   { fill: "#6366f1", stroke: "#fff", strokeWidth: 0.4, outline: "none", cursor: "pointer" },
-                    pressed: { fill: "#4f46e5", outline: "none" },
-                  }}
-                />
-              ))
+              geographies.map((geo) => {
+                const id = String(geo.id);
+                const count = counts[id];
+                const base = fillFor(count, max);
+                const name = geo.properties?.name ?? "";
+                return (
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
+                    onMouseEnter={(e: any) => {
+                      setTooltip({
+                        x: e.clientX,
+                        y: e.clientY,
+                        text: count ? `${name}: ${count} user${count === 1 ? "" : "s"}` : `${name}: 0`,
+                      });
+                    }}
+                    onMouseMove={(e: any) => {
+                      setTooltip(t => (t ? { ...t, x: e.clientX, y: e.clientY } : t));
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                    style={{
+                      default: { fill: base, stroke: "#fff", strokeWidth: 0.4, outline: "none" },
+                      hover: { fill: count ? "#0369a1" : "#94a3b8", stroke: "#fff", strokeWidth: 0.4, outline: "none", cursor: "pointer" },
+                      pressed: { fill: "#075985", outline: "none" },
+                    }}
+                  />
+                );
+              })
             }
           </Geographies>
         </ZoomableGroup>
       </ComposableMap>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          style={{
+            position: "fixed",
+            left: tooltip.x + 12,
+            top: tooltip.y + 12,
+            background: "#111827",
+            color: "#fff",
+            fontSize: "11px",
+            padding: "4px 8px",
+            borderRadius: "6px",
+            pointerEvents: "none",
+            whiteSpace: "nowrap",
+            zIndex: 50,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+          }}
+        >
+          {tooltip.text}
+        </div>
+      )}
 
       {/* Zoom controls */}
       <div style={{

@@ -56,6 +56,10 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
         final user = jsonDecode(userStr);
         _managerId = (user['id'] ?? user['_id'] ?? '').toString();
       }
+      // Cache-first: fill the course list instantly from the list already cached
+      // by the Courses screen, so the unlock view shows the same courses as the
+      // web even when the network is slow/timing out (course list = light pages).
+      await _loadCachedCourses();
       await Future.wait([_fetchTeam(), _fetchCourses()]);
     } catch (e) {
       print('Unlock init error: $e');
@@ -63,8 +67,24 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _loadCachedCourses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('courses_cache');
+      if (cachedJson == null) return;
+      final data = jsonDecode(cachedJson);
+      if (data is List && data.isNotEmpty && _courses.isEmpty) {
+        if (mounted) setState(() => _courses = data);
+      }
+    } catch (e) {
+      print('Unlock loadCachedCourses error: $e');
+    }
+  }
+
   Future<void> _fetchTeam() async {
-    final url = Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_managerId');
+    // lite=1 → light payload (id/name/email/photo/status only), not the full
+    // user docs, so the team list opens fast.
+    final url = Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_managerId&lite=1');
     // Retry a few times — on the iOS simulator the initial request burst can
     // make a single call time out, which would leave the list empty.
     for (int attempt = 0; attempt < 3; attempt++) {
@@ -90,7 +110,15 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
         final res = await api.get(url).timeout(const Duration(seconds: 12));
         if (res.statusCode == 200) {
           final data = jsonDecode(res.body);
-          _courses = data is List ? data : [];
+          if (data is List && data.isNotEmpty) {
+            _courses = data;
+            // Refresh the shared cache so the next open (and other screens) are
+            // instant even offline.
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('courses_cache', jsonEncode(data));
+            } catch (_) {}
+          }
           return;
         }
       } catch (e) {

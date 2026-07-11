@@ -47,12 +47,14 @@ export default async function handler(
     if (summaryMode) {
       courseQuery.select('-pages -quizQuestions -links');
     } else if (listMode) {
-      // List mode only needs light page metadata (id/title/status/isQuiz/…), so
-      // exclude the heavy per-page content at the DB level. This keeps the query
-      // and payload small — previously the full HTML body/transcript/quiz for
-      // EVERY page of EVERY course was loaded just to be stripped in JS, which
-      // made the mobile course list slow and prone to timeouts.
-      courseQuery.select('-pages.body -pages.transcript -pages.quizQuestions -pages.resourceLinks -pages.fileUrls -pages.pinnedCommunityPostUrl -quizQuestions -links');
+      // List mode: use a POSITIVE projection so mongod hydrates only light page
+      // metadata (id/title/status/isQuiz/folderId) and drops every heavy per-page
+      // field (HTML body/transcript/quiz/content). Those heavy fields — NOT the
+      // light metadata — were what pushed the response past Next's 4MB limit and
+      // caused mobile timeouts (courses have 80+ pages each). The light metadata
+      // is tiny AND is needed by consumers like the manager "unlock lessons"
+      // screen, so we keep it.
+      courseQuery.select('id title description icon coverImageUrl order status accessMode folders.id folders.title folders.status pages.id pages.title pages.status pages.isQuiz pages.folderId');
     }
     const courses = await courseQuery.lean();
     console.log('📚 Total courses in DB:', courses.length);
@@ -138,19 +140,10 @@ export default async function handler(
       ).length;
       const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
 
-      // In list mode keep only light page metadata (drop heavy content fields
-      // that bloat the payload and slow the mobile list).
-      const pagesOut = listMode
-        ? publishedPages.map((p: any) => ({
-            id: p.id,
-            title: p.title,
-            status: p.status,
-            folderId: p.folderId,
-            isQuiz: p.isQuiz,
-            videoUrl: p.videoUrl,
-            questionsToShow: p.questionsToShow,
-          }))
-        : publishedPages;
+      // In list mode publishedPages already carries only the light projected
+      // fields, so return it as-is: small payload, but still the lesson metadata
+      // that screens like "unlock lessons" need. (Non-list keeps full pages.)
+      const pagesOut = publishedPages;
 
       return {
         ...course,

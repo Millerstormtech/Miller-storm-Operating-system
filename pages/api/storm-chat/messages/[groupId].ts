@@ -48,9 +48,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: 'You are not a member of this group' });
       }
 
+      // Take the NEWEST 500 (sort desc + limit), then flip back to ascending for
+      // the client. The old `sort({createdAt:1}).limit(500)` returned the OLDEST
+      // 500 — so any group past 500 messages never showed recent chat. Uses the
+      // existing {groupId, createdAt:-1} index; .lean() skips Mongoose hydration
+      // of 500 docs on every 3s poll (same JSON shape — no toJSON transforms).
       const messages = await ChatMessage.find({ groupId })
-        .sort({ createdAt: 1 })
-        .limit(500); // Last 500 messages
+        .sort({ createdAt: -1 })
+        .limit(500)
+        .lean();
+      messages.reverse();
 
       res.status(200).json(messages);
     } catch (error) {
@@ -327,9 +334,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!msg) return res.status(404).json({ error: 'Message not found' });
 
       const isSender = (msg as any).senderId === auth.sub;
+      // Derive the moderation context from the message's OWN group, never the
+      // URL param — otherwise an admin could pass a normal group's id in the URL
+      // while deleting a message that actually lives in a private DM, bypassing
+      // the "admins can't touch DMs" rule.
       let adminCanModerate = false;
-      if (auth.role === 'admin') {
-        const grp = await ChatGroup.findById(groupId).lean() as any;
+      if (!isSender && auth.role === 'admin') {
+        const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
         adminCanModerate = !!grp && !grp.isDirect;
       }
       if (!isSender && !adminCanModerate) {

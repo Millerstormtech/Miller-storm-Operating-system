@@ -7,6 +7,9 @@ const botChatSchema = new Schema({
   userName: { type: String, required: true },
   userEmail: { type: String, required: true },
   userRole: { type: String, required: true },
+  // ISO 3166-1 alpha-2 code of where the user chatted from (from the CDN geo
+  // header). Powers the "Popular Countries" map. Null when the header is absent.
+  country: { type: String, default: null, index: true },
   title: { type: String, default: "New Chat" },
   messages: [{
     role: { type: String, enum: ["user", "assistant"], required: true },

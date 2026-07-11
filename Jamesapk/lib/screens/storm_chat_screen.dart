@@ -132,8 +132,8 @@ class _StormChatScreenState extends State<StormChatScreen> {
               // Header
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'StormChat',
@@ -143,11 +143,11 @@ class _StormChatScreenState extends State<StormChatScreen> {
                         color: Color(0xFF111827),
                       ),
                     ),
+                    const SizedBox(height: 14),
                     Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _newMessageButton(),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         _communityButton(),
                       ],
                     ),
@@ -758,6 +758,8 @@ class _StormChatScreenState extends State<StormChatScreen> {
               _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
               const SizedBox(width: 2),
               _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/rankings'),
               const SizedBox(width: 2),
               _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
             ],

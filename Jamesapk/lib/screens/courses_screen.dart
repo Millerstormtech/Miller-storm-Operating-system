@@ -819,6 +819,8 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
               const SizedBox(width: 2),
               _navItem(Icons.apps, 'Apps & Tools', '/apps-tools-items'),
               const SizedBox(width: 2),
+              _navItem(Icons.leaderboard_outlined, 'Leaderboard', '/rankings'),
+              const SizedBox(width: 2),
               _navItem(Icons.person, 'Profile', '/profile'),
             ],
           ),

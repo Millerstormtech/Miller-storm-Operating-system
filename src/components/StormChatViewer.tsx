@@ -131,14 +131,14 @@ export function StormChatViewer() {
   }
 
   const q = search.trim().toLowerCase();
-  const visible = (q ? groups.filter(g => titleFor(g).toLowerCase().includes(q)) : groups);
+  const visible = (q ? groups.filter(g => (titleFor(g) || '').toLowerCase().includes(q)) : groups);
   const dms = visible.filter(g => g.isDirect);
   const normalGroups = visible.filter(g => !g.isDirect);
 
   const uq = userSearch.trim().toLowerCase();
   const pickable = users
     .filter(u => u.id !== user?.id)
-    .filter(u => !uq || u.name.toLowerCase().includes(uq) || u.email.toLowerCase().includes(uq));
+    .filter(u => !uq || (u.name || '').toLowerCase().includes(uq) || (u.email || '').toLowerCase().includes(uq));
 
   function GroupRow({ g }: { g: ChatGroup }) {
     const count = unread[g._id] || 0;

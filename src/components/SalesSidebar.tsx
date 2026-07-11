@@ -1,7 +1,8 @@
 import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
 import { useAuth } from "../contexts/AuthContext";
-import { useEffect, useState } from "react";
+import { useFeatureToggles } from "../hooks/useFeatureToggles";
+import { useBotAccess } from "../hooks/useBotAccess";
 
 const baseItems = [
   { id: "dashboard", label: "Dashboard", toggleKey: "dashboard" },
@@ -22,40 +23,11 @@ type SalesSidebarProps = {
   onToggleCollapse?: () => void;
 };
 
-function getCached(userId: string): Record<string, boolean> | null {
-  try {
-    const raw = sessionStorage.getItem(`ft_${userId}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-
-function setCache(userId: string, toggles: Record<string, boolean>) {
-  try { sessionStorage.setItem(`ft_${userId}`, JSON.stringify(toggles)); } catch {}
-}
-
 export function SalesSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesSidebarProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const [hasBotAccess, setHasBotAccess] = useState(false);
-  const [featureToggles, setFeatureToggles] = useState<Record<string, boolean> | null>(
-    user?.id ? getCached(user.id) : null
-  );
-
-  useEffect(() => {
-    if (!user?.id) return;
-    fetch("/api/ai-bots").then(r => r.ok ? r.json() : []).then((bots: any[]) => {
-      setHasBotAccess(bots.some((b: any) => b.teamMembers?.includes(user.id)));
-    });
-    fetch(`/api/users/${user.id}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.featureToggles) {
-          setCache(user.id, data.featureToggles);
-          setFeatureToggles(data.featureToggles);
-        }
-      })
-      .catch(() => {});
-  }, [user?.id]);
+  const hasBotAccess = useBotAccess(user?.id);
+  const featureToggles = useFeatureToggles(user?.id);
 
   const allItems = hasBotAccess
     ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder", toggleKey: "aiBots" }]

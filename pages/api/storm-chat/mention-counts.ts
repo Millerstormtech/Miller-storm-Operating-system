@@ -22,29 +22,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const groupIdArray = (groupIds as string).split(',');
     
-    // Get mention counts for each group
+    // Batch instead of the old N+1 loop (which ran 2 queries PER group). One
+    // query pulls every read receipt; one aggregation counts mentions per group
+    // using an $or of per-group conditions, so each group still applies its own
+    // lastReadAt cutoff. (Matching semantics on `mentions` are unchanged.)
+    const receipts = await GroupReadReceipt
+      .find({ userId, groupId: { $in: groupIdArray } })
+      .select('groupId lastReadAt')
+      .lean();
+    const lastReadByGroup = new Map<string, Date>(
+      (receipts as any[]).map((r) => [r.groupId, r.lastReadAt])
+    );
+
+    const orConditions = groupIdArray.map((groupId) => {
+      const lastReadAt = lastReadByGroup.get(groupId);
+      const cond: any = { groupId, mentions: userId };
+      if (lastReadAt) cond.createdAt = { $gt: lastReadAt };
+      return cond;
+    });
+
+    // Default every requested group to 0 so groups with no mentions still appear.
     const mentionCounts: { [key: string]: number } = {};
-    
-    for (const groupId of groupIdArray) {
-      // Get user's last read timestamp for this group
-      const readReceipt = await GroupReadReceipt.findOne({ userId, groupId });
-      
-      if (!readReceipt) {
-        // If no read receipt, count all messages that mention the user
-        const count = await ChatMessage.countDocuments({
-          groupId,
-          mentions: userId
-        });
-        mentionCounts[groupId] = count;
-      } else {
-        // Count messages after last read time that mention the user
-        const count = await ChatMessage.countDocuments({
-          groupId,
-          mentions: userId,
-          createdAt: { $gt: readReceipt.lastReadAt }
-        });
-        mentionCounts[groupId] = count;
-      }
+    groupIdArray.forEach((g) => { mentionCounts[g] = 0; });
+
+    if (orConditions.length > 0) {
+      const grouped = await ChatMessage.aggregate([
+        { $match: { $or: orConditions } },
+        { $group: { _id: '$groupId', count: { $sum: 1 } } }
+      ]);
+      grouped.forEach((row: any) => { mentionCounts[row._id] = row.count; });
     }
 
     res.status(200).json(mentionCounts);
