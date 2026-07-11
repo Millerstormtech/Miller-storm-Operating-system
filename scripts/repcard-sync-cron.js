@@ -16,10 +16,10 @@ function loadEnv(file) {
 }
 loadEnv(path.resolve(__dirname, "../.env"));
 
-const PORT = process.env.PORT || 6789;
-const URL = `http://localhost:${PORT}/api/repcard/sync`;
+const PORT = process.env.PORT || 6790; // prod app port (PM2). 6789 fallback once caused silent "fetch failed" outages.
+const URL = `http://127.0.0.1:${PORT}/api/repcard/sync`;
 const SECRET = process.env.REPCARD_SYNC_SECRET;
-const HOUR = 60 * 60 * 1000;
+const REFRESH_MS = 30 * 60 * 1000; // every 30 minutes
 
 async function tick() {
   try {
@@ -34,5 +34,5 @@ async function tick() {
   }
 }
 
-tick();                  // run once on boot
-setInterval(tick, HOUR); // then hourly
+tick();                        // run once on boot
+setInterval(tick, REFRESH_MS); // then every 30 minutes
