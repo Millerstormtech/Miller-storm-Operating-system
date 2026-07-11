@@ -2,7 +2,7 @@
 node_modules/
 dist/
 .env
-.env.*.local
+.env*.local
 *.log
 firebase-service-account.json
 *.plist
@@ -17,3 +17,10 @@ docs/
 
 # Local-only AI assistant guidance (kept off GitHub on purpose)
 CLAUDE.md
+.claude/
+
+# Local dev database (mongodb-memory-server) — holds a COPY OF PROD DATA, never commit
+.localdb/
+
+# Local-only dev scaffolding for the seeded preview DB (contains roster fixtures)
+scripts/dev/
