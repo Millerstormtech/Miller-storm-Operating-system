@@ -1303,7 +1303,8 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
     // Optimistically add as pending
     const tempId = `link-${Date.now()}`;
     const pendingLink: TrainingLink = { id: tempId, url: trimmedUrl, type: urlType, status: "pending", chars: 0 };
-    setLinks(prev => [...prev, pendingLink]);
+    const withPending = [...links, pendingLink];
+    setLinks(withPending);
 
     try {
       console.log("Sending request to /api/ai-bots/crawl...");
@@ -1313,13 +1314,19 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
         body: JSON.stringify({ botId: bot.id, url: trimmedUrl, type: urlType })
       });
       console.log("Response status:", res.status);
-      
+
       const data = await res.json();
       console.log("Response data:", data);
-      
-      // Replace pending with real result
-      setLinks(prev => prev.map(l => l.id === tempId ? data.link : l));
-      
+
+      // Replace pending with the real result AND push it into the parent bot
+      // state (selectedBot). The crawl endpoint already saved the link to the
+      // DB, but without syncing the parent, switching tabs / a soft refresh
+      // re-read the stale bot.trainingLinks and the new link "disappeared"
+      // until a full page reload.
+      const finalLinks = withPending.map(l => l.id === tempId ? data.link : l);
+      setLinks(finalLinks);
+      onSave({ trainingLinks: finalLinks });
+
       if (data.error) {
         console.error("Crawl returned error:", data.error);
       } else {
@@ -1349,7 +1356,9 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
       const res = await fetch("/api/ai-bots/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
-      setLinks(prev => [...prev, data.link]);
+      const finalLinks = [...links, data.link];
+      setLinks(finalLinks);
+      onSave({ trainingLinks: finalLinks }); // sync parent so it survives a tab switch / refresh
     } catch (err: any) {
       setUploadError(err.message || "Upload failed");
     } finally {

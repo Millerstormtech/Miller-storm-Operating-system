@@ -11,7 +11,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     const auth = requireUser(req, res);
     if (!auth) return;
-    const bots = await AiBotModel.find({ isActive: true, status: 'published' }).lean();
+    // Admins (the bot builders) see ALL active bots — published AND draft — so
+    // a newly created draft bot doesn't vanish from the list on refresh. Every
+    // other role only ever sees published bots, so drafts stay hidden from users.
+    const isAdmin = auth.role?.toString().toLowerCase() === 'admin';
+    const query: any = isAdmin ? { isActive: true } : { isActive: true, status: 'published' };
+    const bots = await AiBotModel.find(query).lean();
     const normalized = bots.map(normalizeBot);
     // Sort: bots with sortOrder set come first (by sortOrder asc), rest by createdAt desc
     normalized.sort((a: any, b: any) => {
