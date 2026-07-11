@@ -152,11 +152,15 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </span>
       </div>
 
-      {/* Legend for the RepCard-only flag next to a rep's name. */}
+      {/* Legend for the flags shown next to a rep's name. */}
       <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#6b7280", flexWrap: "wrap" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
           RepCard only (door-knocks, no matched AccuLynx sales)
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span aria-hidden="true">❌</span>
+          Former rep (deactivated in RepCard)
         </span>
       </div>
 
