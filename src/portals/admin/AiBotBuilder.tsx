@@ -567,24 +567,55 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
 
 // ─── World Map Card ───────────────────────────────────────────────────────────
 
-function WorldMapCard() {
+function WorldMapCard({ botId }: { botId?: string }) {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [byCode, setByCode] = useState<Record<string, { name: string; count: number }>>({});
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    if (!botId) return;
+    fetch(`/api/ai-bots/countries?botId=${encodeURIComponent(botId)}&days=28`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        setCounts(d.counts || {});
+        setByCode(d.byCode || {});
+        setTotal(d.total || 0);
+      })
+      .catch(() => {});
+  }, [botId]);
+
+  // Top countries for the legend under the map.
+  const top = Object.entries(byCode)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 5);
+
   return (
     <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "22px 24px", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>🌐</div>
         <div>
           <div style={{ fontSize: "13px", color: "#9ca3af" }}>Popular Countries</div>
-          <div style={{ fontSize: "11px", color: "#d1d5db" }}>Last 28 days</div>
+          <div style={{ fontSize: "11px", color: "#d1d5db" }}>Last 28 days · {total} user{total === 1 ? "" : "s"}</div>
         </div>
       </div>
       <div style={{ width: "100%", height: "380px", borderRadius: "8px", overflow: "hidden", background: "#f8fafc" }}>
-        <WorldMap />
+        <WorldMap data={counts} />
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
-        <span style={{ fontSize: "10px", color: "#9ca3af" }}>0</span>
-        <div style={{ flex: 1, height: "5px", borderRadius: "3px", background: "linear-gradient(to right, #e0f2fe, #38bdf8, #818cf8, #f472b6, #fb923c, #4ade80)" }} />
-        <span style={{ fontSize: "10px", color: "#9ca3af" }}>∞</span>
-      </div>
+      {top.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
+          {top.map(([code, v]) => (
+            <div key={code} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#374151", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: "999px", padding: "3px 10px" }}>
+              <span style={{ fontWeight: 600 }}>{v.name}</span>
+              <span style={{ color: "#0369a1", fontWeight: 700 }}>{v.count}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "12px", textAlign: "center" }}>
+          No location data yet — the map fills in as people chat with this bot.
+        </div>
+      )}
     </div>
   );
 }
@@ -656,7 +687,7 @@ function OverviewPanel({ bot }: { bot: AiBot }) {
       </div>
 
       {/* World map card */}
-      <WorldMapCard />
+      <WorldMapCard botId={bot.id} />
     </div>
   );
 }
@@ -1647,9 +1678,20 @@ type Course = {
   pages?: { id: string; title: string; folderId?: string; transcript?: string }[];
 };
 
+// Session cache of the course list so re-opening the Courses tab (or switching
+// bots) paints instantly instead of showing "Loading courses..." on every open.
+const COURSES_CACHE_KEY = "botbuilder_courses_list";
+function readCoursesCache(): Course[] | null {
+  try {
+    const raw = sessionStorage.getItem(COURSES_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Course[]) : null;
+  } catch { return null; }
+}
+
 function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean }) {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = readCoursesCache();
+  const [courses, setCourses] = useState<Course[]>(cached ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set(bot.selectedPages || []));
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set(bot.selectedFolders || []));
@@ -1659,10 +1701,13 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
   useEffect(() => {
     // list=1 strips heavy per-page content (HTML body/transcript/quiz) at the DB
     // level — this picker only needs course/lesson ids + titles, so the full
-    // payload made it load slowly for no reason.
+    // payload made it load slowly for no reason. Cache-first: cached courses (if
+    // any) are already shown; this refreshes in the background.
     fetch("/api/courses?list=1").then(r => r.ok ? r.json() : []).then(data => {
-      setCourses(data); setLoading(false);
-    });
+      setCourses(data);
+      setLoading(false);
+      try { sessionStorage.setItem(COURSES_CACHE_KEY, JSON.stringify(data)); } catch {}
+    }).catch(() => setLoading(false));
   }, []);
 
   function toggleCourse(courseId: string, course: Course) {

@@ -4,6 +4,7 @@ import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { BotChatModel } from "../../../src/lib/models/BotChat";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { retrieveRelevant } from "../../../src/lib/rag";
+import { normalizeCountryCode } from "../../../src/lib/isoCountries";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["POST"])) return;
@@ -150,6 +151,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const update: any = { chatId, botId, userId, userName: userName || "User", userEmail: userEmail || "", userRole: userRole || "", messages: allMessages };
       if (title !== undefined) update.title = title; // only set on the first turn
       else update.$setOnInsert = { title: "New Chat" }; // safety for a brand-new doc
+      // Country from the CDN geo header (Cloudflare / Vercel), for the map.
+      const country = normalizeCountryCode(
+        req.headers["cf-ipcountry"] || req.headers["x-vercel-ip-country"]
+      );
+      if (country) update.country = country;
       await BotChatModel.findOneAndUpdate({ chatId }, update, { upsert: true, new: true });
     }
 
