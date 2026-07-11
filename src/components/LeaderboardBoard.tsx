@@ -58,15 +58,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     return { list: Array.from(set).sort(), hasBlank };
   }, [rows]);
 
-  // Distinct teams keyed by managerId -> managerName (plus a "No team" bucket).
+  // Distinct teams from RepCard's own team field (plus a "No team" bucket).
   const teamOptions = useMemo(() => {
-    const map = new Map<string, string>();
+    const set = new Set<string>();
     let hasNone = false;
-    for (const r of rows) {
-      if (r.managerId) map.set(String(r.managerId), r.managerName || "Unnamed manager");
-      else hasNone = true;
-    }
-    return { list: Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1])), hasNone };
+    for (const r of rows) { if (r.team) set.add(r.team); else hasNone = true; }
+    return { list: Array.from(set).sort(), hasNone };
   }, [rows]);
 
   const visible = useMemo(() => {
@@ -75,8 +72,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       if (branchFilter === NONE) { if (r.branch) return false; }
       else if (branchFilter && r.branch !== branchFilter) return false;
       // Team filter
-      if (teamFilter === NONE) { if (r.managerId) return false; }
-      else if (teamFilter && String(r.managerId) !== teamFilter) return false;
+      if (teamFilter === NONE) { if (r.team) return false; }
+      else if (teamFilter && r.team !== teamFilter) return false;
       return true;
     });
 
@@ -138,7 +135,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           Team
           <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} style={selectStyle}>
             <option value={ALL}>All teams</option>
-            {teamOptions.list.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            {teamOptions.list.map((t) => <option key={t} value={t}>{t}</option>)}
             {teamOptions.hasNone ? <option value={NONE}>(No team)</option> : null}
           </select>
         </label>

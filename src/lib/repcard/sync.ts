@@ -1,6 +1,7 @@
 // src/lib/repcard/sync.ts
 import { connectMongo } from "../mongodb";
 import { RepCardKnockFactModel } from "../models/RepCardKnockFact";
+import { RepCardUserModel } from "../models/RepCardUser";
 import { SyncStateModel } from "../models/SyncState";
 import { createClient } from "./client";
 import { buildUserIndex, extractKnockDrafts } from "./mapping";
@@ -52,6 +53,22 @@ export async function runSync(opts: { mode?: "incremental" | "backfill"; dryRun?
   try {
     const client = createClient(key);
     const users = buildUserIndex(await client.fetchUsers());
+
+    // Mirror the RepCard user directory (office + team per rep) so the leaderboard
+    // can resolve each rep's Branch/Team at read time by repcardUserId.
+    if (!dryRun && users.size) {
+      const ops = [...users.values()].map((u) => ({
+        updateOne: {
+          filter: { repcardUserId: u.repcardUserId },
+          update: { $set: {
+            email: u.email, name: u.name, phone: u.phone,
+            officeId: u.officeId, office: u.office, team: u.team, status: u.status,
+          } },
+          upsert: true,
+        },
+      }));
+      await RepCardUserModel.bulkWrite(ops, { ordered: false });
+    }
 
     const todayISO = dateOnly(new Date());
     let sinceISO: string;

@@ -1,16 +1,24 @@
 // src/lib/repcard/mapping.ts
 // Pure, import-free RepCard response mappers (testable with `node --test`).
 
-export interface RepCardUser { repcardUserId: string; email: string; name: string; phone: string; }
+export interface RepCardUser {
+  repcardUserId: string; email: string; name: string; phone: string;
+  officeId: string; office: string; team: string; status: string;
+}
 export interface KnockDraft { repcardUserId: string; name: string; verifiedKnocks: number; }
 
 // Flat array of /api/users result.data items -> id -> user.
+// Captures RepCard's office + team (the source of the leaderboard's Branch/Team).
 export function buildUserIndex(items: any[]): Map<string, RepCardUser> {
   const map = new Map<string, RepCardUser>();
   for (const u of items || []) {
     const id = String(u.id);
     const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || (u.email ?? "") || id;
-    map.set(id, { repcardUserId: id, email: u.email ?? "", name, phone: u.phoneNumber ?? "" });
+    map.set(id, {
+      repcardUserId: id, email: u.email ?? "", name, phone: u.phoneNumber ?? "",
+      officeId: u.officeId != null ? String(u.officeId) : "",
+      office: u.office ?? "", team: u.team ?? "", status: u.status ?? "",
+    });
   }
   return map;
 }
