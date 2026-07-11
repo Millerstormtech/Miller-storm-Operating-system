@@ -6,7 +6,7 @@ import { UserModel } from "../models/User";
 import { STAGE_TO_METRIC, REVENUE_STAGE, REP_TYPES, getLocationKeys, cleanBranchName } from "./config";
 import { createClient } from "./client";
 import type { AcculynxClient } from "./client";
-import { mapJobToFacts } from "./mapping";
+import { mapJobToFacts, isJobDead } from "./mapping";
 import type { MappingConfig } from "./mapping";
 import { getWindowRange } from "./windows";
 import { normEmail, normPhone } from "../leaderboard/identity";
@@ -26,6 +26,7 @@ export interface LocationSyncResult {
   status: "ok" | "failed" | "skipped";
   jobsProcessed: number;
   factsWritten: number;
+  deadContractsRemoved?: number; // won/revenue facts deleted because the deal is now Cancelled
   unmatched: { repExternalId: string; name: string }[];
   error?: string;
 }
@@ -34,6 +35,7 @@ export interface SyncResult {
   status: "ok" | "partial" | "failed";
   jobsProcessed: number;
   factsWritten: number;
+  deadContractsRemoved?: number;
   unmatched: { repExternalId: string; name: string }[];
   locations: LocationSyncResult[];
   error?: string;
@@ -85,6 +87,7 @@ export async function runSync(
     const r = await syncOneLocation(client, { companyId, branch, mode, dryRun, limitJobs });
     agg.jobsProcessed += r.jobsProcessed;
     agg.factsWritten += r.factsWritten;
+    if (r.deadContractsRemoved) agg.deadContractsRemoved = (agg.deadContractsRemoved ?? 0) + r.deadContractsRemoved;
     agg.unmatched.push(...r.unmatched);
     agg.locations.push(r);
     if (r.status === "failed") agg.status = agg.status === "ok" ? "partial" : agg.status;
@@ -150,6 +153,15 @@ async function syncOneLocation(
 
       const facts = mapJobToFacts({ job, milestoneHistory, representatives, financials }, MAPPING_CFG, branch);
       result.jobsProcessed++;
+
+      // A deal AccuLynx now marks "Cancelled" earns no contract/revenue. The mapper
+      // already stops EMITTING those facts; because the store is upsert-only (it never
+      // deletes), we must ALSO remove any won/revenue a PRIOR sync wrote while the deal
+      // was still Approved. Its "filed" fact is intentionally left untouched.
+      if (!dryRun && isJobDead(job)) {
+        const del = await ScoringFactModel.deleteMany({ jobId: job.id, metric: { $in: ["won", "revenue"] } });
+        if (del.deletedCount) result.deadContractsRemoved = (result.deadContractsRemoved ?? 0) + del.deletedCount;
+      }
 
       for (const f of facts) {
         // Resolve rep: AccuLynx id -> Miller Storm user (by acculynxUserId, else email).
