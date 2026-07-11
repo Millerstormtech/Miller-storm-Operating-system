@@ -5,13 +5,9 @@ import { CourseModel } from "../../src/lib/models/Course";
 import { UserModel } from "../../src/lib/models/User";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../src/lib/auth";
-import { ScoringFactModel } from "../../src/lib/models/ScoringFact";
-import { getWindowRange } from "../../src/lib/acculynx/windows";
 import type { Window } from "../../src/lib/acculynx/windows";
-import { RepCardKnockFactModel } from "../../src/lib/models/RepCardKnockFact";
 import { RepCardUserModel } from "../../src/lib/models/RepCardUser";
-import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
-import { normEmail, normName, normPhone } from "../../src/lib/leaderboard/identity";
+import { getMergedReps } from "../../src/lib/leaderboard/repMetrics";
 import { officeToBranch } from "../../src/lib/repcard/branches";
 import { resolveTeam, TEAM_BRANCH } from "../../src/lib/repcard/org-chart";
 
@@ -119,46 +115,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Union sales leaderboard: RepCard Verified Door Knocks (spine) + AccuLynx deals.
   const w = (["day", "week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
-  const { start, end } = getWindowRange(w);
-
-  // AccuLynx deals aggregated per rep for the window.
-  const acxRaw = await ScoringFactModel.aggregate([
-    { $match: { occurredAt: { $gte: start, $lte: end }, repExternalId: { $ne: null } } },
-    { $sort: { occurredAt: 1, _id: 1 } },
-    { $group: {
-        _id: "$repExternalId",
-        email: { $last: "$repEmail" }, phone: { $last: "$repPhone" },
-        name: { $last: "$repNameSnapshot" }, branch: { $last: "$location" },
-        filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
-        won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
-        revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
-    } },
-  ]);
-
-  // RepCard verified knocks aggregated per rep for the window.
-  const rcRaw = await RepCardKnockFactModel.aggregate([
-    { $match: { occurredAt: { $gte: start, $lte: end } } },
-    { $sort: { occurredAt: 1, _id: 1 } },
-    { $group: {
-        _id: "$repcardUserId",
-        email: { $last: "$repEmail" }, phone: { $last: "$repPhone" },
-        name: { $last: "$repNameSnapshot" }, branch: { $last: "$location" },
-        verifiedKnocks: { $sum: "$verifiedKnocks" },
-    } },
-  ]);
-
-  // Normalize keys, then merge (RepCard spine, email->phone->name cascade).
-  const acx = acxRaw.map((r: any) => ({
-    repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
-    nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
-    filed: r.filed, won: r.won, revenue: r.revenue,
-  }));
-  const rc = rcRaw.map((r: any) => ({
-    repcardUserId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
-    nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
-    verifiedKnocks: r.verifiedKnocks,
-  }));
-  const merged = mergeLeaderboard(acx, rc);
+  // AccuLynx deals + RepCard verified knocks, aggregated per rep and merged
+  // (RepCard spine, email->phone->name cascade). Shared with the dashboard API
+  // so the board and the role rollups always compute from identical numbers.
+  const merged = await getMergedReps(w);
 
   // Light app enrichment (never gating): match a Miller Storm user by email for
   // the profile photo and the "You" highlight.
