@@ -47,14 +47,14 @@ export default async function handler(
     if (summaryMode) {
       courseQuery.select('-pages -quizQuestions -links');
     } else if (listMode) {
-      // List mode powers the mobile course grid, which only shows title/cover/
-      // progress% and NEVER reads the pages array. Use a POSITIVE projection so
-      // mongod hydrates only the handful of fields we need — just enough page
-      // metadata (status/isQuiz) to count published lessons for progress% — and
-      // drops every heavy per-page field. Previously the light metadata for
-      // EVERY page of EVERY course was still shipped, pushing the response past
-      // 4MB (courses have 80+ pages each) and causing mobile timeouts.
-      courseQuery.select('id title description icon coverImageUrl order status accessMode folders.id folders.status pages.id pages.status pages.isQuiz pages.folderId');
+      // List mode: use a POSITIVE projection so mongod hydrates only light page
+      // metadata (id/title/status/isQuiz/folderId) and drops every heavy per-page
+      // field (HTML body/transcript/quiz/content). Those heavy fields — NOT the
+      // light metadata — were what pushed the response past Next's 4MB limit and
+      // caused mobile timeouts (courses have 80+ pages each). The light metadata
+      // is tiny AND is needed by consumers like the manager "unlock lessons"
+      // screen, so we keep it.
+      courseQuery.select('id title description icon coverImageUrl order status accessMode folders.id folders.title folders.status pages.id pages.title pages.status pages.isQuiz pages.folderId');
     }
     const courses = await courseQuery.lean();
     console.log('📚 Total courses in DB:', courses.length);
@@ -140,11 +140,10 @@ export default async function handler(
       ).length;
       const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
 
-      // The mobile course grid never reads the pages array — it only shows
-      // title/cover/progress%. So drop pages entirely from the list payload
-      // (progress is already computed above). This is what keeps the response
-      // small; shipping every page's metadata pushed it past Next's 4MB limit.
-      const pagesOut = listMode ? [] : publishedPages;
+      // In list mode publishedPages already carries only the light projected
+      // fields, so return it as-is: small payload, but still the lesson metadata
+      // that screens like "unlock lessons" need. (Non-list keeps full pages.)
+      const pagesOut = publishedPages;
 
       return {
         ...course,

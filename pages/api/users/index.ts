@@ -36,7 +36,14 @@ async function handler(
     } else if (deleted === "false" || deleted === undefined) {
       query.deleted = { $ne: true };
     }
-    const users = await UserModel.find(query).lean();
+    // lite=1 → return only the light fields a picker/list needs (id, name,
+    // email, role, team, photo, status). Full user docs carry heavy fields
+    // (featureToggles, business plans, notes, embedded data), which made
+    // team-picker screens on mobile slow. Opt-in, so other callers are unchanged.
+    const lite = req.query.lite === "1" || req.query.lite === "true";
+    const usersQuery = UserModel.find(query);
+    if (lite) usersQuery.select("id name email role managerId headshotUrl deleted suspended");
+    const users = await usersQuery.lean();
     const sanitized = users.map(({ passwordHash, ...rest }) => rest);
     res.status(200).json(sanitized);
     return;
