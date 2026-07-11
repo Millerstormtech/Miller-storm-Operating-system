@@ -16,11 +16,12 @@ const ALL = "";
 const NONE = "__none__";
 
 // Column definitions drive both the header row and the click-to-sort behavior.
-type SortKey = "name" | "branch" | "verifiedKnocks" | "filed" | "won" | "revenue";
+type SortKey = "name" | "branch" | "team" | "verifiedKnocks" | "filed" | "won" | "revenue";
 type ColType = "text" | "num" | "money";
 const COLUMNS: { key: SortKey; label: string; type: ColType }[] = [
   { key: "name", label: "Rep", type: "text" },
   { key: "branch", label: "Branch", type: "text" },
+  { key: "team", label: "Team", type: "text" },
   { key: "verifiedKnocks", label: "Verified Door Knocks", type: "num" },
   { key: "filed", label: "Claims Filed", type: "num" },
   { key: "won", label: "Contracts", type: "num" },
@@ -209,6 +210,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                       </span>
                     </td>
                     <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.branch || "—"}</td>
+                    <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.team || "—"}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center" }}>{r.filed}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.won}</td>
