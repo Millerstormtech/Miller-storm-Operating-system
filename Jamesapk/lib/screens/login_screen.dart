@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/biometric_service.dart';
 import '../services/firebase_messaging_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -18,10 +19,60 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _showPassword = false;
   bool _isLoading = false;
   String _error = '';
+  bool _biometricAvailable = false;
+  String _biometricLabel = 'Face ID';
 
   @override
   void initState() {
     super.initState();
+    _checkBiometric();
+  }
+
+  // Show the "Login with Face ID" button only when the device has biometrics AND
+  // the user previously signed in with a password on this device (so we have a
+  // token to restore).
+  Future<void> _checkBiometric() async {
+    final canUse = await AuthService.canUseBiometricLogin();
+    if (!canUse) return;
+    final available = await BiometricService.isAvailable();
+    if (!available) return;
+    final label = await BiometricService.label();
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = true;
+        _biometricLabel = label;
+      });
+    }
+  }
+
+  void _navigateByRole(Map<String, dynamic> user) {
+    final role = user['role'] as String?;
+    FirebaseMessagingService.saveTokenAfterLogin();
+    if (role == 'sales') {
+      Navigator.pushReplacementNamed(context, '/courses');
+    } else if (role == 'manager') {
+      Navigator.pushReplacementNamed(context, '/manager-training');
+    } else {
+      setState(() {
+        _error = 'Access denied. This app is only available for Sales and Manager roles.';
+      });
+      AuthService.logout();
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    setState(() => _error = '');
+    final ok = await BiometricService.authenticate(
+      reason: 'Sign in to Miller Storm with $_biometricLabel',
+    );
+    if (!ok) return;
+    final user = await AuthService.restoreSession();
+    if (!mounted) return;
+    if (user == null) {
+      setState(() => _error = 'Session expired. Please sign in with your password.');
+      return;
+    }
+    _navigateByRole(user);
   }
 
   @override
@@ -41,24 +92,13 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text.trim(),
       );
       if (!mounted) return;
-      
-      // Check role and navigate accordingly
+
       final role = user['role'] as String?;
-      
-      // Save FCM token now that user is logged in
-      FirebaseMessagingService.saveTokenAfterLogin();
-      
-      if (role == 'sales') {
-        Navigator.pushReplacementNamed(context, '/courses');
-      } else if (role == 'manager') {
-        Navigator.pushReplacementNamed(context, '/manager-training');
-      } else {
-        // Block admin, marketing, and other roles
-        setState(() { 
-          _error = 'Access denied. This app is only available for Sales and Manager roles.';
-        });
-        await AuthService.logout();
+      // Enable Face ID for next time only for the roles allowed into the app.
+      if (role == 'sales' || role == 'manager') {
+        await AuthService.enableBiometricLogin();
       }
+      _navigateByRole(user);
     } catch (e) {
       setState(() { _error = e.toString().replaceFirst('Exception: ', ''); });
     } finally {
@@ -208,6 +248,31 @@ class _LoginScreenState extends State<LoginScreen> {
                                   : const Text('Sign In', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                             ),
                           ),
+                          // Face ID / biometric login — only shown when the user
+                          // has previously signed in on this device.
+                          if (_biometricAvailable) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 44,
+                              child: OutlinedButton.icon(
+                                onPressed: _isLoading ? null : _handleBiometricLogin,
+                                icon: Icon(
+                                  _biometricLabel == 'Face ID' ? Icons.face : Icons.fingerprint,
+                                  size: 20,
+                                  color: const Color(0xFFCB0002),
+                                ),
+                                label: Text(
+                                  'Login with $_biometricLabel',
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFFCB0002)),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFFCB0002)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => Navigator.pushNamed(context, '/register'),
