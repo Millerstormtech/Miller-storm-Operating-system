@@ -13,6 +13,7 @@ import { RepCardUserModel } from "../../src/lib/models/RepCardUser";
 import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
 import { normEmail, normName, normPhone } from "../../src/lib/leaderboard/identity";
 import { officeToBranch } from "../../src/lib/repcard/branches";
+import { resolveTeam } from "../../src/lib/repcard/org-chart";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -162,7 +163,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // RepCard user directory -> Branch + Team. Every board row is a RepCard rep
   // (id = `rc:<repcardUserId>`), so this resolves branch/team for everyone: the
   // office folds into one of the 3 real branches, and team is RepCard's own team.
-  const rcUsers = await RepCardUserModel.find({}).select("repcardUserId office team").lean();
+  const rcUsers = await RepCardUserModel.find({}).select("repcardUserId name office team").lean();
   const rcById = new Map<string, any>();
   for (const u of rcUsers) rcById.set(String((u as any).repcardUserId), u);
 
@@ -174,7 +175,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rcId = m.id.startsWith("rc:") ? m.id.slice(3) : "";
     const rcu = rcId ? rcById.get(rcId) : null;
     const branch = officeToBranch(rcu?.office);
-    const team = rcu?.team || null;
+    // Team from the official org chart (by name), RepCard's team as fallback.
+    const team = resolveTeam(rcu?.name || m.name, rcu?.team) || null;
     return {
       rank: i + 1, id: m.id, name: m.name, branch,
       verifiedKnocks: m.verifiedKnocks, filed: m.filed, won: m.won, revenue: m.revenue,

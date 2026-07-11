@@ -7,19 +7,20 @@
 // "Commercial" is a division, not a branch -> unmapped (""), so it never shows.
 
 export const BRANCHES = ["Fort Worth", "Dallas", "West Texas"] as const;
-export type Branch = (typeof BRANCHES)[number] | "";
 
-// Fixed display/sort order for the three branches.
+// Fixed display/sort order. Commercial is not a real branch, but if a Commercial
+// rep ever appears on the board we label it rather than leaving it blank.
 export const BRANCH_ORDER: Record<string, number> = {
   "Fort Worth": 0,
   Dallas: 1,
   "West Texas": 2,
+  Commercial: 3,
 };
 
-// Map any office / location string to one of the three branches, or "" if it
-// doesn't belong to a branch (Commercial, unknown). Keyword-based so new West
-// Texas offices (e.g. a future Midland or Odessa office) map automatically.
-export function officeToBranch(office?: string | null): Branch {
+// Map any office / location string to one of the three branches (or "Commercial"
+// for the commercial division). Keyword-based so new West Texas offices (e.g. a
+// future Midland or Odessa office) map automatically. "" only for truly unknown.
+export function officeToBranch(office?: string | null): string {
   const s = (office || "").toLowerCase();
   if (!s) return "";
   if (s.includes("fort worth")) return "Fort Worth";
@@ -27,5 +28,6 @@ export function officeToBranch(office?: string | null): Branch {
   if (/west texas|lubbock|round\s*rock|levelland|corpus|midland|odessa|amarillo|abilene|san angelo/.test(s)) {
     return "West Texas";
   }
-  return ""; // Commercial and anything unrecognized -> no branch
+  if (s.includes("commercial")) return "Commercial";
+  return ""; // truly unrecognized -> no branch
 }
