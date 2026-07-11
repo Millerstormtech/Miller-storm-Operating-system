@@ -47,12 +47,14 @@ export default async function handler(
     if (summaryMode) {
       courseQuery.select('-pages -quizQuestions -links');
     } else if (listMode) {
-      // List mode only needs light page metadata (id/title/status/isQuiz/…), so
-      // exclude the heavy per-page content at the DB level. This keeps the query
-      // and payload small — previously the full HTML body/transcript/quiz for
-      // EVERY page of EVERY course was loaded just to be stripped in JS, which
-      // made the mobile course list slow and prone to timeouts.
-      courseQuery.select('-pages.body -pages.transcript -pages.quizQuestions -pages.resourceLinks -pages.fileUrls -pages.pinnedCommunityPostUrl -quizQuestions -links');
+      // List mode powers the mobile course grid, which only shows title/cover/
+      // progress% and NEVER reads the pages array. Use a POSITIVE projection so
+      // mongod hydrates only the handful of fields we need — just enough page
+      // metadata (status/isQuiz) to count published lessons for progress% — and
+      // drops every heavy per-page field. Previously the light metadata for
+      // EVERY page of EVERY course was still shipped, pushing the response past
+      // 4MB (courses have 80+ pages each) and causing mobile timeouts.
+      courseQuery.select('id title description icon coverImageUrl order status accessMode folders.id folders.status pages.id pages.status pages.isQuiz pages.folderId');
     }
     const courses = await courseQuery.lean();
     console.log('📚 Total courses in DB:', courses.length);
@@ -138,19 +140,11 @@ export default async function handler(
       ).length;
       const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
 
-      // In list mode keep only light page metadata (drop heavy content fields
-      // that bloat the payload and slow the mobile list).
-      const pagesOut = listMode
-        ? publishedPages.map((p: any) => ({
-            id: p.id,
-            title: p.title,
-            status: p.status,
-            folderId: p.folderId,
-            isQuiz: p.isQuiz,
-            videoUrl: p.videoUrl,
-            questionsToShow: p.questionsToShow,
-          }))
-        : publishedPages;
+      // The mobile course grid never reads the pages array — it only shows
+      // title/cover/progress%. So drop pages entirely from the list payload
+      // (progress is already computed above). This is what keeps the response
+      // small; shipping every page's metadata pushed it past Next's 4MB limit.
+      const pagesOut = listMode ? [] : publishedPages;
 
       return {
         ...course,

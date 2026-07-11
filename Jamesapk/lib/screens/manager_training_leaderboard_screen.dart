@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 
@@ -45,16 +46,71 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
     _init();
   }
 
+  // Per-course + team/company scoped cache key so switching the toggle shows the
+  // right cached board.
+  String _lbCacheKey(dynamic course) =>
+      'mgr_lb_${course?['id']}_${_showTeamOnly ? 'team' : 'company'}';
+
   Future<void> _init() async {
     final user = await AuthService.getStoredUser();
-    setState(() {
-      _currentUserId = user?['id'] ?? user?['_id'] ?? '';
-      _managerId = _currentUserId; // Managers see their own team
-    });
+    if (mounted) {
+      setState(() {
+        _currentUserId = user?['id'] ?? user?['_id'] ?? '';
+        _managerId = _currentUserId; // Managers see their own team
+      });
+    }
+    // Cache-first: fill the picker + last-known board instantly from local
+    // storage, then refresh from the network so the page never hangs on a spinner.
+    final hadCache = await _loadCachedCourses();
     await Future.wait([
-      _fetchCourses(),
+      _fetchCourses(triggerLeaderboard: !hadCache),
       _fetchPlaylists(),
     ]);
+  }
+
+  // Reuse the course list already cached by the Courses screen ('courses_cache').
+  Future<bool> _loadCachedCourses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('courses_cache');
+      if (cachedJson == null) return false;
+      final data = jsonDecode(cachedJson);
+      final List<dynamic> all = data is List ? data : [];
+      final published = all.where((c) => c['status'] == 'published').toList();
+      if (published.isEmpty) return false;
+      if (mounted) {
+        setState(() {
+          _courses = published;
+          _selectedCourse ??= published[0];
+          _isLoadingCourses = false;
+        });
+      }
+      if (_viewType == 'courses' && _selectedCourse != null) {
+        await _loadCachedLeaderboard(_selectedCourse);
+        _fetchLeaderboard(course: _selectedCourse);
+      }
+      return true;
+    } catch (e) {
+      print('Error loading cached courses: $e');
+      return false;
+    }
+  }
+
+  Future<void> _loadCachedLeaderboard(dynamic course) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_lbCacheKey(course));
+      if (cachedJson == null) return;
+      final List<dynamic> rows = jsonDecode(cachedJson);
+      if (mounted) {
+        setState(() {
+          _leaderboardRows = rows.cast<Map<String, dynamic>>();
+          _isLoadingLeaderboard = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading cached leaderboard: $e');
+    }
   }
 
   Future<void> _fetchPlaylists() async {
@@ -75,37 +131,40 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
     }
   }
 
-  Future<void> _fetchCourses() async {
+  Future<void> _fetchCourses({bool triggerLeaderboard = true}) async {
     try {
       // summary=true → only course id/title/status (no heavy page content); the
       // leaderboard rows come from the optimized /api/leaderboard endpoint.
-      final response = await api.get(Uri.parse('https://millerstorm.tech/api/courses?summary=true'));
+      final response = await api
+          .get(Uri.parse('https://millerstorm.tech/api/courses?summary=true'))
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final published = data.where((c) => c['status'] == 'published').toList();
-        
+
         setState(() {
           _courses = published;
-          if (published.isNotEmpty) {
+          if (_selectedCourse == null && published.isNotEmpty) {
             _selectedCourse = published[0];
           }
           _isLoadingCourses = false;
         });
 
-        if (_viewType == 'courses' && _selectedCourse != null) {
+        // Only fetch here when the cache path didn't already (no duplicate call).
+        if (triggerLeaderboard && _viewType == 'courses' && _selectedCourse != null) {
           _fetchLeaderboard(course: _selectedCourse);
         }
       }
     } catch (e) {
       print('Error fetching courses: $e');
-      setState(() => _isLoadingCourses = false);
+      if (mounted) setState(() => _isLoadingCourses = false);
     }
   }
 
   Future<void> _fetchLeaderboard({dynamic course, dynamic playlist}) async {
     setState(() {
-      _isLoadingLeaderboard = true;
-      _leaderboardRows = [];
+      // Keep any cached rows visible for course mode; only spin when empty.
+      _isLoadingLeaderboard = _leaderboardRows.isEmpty;
     });
 
     try {
@@ -202,12 +261,13 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
         ? 'https://millerstorm.tech/api/leaderboard?courseId=${course['id']}&managerId=$_managerId'
         : 'https://millerstorm.tech/api/leaderboard?courseId=${course['id']}';
 
-      final leaderboardResponse = await api.get(Uri.parse(url));
-      
+      final leaderboardResponse =
+          await api.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+
       if (leaderboardResponse.statusCode == 200) {
         final data = jsonDecode(leaderboardResponse.body);
         final List<dynamic> rows = data['rows'] ?? [];
-        
+
         final List<Map<String, dynamic>> builtRows = rows.map((row) {
           return {
             'id': row['id'],
@@ -220,14 +280,24 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
           };
         }).toList();
 
-        setState(() {
-          _leaderboardRows = builtRows;
-          _isLoadingLeaderboard = false;
-        });
+        // Persist so the next open shows this course's board instantly.
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_lbCacheKey(course), jsonEncode(builtRows));
+        } catch (_) {}
+
+        if (mounted) {
+          setState(() {
+            _leaderboardRows = builtRows;
+            _isLoadingLeaderboard = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoadingLeaderboard = false);
       }
     } catch (e) {
       print('Error building leaderboard: $e');
-      setState(() => _isLoadingLeaderboard = false);
+      if (mounted) setState(() => _isLoadingLeaderboard = false);
     }
   }
 
@@ -287,8 +357,12 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                     setState(() {
                       _viewType = 'courses';
                       _showTeamOnly = true;
+                      _leaderboardRows = [];
                     });
-                    if (_selectedCourse != null) _fetchLeaderboard(course: _selectedCourse);
+                    if (_selectedCourse != null) {
+                      _loadCachedLeaderboard(_selectedCourse);
+                      _fetchLeaderboard(course: _selectedCourse);
+                    }
                   }
                 },
               ),
@@ -302,6 +376,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                     setState(() {
                       _viewType = 'playlists';
                       _showTeamOnly = true;
+                      _leaderboardRows = [];
                     });
                     if (_selectedPlaylist != null) {
                       _fetchLeaderboard(playlist: _selectedPlaylist);
@@ -497,8 +572,12 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                       ),
                       trailing: isSelected ? const Icon(Icons.check, color: _primary) : null,
                       onTap: () {
-                        setState(() => _selectedCourse = course);
+                        setState(() {
+                          _selectedCourse = course;
+                          _leaderboardRows = []; // drop previous course's rows
+                        });
                         Navigator.pop(context);
+                        _loadCachedLeaderboard(course); // instant cached board
                         _fetchLeaderboard(course: course);
                       },
                     );
@@ -530,7 +609,11 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                 isActive: _showTeamOnly,
                 onTap: () {
                   if (!_showTeamOnly) {
-                    setState(() => _showTeamOnly = true);
+                    setState(() {
+                      _showTeamOnly = true;
+                      _leaderboardRows = [];
+                    });
+                    _loadCachedLeaderboard(_selectedCourse);
                     _fetchLeaderboard(course: _selectedCourse);
                   }
                 },
@@ -542,7 +625,11 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                 isActive: !_showTeamOnly,
                 onTap: () {
                   if (_showTeamOnly) {
-                    setState(() => _showTeamOnly = false);
+                    setState(() {
+                      _showTeamOnly = false;
+                      _leaderboardRows = [];
+                    });
+                    _loadCachedLeaderboard(_selectedCourse);
                     _fetchLeaderboard(course: _selectedCourse);
                   }
                 },

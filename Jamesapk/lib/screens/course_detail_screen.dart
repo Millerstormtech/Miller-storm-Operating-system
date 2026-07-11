@@ -36,6 +36,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   Map<String, dynamic>? _course;
   bool _isLoading = true;
+  bool _loadError = false;
   int _completedLessons = 0;
   int _totalLessons = 0;
   int _progressPercent = 0;
@@ -104,55 +105,76 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   Future<void> _fetchCourseDetail() async {
-    try {
-      final user = await AuthService.getStoredUser();
-      final userId = user?['id'] ?? '';
-      
-      print('🔵 Fetching course detail: ${widget.courseId}');
-      
-      // list=1 → light payload (lesson titles/status/videoUrl only; the lesson
-      // player fetches full content per lesson). The response now also carries
-      // completed/unlocked/quiz progress, so this is a SINGLE fast round-trip
-      // instead of a heavy course fetch + a second /api/progress call.
-      final response = await api
-          .get(Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId&list=1'))
-          .timeout(const Duration(seconds: 20));
+    final user = await AuthService.getStoredUser();
+    final userId = user?['id'] ?? '';
 
-      print('🔵 Course detail response: ${response.statusCode}');
+    if (mounted && _course == null) {
+      setState(() {
+        _isLoading = true;
+        _loadError = false;
+      });
+    }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+    // Retry a few times: the server occasionally times out / is briefly slow, and
+    // a single failed request left the lessons list silently empty. On total
+    // failure we surface a "couldn't load — retry" state instead of a blank page.
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        print('🔵 Fetching course detail: ${widget.courseId} (attempt ${attempt + 1})');
 
-        // Progress arrays come from the same response now.
-        final completedIds =
-            (data['completedPages'] as List<dynamic>? ?? []).map((p) => p.toString()).toSet();
-        final unlockedIds =
-            (data['unlockedPages'] as List<dynamic>? ?? []).map((p) => p.toString()).toSet();
-        final quizResults = data['quizResults'] as List<dynamic>? ?? [];
+        // list=1 → light payload (lesson titles/status/videoUrl only; the lesson
+        // player fetches full content per lesson).
+        final response = await api
+            .get(Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId&list=1'))
+            .timeout(const Duration(seconds: 15));
 
-        setState(() {
-          _course = data;
-          _completedLessons = data['progress']?['completedLessons'] ?? completedIds.length;
-          _totalLessons = data['progress']?['totalLessons'] ?? 0;
-          _progressPercent = data['progress']?['progressPercent'] ?? 0;
-          _completedPageIds = completedIds;
-          _unlockedPageIds = unlockedIds;
-          _quizResults = quizResults;
-          _isLoading = false;
-        });
-        print('✅ Course loaded: ${data['title']}');
-        print('📊 Progress: $_completedLessons/$_totalLessons ($_progressPercent%)');
-        print('✅ Completed IDs: $_completedPageIds');
-        _maybeAutoOpenLesson();
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
+        print('🔵 Course detail response: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+
+          final completedIds =
+              (data['completedPages'] as List<dynamic>? ?? []).map((p) => p.toString()).toSet();
+          final unlockedIds =
+              (data['unlockedPages'] as List<dynamic>? ?? []).map((p) => p.toString()).toSet();
+          final quizResults = data['quizResults'] as List<dynamic>? ?? [];
+
+          if (mounted) {
+            setState(() {
+              _course = data;
+              _completedLessons = data['progress']?['completedLessons'] ?? completedIds.length;
+              _totalLessons = data['progress']?['totalLessons'] ?? 0;
+              _progressPercent = data['progress']?['progressPercent'] ?? 0;
+              _completedPageIds = completedIds;
+              _unlockedPageIds = unlockedIds;
+              _quizResults = quizResults;
+              _isLoading = false;
+              _loadError = false;
+            });
+          }
+          print('✅ Course loaded: ${data['title']} — $_completedLessons/$_totalLessons');
+          _maybeAutoOpenLesson();
+          return; // success
+        }
+        // Non-200: retry unless it was the last attempt.
+        if (attempt < 2) {
+          await Future.delayed(Duration(milliseconds: 700 * (attempt + 1)));
+          continue;
+        }
+      } catch (e) {
+        print('❌ Error fetching course detail (attempt ${attempt + 1}): $e');
+        if (attempt < 2) {
+          await Future.delayed(Duration(milliseconds: 700 * (attempt + 1)));
+          continue;
+        }
       }
-    } catch (e) {
-      print('❌ Error fetching course detail: $e');
+    }
+
+    // All attempts failed — show a retry state rather than an empty lessons list.
+    if (mounted) {
       setState(() {
         _isLoading = false;
+        _loadError = _course == null;
       });
     }
   }
@@ -182,6 +204,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
+          : (_loadError && _course == null)
+          ? _buildLoadError()
           : SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               child: Column(
@@ -392,6 +416,46 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     if (total <= 0) return false;
     final correct = (score?['correct'] ?? 0) as num;
     return correct / total >= 0.6;
+  }
+
+  Widget _buildLoadError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off, size: 56, color: _textLight),
+            const SizedBox(height: 16),
+            const Text(
+              "Couldn't load this course",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'The server took too long to respond. Check your connection and try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: _textLight),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() => _isLoading = true);
+                _fetchCourseDetail();
+              },
+              icon: const Icon(Icons.refresh, size: 18),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              ),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildCourseContent() {
