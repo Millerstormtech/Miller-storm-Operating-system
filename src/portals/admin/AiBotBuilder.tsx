@@ -1657,7 +1657,10 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
   const { saved, flash } = useSaved();
 
   useEffect(() => {
-    fetch("/api/courses").then(r => r.ok ? r.json() : []).then(data => {
+    // list=1 strips heavy per-page content (HTML body/transcript/quiz) at the DB
+    // level — this picker only needs course/lesson ids + titles, so the full
+    // payload made it load slowly for no reason.
+    fetch("/api/courses?list=1").then(r => r.ok ? r.json() : []).then(data => {
       setCourses(data); setLoading(false);
     });
   }, []);

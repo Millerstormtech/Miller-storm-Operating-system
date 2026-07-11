@@ -23,8 +23,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // If courseId is provided, return course leaderboard
   if (courseId) {
-    // Fetch course
-    const course = await CourseModel.findOne({ id: courseId }).lean();
+    // Fetch course — strip heavy per-page content (HTML body/transcript/quiz)
+    // at the DB level. The leaderboard only needs page metadata (id/status/
+    // isQuiz/folderId) to count published lessons, so loading the full course
+    // doc for every request made this endpoint slow on mobile.
+    const course = await CourseModel.findOne({ id: courseId })
+      .select("-pages.body -pages.transcript -pages.quizQuestions -pages.resourceLinks -pages.fileUrls -pages.pinnedCommunityPostUrl -quizQuestions -links")
+      .lean();
     if (!course) {
       return res.status(404).json({ error: "Course not found" });
     }
@@ -46,14 +51,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       usersQuery.role = "sales";
     }
 
-    const users = await UserModel.find(usersQuery).lean();
+    const users = await UserModel.find(usersQuery)
+      .select("id name email role roles headshotUrl")
+      .lean();
 
-    // Fetch all progress for these users and this course
+    // Fetch all progress for these users and this course. Only completedPages is
+    // needed to score — skip quizResults/answers so the payload stays small.
     const userIds = users.map(u => u.id);
     const progressRecords = await UserProgressModel.find({
       userId: { $in: userIds },
       courseId: courseId
-    }).lean();
+    }).select("userId completedPages").lean();
 
     // Create progress map
     const progressMap = new Map();
