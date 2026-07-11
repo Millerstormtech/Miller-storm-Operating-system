@@ -43,6 +43,20 @@ function norm(s?: string | null): string {
   return (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
 }
 
+// Which branch each team belongs to. Team is the org-chart source of truth, so
+// the leaderboard's Branch follows the team's branch whenever a team is known
+// (RepCard office is only the fallback for reps with no team).
+export const TEAM_BRANCH: Record<string, string> = {
+  Gunner: "Fort Worth",
+  Luke: "Fort Worth",
+  Jonathan: "Fort Worth",
+  "Mike Muscari": "Dallas",
+  Cooper: "Dallas",
+  "Daniel Sabedra": "West Texas",
+  "Brighton Jenkins": "West Texas",
+  Commercial: "Commercial",
+};
+
 const NAME_TO_TEAM = new Map<string, string>();
 for (const [team, members] of Object.entries(ORG_TEAMS)) {
   for (const m of members) NAME_TO_TEAM.set(norm(m), team);
