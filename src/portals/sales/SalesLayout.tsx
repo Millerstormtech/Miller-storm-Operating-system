@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import { useState } from "react";
 import { Layout } from "../../components/Layout";
 import { SalesSidebar } from "../../components/SalesSidebar";
 import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
+import { useFeatureGate } from "../../hooks/useFeatureGate";
 
 type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "ai-bot-builder" | "task-tracker" | "rankings" | "team-structure" | "storm-chat";
 
@@ -16,9 +16,7 @@ type SalesLayoutProps = {
 
 export function SalesLayout({ children, currentView, userName, userId }: SalesLayoutProps) {
   const { user, logout } = useAuth();
-  const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [allowed, setAllowed] = useState(true);
 
   // Map page view IDs to featureToggle keys
   const viewToToggleKey: Record<string, string> = {
@@ -33,19 +31,7 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
     "storm-chat": "stormChat",
   };
 
-  useEffect(() => {
-    if (!user?.id) return;
-    const toggleKey = viewToToggleKey[currentView];
-    if (!toggleKey) return;
-    fetch(`/api/users/${user.id}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.featureToggles?.[toggleKey] === false) {
-          setAllowed(false);
-          router.replace("/sales/dashboard");
-        }
-      }).catch(() => {});
-  }, [user?.id, currentView]);
+  const allowed = useFeatureGate(user?.id, currentView, viewToToggleKey, "/sales/dashboard");
 
   return (
     <Layout
