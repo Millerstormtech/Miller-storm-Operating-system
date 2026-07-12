@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!allowMethods(req, res, ["GET", "POST"])) return;
 
   // Only managers, admins, or C-Level execs may unlock content for someone else.
-  const auth = requireRole(req, res, ["manager", "admin", "c-level"]);
+  const auth = requireRole(req, res, ["manager", "admin", "c-level", "branch-manager"]);
   if (!auth) return;
 
   await connectMongo();

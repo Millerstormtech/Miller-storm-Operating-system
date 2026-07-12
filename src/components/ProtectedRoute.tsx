@@ -4,7 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
-  allowedRoles: ("admin" | "manager" | "sales" | "marketing" | "c-level")[];
+  allowedRoles: ("admin" | "manager" | "sales" | "marketing" | "c-level" | "branch-manager")[];
 };
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
@@ -19,6 +19,8 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         router.push("/admin/dashboard");
       } else if (user.role === "c-level") {
         router.push("/c-level/dashboard");
+      } else if (user.role === "branch-manager") {
+        router.push("/branch-manager/dashboard");
       } else if (user.role === "manager") {
         router.push("/manager/dashboard");
       } else if (user.role === "sales") {

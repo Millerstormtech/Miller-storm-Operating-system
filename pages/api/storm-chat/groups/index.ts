@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to fetch groups' });
     }
   } else if (req.method === 'POST') {
-    const auth = requireRole(req, res, ['admin', 'manager', 'c-level']);
+    const auth = requireRole(req, res, ['admin', 'manager', 'c-level', 'branch-manager']);
     if (!auth) return;
     try {
       const { name, description, imageUrl, members, admins, onlyAdminCanChat, parentGroupId } = req.body;

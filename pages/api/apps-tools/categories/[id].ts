@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { id } = req.query;
 
   if (req.method === 'PUT') {
-    if (!requireRole(req, res, ['admin', 'c-level'])) return;
+    if (!requireRole(req, res, ['admin', 'c-level', 'branch-manager'])) return;
     try {
       const { name, status } = req.body;
       
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to update category' });
     }
   } else if (req.method === 'DELETE') {
-    if (!requireRole(req, res, ['admin', 'c-level'])) return;
+    if (!requireRole(req, res, ['admin', 'c-level', 'branch-manager'])) return;
     try {
       const category = await AppToolCategory.findByIdAndDelete(id);
 

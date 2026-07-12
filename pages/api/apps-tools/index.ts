@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
-    if (!requireRole(req, res, ['admin', 'c-level'])) return;
+    if (!requireRole(req, res, ['admin', 'c-level', 'branch-manager'])) return;
     try {
       const { title, imageUrl, imageWidth, imageHeight, description, link, webLink, appStoreLink, playStoreLink, category } = req.body;
 

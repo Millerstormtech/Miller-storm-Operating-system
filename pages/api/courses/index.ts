@@ -63,7 +63,7 @@ export default async function handler(
     // Sales/Managers go through the published + access-mode filter below.
     // C-Level execs see the whole company's courses (like admins) — they run the
     // training center company-wide (assign playlists / unlock lessons for anyone).
-    if (!userId || !userRole || userRole === 'admin' || userRole === 'c-level') {
+    if (!userId || !userRole || userRole === 'admin' || userRole === 'c-level' || userRole === 'branch-manager') {
       console.log('📚 Admin/no-context request — returning all courses (incl. drafts)');
       res.status(200).json(courses);
       return;

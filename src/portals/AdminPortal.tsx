@@ -415,7 +415,8 @@ function UserManagement(props: UserEditorProps) {
       "socialMetrics"
     ],
     // C-Level has a fixed feature set (no per-user toggles).
-    "c-level": []
+    "c-level": [],
+    "branch-manager": []
   };
 
   const featureToggleLabels: Record<string, string> = {
@@ -467,6 +468,7 @@ function UserManagement(props: UserEditorProps) {
   const roleLabels: Record<UserRole, string> = {
     admin: "Admin Panel",
     "c-level": "C-Level Panel",
+    "branch-manager": "Branch Manager Panel",
     manager: "Manager Panel",
     sales: "Sales Panel",
     marketing: "Marketing Panel"

@@ -11,7 +11,7 @@ type User = {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "manager" | "sales" | "marketing" | "c-level";
+  role: "admin" | "manager" | "sales" | "marketing" | "c-level" | "branch-manager";
   managerId?: string;
 };
 
@@ -77,6 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push("/admin/social-media-metrics");
     } else if (user.role === "c-level") {
       router.push("/c-level/dashboard");
+    } else if (user.role === "branch-manager") {
+      router.push("/branch-manager/dashboard");
     } else if (user.role === "manager") {
       router.push("/manager/dashboard");
     } else if (user.role === "sales") {
