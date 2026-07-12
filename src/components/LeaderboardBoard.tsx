@@ -105,25 +105,14 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {WINDOWS.map((w) => (
-          <button
-            key={w.key}
-            onClick={() => setWindow(w.key)}
-            style={{
-              padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontWeight: 600,
-              border: "1px solid " + (window === w.key ? "#2563eb" : "#d1d5db"),
-              background: window === w.key ? "#2563eb" : "#fff",
-              color: window === w.key ? "#fff" : "#374151",
-            }}
-          >
-            {w.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Filters */}
+      {/* Filters — Period, Branch, Team all as matching dropdowns. */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
+          Period
+          <select value={window} onChange={(e) => setWindow(e.target.value as Window)} style={selectStyle}>
+            {WINDOWS.map((w) => <option key={w.key} value={w.key}>{w.label}</option>)}
+          </select>
+        </label>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
           Branch
           <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} style={selectStyle}>
