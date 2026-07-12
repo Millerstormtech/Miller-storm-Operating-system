@@ -2729,8 +2729,45 @@ function UnlockLessonPanel(props: {
   const [toast, setToast] = useState<string | null>(null);
   // Filter lessons/quizzes by name so managers don't have to scroll long lists.
   const [search, setSearch] = useState('');
+  // Whether the selected member may fast-forward videos (+ in-flight guard).
+  const [fastForward, setFastForward] = useState(false);
+  const [ffBusy, setFfBusy] = useState(false);
 
   const selectedMember = props.teamUsers.find(u => u.id === selectedMemberId) || null;
+
+  // Load the member's fast-forward grant when one is selected.
+  useEffect(() => {
+    if (!selectedMemberId) { setFastForward(false); return; }
+    let active = true;
+    fetch(`/api/manager/allow-fast-forward?memberUserId=${encodeURIComponent(selectedMemberId)}`)
+      .then(r => r.ok ? r.json() : { fastForwardAllowed: false })
+      .then(d => { if (active) setFastForward(!!d.fastForwardAllowed); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [selectedMemberId]);
+
+  const toggleFastForward = async () => {
+    if (!selectedMemberId || ffBusy) return;
+    const next = !fastForward;
+    setFfBusy(true);
+    setFastForward(next); // optimistic
+    try {
+      const res = await fetch('/api/manager/allow-fast-forward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberUserId: selectedMemberId, allowed: next }),
+      });
+      if (!res.ok) throw new Error('failed');
+      const d = await res.json();
+      setFastForward(!!d.fastForwardAllowed);
+      setToast(next ? 'Fast-forward enabled for this rep' : 'Fast-forward disabled for this rep');
+    } catch {
+      setFastForward(!next); // revert
+      setToast('Could not update fast-forward');
+    } finally {
+      setFfBusy(false);
+    }
+  };
 
   // Load the member's progress across all courses when one is selected.
   useEffect(() => {
@@ -2896,14 +2933,39 @@ function UnlockLessonPanel(props: {
           <button type="button" onClick={() => setSelectedMemberId(null)} style={{ background: 'transparent', border: 'none', color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>← Team members</button>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginTop: 4 }}>{selectedMember.name}</div>
         </div>
-        <button
-          type="button"
-          disabled={busy || selected.size === 0}
-          onClick={doUnlock}
-          style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: (busy || selected.size === 0) ? 'default' : 'pointer', background: (busy || selected.size === 0) ? '#9ca3af' : '#2563eb', color: '#fff' }}
-        >
-          {busy ? 'Unlocking…' : `🔓 Unlock selected${selected.size ? ` (${selected.size})` : ''}`}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Allow this rep to fast-forward / freely seek training videos. */}
+          <button
+            type="button"
+            onClick={toggleFastForward}
+            disabled={ffBusy}
+            title="Let this rep skip/scrub freely in training videos"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 8,
+              border: '1px solid ' + (fastForward ? '#16a34a' : '#d1d5db'), cursor: ffBusy ? 'default' : 'pointer',
+              background: fastForward ? '#ecfdf5' : '#fff', color: fastForward ? '#166534' : '#374151',
+              fontSize: 13, fontWeight: 700,
+            }}
+          >
+            <span
+              style={{
+                width: 34, height: 18, borderRadius: 999, position: 'relative', flexShrink: 0,
+                background: fastForward ? '#16a34a' : '#cbd5e1', transition: 'background 0.15s',
+              }}
+            >
+              <span style={{ position: 'absolute', top: 2, left: fastForward ? 18 : 2, width: 14, height: 14, borderRadius: 999, background: '#fff', transition: 'left 0.15s' }} />
+            </span>
+            ⏩ Fast-forward
+          </button>
+          <button
+            type="button"
+            disabled={busy || selected.size === 0}
+            onClick={doUnlock}
+            style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: (busy || selected.size === 0) ? 'default' : 'pointer', background: (busy || selected.size === 0) ? '#9ca3af' : '#2563eb', color: '#fff' }}
+          >
+            {busy ? 'Unlocking…' : `🔓 Unlock selected${selected.size ? ` (${selected.size})` : ''}`}
+          </button>
+        </div>
       </div>
 
       <div style={{ position: 'relative', marginBottom: 16 }}>

@@ -329,9 +329,16 @@ export async function initVideoSequence(
   autoPlayRef: { current: boolean },
   shouldAutoStartFirst = false,
   isAlreadyCompleted = false,
-  onSeekBlocked?: () => void
+  onSeekBlocked?: () => void,
+  // When true (rep granted fast-forward by a manager/admin/C-Level), seeking is
+  // NOT clamped to the watched point — the viewer can scrub freely.
+  allowFastForward = false
 ): Promise<(() => void) | undefined> {
   if (typeof window === 'undefined') return;
+
+  // Seeking is clamped unless the video was already completed OR this viewer is
+  // allowed to fast-forward.
+  const skipSeekLock = isAlreadyCompleted || allowFastForward;
 
   // Notify the UI at most once every few seconds so a held-down fast-forward
   // (which fires many seek/timeupdate events) only surfaces one message.
@@ -450,7 +457,7 @@ export async function initVideoSequence(
         const vimeoEntry = entries[seqIdx] as Extract<Entry, { type: 'vimeo' }>;
         vimeoEntry.player = vp;
 
-        if (!isAlreadyCompleted) {
+        if (!skipSeekLock) {
           vp.on('timeupdate', (data: { seconds: number; duration?: number }) => {
             if (data.seconds > vimeoEntry.maxTimeWatched + 2) {
               vp.setCurrentTime(vimeoEntry.maxTimeWatched);
@@ -499,7 +506,7 @@ export async function initVideoSequence(
     e.video.setAttribute('webkit-playsinline', 'true');
     e.video.muted = false; // Keep audio on
     
-    if (!isAlreadyCompleted) {
+    if (!skipSeekLock) {
       let isSeeking = false;
       e.video.addEventListener('seeking', () => { isSeeking = true; });
       e.video.addEventListener('seeked', () => { isSeeking = false; });
@@ -562,7 +569,7 @@ export async function initVideoSequence(
             ytEntry.ready = true;
             ytEntry.player = player;
 
-            if (!isAlreadyCompleted) {
+            if (!skipSeekLock) {
               const interval = setInterval(() => {
                 if (player && player.getCurrentTime) {
                   const currentTime = player.getCurrentTime();

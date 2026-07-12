@@ -103,6 +103,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // Lesson a deep link (notification / pop-up) wants to open, pending a lock check.
   const pendingDeepLinkRef = useRef<string | null>(null);
   const [seekToast, setSeekToast] = useState<string | null>(null);
+  // Whether a manager/admin/C-Level has granted this rep free fast-forward. Kept
+  // in a ref too so the async video-init callback always reads the latest value.
+  const fastForwardRef = useRef(false);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
@@ -209,6 +212,15 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     pendingDeepLinkRef.current = lessonId || null;
     enterCourse(targetCourse, lessonId ?? (targetCourse.pages?.[0]?.id ?? null));
   }, [courses, router.query.courseId, router.query.lessonId]);
+  // Load this rep's fast-forward grant (set by a manager/admin/C-Level).
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch(`/api/users/${user.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(u => { fastForwardRef.current = !!u?.fastForwardAllowed; })
+      .catch(() => {});
+  }, [user?.id]);
+
   // Load playlists from database
   useEffect(() => {
     if (user?.id) {
@@ -472,7 +484,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         autoPlayRef,
         shouldAutoStart,
         isAlreadyCompleted,
-        () => setSeekToast("You are only able to fast forward if you already completed the video at least once before.")
+        () => setSeekToast("You are only able to fast forward if you already completed the video at least once before."),
+        fastForwardRef.current
       );
       videoCleanupRef.current = cleanup;
 

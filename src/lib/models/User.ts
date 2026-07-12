@@ -45,6 +45,10 @@ const userSchema = new Schema(
     role: { type: String, required: true },
     roles: [String],
     managerId: String,
+    // When true, this rep may fast-forward/seek freely in training videos
+    // (normally seeking past the watched point is blocked). Granted by a
+    // manager/admin/C-Level exec.
+    fastForwardAllowed: { type: Boolean, default: false },
     suspended: Boolean,
     deleted: { type: Boolean, default: false },
     deletedAt: Date,
