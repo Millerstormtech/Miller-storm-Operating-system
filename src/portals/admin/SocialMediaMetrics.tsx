@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import { SocialMediaCharts } from "../../components/SocialMediaCharts";
 
 type SocialMetric = {
@@ -192,7 +193,7 @@ export function SocialMediaMetrics() {
   }
 
   async function deleteCustomColumn(columnId: string) {
-    if (!window.confirm("Are you sure you want to delete this column? This will remove the data from all rows.")) {
+    if (!await appConfirm("Are you sure you want to delete this column? This will remove the data from all rows.")) {
       return;
     }
 
@@ -399,7 +400,7 @@ export function SocialMediaMetrics() {
   }
 
   async function deleteMetric(id: string) {
-    if (!window.confirm("Are you sure you want to delete this metric?")) {
+    if (!await appConfirm("Are you sure you want to delete this metric?")) {
       return;
     }
 

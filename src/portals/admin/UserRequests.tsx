@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
 
 type UserRequest = {
@@ -44,7 +45,7 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
   }
 
   async function handleApprove(request: UserRequest) {
-    if (!window.confirm(`Approve registration request for ${request.name}?`)) return;
+    if (!await appConfirm(`Approve registration request for ${request.name}?`)) return;
     setProcessing(true);
     try {
       const res = await fetch(`/api/user-requests/${request.id}`, {
@@ -121,7 +122,7 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
 
   async function handleDeleteSelected() {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Delete ${selectedIds.size} selected request(s) permanently?`)) return;
+    if (!await appConfirm(`Delete ${selectedIds.size} selected request(s) permanently?`)) return;
     setProcessing(true);
     try {
       const res = await fetch("/api/user-requests", {

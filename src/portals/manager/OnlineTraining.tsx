@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import { useRouter } from "next/router";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
@@ -231,42 +232,44 @@ export function ManagerOnlineTrainingPage(props: {
       // 1. Get all assignments for this playlist
       const assignmentsRes = await fetch(`/api/playlist-assignments?playlistId=${playlist.id}`);
       const assignments = await assignmentsRes.json();
-      
-      if (assignments.length === 0) {
+
+      if (!Array.isArray(assignments) || assignments.length === 0) {
         setPlaylistProgressData(prev => ({ ...prev, [playlist.id]: [] }));
         setIsLoadingPlaylistProgress(false);
         return;
       }
 
-      // 2. Get course info to know which modules are lessons
+      // 2. Course info (to score modules). May be missing (e.g. draft / not in
+      // this user's course list) — that must NOT hide the assigned users, so we
+      // still list them (with 0% progress) instead of bailing to an empty list.
       const course = publishedCourses.find(c => c.id === playlist.courseId);
-      if (!course) {
-        setPlaylistProgressData(prev => ({ ...prev, [playlist.id]: [] }));
-        setIsLoadingPlaylistProgress(false);
-        return;
-      }
-
       const totalModules = playlist.selectedModules.length;
 
-      // 3. For each assigned user, get their progress for this course
+      // 3. For each assigned user, list them with their progress (name always
+      // comes from the assignment record, so it shows even if the course/progress
+      // fetch fails).
       const progressPromises = assignments.map(async (assignment: any) => {
         const userId = assignment.assignedToUserId;
-        const progRes = await fetch(`/api/course-progress?userId=${userId}&courseIds=${playlist.courseId}`);
-        const progData = await progRes.json();
-        const courseProg = progData[playlist.courseId] || {};
-        
-        const quizResults = courseProg.quizResults || [];
-        const completedSet = new Set(courseProg.completedPages || []);
-        const completedCount = (playlist.selectedModules || []).filter((id: string) => {
-          const page = (course.pages || []).find((p: any) => p.id === id);
-          return page?.isQuiz
-            ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === id))
-            : completedSet.has(id);
-        }).length;
+        let completedCount = 0;
+        if (course) {
+          try {
+            const progRes = await fetch(`/api/course-progress?userId=${userId}&courseIds=${playlist.courseId}`);
+            const progData = await progRes.json();
+            const courseProg = progData[playlist.courseId] || {};
+            const quizResults = courseProg.quizResults || [];
+            const completedSet = new Set(courseProg.completedPages || []);
+            completedCount = (playlist.selectedModules || []).filter((id: string) => {
+              const page = (course.pages || []).find((p: any) => p.id === id);
+              return page?.isQuiz
+                ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === id))
+                : completedSet.has(id);
+            }).length;
+          } catch { /* keep 0 — still show the user */ }
+        }
         const pct = totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
-        
+
         return {
-          user: { id: userId, name: assignment.assignedToUserName },
+          user: { id: userId, name: assignment.assignedToUserName || assignment.assignedToUserId },
           completed: completedCount,
           total: totalModules,
           pct: pct
@@ -277,20 +280,19 @@ export function ManagerOnlineTrainingPage(props: {
       setPlaylistProgressData(prev => ({ ...prev, [playlist.id]: results }));
     } catch (err) {
       console.error('Failed to load playlist progress:', err);
+      setPlaylistProgressData(prev => ({ ...prev, [playlist.id]: [] }));
     } finally {
       setIsLoadingPlaylistProgress(false);
     }
   };
 
   useEffect(() => {
-    if (playlists.length > 0 && publishedCourses.length > 0) {
-      // Background load progress for all playlists
-      playlists.forEach(playlist => {
-        if (!playlistProgressData[playlist.id]) {
-          loadPlaylistProgress(playlist);
-        }
-      });
+    // Load once playlists exist — don't wait on courses (a missing course must not
+    // hide assigned users). Re-runs when courses arrive so progress% fills in.
+    if (playlists.length > 0) {
+      playlists.forEach(playlist => loadPlaylistProgress(playlist));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlists, publishedCourses]);
 
   // Load sales users under this manager
@@ -2455,7 +2457,7 @@ export function ManagerOnlineTrainingPage(props: {
                           type="button"
                           className="btn-ghost btn-danger playlist-action-btn"
                           onClick={async () => {
-                            if (confirm('Delete this playlist?')) {
+                            if (await appConfirm('Delete this playlist?')) {
                               try {
                                 const response = await fetch(`/api/playlists?id=${playlist._id || playlist.id}`, {
                                   method: 'DELETE',

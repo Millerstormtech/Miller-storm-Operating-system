@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
 import { StormChatRoom } from "./StormChatRoom";
 
@@ -348,7 +349,7 @@ export function StormChatManagement() {
   }
 
   async function deleteGroup(groupId: string) {
-    if (!confirm('Are you sure you want to delete this group?')) return;
+    if (!await appConfirm('Are you sure you want to delete this group?')) return;
 
     try {
       const response = await fetch(`/api/storm-chat/groups/${groupId}`, {

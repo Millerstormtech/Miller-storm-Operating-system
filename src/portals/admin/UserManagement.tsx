@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import { UserProfile, FeatureToggles } from "../../types";
 import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
@@ -909,7 +910,7 @@ export function UserManagement(props: UserEditorProps) {
                           type="button"
                           className="btn-secondary btn-success btn-small"
                           onClick={async () => {
-                            if (confirm(`Restore ${user.name}? They will be able to log in again.`)) {
+                            if (await appConfirm(`Restore ${user.name}? They will be able to log in again.`)) {
                               try {
                                 await fetch(`/api/users/${user.id}`, {
                                   method: 'PATCH',
@@ -941,7 +942,7 @@ export function UserManagement(props: UserEditorProps) {
                           type="button"
                           style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                           onClick={async () => {
-                            if (confirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
+                            if (await appConfirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
                               try {
                                 await fetch(`/api/users/${user.id}`, {
                                   method: 'PATCH',
@@ -1136,14 +1137,14 @@ export function UserManagement(props: UserEditorProps) {
                       animation: "fadeIn 0.3s"
                     }}>✓ {saveNotice}</span>
                   )}
-                  <button type="button" className="btn-secondary btn-warning btn-small" onClick={() => {
+                  <button type="button" className="btn-secondary btn-warning btn-small" onClick={async () => {
                     const action = selectedUser.suspended ? "Unsuspend" : "Suspend";
-                    if (window.confirm(`${action} ${selectedUser.name}?`)) {
+                    if (await appConfirm(`${action} ${selectedUser.name}?`)) {
                       updateUser({ ...selectedUser, suspended: !selectedUser.suspended });
                     }
                   }}>{selectedUser.suspended ? "Unsuspend User" : "Suspend User"}</button>
-                  <button type="button" className="btn-ghost btn-danger" onClick={() => {
-                    if (window.confirm(`Delete ${selectedUser.name}?`)) deleteUser(selectedUser.id);
+                  <button type="button" className="btn-ghost btn-danger" onClick={async () => {
+                    if (await appConfirm(`Delete ${selectedUser.name}?`)) deleteUser(selectedUser.id);
                   }}>Delete User</button>
                 </div>
               </div>

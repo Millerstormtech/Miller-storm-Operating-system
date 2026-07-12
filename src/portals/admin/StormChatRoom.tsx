@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
 
 type ChatMessage = {
@@ -86,7 +87,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   // Delete a message (text/photo/video). Server allows the sender always, and a
   // system admin in a group. Removes it from the list on success.
   async function deleteMessage(messageId: string) {
-    if (!window.confirm('Delete this message?')) return;
+    if (!await appConfirm('Delete this message?')) return;
     try {
       const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },

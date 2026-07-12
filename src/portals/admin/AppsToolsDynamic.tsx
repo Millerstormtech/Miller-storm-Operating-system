@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 
 type AppToolCategory = {
   _id: string;
@@ -237,7 +238,7 @@ export function AppsToolManagement() {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this category?')) return;
+    if (!await appConfirm('Are you sure you want to delete this category?')) return;
 
     try {
       const response = await fetch(`/api/apps-tools/categories/${id}`, {
@@ -377,7 +378,7 @@ export function AppsToolManagement() {
   }
 
   async function deleteItem(categorySlug: string, id: string) {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    if (!await appConfirm('Are you sure you want to delete this item?')) return;
 
     try {
       const response = await fetch(`/api/apps-tools/${id}`, {

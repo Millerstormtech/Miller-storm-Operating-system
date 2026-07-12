@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { appConfirm } from "../lib/appDialogs";
 import Image from "next/image";
 import { Layout } from "../components/Layout";
 import { Sidebar } from "../components/Sidebar";
@@ -747,8 +748,8 @@ function UserManagement(props: UserEditorProps) {
                   <button
                     type="button"
                     className="btn-secondary btn-warning btn-small"
-                    onClick={() => {
-                      if (window.confirm(`Suspend ${selectedUser.name}?`)) {
+                    onClick={async () => {
+                      if (await appConfirm(`Suspend ${selectedUser.name}?`)) {
                         updateUser({ ...selectedUser, suspended: true });
                       }
                     }}
@@ -758,8 +759,8 @@ function UserManagement(props: UserEditorProps) {
                   <button
                     type="button"
                     className="btn-ghost btn-danger"
-                    onClick={() => {
-                      if (window.confirm(`Delete ${selectedUser.name}?`)) {
+                    onClick={async () => {
+                      if (await appConfirm(`Delete ${selectedUser.name}?`)) {
                         deleteUser(selectedUser.id);
                       }
                     }}
@@ -1308,7 +1309,7 @@ function RoleHierarchyManager(props: {
     return chain;
   }
 
-  function moveUserToManager(userId: string, targetManagerId: string | null) {
+  async function moveUserToManager(userId: string, targetManagerId: string | null) {
     const user = props.users.find((u) => u.id === userId);
     if (!user) {
       return;
@@ -1371,7 +1372,7 @@ function RoleHierarchyManager(props: {
       "Do you want to continue?"
     ].join("\n");
 
-    const confirmed = window.confirm(message);
+    const confirmed = await appConfirm(message);
 
     if (!confirmed) {
       setPendingMove(null);

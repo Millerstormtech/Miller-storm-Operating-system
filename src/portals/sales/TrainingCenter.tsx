@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import { useRouter } from "next/router";
 import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
@@ -835,7 +836,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           type="button"
                           className="btn-ghost btn-danger playlist-action-btn"
                           onClick={async () => {
-                            if (confirm('Delete this playlist?')) {
+                            if (await appConfirm('Delete this playlist?')) {
                               try {
                                 const response = await fetch(`/api/playlists?id=${playlist._id || playlist.id}`, {
                                   method: 'DELETE',

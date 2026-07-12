@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { useAuth } from "../../contexts/AuthContext";
@@ -194,7 +195,7 @@ export function AiBotBuilder() {
   }
 
   async function deleteBot(botId: string) {
-    if (!confirm("Delete this bot?")) return;
+    if (!await appConfirm("Delete this bot?")) return;
     await fetch(`/api/ai-bots/${botId}`, { method: "DELETE" });
     setBots(prev => prev.filter(b => b.id !== botId));
     if (selectedBot?.id === botId) goBack();

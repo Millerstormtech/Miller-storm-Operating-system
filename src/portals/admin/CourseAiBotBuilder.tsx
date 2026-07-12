@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { appConfirm } from "../../lib/appDialogs";
 import dynamic from "next/dynamic";
 
 const WorldMap = dynamic(() => import("../../components/WorldMap"), { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "#f3f4f6", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: "13px" }}>Loading map...</div> });
@@ -128,7 +129,7 @@ export function CourseAiBotBuilder() {
   }
 
   async function deleteBot(id: string) {
-    if (!confirm("Delete this bot?")) return;
+    if (!await appConfirm("Delete this bot?")) return;
     await fetch(`/api/course-ai-bots/${id}`, { method: "DELETE" });
     setBots(prev => prev.filter(b => b.id !== id));
     if (selected?.id === id) setSelected(null);

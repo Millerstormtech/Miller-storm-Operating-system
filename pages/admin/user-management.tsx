@@ -1,4 +1,5 @@
 import type { NextPage } from "next";
+import { appConfirm } from "../../src/lib/appDialogs";
 import { useEffect, useState } from "react";
 import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { UserManagement } from "../../src/portals/admin/UserManagement";
@@ -195,7 +196,7 @@ const UserManagementPage: NextPage = () => {
                         type="button"
                         className="btn-secondary btn-success"
                         onClick={async () => {
-                          if (confirm(`Restore ${user.name}? They will be able to log in again.`)) {
+                          if (await appConfirm(`Restore ${user.name}? They will be able to log in again.`)) {
                             try {
                               await fetch(`/api/users/${user.id}`, {
                                 method: 'PATCH',
@@ -222,7 +223,7 @@ const UserManagementPage: NextPage = () => {
                         type="button"
                         style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                         onClick={async () => {
-                          if (confirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
+                          if (await appConfirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
                             try {
                               await fetch(`/api/users/${user.id}`, {
                                 method: 'PATCH',

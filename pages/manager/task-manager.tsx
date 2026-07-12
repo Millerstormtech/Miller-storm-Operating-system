@@ -1,4 +1,5 @@
 import type { NextPage } from "next";
+import { appConfirm } from "../../src/lib/appDialogs";
 import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
 import { useEffect, useState, useRef } from "react";
 import { UserProfile } from "../../src/types";
@@ -462,7 +463,7 @@ const TaskManagerPage: NextPage = () => {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) {
+    if (!await appConfirm('Are you sure you want to delete this task?')) {
       return;
     }
 
