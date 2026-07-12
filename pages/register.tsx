@@ -186,7 +186,8 @@ const RegisterPage: NextPage = () => {
               onChange={handleChange}
               required
             >
-              <option value="sales">Sales</option>
+              <option value="sales">Sales Rep</option>
+              <option value="branch-manager">Branch Manager</option>
               <option value="manager">Manager</option>
               <option value="marketing">Marketing</option>
             </select>
