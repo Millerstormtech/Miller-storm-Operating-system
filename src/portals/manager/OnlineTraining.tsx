@@ -301,8 +301,11 @@ export function ManagerOnlineTrainingPage(props: {
         .then(res => res.json())
         .then(data => {
           console.log('Sales users loaded:', data);
-          // Company-wide list must exclude admins (managers + sales stay).
-          setSalesUsers((data || []).filter((u: any) => u.role !== 'admin'));
+          // Company-wide list = only sales reps + managers (no admin, no C-Level,
+          // and never the current user themselves).
+          setSalesUsers((data || []).filter((u: any) =>
+            (u.role === 'sales' || u.role === 'manager') && u.id !== props.currentUser.id
+          ));
         })
         .catch(err => console.error('Failed to load sales users:', err));
     }
@@ -633,7 +636,9 @@ export function ManagerOnlineTrainingPage(props: {
     Promise.all([
       fetch(teamUsersUrl).then(r => r.json()),
     ]).then(async ([users]) => {
-      const teamUsers = (users || []).filter((u: any) => !u.deleted && u.role !== 'admin');
+      const teamUsers = (users || []).filter((u: any) =>
+        !u.deleted && (u.role === 'sales' || u.role === 'manager') && u.id !== props.currentUser.id
+      );
       const results = await Promise.all(
         teamUsers.map(async (user: any) => {
           const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
