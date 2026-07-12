@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
-    if (!requireRole(req, res, ['admin', 'manager'])) return;
+    if (!requireRole(req, res, ['admin', 'manager', 'c-level'])) return;
     try {
       const {
         playlistId,
@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'DELETE') {
-    if (!requireRole(req, res, ['admin', 'manager'])) return;
+    if (!requireRole(req, res, ['admin', 'manager', 'c-level'])) return;
     try {
       const { id } = req.query;
 

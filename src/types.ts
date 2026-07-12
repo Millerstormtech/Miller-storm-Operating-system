@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "manager" | "sales" | "marketing";
+export type UserRole = "admin" | "manager" | "sales" | "marketing" | "c-level";
 
 export type ModuleKey =
   | "dashboard"

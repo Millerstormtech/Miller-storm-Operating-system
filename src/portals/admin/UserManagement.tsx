@@ -3,7 +3,7 @@ import { UserProfile, FeatureToggles } from "../../types";
 import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
 
-type UserRole = "admin" | "manager" | "sales" | "marketing";
+type UserRole = "admin" | "manager" | "sales" | "marketing" | "c-level";
 
 type UserEditorProps = {
   users: UserProfile[];
@@ -51,7 +51,7 @@ export function UserManagement(props: UserEditorProps) {
   const [showDeletedUsers, setShowDeletedUsers] = useState(true);
   const [sortBy, setSortBy] = useState<"nameAsc" | "nameDesc" | "newest" | "oldest" | "lastModified">("nameAsc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "manager" | "sales" | "marketing">("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "manager" | "sales" | "marketing" | "c-level">("all");
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
   const [devSearch, setDevSearch] = useState("");
@@ -101,7 +101,9 @@ export function UserManagement(props: UserEditorProps) {
     admin: ["socialMediaMetrics", "businessUnits", "trainingCenter", "userManagement", "courseManagement", "appsTools", "aiBots", "courseAiBots", "messaging", "leaderboard"],
     manager: ["dashboard", "plans", "onlineTraining", "aiChat", "appsTools", "profile", "taskTracker"],
     sales: ["dashboard", "plan", "training", "aiChat", "appsTools", "profile"],
-    marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"]
+    marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"],
+    // C-Level always sees its full fixed feature set (no per-user toggles).
+    "c-level": []
   };
 
   const featureToggleLabels: Record<string, string> = {
@@ -149,6 +151,7 @@ export function UserManagement(props: UserEditorProps) {
 
   const roleLabels: Record<UserRole, string> = {
     admin: "Admin Panel",
+    "c-level": "C-Level Panel",
     manager: "Manager Panel",
     sales: "Sales Panel",
     marketing: "Marketing Panel"
@@ -580,10 +583,11 @@ export function UserManagement(props: UserEditorProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span>User Management</span>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              {(['admin', 'manager', 'sales', 'marketing'] as UserRole[]).map(role => {
+              {(['admin', 'c-level', 'manager', 'sales', 'marketing'] as UserRole[]).map(role => {
                 const count = draftUsers.filter(u => u.role === role).length;
                 const colors: Record<UserRole, { bg: string; color: string }> = {
                   admin: { bg: '#fef3c7', color: '#92400e' },
+                  "c-level": { bg: '#ede9fe', color: '#5b21b6' },
                   manager: { bg: '#dbeafe', color: '#1e40af' },
                   sales: { bg: '#dcfce7', color: '#166534' },
                   marketing: { bg: '#fce7f3', color: '#9d174d' }
@@ -707,6 +711,7 @@ export function UserManagement(props: UserEditorProps) {
                       {[
                         { value: "all", label: "All Roles" },
                         { value: "admin", label: "Admin" },
+                        { value: "c-level", label: "C-Level" },
                         { value: "manager", label: "Manager" },
                         { value: "sales", label: "Sales" },
                         { value: "marketing", label: "Marketing" }
@@ -1220,7 +1225,7 @@ export function UserManagement(props: UserEditorProps) {
                   </button>
                   {showRolesDropdown && (
                     <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }}>
-                      {(["admin", "manager", "sales", "marketing"] as UserRole[]).map((role) => (
+                      {(["admin", "c-level", "manager", "sales", "marketing"] as UserRole[]).map((role) => (
                         <div key={role} className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"} onClick={() => {
                           const newRoles = [role];
                           const newManagerId = role === "sales" ? selectedUser.managerId : undefined;

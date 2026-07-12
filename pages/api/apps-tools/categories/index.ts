@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to fetch categories' });
     }
   } else if (req.method === 'POST') {
-    if (!requireRole(req, res, 'admin')) return;
+    if (!requireRole(req, res, ['admin', 'c-level'])) return;
     try {
       const { name, order, status } = req.body;
       

@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to fetch group' });
     }
   } else if (req.method === 'PUT') {
-    if (!requireRole(req, res, ['admin', 'manager'])) return;
+    if (!requireRole(req, res, ['admin', 'manager', 'c-level'])) return;
     try {
       const { name, description, imageUrl, members, admins, onlyAdminCanChat } = req.body;
       
@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to update group' });
     }
   } else if (req.method === 'DELETE') {
-    if (!requireRole(req, res, ['admin', 'manager'])) return;
+    if (!requireRole(req, res, ['admin', 'manager', 'c-level'])) return;
     try {
       const group = await ChatGroup.findByIdAndDelete(id);
 

@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'PUT') {
-    if (!requireRole(req, res, 'admin')) return;
+    if (!requireRole(req, res, ['admin', 'c-level'])) return;
     try {
       const { title, imageUrl, imageWidth, imageHeight, description, link, webLink, appStoreLink, playStoreLink, category, status } = req.body;
 
@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'DELETE') {
-    if (!requireRole(req, res, 'admin')) return;
+    if (!requireRole(req, res, ['admin', 'c-level'])) return;
     try {
       const appTool = await AppTool.findByIdAndDelete(id);
 

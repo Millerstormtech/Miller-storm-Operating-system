@@ -26,7 +26,7 @@ async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    if (!requireRole(req, res, ["admin", "manager"])) return;
+    if (!requireRole(req, res, ["admin", "manager", "c-level"])) return;
     const { role, managerId, deleted } = req.query;
     const query: any = {};
     if (role) query.role = role;

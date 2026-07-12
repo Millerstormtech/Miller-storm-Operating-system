@@ -17,8 +17,8 @@ import { requireRole, allowMethods } from "../../../src/lib/auth";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET", "POST"])) return;
 
-  // Only managers or admins may unlock content for someone else.
-  const auth = requireRole(req, res, ["manager", "admin"]);
+  // Only managers, admins, or C-Level execs may unlock content for someone else.
+  const auth = requireRole(req, res, ["manager", "admin", "c-level"]);
   if (!auth) return;
 
   await connectMongo();

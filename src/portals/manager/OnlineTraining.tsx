@@ -82,9 +82,17 @@ export function ManagerOnlineTrainingPage(props: {
   currentUser: AuthenticatedUser;
   courses: Course[];
   isLoading?: boolean;
+  // C-Level runs this page company-wide: the "team" it can assign playlists to /
+  // unlock lessons for is EVERY sales rep, not just one manager's own team.
+  companyWide?: boolean;
 }) {
   const publishedCourses = props.courses;
   const isLoading = props.isLoading || false;
+  // Company-wide (C-Level) → EVERY user except admins (sales + managers + more);
+  // otherwise scoped to this manager's own sales team.
+  const teamUsersUrl = props.companyWide
+    ? `/api/users`
+    : `/api/users?role=sales&managerId=${props.currentUser.id}`;
   const router = useRouter();
   // Lesson a deep link (notification / pop-up) wants to open, pending a lock check.
   const pendingDeepLinkRef = useRef<string | null>(null);
@@ -126,7 +134,8 @@ export function ManagerOnlineTrainingPage(props: {
   const [assignDeadline, setAssignDeadline] = useState<string>('');
   const [assignmentsByUser, setAssignmentsByUser] = useState<Record<string, any>>({});
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists' | 'unlock'>('courses');
+  // C-Level (companyWide) has no "Courses Progress" view, so default to Playlist.
+  const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists' | 'unlock'>(props.companyWide ? 'playlists' : 'courses');
   const [playlistProgressData, setPlaylistProgressData] = useState<Record<string, { user: any; completed: number; total: number; pct: number }[]>>({});
   const [isLoadingPlaylistProgress, setIsLoadingPlaylistProgress] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280); // Default width
@@ -288,11 +297,12 @@ export function ManagerOnlineTrainingPage(props: {
   useEffect(() => {
     if (props.currentUser?.id) {
       console.log('Loading sales users for manager:', props.currentUser.id);
-      fetch(`/api/users?role=sales&managerId=${props.currentUser.id}`)
+      fetch(teamUsersUrl)
         .then(res => res.json())
         .then(data => {
           console.log('Sales users loaded:', data);
-          setSalesUsers(data);
+          // Company-wide list must exclude admins (managers + sales stay).
+          setSalesUsers((data || []).filter((u: any) => u.role !== 'admin'));
         })
         .catch(err => console.error('Failed to load sales users:', err));
     }
@@ -621,9 +631,9 @@ export function ManagerOnlineTrainingPage(props: {
     setIsLoadingTeam(true);
     const courseIds = publishedCourses.map(c => c.id).join(',');
     Promise.all([
-      fetch(`/api/users?role=sales&managerId=${props.currentUser.id}`).then(r => r.json()),
+      fetch(teamUsersUrl).then(r => r.json()),
     ]).then(async ([users]) => {
-      const teamUsers = (users || []).filter((u: any) => !u.deleted);
+      const teamUsers = (users || []).filter((u: any) => !u.deleted && u.role !== 'admin');
       const results = await Promise.all(
         teamUsers.map(async (user: any) => {
           const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
@@ -2481,6 +2491,9 @@ export function ManagerOnlineTrainingPage(props: {
           <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Team Training Progress</span>
             <div style={{ display: 'flex', background: '#f3f4f6', padding: '4px', borderRadius: '8px', gap: '4px' }}>
+              {/* C-Level (companyWide) hides the per-course "Courses Progress"
+                  view — it only manages Playlist Progress + Unlock Lesson. */}
+              {!props.companyWide && (
               <button
                 type="button"
                 onClick={() => setTeamProgressView('courses')}
@@ -2499,6 +2512,7 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 Courses Progress
               </button>
+              )}
               <button
                 type="button"
                 onClick={() => setTeamProgressView('playlists')}

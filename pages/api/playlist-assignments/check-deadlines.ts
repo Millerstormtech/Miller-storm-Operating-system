@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // for their OWN team; admins may scope to any manager (or all when omitted).
   // This is the fix for deadline emails never sending — the manager portal was
   // calling an admin-only endpoint and silently getting a 403.
-  const session = requireRole(req, res, ['admin', 'manager']);
+  const session = requireRole(req, res, ['admin', 'manager', 'c-level']);
   if (!session) return;
 
   await connectMongo();
