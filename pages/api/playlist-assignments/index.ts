@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import PlaylistAssignment from '../../../src/lib/models/PlaylistAssignment';
+import Playlist from '../../../src/lib/models/Playlist';
+import { UserProgressModel } from '../../../src/lib/models/UserProgress';
 import { requireUser, requireRole, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -64,6 +66,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         assignedToUserName,
         deadline: deadline ? new Date(deadline) : undefined
       });
+
+      // Auto-unlock the playlist's lessons/quizzes for the assigned rep so they
+      // can watch any of them in any order (no sequential lock). This adds to
+      // UserProgress.unlockedPages, which is kept SEPARATE from completedPages —
+      // so unlocking never counts toward progress %. Progress still advances only
+      // when the rep actually watches a lesson / passes a quiz. Resolve the
+      // course + pages from the Playlist record so it's correct regardless of the
+      // request body.
+      try {
+        // Prefer the Playlist record, but fall back to the request body (which
+        // always carries courseId + selectedModules) if the lookup can't run
+        // (e.g. a non-ObjectId playlistId).
+        let pl: any = null;
+        try { pl = await Playlist.findById(playlistId).lean(); } catch { pl = null; }
+        const unlockCourseId = pl?.courseId || courseId;
+        const pages: string[] = (pl?.selectedModules && pl.selectedModules.length
+          ? pl.selectedModules
+          : selectedModules) || [];
+        if (unlockCourseId && Array.isArray(pages) && pages.length > 0) {
+          await UserProgressModel.updateOne(
+            { userId: assignedToUserId, courseId: unlockCourseId },
+            { $addToSet: { unlockedPages: { $each: pages } } },
+            { upsert: true }
+          );
+        }
+      } catch (unlockErr) {
+        // Don't fail the assignment if the auto-unlock hiccups.
+        console.error('Auto-unlock on playlist assign failed:', unlockErr);
+      }
 
       return res.status(201).json(assignment);
     } catch (error) {
