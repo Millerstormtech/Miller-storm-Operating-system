@@ -2,7 +2,7 @@
 // (OnlineTraining) training portals so both behave identically.
 
 // Minimum fraction of correct answers required to pass a quiz and advance.
-export const QUIZ_PASS_THRESHOLD = 0.6; // 60%
+export const QUIZ_PASS_THRESHOLD = 0.8; // 80%
 
 // Number of failed attempts allowed before the user is sent back to relearn
 // the lesson. 1st fail -> "try again", 2nd fail -> "relearn the lesson".

@@ -628,7 +628,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       'total': total,
     };
     final pct = total > 0 ? correct / total : 0.0;
-    final passed = pct >= 0.6; // 60% to pass
+    final passed = pct >= 0.8; // 80% to pass
 
     setState(() {
       _quizSubmitted = true;
@@ -636,7 +636,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     });
 
     if (!passed) {
-      // Failed (< 60%): do NOT save a pass and do NOT advance. Show top-up.
+      // Failed (< 80%): do NOT save a pass and do NOT advance. Show top-up.
       _quizAttempts++;
       if (_quizAttempts >= 2) {
         _quizAttempts = 0; // reset for after the relearn
@@ -682,7 +682,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     _markCompleteAndNext();
   }
 
-  // Top-up dialog shown when a quiz is failed (< 60%).
+  // Top-up dialog shown when a quiz is failed (< 80%).
   void _showQuizFailDialog(double pct, {required bool relearn}) {
     final percent = (pct * 100).round();
     showDialog(
@@ -704,7 +704,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
         content: Text(
           relearn
               ? "You scored $percent% again. Your performance isn't there yet, so please go through the lesson once more, then retake the quiz."
-              : "You scored $percent%. You need 60% to move on. Give it another try — score above 60% and you'll advance to the next step.",
+              : "You scored $percent%. You need 80% to move on. Give it another try — score above 80% and you'll advance to the next step.",
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 14, color: _textLight, height: 1.5),
         ),

@@ -172,7 +172,7 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
       final score = match.first['score'];
       final total = (score?['total'] ?? 0) as num;
       if (total <= 0) return false;
-      return (score?['correct'] ?? 0) / total >= 0.6;
+      return (score?['correct'] ?? 0) / total >= 0.8;
     }
     return (prog['completed'] as Set).contains(id);
   }

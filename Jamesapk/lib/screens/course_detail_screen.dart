@@ -354,7 +354,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               final score = m.first['score'];
               final total = (score?['total'] ?? 0) as num;
               if (total <= 0) return false;
-              return ((score?['correct'] ?? 0) as num) / total >= 0.6;
+              return ((score?['correct'] ?? 0) as num) / total >= 0.8;
             }
             return completedLessonIds.contains(item['id']?.toString());
           }
@@ -406,7 +406,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // A quiz counts as complete only if a saved result scored >= 60% (same
+  // A quiz counts as complete only if a saved result scored >= 80% (same
   // threshold as the web). Quizzes are tracked in quizResults, not completedPages.
   bool _isQuizPassed(String pageId) {
     final matches = _quizResults.where((r) => r['pageId']?.toString() == pageId);
@@ -415,7 +415,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     final total = (score?['total'] ?? 0) as num;
     if (total <= 0) return false;
     final correct = (score?['correct'] ?? 0) as num;
-    return correct / total >= 0.6;
+    return correct / total >= 0.8;
   }
 
   Widget _buildLoadError() {
@@ -480,7 +480,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
     
     // Strict sequential unlock (same as web): a page is unlocked ONLY IF EVERY
-    // preceding item is complete — lesson watched, or quiz passed (>= 60%). The
+    // preceding item is complete — lesson watched, or quiz passed (>= 80%). The
     // first incomplete item locks everything after it, so a newly-inserted
     // lesson/quiz re-locks the rest until it's done.
     bool isPageUnlocked(String pageId) {

@@ -1436,7 +1436,7 @@ export function ManagerOnlineTrainingPage(props: {
         return;
       }
 
-      // Failed (< 60%): do NOT persist a pass and do NOT advance. Show top-up.
+      // Failed (< 80%): do NOT persist a pass and do NOT advance. Show top-up.
       const attempts = (quizAttempts[activePage.id] || 0) + 1;
       setQuizAttempts(prev => ({ ...prev, [activePage.id]: attempts }));
       if (attempts >= QUIZ_MAX_ATTEMPTS) {
@@ -1678,7 +1678,7 @@ export function ManagerOnlineTrainingPage(props: {
           }}
         />
 
-        {/* Quiz top-up modal — shown when a quiz is failed (< 60%) */}
+        {/* Quiz top-up modal — shown when a quiz is failed (< 80%) */}
         {quizModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}>
             <div style={{ background: '#fff', borderRadius: 14, maxWidth: 440, width: '100%', padding: '28px 26px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>

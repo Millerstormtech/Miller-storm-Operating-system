@@ -190,11 +190,11 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
   // Non-admin users are the population for "course completion by module".
   const eligibleUsers = users.filter(u => u.role !== "admin");
 
-  // A quiz counts complete only if a saved result scored >= 60% (app-wide rule).
+  // A quiz counts complete only if a saved result scored >= 80% (app-wide rule).
   function isQuizPassed(result: any) {
     const score = result?.score;
     const total = score?.total || 0;
-    return total > 0 && (score.correct || 0) / total >= 0.6;
+    return total > 0 && (score.correct || 0) / total >= 0.8;
   }
 
   // Average completion of a course across all eligible users — lessons watched
