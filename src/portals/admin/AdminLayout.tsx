@@ -6,6 +6,11 @@ import { useAuth } from "../../contexts/AuthContext";
 
 type AdminViewId =
   | "dashboard"
+  | "cLevelDashboard"
+  | "branchManagerDashboard"
+  | "salesTeamDashboard"
+  | "salesRepDashboard"
+  | "marketingDashboard"
   | "userManagement"
   | "roleHierarchy"
   | "businessUnits"
