@@ -8,14 +8,14 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../utils/role_labels.dart';
 
-class ManagerProfileScreen extends StatefulWidget {
-  const ManagerProfileScreen({super.key});
+class SalesTeamLeadProfileScreen extends StatefulWidget {
+  const SalesTeamLeadProfileScreen({super.key});
 
   @override
-  State<ManagerProfileScreen> createState() => _ManagerProfileScreenState();
+  State<SalesTeamLeadProfileScreen> createState() => _SalesTeamLeadProfileScreenState();
 }
 
-class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
+class _SalesTeamLeadProfileScreenState extends State<SalesTeamLeadProfileScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);

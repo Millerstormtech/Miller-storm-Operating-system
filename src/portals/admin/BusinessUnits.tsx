@@ -47,7 +47,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   const [savedUserId, setSavedUserId] = useState<string | null>(null);
   const [yearlyExpanded, setYearlyExpanded] = useState(true);
   const [monthlyExpanded, setMonthlyExpanded] = useState(true);
-  const managers = props.users.filter((u) => u.role === "manager" || (u.roles || []).includes("manager"));
+  const managers = props.users.filter((u) => u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead"));
   const salesReps = props.users.filter((u) => u.role === "sales" || (u.roles || []).includes("sales"));
 
   // Calculate metrics using same formula as sales rep business plan page
@@ -502,7 +502,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               onClick={() => setShowHiddenSection(p => !p)}
               style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #f3f4f6", background: "#f3f4f6", color: "#f3f4f6", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}
             >
-              {showHiddenSection ? "▲" : "▼"} Hidden Managers ({hiddenManagers.size})
+              {showHiddenSection ? "▲" : "▼"} Hidden Sales Team Leads ({hiddenManagers.size})
             </button>
             {showHiddenSection && managers.filter(m => hiddenManagers.has(m.id)).map(manager => {
               const teamMembers = getTeamMembers(manager.id);

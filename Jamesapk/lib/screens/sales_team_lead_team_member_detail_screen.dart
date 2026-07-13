@@ -4,16 +4,16 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 
-class ManagerTeamMemberDetailScreen extends StatefulWidget {
+class SalesTeamLeadTeamMemberDetailScreen extends StatefulWidget {
   final Map<String, dynamic> member;
 
-  const ManagerTeamMemberDetailScreen({super.key, required this.member});
+  const SalesTeamLeadTeamMemberDetailScreen({super.key, required this.member});
 
   @override
-  State<ManagerTeamMemberDetailScreen> createState() => _ManagerTeamMemberDetailScreenState();
+  State<SalesTeamLeadTeamMemberDetailScreen> createState() => _SalesTeamLeadTeamMemberDetailScreenState();
 }
 
-class _ManagerTeamMemberDetailScreenState extends State<ManagerTeamMemberDetailScreen> {
+class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamMemberDetailScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);

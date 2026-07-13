@@ -8,14 +8,14 @@ import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
 
-class ManagerCoursesScreen extends StatefulWidget {
-  const ManagerCoursesScreen({super.key});
+class SalesTeamLeadCoursesScreen extends StatefulWidget {
+  const SalesTeamLeadCoursesScreen({super.key});
 
   @override
-  State<ManagerCoursesScreen> createState() => _ManagerCoursesScreenState();
+  State<SalesTeamLeadCoursesScreen> createState() => _SalesTeamLeadCoursesScreenState();
 }
 
-class _ManagerCoursesScreenState extends State<ManagerCoursesScreen> with SingleTickerProviderStateMixin {
+class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen> with SingleTickerProviderStateMixin {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);

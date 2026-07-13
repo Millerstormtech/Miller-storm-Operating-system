@@ -97,7 +97,7 @@ export default async function handler(
       }
       
       // If course is assigned only, show only to managers
-      if (course.accessMode === "assigned" && userRole === "manager") {
+      if (course.accessMode === "assigned" && userRole === "sales-team-lead") {
         return true;
       }
       

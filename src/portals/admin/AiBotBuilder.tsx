@@ -79,7 +79,7 @@ export function AiBotBuilder() {
   const isAdmin = user?.role === "admin";
 
   // Base path depends on user role
-  const basePath = user?.role === "manager" ? "/manager/ai-bot-builder"
+  const basePath = user?.role === "sales-team-lead" ? "/manager/ai-bot-builder"
     : user?.role === "sales" ? "/sales/ai-bot-builder"
     : user?.role === "marketing" ? "/marketing/ai-bot-builder"
     : "/admin/ai-bots";
@@ -1225,7 +1225,7 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
           style={{ padding: "9px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", background: "#fff", cursor: "pointer" }}>
           <option value="all">All Roles</option>
           <option value="admin">Admin</option>
-          <option value="manager">Sales Team Lead</option>
+          <option value="sales-team-lead">Sales Team Lead</option>
           <option value="sales">Sales</option>
           <option value="marketing">Marketing</option>
         </select>
@@ -1260,8 +1260,8 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
                 {filtered.map((chat, idx) => {
                   const lastMsg = chat.messages?.[chat.messages.length - 1];
                   const lastContent = lastMsg?.content?.substring(0, 40) + (lastMsg?.content?.length > 40 ? "..." : "") || "-";
-                  const roleColor: Record<string, string> = { admin: "#f3f4f6", manager: "#ede9fe", sales: "#dbeafe", marketing: "#dcfce7" };
-                  const roleText: Record<string, string> = { admin: "#374151", manager: "#6d28d9", sales: "#1d4ed8", marketing: "#15803d" };
+                  const roleColor: Record<string, string> = { admin: "#f3f4f6", "sales-team-lead": "#ede9fe", sales: "#dbeafe", marketing: "#dcfce7" };
+                  const roleText: Record<string, string> = { admin: "#374151", "sales-team-lead": "#6d28d9", sales: "#1d4ed8", marketing: "#15803d" };
                   return (
                     <tr key={chat.chatId} style={{ background: idx % 2 === 0 ? "#fff" : "#fafafa" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "#f0f9ff")}
@@ -2537,7 +2537,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
 function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean; onGoToSettings: () => void }) {
   const [assignedRoles, setAssignedRoles] = useState<string[]>(bot.assignedRoles || []);
   const [copied, setCopied] = useState<string | null>(null);
-  const roles = ["manager", "sales", "marketing"];
+  const roles = ["sales-team-lead", "sales", "marketing"];
 
   // Re-sync when bot prop updates
   const prevIdRef = useRef<string>("");
@@ -2763,7 +2763,7 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
                   style={{ padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #f3f4f6" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
                   onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: u.role === "manager" ? "#ede9fe" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: u.role === "manager" ? "#6d28d9" : "#1d4ed8", flexShrink: 0 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: u.role === "sales-team-lead" ? "#ede9fe" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: u.role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8", flexShrink: 0 }}>
                     {(u.name || u.email || "?")[0].toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -2796,7 +2796,7 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
                   {/* Member header */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e5e7eb", background: "#fff" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: role === "manager" ? "#ede9fe" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: role === "manager" ? "#6d28d9" : "#1d4ed8", flexShrink: 0 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: role === "sales-team-lead" ? "#ede9fe" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8", flexShrink: 0 }}>
                         {(displayName)[0]?.toUpperCase() || "?"}
                       </div>
                       <div>

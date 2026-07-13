@@ -4,16 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
-import 'manager_courses_screen.dart';
+import 'sales_team_lead_courses_screen.dart';
 
-class ManagerTrainingScreen extends StatefulWidget {
-  const ManagerTrainingScreen({super.key});
+class SalesTeamLeadTrainingScreen extends StatefulWidget {
+  const SalesTeamLeadTrainingScreen({super.key});
 
   @override
-  State<ManagerTrainingScreen> createState() => _ManagerTrainingScreenState();
+  State<SalesTeamLeadTrainingScreen> createState() => _SalesTeamLeadTrainingScreenState();
 }
 
-class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
+class _SalesTeamLeadTrainingScreenState extends State<SalesTeamLeadTrainingScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
@@ -119,7 +119,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                   ],
                 ),
               ),
-              const Expanded(child: ManagerCoursesScreen()),
+              const Expanded(child: SalesTeamLeadCoursesScreen()),
             ],
           ),
         ),

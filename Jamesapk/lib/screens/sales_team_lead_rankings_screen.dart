@@ -7,14 +7,14 @@ import '../services/api_client.dart';
 // Sales Leaderboard for managers — same data/functionality as the web manager
 // Sales Leaderboard: live from AccuLynx + RepCard via /api/leaderboard, with a
 // window toggle (Today / Week / Month / Year), ranked list, and "You" highlight.
-class ManagerRankingsScreen extends StatefulWidget {
-  const ManagerRankingsScreen({super.key});
+class SalesTeamLeadRankingsScreen extends StatefulWidget {
+  const SalesTeamLeadRankingsScreen({super.key});
 
   @override
-  State<ManagerRankingsScreen> createState() => _ManagerRankingsScreenState();
+  State<SalesTeamLeadRankingsScreen> createState() => _SalesTeamLeadRankingsScreenState();
 }
 
-class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
+class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);

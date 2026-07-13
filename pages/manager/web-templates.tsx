@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { WebTemplatesPage } from "../../src/portals/manager/WebTemplates";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
@@ -42,13 +42,13 @@ const WebTemplatesRoute: NextPage = () => {
   }
 
   return (
-    <ManagerLayout currentView="webTemplates">
+    <SalesTeamLeadLayout currentView="webTemplates">
       <WebTemplatesPage 
         users={users} 
         managerId={user.id}
         onUsersChange={handleUsersChange} 
       />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

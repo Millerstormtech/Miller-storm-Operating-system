@@ -1,12 +1,12 @@
 import type { NextPage } from "next";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { AiBotBuilder } from "../../src/portals/admin/AiBotBuilder";
 
 const ManagerAiBotBuilderPage: NextPage = () => {
   return (
-    <ManagerLayout currentView="ai-bot-builder">
+    <SalesTeamLeadLayout currentView="ai-bot-builder">
       <AiBotBuilder />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

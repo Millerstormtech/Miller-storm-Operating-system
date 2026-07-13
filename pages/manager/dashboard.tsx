@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { ManagerDashboard } from "../../src/portals/manager/Dashboard";
 import { NewCoursePopup } from "../../src/components/NewCoursePopup";
 import { UserProfile } from "../../src/types";
@@ -24,10 +24,10 @@ const DashboardPage: NextPage = () => {
   }, []);
 
   return (
-    <ManagerLayout currentView="dashboard">
+    <SalesTeamLeadLayout currentView="dashboard">
       <NewCoursePopup />
       <ManagerDashboard teamMembers={teamMembers} />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

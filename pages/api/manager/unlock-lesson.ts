@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!allowMethods(req, res, ["GET", "POST"])) return;
 
   // Only managers, admins, or C-Level execs may unlock content for someone else.
-  const auth = requireRole(req, res, ["manager", "admin", "c-level", "branch-manager"]);
+  const auth = requireRole(req, res, ["sales-team-lead", "admin", "c-level", "branch-manager"]);
   if (!auth) return;
 
   await connectMongo();
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // manager could read/modify ANY user in the company (IDOR). Admins are
   // org-wide; managers are scoped to their own team via User.managerId.
   const targetMemberId = (req.method === "GET" ? req.query.memberUserId : req.body?.memberUserId) as string | undefined;
-  if (auth.role === "manager") {
+  if (auth.role === "sales-team-lead") {
     if (!targetMemberId) {
       return res.status(400).json({ error: "memberUserId is required" });
     }

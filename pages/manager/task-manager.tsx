@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { appConfirm } from "../../src/lib/appDialogs";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { useEffect, useState, useRef } from "react";
 import { UserProfile } from "../../src/types";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -572,7 +572,7 @@ const TaskManagerPage: NextPage = () => {
   };
 
   return (
-    <ManagerLayout currentView="task-manager">
+    <SalesTeamLeadLayout currentView="task-manager">
       <style jsx>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
@@ -2315,7 +2315,7 @@ const TaskManagerPage: NextPage = () => {
           </div>
         </div>
       )}
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

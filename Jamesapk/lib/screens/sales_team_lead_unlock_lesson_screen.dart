@@ -6,14 +6,14 @@ import '../services/api_client.dart';
 /// Managers unlock a specific lesson/quiz for a team member without the member
 /// watching it. Unlock is stored separately from completed pages (never counts
 /// toward progress %); the member is notified. Reached from the View Team page.
-class ManagerUnlockLessonScreen extends StatefulWidget {
-  const ManagerUnlockLessonScreen({super.key});
+class SalesTeamLeadUnlockLessonScreen extends StatefulWidget {
+  const SalesTeamLeadUnlockLessonScreen({super.key});
 
   @override
-  State<ManagerUnlockLessonScreen> createState() => _ManagerUnlockLessonScreenState();
+  State<SalesTeamLeadUnlockLessonScreen> createState() => _SalesTeamLeadUnlockLessonScreenState();
 }
 
-class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
+class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLessonScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
@@ -103,7 +103,7 @@ class _ManagerUnlockLessonScreenState extends State<ManagerUnlockLessonScreen> {
   }
 
   Future<void> _fetchCourses() async {
-    final url = Uri.parse('https://millerstorm.tech/api/courses?userId=$_managerId&userRole=manager&list=1');
+    final url = Uri.parse('https://millerstorm.tech/api/courses?userId=$_managerId&userRole=sales-team-lead&list=1');
     // Retry so a timed-out first attempt doesn't show a false "No courses found".
     for (int attempt = 0; attempt < 3; attempt++) {
       try {

@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { ManagerOnlineTrainingPage } from "../../src/portals/manager/OnlineTraining";
 import { Course, AuthenticatedUser } from "../../src/types";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -57,9 +57,9 @@ const OnlineTrainingPage: NextPage = () => {
   const currentUser: AuthenticatedUser = { id: user.id, name: user.name, role: user.role };
 
   return (
-    <ManagerLayout currentView="onlineTraining">
+    <SalesTeamLeadLayout currentView="onlineTraining">
       <ManagerOnlineTrainingPage currentUser={currentUser} courses={courses} isLoading={isLoading} />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

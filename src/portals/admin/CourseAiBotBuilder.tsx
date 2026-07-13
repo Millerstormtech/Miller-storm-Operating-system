@@ -626,7 +626,7 @@ function CourseOverviewPanel({ bot }: { bot: CourseBot }) {
 const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
   admin:   { bg: "#e5e7eb", color: "#1f2937" },
   sales:   { bg: "#dbeafe", color: "#1d4ed8" },
-  manager: { bg: "#ede9fe", color: "#6d28d9" },
+  "sales-team-lead": { bg: "#ede9fe", color: "#6d28d9" },
   marketing: { bg: "#fce7f3", color: "#be185d" },
 };
 

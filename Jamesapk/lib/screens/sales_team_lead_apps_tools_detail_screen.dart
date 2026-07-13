@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class ManagerAppsToolsDetailScreen extends StatelessWidget {
-  const ManagerAppsToolsDetailScreen({super.key});
+class SalesTeamLeadAppsToolsDetailScreen extends StatelessWidget {
+  const SalesTeamLeadAppsToolsDetailScreen({super.key});
 
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);

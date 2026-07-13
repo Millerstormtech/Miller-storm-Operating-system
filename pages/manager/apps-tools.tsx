@@ -1,15 +1,15 @@
 import type { NextPage } from "next";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { AppsToolsViewer } from "../../src/components/AppsToolsViewer";
 
 const ManagerAppsToolsPage: NextPage = () => {
   return (
-    <ManagerLayout currentView="apps-tools">
+    <SalesTeamLeadLayout currentView="apps-tools">
       <div className="page-header">
         <h1 className="page-title">Apps & Tools</h1>
       </div>
       <AppsToolsViewer portal="manager" />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

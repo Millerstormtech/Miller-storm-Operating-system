@@ -3,7 +3,7 @@
 String roleDisplayName(String? role) {
   if (role == null || role.isEmpty) return '';
   switch (role.toLowerCase()) {
-    case 'manager':
+    case 'sales-team-lead':
       return 'Sales Team Lead';
     case 'branch-manager':
       return 'Branch Manager';

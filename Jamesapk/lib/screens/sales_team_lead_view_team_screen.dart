@@ -3,16 +3,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
-import 'manager_unlock_lesson_screen.dart';
+import 'sales_team_lead_unlock_lesson_screen.dart';
 
-class ManagerViewTeamScreen extends StatefulWidget {
-  const ManagerViewTeamScreen({super.key});
+class SalesTeamLeadViewTeamScreen extends StatefulWidget {
+  const SalesTeamLeadViewTeamScreen({super.key});
 
   @override
-  State<ManagerViewTeamScreen> createState() => _ManagerViewTeamScreenState();
+  State<SalesTeamLeadViewTeamScreen> createState() => _SalesTeamLeadViewTeamScreenState();
 }
 
-class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
+class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
@@ -201,7 +201,7 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ManagerUnlockLessonScreen()),
+              MaterialPageRoute(builder: (_) => const SalesTeamLeadUnlockLessonScreen()),
             );
           },
           icon: const Icon(Icons.lock_open, size: 20),

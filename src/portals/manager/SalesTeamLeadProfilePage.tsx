@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, ChangeEvent } from "react";
 import { UserProfile } from "../../types";
 
-export function ManagerProfilePage(props: {
+export function SalesTeamLeadProfilePage(props: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
 }) {

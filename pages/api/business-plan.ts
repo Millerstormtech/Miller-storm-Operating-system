@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Regular users (sales/marketing) may only read THEIR OWN plan, so we
     // force the single-user lookup to the authenticated user id and ignore
     // any client-supplied userId/managerId.
-    const isPrivileged = auth.role === 'admin' || auth.role === 'manager';
+    const isPrivileged = auth.role === 'admin' || auth.role === 'sales-team-lead';
     if (!isPrivileged) {
       userId = auth.sub;
       managerId = undefined;

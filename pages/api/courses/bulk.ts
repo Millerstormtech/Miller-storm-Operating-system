@@ -22,7 +22,7 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
     const recipients = await UserModel.find(
       {
         deleted: { $ne: true },
-        $or: [{ role: { $in: ["sales", "manager"] } }, { roles: { $in: ["sales", "manager"] } }],
+        $or: [{ role: { $in: ["sales", "sales-team-lead"] } }, { roles: { $in: ["sales", "sales-team-lead"] } }],
       },
       { id: 1, role: 1, roles: 1, fcmToken: 1 }
     ).lean();
@@ -86,7 +86,7 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
 
       for (const u of recipients as any[]) {
         if (haveUnread.has(u.id)) continue; // already has an unread pop-up for this course
-        const isManager = u.role === "manager" || (Array.isArray(u.roles) && u.roles.includes("manager"));
+        const isManager = u.role === "sales-team-lead" || (Array.isArray(u.roles) && u.roles.includes("sales-team-lead"));
         const watchUrl = isManager ? "/manager/onlineTraining" : "/sales/training";
         docs.push({
           id: `notif-${stamp}-${i++}`,

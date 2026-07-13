@@ -39,8 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     {
       deleted: { $ne: true },
       $or: [
-        { role: { $in: ["sales", "manager"] } },
-        { roles: { $in: ["sales", "manager"] } },
+        { role: { $in: ["sales", "sales-team-lead"] } },
+        { roles: { $in: ["sales", "sales-team-lead"] } },
       ],
     },
     { id: 1, fcmToken: 1 }

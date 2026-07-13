@@ -59,7 +59,7 @@ const mockUsers = [
     name: "Brooke Taylor",
     email: "brooke.taylor@company.com",
     password: "manager123",
-    role: "manager",
+    role: "sales-team-lead",
     strengths: "Coaching, pipeline management, recruiting",
     weaknesses: "Time management, saying no",
     headshotUrl: "",

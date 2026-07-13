@@ -13,7 +13,7 @@ type OrgUser = {
 
 const ROLE: Record<string, { label: string; bg: string; border: string; text: string; dot: string }> = {
   admin: { label: "Admin", bg: "#fef2f2", border: "#fecaca", text: "#b91c1c", dot: "#dc2626" },
-  manager: { label: "Sales Team Lead", bg: "#f5f3ff", border: "#ddd6fe", text: "#6d28d9", dot: "#7c3aed" },
+  "sales-team-lead": { label: "Sales Team Lead", bg: "#f5f3ff", border: "#ddd6fe", text: "#6d28d9", dot: "#7c3aed" },
   sales: { label: "Sales", bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8", dot: "#2563eb" },
   marketing: { label: "Marketing", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d", dot: "#16a34a" },
 };
@@ -157,7 +157,7 @@ export function TeamStructure() {
 
     const byRole = (role: string) => all.filter((u) => roleOf(u) === role);
     const adminList = byRole("admin");
-    const managerList = byRole("manager");
+    const managerList = byRole("sales-team-lead");
     const sales = byRole("sales");
     const marketingList = byRole("marketing");
 

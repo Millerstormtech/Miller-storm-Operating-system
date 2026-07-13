@@ -5,14 +5,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 
-class ManagerDashboardScreen extends StatefulWidget {
-  const ManagerDashboardScreen({Key? key}) : super(key: key);
+class SalesTeamLeadDashboardScreen extends StatefulWidget {
+  const SalesTeamLeadDashboardScreen({Key? key}) : super(key: key);
 
   @override
-  State<ManagerDashboardScreen> createState() => _ManagerDashboardScreenState();
+  State<SalesTeamLeadDashboardScreen> createState() => _SalesTeamLeadDashboardScreenState();
 }
 
-class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
+class _SalesTeamLeadDashboardScreenState extends State<SalesTeamLeadDashboardScreen> {
   // Miller Storm Red Theme
   static const _bg = Color(0xFFF5F5F5);
   static const _white = Color(0xFFFFFFFF);

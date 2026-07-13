@@ -4,14 +4,14 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class ManagerAppsToolsItemsScreen extends StatefulWidget {
-  const ManagerAppsToolsItemsScreen({super.key});
+class SalesTeamLeadAppsToolsItemsScreen extends StatefulWidget {
+  const SalesTeamLeadAppsToolsItemsScreen({super.key});
 
   @override
-  State<ManagerAppsToolsItemsScreen> createState() => _ManagerAppsToolsItemsScreenState();
+  State<SalesTeamLeadAppsToolsItemsScreen> createState() => _SalesTeamLeadAppsToolsItemsScreenState();
 }
 
-class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScreen> with SingleTickerProviderStateMixin {
+class _SalesTeamLeadAppsToolsItemsScreenState extends State<SalesTeamLeadAppsToolsItemsScreen> with SingleTickerProviderStateMixin {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);

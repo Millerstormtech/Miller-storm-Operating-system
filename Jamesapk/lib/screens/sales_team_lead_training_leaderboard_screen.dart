@@ -5,14 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 
-class ManagerTrainingLeaderboardScreen extends StatefulWidget {
-  const ManagerTrainingLeaderboardScreen({super.key});
+class SalesTeamLeadTrainingLeaderboardScreen extends StatefulWidget {
+  const SalesTeamLeadTrainingLeaderboardScreen({super.key});
 
   @override
-  State<ManagerTrainingLeaderboardScreen> createState() => _ManagerTrainingLeaderboardScreenState();
+  State<SalesTeamLeadTrainingLeaderboardScreen> createState() => _SalesTeamLeadTrainingLeaderboardScreenState();
 }
 
-class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeaderboardScreen> {
+class _SalesTeamLeadTrainingLeaderboardScreenState extends State<SalesTeamLeadTrainingLeaderboardScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
@@ -195,8 +195,8 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
           if (isDeleted || isSuspended) return false;
 
           final roles = u['roles'] as List<dynamic>? ?? [];
-          final hasTargetRole = u['role'] == 'manager' || u['role'] == 'sales' || 
-                               roles.contains('manager') || roles.contains('sales');
+          final hasTargetRole = u['role'] == 'sales-team-lead' || u['role'] == 'sales' ||
+                               roles.contains('sales-team-lead') || roles.contains('sales');
           if (!hasTargetRole) return false;
 
           return assignedUserIds?.contains(userId) ?? false;

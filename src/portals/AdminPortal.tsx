@@ -62,7 +62,7 @@ const sidebarItems: { id: AdminViewId; label: string }[] = [
 function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
   const totalSalesReps = props.users.filter((user) => user.role === "sales")
     .length;
-  const totalManagers = props.users.filter((user) => user.role === "manager")
+  const totalManagers = props.users.filter((user) => user.role === "sales-team-lead")
     .length;
 
   // Business Plan Roll-up Data
@@ -96,7 +96,7 @@ function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
   const completionValues: number[] = [];
 
   props.users.forEach((user) => {
-    if (user.role !== "sales" && user.role !== "manager") {
+    if (user.role !== "sales" && user.role !== "sales-team-lead") {
       return;
     }
     publishedCourses.forEach((course) => {
@@ -222,7 +222,7 @@ function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
             />
             {publishedCourses.map((course) => {
               const courseCompletions = props.users
-                .filter((u) => u.role === "sales" || u.role === "manager")
+                .filter((u) => u.role === "sales" || u.role === "sales-team-lead")
                 .map((u) => getUserCourseCompletion(u, course));
               const avgCompletion =
                 courseCompletions.length > 0
@@ -390,7 +390,7 @@ function UserManagement(props: UserEditorProps) {
       "appsTools",
       "socialMediaMetrics"
     ],
-    manager: [
+    "sales-team-lead": [
       "dashboard",
       "team",
       "plans",
@@ -470,7 +470,7 @@ function UserManagement(props: UserEditorProps) {
     admin: "Admin Panel",
     "c-level": "C-Level Panel",
     "branch-manager": "Branch Manager Panel",
-    manager: "Sales Team Lead Panel",
+    "sales-team-lead": "Sales Team Lead Panel",
     sales: "Sales Panel",
     marketing: "Marketing Panel"
   };
@@ -877,7 +877,7 @@ function UserManagement(props: UserEditorProps) {
                   </button>
                   {showRolesDropdown && (
                     <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }}>
-                      {(["admin", "manager", "sales", "marketing"] as UserRole[]).map((role) => (
+                      {(["admin", "sales-team-lead", "sales", "marketing"] as UserRole[]).map((role) => (
                         <div
                           key={role}
                           className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"}
@@ -929,7 +929,7 @@ function UserManagement(props: UserEditorProps) {
                     >
                       <option value="">No Sales Team Lead</option>
                       {draftUsers
-                        .filter((u) => u.role === "manager")
+                        .filter((u) => u.role === "sales-team-lead")
                         .map((manager) => (
                           <option key={manager.id} value={manager.id}>
                             {manager.name}
@@ -1273,7 +1273,7 @@ function RoleHierarchyManager(props: {
   onUsersChange: (users: UserProfile[]) => void;
 }) {
   const ceos = props.users.filter((user) => user.role === "admin");
-  const managers = props.users.filter((user) => user.role === "manager");
+  const managers = props.users.filter((user) => user.role === "sales-team-lead");
   const salesReps = props.users.filter((user) => user.role === "sales");
   const totalManagers = managers.length;
   const totalSalesReps = salesReps.length;
@@ -3736,7 +3736,7 @@ function AppsToolManagement() {
 }
 
 function BusinessUnitsManager(props: { users: UserProfile[] }) {
-  const managers = props.users.filter((u) => u.role === "manager" || (u.roles || []).includes("manager"));
+  const managers = props.users.filter((u) => u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead"));
 
   function getTeamMembers(managerId: string) {
     return props.users.filter((u) => u.managerId === managerId);

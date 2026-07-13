@@ -306,7 +306,7 @@ export function ManagerOnlineTrainingPage(props: {
           // Company-wide list = only sales reps + managers (no admin, no C-Level,
           // and never the current user themselves).
           setSalesUsers((data || []).filter((u: any) =>
-            (u.role === 'sales' || u.role === 'manager') && u.id !== props.currentUser.id
+            (u.role === 'sales' || u.role === 'sales-team-lead') && u.id !== props.currentUser.id
           ));
         })
         .catch(err => console.error('Failed to load sales users:', err));
@@ -639,7 +639,7 @@ export function ManagerOnlineTrainingPage(props: {
       fetch(teamUsersUrl).then(r => r.json()),
     ]).then(async ([users]) => {
       const teamUsers = (users || []).filter((u: any) =>
-        !u.deleted && (u.role === 'sales' || u.role === 'manager') && u.id !== props.currentUser.id
+        !u.deleted && (u.role === 'sales' || u.role === 'sales-team-lead') && u.id !== props.currentUser.id
       );
       const results = await Promise.all(
         teamUsers.map(async (user: any) => {

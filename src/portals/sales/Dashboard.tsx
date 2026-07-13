@@ -554,7 +554,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                                   <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
                                 </td>
                                 <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5" }}>
-                                  <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "manager" ? "#ede9fe" : "#dbeafe", color: row.role === "manager" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{roleDisplayName(row.role)}</span>
+                                  <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "sales-team-lead" ? "#ede9fe" : "#dbeafe", color: row.role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{roleDisplayName(row.role)}</span>
                                 </td>
                                 <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", color: "#065f46", fontWeight: 600 }}>{row.done} / {row.total}</td>
                                 <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", minWidth: 140 }}>
@@ -646,8 +646,8 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                             <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
                               <span style={{
                                 padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                                background: row.role === "manager" ? "#ede9fe" : "#dbeafe",
-                                color: row.role === "manager" ? "#6d28d9" : "#1d4ed8",
+                                background: row.role === "sales-team-lead" ? "#ede9fe" : "#dbeafe",
+                                color: row.role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8",
                                 textTransform: "capitalize",
                               }}>
                                 {row.role}

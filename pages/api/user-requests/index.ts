@@ -31,7 +31,7 @@ export default async function handler(
         return;
       }
 
-      if (!["manager", "sales", "marketing", "branch-manager"].includes(role)) {
+      if (!["sales-team-lead", "sales", "marketing", "branch-manager"].includes(role)) {
         res.status(400).json({ error: "Invalid role" });
         return;
       }

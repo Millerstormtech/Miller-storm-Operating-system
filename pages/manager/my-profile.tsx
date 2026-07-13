@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
-import { ManagerProfilePage } from "../../src/portals/manager/ManagerProfilePage";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
+import { SalesTeamLeadProfilePage } from "../../src/portals/manager/SalesTeamLeadProfilePage";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
@@ -41,16 +41,16 @@ const MyProfilePage: NextPage = () => {
 
   if (!profile || !user) {
     return (
-      <ManagerLayout currentView="my-profile">
+      <SalesTeamLeadLayout currentView="my-profile">
         <div style={{ padding: 24, textAlign: 'center' }}>Loading...</div>
-      </ManagerLayout>
+      </SalesTeamLeadLayout>
     );
   }
 
   return (
-    <ManagerLayout currentView="my-profile">
-      <ManagerProfilePage profile={profile} onProfileChange={handleProfileChange} />
-    </ManagerLayout>
+    <SalesTeamLeadLayout currentView="my-profile">
+      <SalesTeamLeadProfilePage profile={profile} onProfileChange={handleProfileChange} />
+    </SalesTeamLeadLayout>
   );
 };
 

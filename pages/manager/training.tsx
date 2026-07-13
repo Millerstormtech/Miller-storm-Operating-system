@@ -1,13 +1,13 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { TeamTrainingProgressPage } from "../../src/portals/manager/TeamTrainingProgress";
 import { UserProfile, Course, AuthenticatedUser } from "../../src/types";
 
 const TrainingPage: NextPage = () => {
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const currentUser: AuthenticatedUser = { id: "manager-1", name: "Manager", role: "manager" };
+  const currentUser: AuthenticatedUser = { id: "manager-1", name: "Manager", role: "sales-team-lead" };
 
   useEffect(() => {
     async function loadData() {
@@ -31,9 +31,9 @@ const TrainingPage: NextPage = () => {
   }, []);
 
   return (
-    <ManagerLayout currentView="training">
+    <SalesTeamLeadLayout currentView="training">
       <TeamTrainingProgressPage currentUser={currentUser} teamMembers={teamMembers} courses={courses} />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

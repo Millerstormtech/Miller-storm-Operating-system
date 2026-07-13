@@ -17,13 +17,13 @@ const baseItems = [
   { id: "task-manager", label: "Team Tasks", toggleKey: "taskTracker" },
 ];
 
-type ManagerSidebarProps = {
+type SalesTeamLeadSidebarProps = {
   activeId: string;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 };
 
-export function ManagerSidebar({ activeId, isCollapsed, onToggleCollapse }: ManagerSidebarProps) {
+export function SalesTeamLeadSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesTeamLeadSidebarProps) {
   const router = useRouter();
   const { user } = useAuth();
   const hasBotAccess = useBotAccess(user?.id);

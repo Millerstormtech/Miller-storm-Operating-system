@@ -8,14 +8,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 
-class ManagerStormChatScreen extends StatefulWidget {
-  const ManagerStormChatScreen({Key? key}) : super(key: key);
+class SalesTeamLeadStormChatScreen extends StatefulWidget {
+  const SalesTeamLeadStormChatScreen({Key? key}) : super(key: key);
 
   @override
-  _ManagerStormChatScreenState createState() => _ManagerStormChatScreenState();
+  _SalesTeamLeadStormChatScreenState createState() => _SalesTeamLeadStormChatScreenState();
 }
 
-class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
+class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScreen> {
   List<dynamic> groups = [];
   Map<String, int> unreadCounts = {};
   Map<String, int> mentionCounts = {};

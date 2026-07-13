@@ -135,7 +135,7 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
   }
 
   const totalSalesReps = users.filter((user) => user.role === "sales").length;
-  const totalManagers = users.filter((user) => user.role === "manager").length;
+  const totalManagers = users.filter((user) => user.role === "sales-team-lead").length;
 
   // Calculate metrics from committed business plans only
   const committedPlans = businessPlans.filter(p => p.businessPlan?.committed);

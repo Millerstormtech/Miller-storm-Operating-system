@@ -28,7 +28,7 @@ export default async function handler(
   const targetId = id;
   const isSelf = auth.sub === targetId;
   const isAdmin = auth.role === "admin";
-  const isManager = auth.role === "manager";
+  const isManager = auth.role === "sales-team-lead";
 
   if (req.method === "GET") {
     if (!(isSelf || isAdmin || isManager)) {

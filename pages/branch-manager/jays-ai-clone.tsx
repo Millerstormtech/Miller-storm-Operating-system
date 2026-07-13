@@ -27,7 +27,7 @@ const BranchManagerJaysAiClonePage: NextPage = () => {
         </div>
       </div>
       <div style={{ padding: "0 24px 24px" }}>
-        <BotChatWidget role="manager" onBotsLoaded={(bl, sel, fn) => { setBots(bl); setSelectedBot(sel); setSelectFn(() => (b: any) => { fn(b); setSelectedBot(b); }); }} />
+        <BotChatWidget role="sales-team-lead" onBotsLoaded={(bl, sel, fn) => { setBots(bl); setSelectedBot(sel); setSelectFn(() => (b: any) => { fn(b); setSelectedBot(b); }); }} />
       </div>
     </BranchManagerLayout>
   );

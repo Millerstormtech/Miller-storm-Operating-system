@@ -8,7 +8,7 @@ import { useAuth } from "../../src/contexts/AuthContext";
 const Rankings: NextPage = () => {
   const { user } = useAuth();
   return (
-    <ProtectedRoute allowedRoles={["sales", "manager", "admin"]}>
+    <ProtectedRoute allowedRoles={["sales", "sales-team-lead", "admin"]}>
       <SalesLayout currentView="rankings" userName={user?.name} userId={user?.id}>
         <RankingsPage currentUserId={user?.id} />
       </SalesLayout>

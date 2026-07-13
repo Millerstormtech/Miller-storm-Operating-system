@@ -46,8 +46,8 @@ export function TrainingExecutiveView() {
           (u: any) =>
             !u.deleted &&
             !u.suspended &&
-            (u.role === "manager" || u.role === "sales" ||
-              (u.roles || []).some((r: string) => r === "manager" || r === "sales"))
+            (u.role === "sales-team-lead" || u.role === "sales" ||
+              (u.roles || []).some((r: string) => r === "sales-team-lead" || r === "sales"))
         );
 
         const published = courses.filter((c: any) => c.status === "published");
@@ -110,7 +110,7 @@ export function TrainingExecutiveView() {
               status,
             };
 
-            const isManager = u.role === "manager" || (u.roles || []).includes("manager");
+            const isManager = u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead");
             if (isManager) managers.push(row);
             else sales.push(row);
           });
@@ -342,7 +342,7 @@ export function TrainingExecutiveView() {
                             textTransform: "capitalize",
                           }}
                         >
-                          {t === "manager" ? "Managers" : "Sales"}{" "}
+                          {t === "manager" ? "Sales Team Leads" : "Sales"}{" "}
                           <span style={{
                             background: tab === t ? "#eff6ff" : "#f3f4f6",
                             color: tab === t ? "#2563eb" : "#9ca3af",

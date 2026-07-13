@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { ManagerLayout } from "../../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../../src/portals/manager/SalesTeamLeadLayout";
 import { TeamMemberDetail } from "../../../src/portals/manager/TeamMemberDetail";
 import { UserProfile } from "../../../src/types";
 
@@ -46,28 +46,28 @@ const TeamMemberDetailPage: NextPage = () => {
 
   if (loading) {
     return (
-      <ManagerLayout currentView="team">
+      <SalesTeamLeadLayout currentView="team">
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <div style={{ fontSize: '16px', color: '#6b7280' }}>Loading...</div>
         </div>
-      </ManagerLayout>
+      </SalesTeamLeadLayout>
     );
   }
 
   if (!member) {
     return (
-      <ManagerLayout currentView="team">
+      <SalesTeamLeadLayout currentView="team">
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <div style={{ fontSize: '16px', color: '#6b7280' }}>Team member not found</div>
         </div>
-      </ManagerLayout>
+      </SalesTeamLeadLayout>
     );
   }
 
   return (
-    <ManagerLayout currentView="team">
+    <SalesTeamLeadLayout currentView="team">
       <TeamMemberDetail member={member} onMemberChange={handleMemberChange} />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

@@ -5,7 +5,7 @@ import { Header } from "../components/Header";
 import { DashboardCard } from "../components/DashboardCard";
 import { AuthenticatedUser, BusinessPlan, Course, UserProfile } from "../types";
 
-type ManagerPortalProps = {
+type SalesTeamLeadPortalProps = {
   currentUser: AuthenticatedUser;
   teamMembers: UserProfile[];
   courses: Course[];
@@ -1786,7 +1786,7 @@ function ManagerOnlineTrainingPage(props: {
   );
 }
 
-export function ManagerPortal(props: ManagerPortalProps) {
+export function SalesTeamLeadPortal(props: SalesTeamLeadPortalProps) {
   const [activeView, setActiveView] = useState<ManagerViewId>("dashboard");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 

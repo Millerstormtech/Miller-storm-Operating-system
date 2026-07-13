@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
     FirebaseMessagingService.saveTokenAfterLogin();
     if (role == 'sales') {
       Navigator.pushReplacementNamed(context, '/courses');
-    } else if (role == 'manager') {
+    } else if (role == 'sales-team-lead') {
       Navigator.pushReplacementNamed(context, '/manager-training');
     } else {
       setState(() {
@@ -95,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final role = user['role'] as String?;
       // Enable Face ID for next time only for the roles allowed into the app.
-      if (role == 'sales' || role == 'manager') {
+      if (role == 'sales' || role == 'sales-team-lead') {
         await AuthService.enableBiometricLogin();
       }
       _navigateByRole(user);

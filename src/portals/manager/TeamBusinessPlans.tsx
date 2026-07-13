@@ -127,7 +127,7 @@ export function TeamBusinessPlansPage() {
           type: 'plan_updated',
           title: 'Business Plan Updated',
           message: `Your Sales Team Lead updated your business plan.`,
-          metadata: { updatedBy: 'manager', businessPlan: plan }
+          metadata: { updatedBy: 'sales-team-lead', businessPlan: plan }
         })
       });
 
@@ -143,7 +143,7 @@ export function TeamBusinessPlansPage() {
     return <div style={{ padding: 24 }}>Loading team data...</div>;
   }
 
-  if (!user || user.role !== 'manager') {
+  if (!user || user.role !== 'sales-team-lead') {
     return <div style={{ padding: 24 }}>Access denied</div>;
   }
 

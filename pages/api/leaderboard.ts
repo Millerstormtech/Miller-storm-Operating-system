@@ -40,9 +40,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch users
     let usersQuery: any = {
       $or: [
-        { role: "manager" },
+        { role: "sales-team-lead" },
         { role: "sales" },
-        { roles: { $in: ["manager", "sales"] } }
+        { roles: { $in: ["sales-team-lead", "sales"] } }
       ],
       deleted: { $ne: true },
       suspended: { $ne: true }

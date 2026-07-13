@@ -46,7 +46,7 @@ export function ShareModal({ isOpen, onClose, title, shareUrl, lessonId }: Share
         
         // Filter based on user role
         let filtered: any[] = [];
-        if (currentUserData.role === 'manager') {
+        if (currentUserData.role === 'sales-team-lead') {
           // Show sales users under this manager
           filtered = allUsers.filter((u: any) => u.managerId === currentUserData.id && u.role === 'sales');
           console.log('Manager - filtered sales users:', filtered);
@@ -247,7 +247,7 @@ export function ShareModal({ isOpen, onClose, title, shareUrl, lessonId }: Share
             <div style={{ fontSize: 48, marginBottom: 16 }}>👥</div>
             <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>No Team Members</div>
             <div style={{ fontSize: 14 }}>
-              {user?.role === 'manager' ? 'You have no sales team members assigned.' : 'No team members available to share with.'}
+              {user?.role === 'sales-team-lead' ? 'You have no sales team members assigned.' : 'No team members available to share with.'}
             </div>
           </div>
         )}

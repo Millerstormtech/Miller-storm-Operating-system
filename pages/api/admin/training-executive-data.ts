@@ -16,9 +16,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const allUsers = await UserModel.find({
       deleted: { $ne: true },
       $or: [
-        { role: "manager" },
+        { role: "sales-team-lead" },
         { role: "sales" },
-        { roles: { $in: ["manager", "sales"] } },
+        { roles: { $in: ["sales-team-lead", "sales"] } },
       ],
     }).lean();
 

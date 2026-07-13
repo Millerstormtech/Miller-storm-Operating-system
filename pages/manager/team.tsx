@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { TeamPage } from "../../src/portals/manager/TeamPage";
 import { UserProfile } from "../../src/types";
 
@@ -36,9 +36,9 @@ const TeamPageRoute: NextPage = () => {
   }
 
   return (
-    <ManagerLayout currentView="team">
+    <SalesTeamLeadLayout currentView="team">
       <TeamPage teamMembers={teamMembers} onTeamMembersChange={handleTeamMembersChange} />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

@@ -153,8 +153,8 @@ export function CourseLeaderboard() {
       const usersRes = await fetch("/api/users").then((r) => r.ok ? r.json() : []);
       const eligible = (Array.isArray(usersRes) ? usersRes : [])
         .filter((u: any) => !u.deleted && !u.suspended &&
-          (u.role === "manager" || u.role === "sales" ||
-            (u.roles || []).some((r: string) => r === "manager" || r === "sales")))
+          (u.role === "sales-team-lead" || u.role === "sales" ||
+            (u.roles || []).some((r: string) => r === "sales-team-lead" || r === "sales")))
         .map((u: any) => ({ id: u.id, name: u.name || u.email, email: u.email }))
         .sort((a: UserOption, b: UserOption) => a.name.localeCompare(b.name));
       setOverrideUsers(eligible);
@@ -539,7 +539,7 @@ export function CourseLeaderboard() {
                             <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
                           </td>
                           <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5" }}>
-                            <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "manager" ? "#ede9fe" : "#dbeafe", color: row.role === "manager" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{roleDisplayName(row.role)}</span>
+                            <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "sales-team-lead" ? "#ede9fe" : "#dbeafe", color: row.role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{roleDisplayName(row.role)}</span>
                           </td>
                           <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", color: "#065f46", fontWeight: 600 }}>{row.done} / {row.total}</td>
                           <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", minWidth: 140 }}>
@@ -613,7 +613,7 @@ export function CourseLeaderboard() {
                             <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
                           </td>
                           <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
-                            <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "manager" ? "#ede9fe" : "#dbeafe", color: row.role === "manager" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{roleDisplayName(row.role)}</span>
+                            <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "sales-team-lead" ? "#ede9fe" : "#dbeafe", color: row.role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{roleDisplayName(row.role)}</span>
                           </td>
                           <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", whiteSpace: "nowrap", color: "#374151" }}>{row.done} / {row.total}</td>
                           <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", minWidth: 160 }}>
@@ -773,8 +773,8 @@ export function CourseLeaderboard() {
                           <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
                             <span style={{
                               padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                              background: row.role === "manager" ? "#ede9fe" : "#dbeafe",
-                              color: row.role === "manager" ? "#6d28d9" : "#1d4ed8",
+                              background: row.role === "sales-team-lead" ? "#ede9fe" : "#dbeafe",
+                              color: row.role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8",
                               textTransform: "capitalize",
                             }}>
                               {row.role}

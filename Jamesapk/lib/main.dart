@@ -8,35 +8,35 @@ import 'services/firebase_messaging_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
-import 'screens/manager_dashboard_screen.dart';
+import 'screens/sales_team_lead_dashboard_screen.dart';
 import 'screens/storm_chat_screen.dart';
 import 'screens/storm_chat_room_screen.dart';
 import 'screens/rankings_screen.dart';
 import 'screens/planner_screen.dart';
 import 'screens/courses_screen.dart';
 import 'screens/course_detail_screen.dart';
-import 'screens/manager_storm_chat_screen.dart';
-import 'screens/manager_rankings_screen.dart';
-import 'screens/manager_planner_screen.dart';
-import 'screens/manager_courses_screen.dart';
-import 'screens/manager_training_screen.dart';
-import 'screens/manager_profile_screen.dart';
-import 'screens/manager_view_team_screen.dart';
-import 'screens/manager_team_member_detail_screen.dart';
+import 'screens/sales_team_lead_storm_chat_screen.dart';
+import 'screens/sales_team_lead_rankings_screen.dart';
+import 'screens/sales_team_lead_planner_screen.dart';
+import 'screens/sales_team_lead_courses_screen.dart';
+import 'screens/sales_team_lead_training_screen.dart';
+import 'screens/sales_team_lead_profile_screen.dart';
+import 'screens/sales_team_lead_view_team_screen.dart';
+import 'screens/sales_team_lead_team_member_detail_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/ticket_screen.dart';
 import 'services/api_client.dart';
 import 'screens/apps_tools_items_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
-import 'screens/manager_apps_tools_items_screen.dart';
-import 'screens/manager_apps_tools_detail_screen.dart';
-import 'screens/manager_all_plans_screen.dart';
+import 'screens/sales_team_lead_apps_tools_items_screen.dart';
+import 'screens/sales_team_lead_apps_tools_detail_screen.dart';
+import 'screens/sales_team_lead_all_plans_screen.dart';
 import 'screens/ai_clone_chat_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/training_leaderboard_screen.dart';
-import 'screens/manager_training_leaderboard_screen.dart';
+import 'screens/sales_team_lead_training_leaderboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -151,7 +151,7 @@ class _MillerStormAppState extends State<MillerStormApp> {
           case '/training':
             return MaterialPageRoute(builder: (_) => const TrainingScreen());
           case '/manager-dashboard':
-            return MaterialPageRoute(builder: (_) => const ManagerDashboardScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadDashboardScreen());
           case '/stormchat':
             return MaterialPageRoute(builder: (_) => const StormChatScreen());
           case '/rankings':
@@ -167,13 +167,13 @@ class _MillerStormAppState extends State<MillerStormApp> {
           case '/apps-tools-detail':
             return MaterialPageRoute(builder: (_) => const AppsToolsDetailScreen(), settings: settings);
           case '/manager-apps-tools-items':
-            return MaterialPageRoute(builder: (_) => const ManagerAppsToolsItemsScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadAppsToolsItemsScreen());
           case '/manager-apps-tools-detail':
-            return MaterialPageRoute(builder: (_) => const ManagerAppsToolsDetailScreen(), settings: settings);
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadAppsToolsDetailScreen(), settings: settings);
           case '/manager-all-plans':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
-              builder: (_) => ManagerAllPlansScreen(
+              builder: (_) => SalesTeamLeadAllPlansScreen(
                 teamMembers: args['teamMembers'],
                 calculateMetrics: args['calculateMetrics'],
                 onSavePlan: args['onSavePlan'],
@@ -181,24 +181,24 @@ class _MillerStormAppState extends State<MillerStormApp> {
               ),
             );
           case '/manager-stormchat':
-            return MaterialPageRoute(builder: (_) => const ManagerStormChatScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadStormChatScreen());
           case '/manager-rankings':
-            return MaterialPageRoute(builder: (_) => const ManagerRankingsScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadRankingsScreen());
           case '/manager-view-team':
-            return MaterialPageRoute(builder: (_) => const ManagerViewTeamScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadViewTeamScreen());
           case '/manager-team-member-detail':
             final member = settings.arguments as Map<String, dynamic>;
-            return MaterialPageRoute(builder: (_) => ManagerTeamMemberDetailScreen(member: member));
+            return MaterialPageRoute(builder: (_) => SalesTeamLeadTeamMemberDetailScreen(member: member));
           case '/manager-planner':
-            return MaterialPageRoute(builder: (_) => const ManagerPlannerScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadPlannerScreen());
           case '/manager-courses':
-            return MaterialPageRoute(builder: (_) => const ManagerCoursesScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadCoursesScreen());
           case '/manager-training':
-            return MaterialPageRoute(builder: (_) => const ManagerTrainingScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadTrainingScreen());
           case '/manager-training-leaderboard':
-            return MaterialPageRoute(builder: (_) => const ManagerTrainingLeaderboardScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadTrainingLeaderboardScreen());
           case '/manager-profile':
-            return MaterialPageRoute(builder: (_) => const ManagerProfileScreen());
+            return MaterialPageRoute(builder: (_) => const SalesTeamLeadProfileScreen());
           case '/profile':
             return MaterialPageRoute(builder: (_) => const ProfileScreen());
           case '/tickets':

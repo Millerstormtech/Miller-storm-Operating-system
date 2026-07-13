@@ -10,7 +10,7 @@
 
 export const ROLE_DISPLAY_NAMES: Record<string, string> = {
   admin: "Admin",
-  manager: "Sales Team Lead",
+  "sales-team-lead": "Sales Team Lead",
   sales: "Sales",
   marketing: "Marketing",
   "c-level": "C-Level",

@@ -4,14 +4,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 
-class ManagerPlannerScreen extends StatefulWidget {
-  const ManagerPlannerScreen({super.key});
+class SalesTeamLeadPlannerScreen extends StatefulWidget {
+  const SalesTeamLeadPlannerScreen({super.key});
 
   @override
-  State<ManagerPlannerScreen> createState() => _ManagerPlannerScreenState();
+  State<SalesTeamLeadPlannerScreen> createState() => _SalesTeamLeadPlannerScreenState();
 }
 
-class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
+class _SalesTeamLeadPlannerScreenState extends State<SalesTeamLeadPlannerScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
@@ -236,7 +236,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
               'type': 'plan_updated',
               'title': 'Business Plan Updated',
               'message': 'Your Sales Team Lead updated your business plan.',
-              'metadata': {'updatedBy': 'manager', 'businessPlan': updatedPlan}
+              'metadata': {'updatedBy': 'sales-team-lead', 'businessPlan': updatedPlan}
             }),
           );
         } catch (e) {

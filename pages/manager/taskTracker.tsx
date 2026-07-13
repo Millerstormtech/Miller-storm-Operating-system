@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { TaskTracker } from "../../src/portals/manager/TaskTracker";
 import { UserProfile, Course } from "../../src/types";
 
@@ -28,9 +28,9 @@ const TaskTrackerPage: NextPage = () => {
   }, []);
 
   return (
-    <ManagerLayout currentView="taskTracker">
+    <SalesTeamLeadLayout currentView="taskTracker">
       <TaskTracker teamMembers={teamMembers} courses={courses} />
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

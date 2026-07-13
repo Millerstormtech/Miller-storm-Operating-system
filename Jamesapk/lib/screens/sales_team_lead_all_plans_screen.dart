@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class ManagerAllPlansScreen extends StatefulWidget {
+class SalesTeamLeadAllPlansScreen extends StatefulWidget {
   final List<dynamic> teamMembers;
   final Function(double, double) calculateMetrics;
   final Future<void> Function(String, Map<String, dynamic>) onSavePlan;
   final Future<void> Function() onRefresh;
 
-  const ManagerAllPlansScreen({
+  const SalesTeamLeadAllPlansScreen({
     super.key,
     required this.teamMembers,
     required this.calculateMetrics,
@@ -17,10 +17,10 @@ class ManagerAllPlansScreen extends StatefulWidget {
   });
 
   @override
-  State<ManagerAllPlansScreen> createState() => _ManagerAllPlansScreenState();
+  State<SalesTeamLeadAllPlansScreen> createState() => _SalesTeamLeadAllPlansScreenState();
 }
 
-class _ManagerAllPlansScreenState extends State<ManagerAllPlansScreen> {
+class _SalesTeamLeadAllPlansScreenState extends State<SalesTeamLeadAllPlansScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
@@ -44,7 +44,7 @@ class _ManagerAllPlansScreenState extends State<ManagerAllPlansScreen> {
   }
 
   @override
-  void didUpdateWidget(ManagerAllPlansScreen oldWidget) {
+  void didUpdateWidget(SalesTeamLeadAllPlansScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.teamMembers != widget.teamMembers) {
       setState(() {

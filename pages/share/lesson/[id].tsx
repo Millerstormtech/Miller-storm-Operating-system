@@ -22,7 +22,7 @@ export default function ShareLessonPage() {
       // Logged in, redirect to the lesson in the appropriate panel
       if (id) {
         // Redirect to manager or sales panel based on user role
-        if (user.role === 'manager') {
+        if (user.role === 'sales-team-lead') {
           console.log('Manager user, redirecting to:', `/manager/onlineTraining?lessonId=${id}`);
           router.push(`/manager/onlineTraining?lessonId=${id}`);
         } else if (user.role === 'sales') {

@@ -8,7 +8,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (!allowMethods(req, res, ["GET"])) return;
-  if (!requireRole(req, res, ["admin", "manager"])) return;
+  if (!requireRole(req, res, ["admin", "sales-team-lead"])) return;
 
   await connectMongo();
 

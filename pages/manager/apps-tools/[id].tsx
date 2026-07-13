@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
-import { ManagerLayout } from "../../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../../src/portals/manager/SalesTeamLeadLayout";
 
 type AppToolItem = {
   _id: string;
@@ -42,22 +42,22 @@ const ManagerAppToolDetailPage: NextPage = () => {
 
   if (loading) {
     return (
-      <ManagerLayout currentView="apps-tools">
+      <SalesTeamLeadLayout currentView="apps-tools">
         <div style={{ padding: 24, textAlign: 'center' }}>Loading...</div>
-      </ManagerLayout>
+      </SalesTeamLeadLayout>
     );
   }
 
   if (!item) {
     return (
-      <ManagerLayout currentView="apps-tools">
+      <SalesTeamLeadLayout currentView="apps-tools">
         <div style={{ padding: 24, textAlign: 'center' }}>Item not found</div>
-      </ManagerLayout>
+      </SalesTeamLeadLayout>
     );
   }
 
   return (
-    <ManagerLayout currentView="apps-tools">
+    <SalesTeamLeadLayout currentView="apps-tools">
       <div className="page-header" style={{ marginBottom: 32 }}>
         <button onClick={() => router.back()} className="btn-secondary" style={{ padding: '12px 24px', fontSize: '16px' }}>
           ← Back
@@ -115,7 +115,7 @@ const ManagerAppToolDetailPage: NextPage = () => {
           </div>
         </div>
       </div>
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

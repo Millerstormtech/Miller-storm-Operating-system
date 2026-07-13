@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { BranchManagerLayout } from "../../src/portals/branch-manager/BranchManagerLayout";
-import { ManagerProfilePage } from "../../src/portals/manager/ManagerProfilePage";
+import { SalesTeamLeadProfilePage } from "../../src/portals/manager/SalesTeamLeadProfilePage";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
@@ -45,7 +45,7 @@ const BranchManagerProfilePage: NextPage = () => {
 
   return (
     <BranchManagerLayout currentView="my-profile">
-      <ManagerProfilePage profile={profile} onProfileChange={handleProfileChange} />
+      <SalesTeamLeadProfilePage profile={profile} onProfileChange={handleProfileChange} />
     </BranchManagerLayout>
   );
 };

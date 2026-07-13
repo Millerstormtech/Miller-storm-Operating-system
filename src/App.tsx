@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
 import { AdminPortal } from "./portals/AdminPortal";
-import { ManagerPortal } from "./portals/ManagerPortal";
+import { SalesTeamLeadPortal } from "./portals/SalesTeamLeadPortal";
 import { SalesPortal } from "./portals/SalesPortal";
 import { MarketingPortal } from "./portals/MarketingPortal";
 import { AuthenticatedUser, Course, UserProfile } from "./types";
@@ -268,10 +268,10 @@ export function App() {
     );
   }
 
-  if (currentUser.role === "manager") {
+  if (currentUser.role === "sales-team-lead") {
     const teamMembers = users.filter((u) => u.managerId === currentUser.id);
     return (
-      <ManagerPortal
+      <SalesTeamLeadPortal
         currentUser={currentUser}
         teamMembers={teamMembers}
         courses={courses}

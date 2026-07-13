@@ -58,7 +58,7 @@ export function CLevelDashboard() {
           const users = await usersRes.json();
           const list = Array.isArray(users) ? users : [];
           setUserCount(list.filter((u: any) => !u.deleted && !u.suspended).length);
-          setManagerCount(list.filter((u: any) => u.role === "manager" && !u.deleted).length);
+          setManagerCount(list.filter((u: any) => u.role === "sales-team-lead" && !u.deleted).length);
         }
         if (coursesRes.ok && mounted) {
           const courses = await coursesRes.json();

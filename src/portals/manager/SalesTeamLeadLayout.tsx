@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { Layout } from "../../components/Layout";
-import { ManagerSidebar } from "../../components/ManagerSidebar";
+import { SalesTeamLeadSidebar } from "../../components/SalesTeamLeadSidebar";
 import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
-type ManagerViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager" | "ai-bot-builder" | "team-structure" | "rankings" | "storm-chat";
+type SalesTeamLeadViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager" | "ai-bot-builder" | "team-structure" | "rankings" | "storm-chat";
 
-type ManagerLayoutProps = {
+type SalesTeamLeadLayoutProps = {
   children: React.ReactNode;
-  currentView: ManagerViewId;
+  currentView: SalesTeamLeadViewId;
 };
 
-export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
+export function SalesTeamLeadLayout({ children, currentView }: SalesTeamLeadLayoutProps) {
   const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -44,7 +44,7 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
         />
       }
       sidebar={
-        <ManagerSidebar
+        <SalesTeamLeadSidebar
           activeId={currentView}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
@@ -56,4 +56,4 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
   );
 }
 
-export type { ManagerViewId };
+export type { SalesTeamLeadViewId };

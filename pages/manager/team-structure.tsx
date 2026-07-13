@@ -1,9 +1,9 @@
 import type { NextPage } from "next";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { TeamStructure } from "../../src/components/TeamStructure";
 
 const ManagerTeamStructurePage: NextPage = () => (
-  <ManagerLayout currentView="team-structure">
+  <SalesTeamLeadLayout currentView="team-structure">
     <div className="page-header">
       <h1 className="page-title">Team Structure</h1>
     </div>
@@ -13,7 +13,7 @@ const ManagerTeamStructurePage: NextPage = () => (
       </p>
       <TeamStructure />
     </div>
-  </ManagerLayout>
+  </SalesTeamLeadLayout>
 );
 
 export default ManagerTeamStructurePage;

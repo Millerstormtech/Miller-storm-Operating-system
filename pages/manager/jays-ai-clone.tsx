@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useState } from "react";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { BotChatWidget } from "../../src/components/BotChatWidget";
 
 const JaysAiClonePage: NextPage = () => {
@@ -9,7 +9,7 @@ const JaysAiClonePage: NextPage = () => {
   const [selectFn, setSelectFn] = useState<((b: any) => void) | null>(null);
 
   return (
-    <ManagerLayout currentView="jays-ai-clone">
+    <SalesTeamLeadLayout currentView="jays-ai-clone">
       <div className="page-header" style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
         <h1 className="page-title">AI Assistant</h1>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -27,9 +27,9 @@ const JaysAiClonePage: NextPage = () => {
         </div>
       </div>
       <div style={{ padding: "0 24px 24px" }}>
-        <BotChatWidget role="manager" onBotsLoaded={(bl, sel, fn) => { setBots(bl); setSelectedBot(sel); setSelectFn(() => (b: any) => { fn(b); setSelectedBot(b); }); }} />
+        <BotChatWidget role="sales-team-lead" onBotsLoaded={(bl, sel, fn) => { setBots(bl); setSelectedBot(sel); setSelectFn(() => (b: any) => { fn(b); setSelectedBot(b); }); }} />
       </div>
-    </ManagerLayout>
+    </SalesTeamLeadLayout>
   );
 };
 

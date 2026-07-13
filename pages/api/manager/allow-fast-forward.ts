@@ -12,7 +12,7 @@ import { requireRole, allowMethods } from "../../../src/lib/auth";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET", "POST"])) return;
 
-  const auth = requireRole(req, res, ["manager", "admin", "c-level", "branch-manager"]);
+  const auth = requireRole(req, res, ["sales-team-lead", "admin", "c-level", "branch-manager"]);
   if (!auth) return;
 
   await connectMongo();
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .select("id managerId fastForwardAllowed")
     .lean() as any;
   if (!member) return res.status(404).json({ error: "Member not found" });
-  if (auth.role === "manager" && String(member.managerId) !== String(auth.sub)) {
+  if (auth.role === "sales-team-lead" && String(member.managerId) !== String(auth.sub)) {
     return res.status(403).json({ error: "Forbidden: member is not on your team" });
   }
 

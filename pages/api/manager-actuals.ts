@@ -5,7 +5,7 @@ import { requireRole, allowMethods } from '../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
-  if (!requireRole(req, res, ['admin', 'manager'])) return;
+  if (!requireRole(req, res, ['admin', 'sales-team-lead'])) return;
 
   if (req.method === 'POST') {
     try {

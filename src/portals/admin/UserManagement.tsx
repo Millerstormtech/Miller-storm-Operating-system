@@ -5,7 +5,7 @@ import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
 import { roleDisplayName } from "../../lib/roleLabels";
 
-type UserRole = "admin" | "manager" | "sales" | "marketing" | "c-level" | "branch-manager";
+type UserRole = "admin" | "sales-team-lead" | "sales" | "marketing" | "c-level" | "branch-manager";
 
 type UserEditorProps = {
   users: UserProfile[];
@@ -53,7 +53,7 @@ export function UserManagement(props: UserEditorProps) {
   const [showDeletedUsers, setShowDeletedUsers] = useState(true);
   const [sortBy, setSortBy] = useState<"nameAsc" | "nameDesc" | "newest" | "oldest" | "lastModified">("nameAsc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "manager" | "sales" | "marketing" | "c-level" | "branch-manager">("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "sales-team-lead" | "sales" | "marketing" | "c-level" | "branch-manager">("all");
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
   const [devSearch, setDevSearch] = useState("");
@@ -101,7 +101,7 @@ export function UserManagement(props: UserEditorProps) {
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
     admin: ["socialMediaMetrics", "businessUnits", "trainingCenter", "userManagement", "courseManagement", "appsTools", "aiBots", "courseAiBots", "messaging", "leaderboard"],
-    manager: ["dashboard", "plans", "onlineTraining", "aiChat", "appsTools", "profile", "taskTracker"],
+    "sales-team-lead": ["dashboard", "plans", "onlineTraining", "aiChat", "appsTools", "profile", "taskTracker"],
     sales: ["dashboard", "plan", "training", "aiChat", "appsTools", "profile"],
     marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"],
     // C-Level always sees its full fixed feature set (no per-user toggles).
@@ -156,7 +156,7 @@ export function UserManagement(props: UserEditorProps) {
     admin: "Admin Panel",
     "c-level": "C-Level Panel",
     "branch-manager": "Branch Manager Panel",
-    manager: "Sales Team Lead Panel",
+    "sales-team-lead": "Sales Team Lead Panel",
     sales: "Sales Panel",
     marketing: "Marketing Panel"
   };
@@ -223,7 +223,7 @@ export function UserManagement(props: UserEditorProps) {
 
   // Load assigned sales users when manager is selected
   useEffect(() => {
-    if (selectedUser?.role === "manager") {
+    if (selectedUser?.role === "sales-team-lead") {
       const salesUsersUnderManager = draftUsers.filter(u => u.managerId === selectedUser.id && u.role === "sales");
       setAssignedSalesUsers(salesUsersUnderManager);
     } else {
@@ -508,7 +508,7 @@ export function UserManagement(props: UserEditorProps) {
       [
         "Jane Smith",
         "jane.smith@company.com",
-        "manager",
+        "sales-team-lead",
         "555-0101",
         "South Territory",
         "password456"
@@ -587,13 +587,13 @@ export function UserManagement(props: UserEditorProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span>User Management</span>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              {(['admin', 'c-level', 'branch-manager', 'manager', 'sales', 'marketing'] as UserRole[]).map(role => {
+              {(['admin', 'c-level', 'branch-manager', 'sales-team-lead', 'sales', 'marketing'] as UserRole[]).map(role => {
                 const count = draftUsers.filter(u => u.role === role).length;
                 const colors: Record<UserRole, { bg: string; color: string }> = {
                   admin: { bg: '#fef3c7', color: '#92400e' },
                   "c-level": { bg: "#ede9fe", color: "#5b21b6" },
                   "branch-manager": { bg: "#e0f2fe", color: "#075985" },
-                  manager: { bg: '#dbeafe', color: '#1e40af' },
+                  "sales-team-lead": { bg: '#dbeafe', color: '#1e40af' },
                   sales: { bg: '#dcfce7', color: '#166534' },
                   marketing: { bg: '#fce7f3', color: '#9d174d' }
                 };
@@ -718,7 +718,7 @@ export function UserManagement(props: UserEditorProps) {
                         { value: "admin", label: "Admin" },
                         { value: "c-level", label: "C-Level" },
                         { value: "branch-manager", label: "Branch Manager" },
-                        { value: "manager", label: "Sales Team Lead" },
+                        { value: "sales-team-lead", label: "Sales Team Lead" },
                         { value: "sales", label: "Sales" },
                         { value: "marketing", label: "Marketing" }
                       ].map((option) => (
@@ -1231,7 +1231,7 @@ export function UserManagement(props: UserEditorProps) {
                   </button>
                   {showRolesDropdown && (
                     <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }}>
-                      {(["admin", "c-level", "branch-manager", "manager", "sales", "marketing"] as UserRole[]).map((role) => (
+                      {(["admin", "c-level", "branch-manager", "sales-team-lead", "sales", "marketing"] as UserRole[]).map((role) => (
                         <div key={role} className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"} onClick={() => {
                           const newRoles = [role];
                           const newManagerId = role === "sales" ? selectedUser.managerId : undefined;
@@ -1261,7 +1261,7 @@ export function UserManagement(props: UserEditorProps) {
                       updateUser({ ...selectedUser, managerId: nextManagerId || undefined });
                     }}>
                       <option value="">-- Select a Sales Team Lead (required) --</option>
-                      {draftUsers.filter((u) => u.role === "manager").map((manager) => (
+                      {draftUsers.filter((u) => u.role === "sales-team-lead").map((manager) => (
                         <option key={manager.id} value={manager.id}>{manager.name}</option>
                       ))}
                     </select>
@@ -1394,7 +1394,7 @@ export function UserManagement(props: UserEditorProps) {
             </div>
 
             {/* Training Progress - Collapsible Inline */}
-            {(selectedUser.roles || [selectedUser.role]).some(r => r === 'manager' || r === 'sales') && (
+            {(selectedUser.roles || [selectedUser.role]).some(r => r === 'sales-team-lead' || r === 'sales') && (
               <div className="panel-section" style={{ marginTop: 24 }}>
                 <div 
                   className="panel-section-title" 
@@ -1473,7 +1473,7 @@ export function UserManagement(props: UserEditorProps) {
             )}
 
             {/* Assigned Sales Users - Collapsible */}
-            {selectedUser.role === "manager" && assignedSalesUsers.length > 0 && (
+            {selectedUser.role === "sales-team-lead" && assignedSalesUsers.length > 0 && (
               <div className="panel-section" style={{ marginTop: 24 }}>
                 <div 
                   className="panel-section-title" 
