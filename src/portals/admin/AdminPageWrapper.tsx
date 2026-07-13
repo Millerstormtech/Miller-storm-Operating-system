@@ -41,7 +41,7 @@ export function AdminPageWrapper({ children, currentView }: AdminPageWrapperProp
         const toggles = data?.featureToggles;
         if (toggles && toggles[toggleKey] === false) {
           setAllowed(false);
-          router.replace("/admin/social-media-metrics");
+          router.replace("/admin/user-management");
         } else {
           setAllowed(true);
         }

@@ -16,7 +16,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       router.push("/login");
     } else if (!isLoading && user && !allowedRoles.includes(user.role)) {
       if (user.role === "admin") {
-        router.push("/admin/dashboard");
+        router.push("/admin/user-management");
       } else if (user.role === "c-level") {
         router.push("/c-level/dashboard");
       } else if (user.role === "branch-manager") {
