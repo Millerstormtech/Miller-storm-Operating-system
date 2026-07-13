@@ -72,3 +72,17 @@ export function resolveTeam(name?: string | null, repcardTeam?: string | null): 
   const alias = TEAM_ALIAS[norm(t)];
   return alias !== undefined ? alias : t;
 }
+
+// The FIRST member of each team is its lead — the branch manager. Used by the
+// admin Branch Manager dashboard to show each branch manager (team lead)
+// individually with their own sales.
+export const TEAM_LEADS: Record<string, string> = Object.fromEntries(
+  Object.entries(ORG_TEAMS).map(([team, members]) => [team, members[0]])
+);
+
+// True when this rep is their team's lead (branch manager).
+export function isTeamLead(name?: string | null, team?: string | null): boolean {
+  if (!team) return false;
+  const lead = TEAM_LEADS[team];
+  return !!lead && norm(name) === norm(lead);
+}

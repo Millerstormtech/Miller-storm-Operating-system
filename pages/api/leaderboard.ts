@@ -13,7 +13,7 @@ import { RepCardUserModel } from "../../src/lib/models/RepCardUser";
 import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
 import { normEmail, normName, normPhone } from "../../src/lib/leaderboard/identity";
 import { officeToBranch } from "../../src/lib/repcard/branches";
-import { resolveTeam, TEAM_BRANCH } from "../../src/lib/repcard/org-chart";
+import { resolveTeam, TEAM_BRANCH, isTeamLead } from "../../src/lib/repcard/org-chart";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -194,6 +194,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Team = the rep's RepCard team (e.g. "Gunner", "Lubbock Team"). Used by
       // the board's Team filter.
       team,
+      // True when this rep leads their team (i.e. is the branch manager). Used
+      // by the admin Branch Manager dashboard to list branch managers.
+      isTeamLead: isTeamLead(rcu?.name || m.name, team),
       source: m.source,
     };
   });
