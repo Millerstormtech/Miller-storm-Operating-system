@@ -25,7 +25,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   static const _success = Color(0xFF10B981);
   static const _warning = Color(0xFFF59E0B);
 
-  String _userName = 'Manager';
+  String _userName = 'Sales Team Lead';
   int _stormChatGroupCount = 0;
   String? _userId;
 
@@ -43,7 +43,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       if (userStr != null) {
         final user = jsonDecode(userStr);
         setState(() {
-          _userName = user['name'] ?? 'Manager';
+          _userName = user['name'] ?? 'Sales Team Lead';
           _userId = user['_id'] ?? user['id'];
         });
         _fetchStormChatGroups();

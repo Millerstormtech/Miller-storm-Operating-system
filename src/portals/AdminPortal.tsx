@@ -17,6 +17,7 @@ import {
 import headerLogo from "../../ref. images/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png";
 import footerImage from "../../ref. images/image.png";
 import { WebPagePreview as SalesWebPagePreview } from "./SalesPortal";
+import { roleDisplayName } from "../lib/roleLabels";
 
 type AdminPortalProps = {
   currentUser: AuthenticatedUser;
@@ -165,7 +166,7 @@ function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
       <div className="panel" style={{ marginBottom: 16 }}>
         <div className="panel-header">
           <div className="panel-header-row">
-            <span>Sales Reps & Managers</span>
+            <span>Sales Reps & Sales Team Leads</span>
           </div>
         </div>
         <div className="panel-body">
@@ -175,7 +176,7 @@ function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
               value={totalSalesReps.toString()}
             />
             <DashboardCard
-              title="Total Managers"
+              title="Total Sales Team Leads"
               value={totalManagers.toString()}
             />
           </div>
@@ -469,7 +470,7 @@ function UserManagement(props: UserEditorProps) {
     admin: "Admin Panel",
     "c-level": "C-Level Panel",
     "branch-manager": "Branch Manager Panel",
-    manager: "Manager Panel",
+    manager: "Sales Team Lead Panel",
     sales: "Sales Panel",
     marketing: "Marketing Panel"
   };
@@ -870,7 +871,7 @@ function UserManagement(props: UserEditorProps) {
                     onClick={() => setShowRolesDropdown(!showRolesDropdown)}
                   >
                     <span className="territory-trigger-value">
-                      {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
+                      {roleDisplayName(selectedUser.role)}
                     </span>
                     <span className="territory-trigger-icon">{showRolesDropdown ? "▲" : "▼"}</span>
                   </button>
@@ -905,7 +906,7 @@ function UserManagement(props: UserEditorProps) {
               </label>
               {selectedUser.role === "sales" && (
                 <label className="field">
-                  <span className="field-label">Manager</span>
+                  <span className="field-label">Sales Team Lead</span>
                   <div
                     style={{
                       display: "flex",
@@ -926,7 +927,7 @@ function UserManagement(props: UserEditorProps) {
                         });
                       }}
                     >
-                      <option value="">No manager</option>
+                      <option value="">No Sales Team Lead</option>
                       {draftUsers
                         .filter((u) => u.role === "manager")
                         .map((manager) => (
@@ -1456,9 +1457,9 @@ function RoleHierarchyManager(props: {
     <div className="role-hierarchy">
       <div className="grid grid-3">
         <DashboardCard
-          title="Total Managers"
+          title="Total Sales Team Leads"
           value={totalManagers.toString()}
-          description="Users with Manager role"
+          description="Users with Sales Team Lead role"
         />
         <DashboardCard
           title="Total Sales Reps"
@@ -1497,11 +1498,11 @@ function RoleHierarchyManager(props: {
               </div>
               <div className="org-unassigned-column">
                 <div className="panel-section-title">
-                  Unassigned Users (must be attached to a manager)
+                  Unassigned Users (must be attached to a Sales Team Lead)
                 </div>
                 {unassignedUsers.length === 0 ? (
                   <div className="panel-empty">
-                    All non-admin users are assigned to a manager.
+                    All non-admin users are assigned to a Sales Team Lead.
                   </div>
                 ) : (
                   <div
@@ -2208,7 +2209,7 @@ function CourseManagement(props: CourseEditorProps) {
                       >
                         <option value="open">Open to all members</option>
                         <option value="assigned">
-                          Assigned only (manager controls access)
+                          Assigned only (Sales Team Lead controls access)
                         </option>
                       </select>
                     </label>
@@ -3751,7 +3752,7 @@ function BusinessUnitsManager(props: { users: UserProfile[] }) {
             </div>
           </div>
           <div className="panel-body">
-            <div className="panel-empty">No managers found.</div>
+            <div className="panel-empty">No Sales Team Leads found.</div>
           </div>
         </div>
       ) : (
@@ -3767,7 +3768,7 @@ function BusinessUnitsManager(props: { users: UserProfile[] }) {
               <div className="panel-body">
                 {manager.businessPlan && (
                   <div style={{ marginBottom: 16, padding: 12, backgroundColor: "#f9fafb", borderRadius: 6 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 8 }}>{manager.name} (Manager)</div>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>{manager.name} (Sales Team Lead)</div>
                     <div className="grid grid-4">
                       <DashboardCard
                         title="Target Revenue"

@@ -5,7 +5,7 @@ const ITEMS = [
   { id: "live-training",   day: 1, label: "Attend Monday live training" },
   { id: "begin-playbook",  day: 1, label: "Begin Playbook training course" },
   { id: "complete-session",day: 1, label: "Complete training session" },
-  { id: "meet-manager",    day: 1, label: "Meet with manager and schedule field ride-along" },
+  { id: "meet-manager",    day: 1, label: "Meet with Sales Team Lead and schedule field ride-along" },
   { id: "meet-rep",        day: 2, label: "Meet assigned rep" },
   { id: "go-field",        day: 2, label: "Go into the field" },
   { id: "first-roof",      day: 2, label: "Get on your first roof" },

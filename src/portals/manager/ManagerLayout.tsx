@@ -36,10 +36,10 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
       header={
         <Header
           title="Miller Storm Operating System"
-          userName={user?.name ?? "Manager"}
+          userName={user?.name ?? "Sales Team Lead"}
           userId={user?.id}
-          roleLabel="Manager"
-          panelName="Manager Portal"
+          roleLabel="Sales Team Lead"
+          panelName="Sales Team Lead Portal"
           onLogout={logout}
         />
       }

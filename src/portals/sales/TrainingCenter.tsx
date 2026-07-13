@@ -896,7 +896,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
                   No Assigned Playlists
                 </h3>
-                <p>Your manager hasn't assigned any playlists yet</p>
+                <p>Your Sales Team Lead hasn't assigned any playlists yet</p>
               </div>
             ) : (
               <div style={{ display: 'grid', gap: 16 }} className="playlist-grid">

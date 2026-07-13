@@ -83,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const count = pages.length;
       const label = count === 1 ? "a lesson/quiz" : `${count} lessons/quizzes`;
       const title = "🔓 Training Unlocked";
-      const message = `Your manager unlocked ${label} for you. Please check it out!`;
+      const message = `Your Sales Team Lead unlocked ${label} for you. Please check it out!`;
 
       await NotificationModel.create({
         id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

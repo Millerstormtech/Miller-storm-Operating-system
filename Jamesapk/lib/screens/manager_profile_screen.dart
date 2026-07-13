@@ -6,6 +6,7 @@ import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../utils/role_labels.dart';
 
 class ManagerProfileScreen extends StatefulWidget {
   const ManagerProfileScreen({super.key});
@@ -22,9 +23,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
   static const _textLight = Color(0xFF6B7280);
   static const _border = Color(0xFFD1D5DB);
 
-  String _userName = 'Manager';
+  String _userName = 'Sales Team Lead';
   String _userEmail = '';
-  String _userRole = 'Manager';
+  String _userRole = 'Sales Team Lead';
   String _userPhone = '';
   List<String> _userTerritories = [];
   String _userStrengths = '';
@@ -79,9 +80,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
             
             setState(() {
               _userId = freshUser['id'] ?? freshUser['_id'];
-              _userName = freshUser['name'] ?? 'Manager';
+              _userName = freshUser['name'] ?? 'Sales Team Lead';
               _userEmail = freshUser['email'] ?? '';
-              _userRole = freshUser['role'] ?? 'Manager';
+              _userRole = freshUser['role'] ?? 'Sales Team Lead';
               _userPhone = freshUser['phone'] ?? '';
               
               // Initialize controllers
@@ -114,9 +115,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
         // Use cached data if API call fails
         setState(() {
           _userId = user['id'] ?? user['_id'];
-          _userName = user['name'] ?? 'Manager';
+          _userName = user['name'] ?? 'Sales Team Lead';
           _userEmail = user['email'] ?? '';
-          _userRole = user['role'] ?? 'Manager';
+          _userRole = user['role'] ?? 'Sales Team Lead';
           _userPhone = user['phone'] ?? '';
           
           // Initialize controllers
@@ -630,7 +631,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            _userRole.toUpperCase(),
+                            roleDisplayName(_userRole).toUpperCase(),
                             style: const TextStyle(
                               color: _white,
                               fontSize: 11,

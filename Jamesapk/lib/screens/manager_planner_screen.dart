@@ -235,7 +235,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
               'userId': memberId,
               'type': 'plan_updated',
               'title': 'Business Plan Updated',
-              'message': 'Your manager updated your business plan.',
+              'message': 'Your Sales Team Lead updated your business plan.',
               'metadata': {'updatedBy': 'manager', 'businessPlan': updatedPlan}
             }),
           );

@@ -297,7 +297,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
             <span>Business Units</span>
           </div>
           <div className="panel-body">
-            <div className="panel-empty">No managers found.</div>
+            <div className="panel-empty">No Sales Team Leads found.</div>
           </div>
         </div>
       ) : (
@@ -336,7 +336,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           return (
             <div key={manager.id} className="panel" style={{ marginBottom: 16 }}>
               <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>{manager.name} - Manager</span>
+                <span>{manager.name} - Sales Team Lead</span>
                 <button
                   onClick={() => hideManager(manager.id)}
                   style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fff", background: "#fff", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
@@ -524,7 +524,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               return (
                 <div key={manager.id} className="panel" style={{ marginBottom: 16 }}>
                   <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ color: "#6b7280" }}>{manager.name} - Manager</span>
+                    <span style={{ color: "#6b7280" }}>{manager.name} - Sales Team Lead</span>
                     <button
                       onClick={() => unhideManager(manager.id)}
                       style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #3b82f6", background: "#eff6ff", color: "#2563eb", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
@@ -552,7 +552,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                         </thead>
                         <tbody>
                           <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f8fafc" }}>
-                            <td style={{ padding: 12, color: "#111827", fontWeight: 600 }}>{manager.name} (Manager)</td>
+                            <td style={{ padding: 12, color: "#111827", fontWeight: 600 }}>{manager.name} (Sales Team Lead)</td>
                             <td style={{ padding: 12, textAlign: "right" }}>${teamTotals.incomeGoal.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>—</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}</td>

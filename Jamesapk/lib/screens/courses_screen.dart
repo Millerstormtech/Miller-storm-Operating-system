@@ -487,7 +487,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
               ),
               const SizedBox(height: 8),
               Text(
-                'Your manager hasn\'t assigned any playlists yet',
+                'Your Sales Team Lead hasn\'t assigned any playlists yet',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: _textLight),
               ),

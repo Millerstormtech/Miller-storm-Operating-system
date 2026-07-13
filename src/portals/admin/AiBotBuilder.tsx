@@ -1225,7 +1225,7 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
           style={{ padding: "9px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", background: "#fff", cursor: "pointer" }}>
           <option value="all">All Roles</option>
           <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
+          <option value="manager">Sales Team Lead</option>
           <option value="sales">Sales</option>
           <option value="marketing">Marketing</option>
         </select>

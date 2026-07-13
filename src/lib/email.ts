@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { renderTemplate } from "./emailTemplates";
 import { getEmailTemplate } from "./emailTemplatesServer";
+import { roleDisplayName } from "./roleLabels";
 
 type EmailOptions = {
   to: string;
@@ -51,7 +52,7 @@ export async function sendRegistrationConfirmationEmail(name: string, email: str
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": name,
     "{{email}}": email,
-    "{{role}}": role.charAt(0).toUpperCase() + role.slice(1),
+    "{{role}}": roleDisplayName(role),
   });
   return sendEmail({ to: email, subject, html, text });
 }
@@ -62,7 +63,7 @@ export async function sendAccountApprovedEmail(name: string, email: string, role
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": name,
     "{{email}}": email,
-    "{{role}}": role.charAt(0).toUpperCase() + role.slice(1),
+    "{{role}}": roleDisplayName(role),
     "{{loginUrl}}": loginUrl,
   });
   return sendEmail({ to: email, subject, html, text });
@@ -111,7 +112,7 @@ export async function sendUserAccountUpdatedEmail(params: {
     "{{name}}": params.name,
     "{{email}}": params.email,
     "{{password}}": params.password || "Unchanged (use your existing password)",
-    "{{role}}": params.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", "),
+    "{{role}}": params.roles.map(r => roleDisplayName(r)).join(", "),
     "{{managerName}}": params.managerName || "N/A",
     "{{loginUrl}}": params.loginUrl,
   });
@@ -134,7 +135,7 @@ export async function sendAdminConfirmationEmail(params: {
     "{{adminName}}": params.adminName,
     "{{userName}}": params.userName,
     "{{userEmail}}": params.userEmail,
-    "{{role}}": params.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", "),
+    "{{role}}": params.roles.map(r => roleDisplayName(r)).join(", "),
     "{{managerName}}": params.managerName || "N/A",
     "{{passwordChanged}}": params.passwordChanged ? "Changed" : "Not Changed",
     "{{updatedAt}}": params.updatedAt,
@@ -196,10 +197,10 @@ export function generateRegistrationConfirmationEmail(name: string, email: strin
   const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
 <p>Hi ${name},</p>
 <p>Your registration request is pending approval.</p>
-<p>Name: ${name} | Email: ${email} | Role: ${role}</p>
+<p>Name: ${name} | Email: ${email} | Role: ${roleDisplayName(role)}</p>
 <p>© 2026-2027 Miller Storm.</p>
 </body></html>`;
-  const text = `Hi ${name},\n\nYour registration is pending approval.\nName: ${name}\nEmail: ${email}\nRole: ${role}\n\n© 2026-2027 Miller Storm.`;
+  const text = `Hi ${name},\n\nYour registration is pending approval.\nName: ${name}\nEmail: ${email}\nRole: ${roleDisplayName(role)}\n\n© 2026-2027 Miller Storm.`;
   return { html, text };
 }
 
@@ -207,11 +208,11 @@ export function generateApprovalEmail(name: string, email: string, role: string,
   const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
 <p>Hi ${name},</p>
 <p>Your account has been approved!</p>
-<p>Email: ${email} | Role: ${role}</p>
+<p>Email: ${email} | Role: ${roleDisplayName(role)}</p>
 <p><a href="${loginUrl}">Login Now</a></p>
 <p>© 2026-2027 Miller Storm.</p>
 </body></html>`;
-  const text = `Hi ${name},\n\nYour account has been approved!\nEmail: ${email}\nRole: ${role}\nLogin: ${loginUrl}\n\n© 2026-2027 Miller Storm.`;
+  const text = `Hi ${name},\n\nYour account has been approved!\nEmail: ${email}\nRole: ${roleDisplayName(role)}\nLogin: ${loginUrl}\n\n© 2026-2027 Miller Storm.`;
   return { html, text };
 }
 

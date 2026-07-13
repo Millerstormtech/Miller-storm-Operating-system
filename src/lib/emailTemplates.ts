@@ -110,7 +110,7 @@ Your account has been updated by an administrator. Here are your current login d
 - Email: {{email}}
 - Password: {{password}}
 - Role: {{role}}
-- Manager: {{managerName}}
+- Sales Team Lead: {{managerName}}
 
 Login here: {{loginUrl}}
 
@@ -158,7 +158,7 @@ You have successfully updated the following user account:
 - Name: {{userName}}
 - Email: {{userEmail}}
 - Role: {{role}}
-- Manager: {{managerName}}
+- Sales Team Lead: {{managerName}}
 - Password: {{passwordChanged}}
 - Updated At: {{updatedAt}}
 

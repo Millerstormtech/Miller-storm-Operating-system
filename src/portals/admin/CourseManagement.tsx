@@ -2322,7 +2322,7 @@ export function CourseManagement(props: CourseEditorProps) {
                         onChange={(e) => updateCourse({ ...selectedCourse, accessMode: e.target.value as "open" | "assigned" })}
                       >
                         <option value="open">Open to all members</option>
-                        <option value="assigned">Assigned only (manager controls access)</option>
+                        <option value="assigned">Assigned only (Sales Team Lead controls access)</option>
                       </select>
                     </label>
                   </div>

@@ -454,7 +454,7 @@ const TaskTracker: NextPage = () => {
                     width: `${columnWidths.notesByManager}px`,
                     position: 'relative'
                   }}>
-                    Notes by Manager
+                    Notes by Sales Team Lead
                     <div
                       style={{
                         position: 'absolute',
@@ -506,7 +506,7 @@ const TaskTracker: NextPage = () => {
                     width: `${columnWidths.documentLinkByManager}px`,
                     position: 'relative'
                   }}>
-                    Document Link by Manager
+                    Document Link by Sales Team Lead
                     <div
                       style={{
                         position: 'absolute',
@@ -997,7 +997,7 @@ const TaskTracker: NextPage = () => {
             {editingTask.editableFields.includes('notesByManager') && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Notes by Manager
+                  Notes by Sales Team Lead
                 </label>
                 <textarea
                   value={formData.notesByManager}
@@ -1019,7 +1019,7 @@ const TaskTracker: NextPage = () => {
             {editingTask.editableFields.includes('documentLinkByManager') && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Document Link by Manager
+                  Document Link by Sales Team Lead
                 </label>
                 <input
                   type="text"

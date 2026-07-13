@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { roleDisplayName } from "../../lib/roleLabels";
 import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
 import { StormChatRoom } from "./StormChatRoom";
@@ -484,7 +485,7 @@ export function StormChatManagement() {
             >
               <option value="all">All Roles</option>
               <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
+              <option value="manager">Sales Team Lead</option>
               <option value="sales">Sales</option>
               <option value="marketing">Marketing</option>
             </select>
@@ -916,7 +917,7 @@ export function StormChatManagement() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
-                    <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{u.role}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{roleDisplayName(u.role)}</div>
                   </div>
                 </button>
               ))}

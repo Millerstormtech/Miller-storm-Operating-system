@@ -720,7 +720,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   if (_managerName.isNotEmpty) ...[
                     _buildTextField(
-                      label: 'Manager',
+                      label: 'Sales Team Lead',
                       controller: TextEditingController(text: _managerName),
                       icon: Icons.manage_accounts_outlined,
                       enabled: false,
@@ -821,7 +821,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
           if (_managerName.isNotEmpty) ...[
             _buildTextField(
-              label: 'Manager',
+              label: 'Sales Team Lead',
               controller: TextEditingController(text: _managerName),
               icon: Icons.manage_accounts_outlined,
               enabled: false,

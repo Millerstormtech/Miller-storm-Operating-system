@@ -496,7 +496,7 @@ export function ChatHistoryViewer() {
             }}
           >
             <option value="all">All Roles</option>
-            <option value="manager">Manager</option>
+            <option value="manager">Sales Team Lead</option>
             <option value="sales">Sales</option>
             <option value="marketing">Marketing</option>
           </select>

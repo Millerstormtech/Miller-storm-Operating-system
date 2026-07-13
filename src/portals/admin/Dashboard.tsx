@@ -241,7 +241,7 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
         component: (
           <div className="grid grid-4">
             <DashboardCard title="Total Sales Reps" value={totalSalesReps.toString()} />
-            <DashboardCard title="Total Managers" value={totalManagers.toString()} />
+            <DashboardCard title="Total Sales Team Leads" value={totalManagers.toString()} />
           </div>
         )
       },

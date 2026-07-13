@@ -54,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacementNamed(context, '/manager-training');
     } else {
       setState(() {
-        _error = 'Access denied. This app is only available for Sales and Manager roles.';
+        _error = 'Access denied. This app is only available for Sales and Sales Team Lead roles.';
       });
       AuthService.logout();
     }

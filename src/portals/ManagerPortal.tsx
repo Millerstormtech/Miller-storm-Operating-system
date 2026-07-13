@@ -1847,7 +1847,7 @@ export function ManagerPortal(props: ManagerPortalProps) {
       return (
         <Placeholder
           title="Training Materials"
-          description="Decks, one-pagers, and resources managers share with their team."
+          description="Decks, one-pagers, and resources Sales Team Leads share with their team."
         />
       );
     }
@@ -1867,7 +1867,7 @@ export function ManagerPortal(props: ManagerPortalProps) {
       isSidebarCollapsed={isSidebarCollapsed}
       sidebar={
         <Sidebar
-          header={<div className="sidebar-title">Manager Portal</div>}
+          header={<div className="sidebar-title">Sales Team Lead Portal</div>}
           items={sidebarItems}
           activeId={activeView}
           onSelect={(id) => setActiveView(id as ManagerViewId)}
@@ -1879,9 +1879,9 @@ export function ManagerPortal(props: ManagerPortalProps) {
       header={
         <Header
           title="Sales & Marketing Operating System"
-          subtitle="Manager view"
+          subtitle="Sales Team Lead view"
           userName={props.currentUser.name}
-          roleLabel="Manager"
+          roleLabel="Sales Team Lead"
           onLogout={props.onLogout}
         />
       }

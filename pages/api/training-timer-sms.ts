@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const midpointRemaining = durationHours ? formatRemaining((durationHours * 3600) / 2) : "";
     const vars: Record<string, string> = {
       user_name: user.name ?? "User",
-      manager_name: manager?.name ?? "Manager",
+      manager_name: manager?.name ?? "Sales Team Lead",
       course_name: courseTitle ?? "training",
       training_duration: durationHours ? formatDuration(durationHours) : "",
       time_remaining: timeRemainingSeconds != null

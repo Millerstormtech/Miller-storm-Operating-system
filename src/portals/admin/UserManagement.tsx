@@ -3,6 +3,7 @@ import { appConfirm } from "../../lib/appDialogs";
 import { UserProfile, FeatureToggles } from "../../types";
 import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
+import { roleDisplayName } from "../../lib/roleLabels";
 
 type UserRole = "admin" | "manager" | "sales" | "marketing" | "c-level" | "branch-manager";
 
@@ -155,7 +156,7 @@ export function UserManagement(props: UserEditorProps) {
     admin: "Admin Panel",
     "c-level": "C-Level Panel",
     "branch-manager": "Branch Manager Panel",
-    manager: "Manager Panel",
+    manager: "Sales Team Lead Panel",
     sales: "Sales Panel",
     marketing: "Marketing Panel"
   };
@@ -598,7 +599,7 @@ export function UserManagement(props: UserEditorProps) {
                 };
                 return (
                   <span key={role} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, backgroundColor: colors[role].bg, color: colors[role].color }}>
-                    {role.charAt(0).toUpperCase() + role.slice(1)}: {count}
+                    {roleDisplayName(role)}: {count}
                   </span>
                 );
               })}
@@ -661,7 +662,7 @@ export function UserManagement(props: UserEditorProps) {
                     <tr key={index} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "8px 12px" }}>{user.name}</td>
                       <td style={{ padding: "8px 12px" }}>{user.email}</td>
-                      <td style={{ padding: "8px 12px", textTransform: "capitalize" }}>{user.role}</td>
+                      <td style={{ padding: "8px 12px", textTransform: "capitalize" }}>{roleDisplayName(user.role)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -696,7 +697,7 @@ export function UserManagement(props: UserEditorProps) {
                     onClick={() => setShowRoleDropdown(!showRoleDropdown)}
                     style={{ display: "flex", alignItems: "center", gap: 6 }}
                   >
-                    {roleFilter === "all" ? "All" : roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)}
+                    {roleFilter === "all" ? "All" : roleDisplayName(roleFilter)}
                     <span style={{ fontSize: 12 }}>▼</span>
                   </button>
                   {showRoleDropdown && (
@@ -717,7 +718,7 @@ export function UserManagement(props: UserEditorProps) {
                         { value: "admin", label: "Admin" },
                         { value: "c-level", label: "C-Level" },
                         { value: "branch-manager", label: "Branch Manager" },
-                        { value: "manager", label: "Manager" },
+                        { value: "manager", label: "Sales Team Lead" },
                         { value: "sales", label: "Sales" },
                         { value: "marketing", label: "Marketing" }
                       ].map((option) => (
@@ -1033,7 +1034,7 @@ export function UserManagement(props: UserEditorProps) {
                     }
                     const isSales = selectedUser.role === "sales";
                     if (isSales && !selectedUser.managerId) {
-                      setManagerError("Please assign a Manager to this sales user before saving.");
+                      setManagerError("Please assign a Sales Team Lead to this sales user before saving.");
                       return;
                     }
                     setManagerError("");
@@ -1224,7 +1225,7 @@ export function UserManagement(props: UserEditorProps) {
                     <span className="territory-trigger-value" style={{ color: (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 ? '#9ca3af' : undefined }}>
                       {(selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0
                         ? "-- Select a role (required) --"
-                        : (selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1))}
+                        : roleDisplayName(selectedUser.role)}
                     </span>
                     <span className="territory-trigger-icon">{showRolesDropdown ? "▲" : "▼"}</span>
                   </button>
@@ -1251,7 +1252,7 @@ export function UserManagement(props: UserEditorProps) {
               </label>
               {selectedUser.role === "sales" && (
                 <label className="field">
-                  <span className="field-label">Manager <span style={{ color: "#dc2626" }}>*</span></span>
+                  <span className="field-label">Sales Team Lead <span style={{ color: "#dc2626" }}>*</span></span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <select className="field-input" style={{ flex: 1, borderColor: (!selectedUser.managerId || managerError) ? "#dc2626" : undefined }} value={managerDraftId} onChange={(e) => {
                       const nextManagerId = e.target.value;
@@ -1259,7 +1260,7 @@ export function UserManagement(props: UserEditorProps) {
                       setManagerError("");
                       updateUser({ ...selectedUser, managerId: nextManagerId || undefined });
                     }}>
-                      <option value="">-- Select a manager (required) --</option>
+                      <option value="">-- Select a Sales Team Lead (required) --</option>
                       {draftUsers.filter((u) => u.role === "manager").map((manager) => (
                         <option key={manager.id} value={manager.id}>{manager.name}</option>
                       ))}
@@ -1267,7 +1268,7 @@ export function UserManagement(props: UserEditorProps) {
                   </div>
                   {(!selectedUser.managerId || managerError) && (
                     <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>
-                      {managerError || "Manager is required for sales users"}
+                      {managerError || "Sales Team Lead is required for sales users"}
                     </div>
                   )}
                 </label>
@@ -1514,7 +1515,7 @@ export function UserManagement(props: UserEditorProps) {
                           <td style={{ padding: '12px 16px', fontSize: 14, color: '#6b7280' }}>{user.email}</td>
                           <td style={{ padding: '12px 16px', fontSize: 14, color: '#6b7280' }}>
                             <span style={{ backgroundColor: '#e5e7eb', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500 }}>
-                              {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
+                              {roleDisplayName(user.role)}
                             </span>
                           </td>
                         </tr>

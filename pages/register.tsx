@@ -188,7 +188,7 @@ const RegisterPage: NextPage = () => {
             >
               <option value="sales">Sales Rep</option>
               <option value="branch-manager">Branch Manager</option>
-              <option value="manager">Manager</option>
+              <option value="manager">Sales Team Lead</option>
               <option value="marketing">Marketing</option>
             </select>
           </label>
