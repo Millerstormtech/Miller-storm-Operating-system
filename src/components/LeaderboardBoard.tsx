@@ -89,6 +89,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     return sorted;
   }, [rows, branchFilter, teamFilter, sortKey, sortDir]);
 
+  // The logged-in user's own row — drives the "your rank" pop-out banner.
+  // `rank` is the overall revenue rank for the selected window (from the API).
+  const me = useMemo(
+    () => (currentUserId ? rows.find((r) => r.repUserId === currentUserId) : undefined),
+    [rows, currentUserId]
+  );
+
   function onSort(key: SortKey) {
     if (key === sortKey) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -105,6 +112,44 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   return (
     <div>
+      {/* "Your rank" pop-out — shown to any user who is on the board (sales rep,
+          sales team lead, branch manager, etc.) with their own standing. */}
+      {me && (
+        <div
+          style={{
+            display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+            background: "linear-gradient(135deg,#1e3a8a,#2563eb)", color: "#fff",
+            borderRadius: 14, padding: "16px 20px", marginBottom: 16,
+            boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
+          }}
+        >
+          <div style={{ fontSize: 34, lineHeight: 1 }}>🏆</div>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 700, letterSpacing: 0.4 }}>
+              YOUR RANK · {WINDOWS.find((w) => w.key === window)?.label}
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>
+              #{me.rank}
+              <span style={{ fontSize: 15, fontWeight: 600, opacity: 0.85 }}> of {rows.length}</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 22, textAlign: "right" }}>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{fmtMoney(me.revenue)}</div>
+              <div style={{ fontSize: 11, opacity: 0.8 }}>Contract Amount</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{me.won ?? 0}</div>
+              <div style={{ fontSize: 11, opacity: 0.8 }}>Contracts</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{me.verifiedKnocks ?? 0}</div>
+              <div style={{ fontSize: 11, opacity: 0.8 }}>Knocks</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters — Period, Branch, Team all as matching dropdowns. */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
