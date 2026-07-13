@@ -37,6 +37,8 @@ export function UserManagement(props: UserEditorProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showWebPreview, setShowWebPreview] = useState(false);
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
+  const [showTerritoryDropdown, setShowTerritoryDropdown] = useState(false);
+  const TERRITORY_OPTIONS = ["DFW, Texas", "Lubbock, Texas", "Round Rock, Texas", "Other"];
   const [managerDraftId, setManagerDraftId] = useState<string>(props.users.find((u) => u.id === selectedUserId)?.managerId ?? "");
   const [emailError, setEmailError] = useState("");
   const [phoneError, setPhoneError] = useState("");
@@ -1217,6 +1219,44 @@ export function UserManagement(props: UserEditorProps) {
                     {phoneError}
                   </div>
                 )}
+              </label>
+              <label className="field">
+                <span className="field-label">Territory</span>
+                <div className="territory-field">
+                  <button
+                    type="button"
+                    className={showTerritoryDropdown ? "territory-trigger territory-trigger-open" : "territory-trigger"}
+                    onClick={() => setShowTerritoryDropdown(!showTerritoryDropdown)}
+                  >
+                    <span className="territory-trigger-value" style={{ color: !selectedUser.territory ? "#9ca3af" : undefined }}>
+                      {selectedUser.territory && selectedUser.territory.trim().length > 0
+                        ? selectedUser.territory
+                        : "Select territory"}
+                    </span>
+                    <span className="territory-trigger-icon">{showTerritoryDropdown ? "▲" : "▼"}</span>
+                  </button>
+                  {showTerritoryDropdown && (
+                    <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }} role="listbox">
+                      {TERRITORY_OPTIONS.map((option) => {
+                        // Single-select: only one territory allowed at a time.
+                        const checked = selectedUser.territory === option;
+                        return (
+                          <label key={option} className={checked ? "territory-option territory-option-active" : "territory-option"}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                updateUser({ ...selectedUser, territory: e.target.checked ? option : "" });
+                                setShowTerritoryDropdown(false);
+                              }}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </label>
               <label className="field">
                 <span className="field-label">Role</span>
