@@ -83,7 +83,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         coursesCompleted,
         totalCourses,
         businessPlan: bp
-          ? { revenueGoal: bp.revenueGoal ?? null, committed: !!bp.committed }
+          ? {
+              revenueGoal: bp.revenueGoal ?? null,
+              averageDealSize: bp.averageDealSize ?? null,
+              dealsPerYear: bp.dealsPerYear ?? null,
+              dealsPerMonth: bp.dealsPerMonth ?? null,
+              doorsPerDay: bp.doorsPerDay ?? null,
+              doorsPerYear: bp.doorsPerYear ?? null,
+              daysPerWeek: bp.daysPerWeek ?? null,
+              inspectionsNeeded: bp.inspectionsNeeded ?? null,
+              territories: Array.isArray(bp.territories) ? bp.territories : [],
+              committed: !!bp.committed,
+            }
           : null,
       };
     });

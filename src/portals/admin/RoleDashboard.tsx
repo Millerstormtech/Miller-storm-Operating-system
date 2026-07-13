@@ -12,7 +12,18 @@ type Row = {
   pct: number;
   coursesCompleted: number;
   totalCourses: number;
-  businessPlan: { revenueGoal: number | null; committed: boolean } | null;
+  businessPlan: {
+    revenueGoal: number | null;
+    averageDealSize: number | null;
+    dealsPerYear: number | null;
+    dealsPerMonth: number | null;
+    doorsPerDay: number | null;
+    doorsPerYear: number | null;
+    daysPerWeek: number | null;
+    inspectionsNeeded: number | null;
+    territories: string[];
+    committed: boolean;
+  } | null;
 };
 
 type Sales = { revenue: number; won: number; filed: number; verifiedKnocks: number };
@@ -131,6 +142,9 @@ export function RoleDashboard({ role, title }: { role: string; title: string }) 
       );
   }, [rows, salesByUser]);
 
+  // Users of this role that have filled a business plan.
+  const plans = useMemo(() => (rows || []).filter((r) => r.businessPlan), [rows]);
+
   const barColor = (pct: number) => (pct >= 80 ? "#16a34a" : pct >= 40 ? "#f59e0b" : "#dc2626");
   const rankColor = (i: number) => (i === 0 ? "#d97706" : i === 1 ? "#6b7280" : i === 2 ? "#b45309" : "#9ca3af");
 
@@ -175,7 +189,6 @@ export function RoleDashboard({ role, title }: { role: string; title: string }) 
                     <th style={{ padding: "10px 16px", fontWeight: 600 }}>User</th>
                     <th style={{ padding: "10px 16px", fontWeight: 600 }}>Courses done</th>
                     <th style={{ padding: "10px 16px", fontWeight: 600, minWidth: 160 }}>Completion</th>
-                    {showPlan && <th style={{ padding: "10px 16px", fontWeight: 600 }}>Business plan</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -205,20 +218,6 @@ export function RoleDashboard({ role, title }: { role: string; title: string }) 
                           <span style={{ fontSize: 12.5, fontWeight: 600, color: barColor(r.pct), width: 38, textAlign: "right" }}>{r.pct}%</span>
                         </div>
                       </td>
-                      {showPlan && (
-                        <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
-                          {r.businessPlan ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontWeight: 600, color: "#111827" }}>{money(r.businessPlan.revenueGoal)}</span>
-                              <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "2px 8px", background: r.businessPlan.committed ? "#f0fdf4" : "#fff7ed", color: r.businessPlan.committed ? "#15803d" : "#c2410c" }}>
-                                {r.businessPlan.committed ? "Committed" : "Draft"}
-                              </span>
-                            </div>
-                          ) : (
-                            <span style={{ color: "#9ca3af" }}>—</span>
-                          )}
-                        </td>
-                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -282,6 +281,66 @@ export function RoleDashboard({ role, title }: { role: string; title: string }) 
                       <td style={{ padding: "10px 16px", color: "#374151" }}>{p.sales!.verifiedKnocks}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ============ 3) BUSINESS PLANS ============ */}
+      <h2 style={{ margin: "28px 0 12px", fontSize: 18, fontWeight: 700, color: "#111827" }}>📋 Business Plans</h2>
+      <div className="panel">
+        <div className="panel-body" style={{ padding: 0 }}>
+          {rows === null ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>Loading…</div>
+          ) : plans.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>No business plans yet.</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                <thead>
+                  <tr style={{ background: "#f9fafb", textAlign: "left", color: "#6b7280", fontSize: 12.5 }}>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>User</th>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>Revenue goal</th>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>Avg deal</th>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>Deals/yr</th>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>Doors/day</th>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>Days/wk</th>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>Territories</th>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plans.map((r) => {
+                    const bp = r.businessPlan!;
+                    return (
+                      <tr key={r.id} style={{ borderTop: "1px solid #f0f1f3" }}>
+                        <td style={{ padding: "10px 16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <Avatar name={r.name} url={r.headshotUrl} />
+                            <div>
+                              <div style={{ fontWeight: 600, color: "#111827" }}>{r.name}</div>
+                              <div style={{ fontSize: 12, color: "#9ca3af" }}>{r.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "10px 16px", fontWeight: 700, color: "#111827", whiteSpace: "nowrap" }}>{money(bp.revenueGoal)}</td>
+                        <td style={{ padding: "10px 16px", color: "#374151", whiteSpace: "nowrap" }}>{money(bp.averageDealSize)}</td>
+                        <td style={{ padding: "10px 16px", color: "#374151" }}>{bp.dealsPerYear ?? "—"}</td>
+                        <td style={{ padding: "10px 16px", color: "#374151" }}>{bp.doorsPerDay ?? "—"}</td>
+                        <td style={{ padding: "10px 16px", color: "#374151" }}>{bp.daysPerWeek ?? "—"}</td>
+                        <td style={{ padding: "10px 16px", color: "#6b7280", maxWidth: 200 }}>
+                          {bp.territories.length ? bp.territories.join(", ") : "—"}
+                        </td>
+                        <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "2px 8px", background: bp.committed ? "#f0fdf4" : "#fff7ed", color: bp.committed ? "#15803d" : "#c2410c" }}>
+                            {bp.committed ? "Committed" : "Draft"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
