@@ -368,7 +368,7 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
             children: [
               Icon(icon, color: _textPlaceholder, size: 24),
               const SizedBox(height: 4),
-              Text(label, style: const TextStyle(fontSize: 10, color: _textPlaceholder), textAlign: TextAlign.center),
+              Text(label, style: const TextStyle(fontSize: 10, color: _textPlaceholder), maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -386,7 +386,7 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
           children: [
             Icon(icon, color: _primary, size: 24),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+            Text(label, style: const TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600), maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           ],
         ),
       ),

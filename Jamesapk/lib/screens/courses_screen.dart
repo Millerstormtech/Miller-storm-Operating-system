@@ -844,7 +844,14 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
             children: [
               Icon(icon, color: _textLight, size: 24),
               const SizedBox(height: 4),
-              Text(label, style: const TextStyle(fontSize: 11, color: _textLight)),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 10, color: _textLight),
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
@@ -865,7 +872,14 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           children: [
             Icon(icon, color: _primary, size: 24),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600),
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

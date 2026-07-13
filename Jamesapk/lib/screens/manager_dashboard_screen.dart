@@ -530,9 +530,13 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
                   color: _textPlaceholder,
                 ),
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -551,7 +555,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           children: [
             Icon(icon, color: _primary, size: 24),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+            Text(label, style: const TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600), maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           ],
         ),
       ),
