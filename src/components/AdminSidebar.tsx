@@ -3,20 +3,22 @@ import { Sidebar } from "./Sidebar";
 import { useAuth } from "../contexts/AuthContext";
 import { useFeatureToggles } from "../hooks/useFeatureToggles";
 
-const allSidebarItems = [
-  { id: "dashboard", label: "Dashboard", toggleKey: "dashboard" },
-  { id: "socialMediaMetrics", label: "Social Media Executive View", toggleKey: "socialMediaMetrics" },
-  { id: "businessUnits", label: "Business Planner Executive View", toggleKey: "businessUnits" },
+// `path` items navigate to that exact route (used for the per-role dashboards
+// which live outside /admin). Items without `path` navigate to /admin/<id>.
+const allSidebarItems: { id: string; label: string; toggleKey?: string; path?: string }[] = [
+  { id: "cLevelDashboard", label: "C Level Dashboard", path: "/c-level/dashboard" },
+  { id: "branchManagerDashboard", label: "Branch Manager Dashboard", path: "/branch-manager/dashboard" },
+  { id: "salesTeamDashboard", label: "Sales Team Dashboard", path: "/manager/dashboard" },
+  { id: "salesRepDashboard", label: "Sales Rep Dashboard", path: "/sales/dashboard" },
+  { id: "marketingDashboard", label: "Marketing Dashboard", path: "/marketing/dashboard" },
   { id: "trainingExecutive", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "userManagement", label: "User Management", toggleKey: "userManagement" },
   { id: "teamStructure", label: "Team Structure", toggleKey: "teamStructure" },
   { id: "courseManagement", label: "Course Builder", toggleKey: "courseManagement" },
-  { id: "appsTools", label: "Apps & Tool Builder", toggleKey: "appsTools" },
-  { id: "stormChat", label: "StormChat", toggleKey: "stormChat" },
-  { id: "courseAiBots", label: "Course Bots Builder", toggleKey: "courseAiBots" },
-  { id: "aiBots", label: "Master Bot Builder", toggleKey: "aiBots" },
-  { id: "messaging", label: "SMS Config", toggleKey: "messaging" },
+  { id: "appsTools", label: "Apps and Tools Builder", toggleKey: "appsTools" },
+  { id: "aiBots", label: "Master Bots Builder", toggleKey: "aiBots" },
   { id: "leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
+  { id: "stormChat", label: "StormChat", toggleKey: "stormChat" },
   { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig" },
 ];
 
@@ -33,10 +35,15 @@ export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse, onLogout
   const featureToggles = useFeatureToggles(user?.id);
 
   const sidebarItems = featureToggles
-    ? allSidebarItems.filter(item => featureToggles[item.toggleKey] !== false)
+    ? allSidebarItems.filter(item => !item.toggleKey || featureToggles[item.toggleKey] !== false)
     : allSidebarItems;
 
   function handleNavigation(id: string) {
+    const item = allSidebarItems.find(i => i.id === id);
+    if (item?.path) {
+      router.push(item.path);
+      return;
+    }
     router.push(`/admin/${id === "dashboard" ? "dashboard" : id.replace(/([A-Z])/g, "-$1").toLowerCase()}`);
   }
 
