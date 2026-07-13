@@ -3,6 +3,7 @@ import { Course, CoursePage, CourseFolder } from "../../types";
 import { Toast } from "../../components/Toast";
 import { parseQuestionsDoc, validateQuestions } from "../../lib/quizImport";
 import { isQuizResultPassing } from "../../lib/quiz";
+import { compressImageToWebp } from "../../utils/compressImage";
 
 type CourseEditorProps = {
   courses: Course[];
@@ -2261,11 +2262,11 @@ export function CourseManagement(props: CourseEditorProps) {
                       onChange={(event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          updateCourse({ ...selectedCourse, coverImageUrl: reader.result as string });
-                        };
-                        reader.readAsDataURL(file);
+                        // Resize + re-encode to webp before storing so full-res
+                        // covers can't bloat the courses payload again.
+                        compressImageToWebp(file)
+                          .then((url) => updateCourse({ ...selectedCourse, coverImageUrl: url }))
+                          .catch((err) => console.error("Cover compression failed:", err));
                       }}
                     />
                   </div>
