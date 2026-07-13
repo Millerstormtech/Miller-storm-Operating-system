@@ -155,51 +155,74 @@ class AuthService {
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    // If biometric login is enabled, stash the current session under separate
+    // keys so a passed Face ID / fingerprint check can restore it. We must still
+    // remove the ACTIVE 'user'/'token' keys, otherwise the splash screen would
+    // silently auto-login on the next app open (bypassing the logout entirely).
+    final biometricEnabled = prefs.getBool(_biometricFlagKey) ?? false;
+    if (biometricEnabled) {
+      final token = prefs.getString('token');
+      final user = prefs.getString('user');
+      if (token != null && token.isNotEmpty) await prefs.setString(_bioTokenKey, token);
+      if (user != null && user.isNotEmpty) await prefs.setString(_bioUserKey, user);
+    }
     await prefs.remove('user');
     await prefs.remove('token');
-    // Keep the biometric preference so the user can still Face-ID sign back in.
     api.clearToken();
   }
 
   // ── Biometric (Face ID / fingerprint) login ──────────────────────────────
-  // We don't store the password. After a successful password login we set a
-  // flag; biometric login then just re-primes the already-stored token, which
-  // the API client refreshes on its own. If the token has fully expired the next
-  // request 401s and the app falls back to the normal login — safe by design.
+  // We don't store the password. After a successful password login we snapshot
+  // the session token + user under biometric-only keys; biometric login re-primes
+  // that token (which the API client refreshes on its own) and re-activates the
+  // session. If the token has fully expired the next request 401s and the app
+  // falls back to the normal login — safe by design.
 
   static const String _biometricFlagKey = 'biometric_enabled';
+  // Session snapshot kept ONLY for biometric restore, separate from the active
+  // 'token'/'user' keys the splash screen reads (so logout truly logs out).
+  static const String _bioTokenKey = 'biometric_token';
+  static const String _bioUserKey = 'biometric_user';
 
-  /// Remember (after a password login) that this user opted into biometric login.
+  /// Remember (after a password login) that this user opted into biometric login,
+  /// and snapshot the current session so it can be restored after logout.
   static Future<void> enableBiometricLogin() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_biometricFlagKey, true);
+    final token = prefs.getString('token');
+    final user = prefs.getString('user');
+    if (token != null && token.isNotEmpty) await prefs.setString(_bioTokenKey, token);
+    if (user != null && user.isNotEmpty) await prefs.setString(_bioUserKey, user);
   }
 
   static Future<void> disableBiometricLogin() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_biometricFlagKey, false);
+    await prefs.remove(_bioTokenKey);
+    await prefs.remove(_bioUserKey);
   }
 
   /// Whether we can offer the "Login with Face ID" button: the user enabled it
-  /// AND we still have a stored token + user to sign them back in with.
+  /// AND we have a snapshotted session to sign them back in with.
   static Future<bool> canUseBiometricLogin() async {
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool(_biometricFlagKey) ?? false;
-    final hasToken = (prefs.getString('token') ?? '').isNotEmpty;
-    final hasUser = (prefs.getString('user') ?? '').isNotEmpty;
+    final hasToken = (prefs.getString(_bioTokenKey) ?? prefs.getString('token') ?? '').isNotEmpty;
+    final hasUser = (prefs.getString(_bioUserKey) ?? prefs.getString('user') ?? '').isNotEmpty;
     return enabled && hasToken && hasUser;
   }
 
-  /// Re-prime the API client with the stored token after a passed biometric
-  /// check and return the stored user (for role-based navigation).
+  /// Re-prime the API client with the snapshotted token after a passed biometric
+  /// check, re-activate the session, and return the user (for role navigation).
   static Future<Map<String, dynamic>?> restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    if (token != null && token.isNotEmpty) {
-      api.setToken(token);
-    }
-    final userStr = prefs.getString('user');
-    if (userStr == null) return null;
+    final token = prefs.getString(_bioTokenKey) ?? prefs.getString('token');
+    final userStr = prefs.getString(_bioUserKey) ?? prefs.getString('user');
+    if (token == null || token.isEmpty || userStr == null || userStr.isEmpty) return null;
+    // Re-activate the session so the splash screen and API client see it.
+    await prefs.setString('token', token);
+    await prefs.setString('user', userStr);
+    api.setToken(token);
     return jsonDecode(userStr);
   }
 }

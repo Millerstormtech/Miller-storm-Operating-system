@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import '../services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -353,8 +354,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      // Use AuthService.logout (NOT prefs.clear) so the biometric snapshot is
+      // preserved — clearing everything wiped it and hid the Face ID button.
+      await AuthService.logout();
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/login');
       }
