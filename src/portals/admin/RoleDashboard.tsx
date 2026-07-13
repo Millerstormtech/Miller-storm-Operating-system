@@ -26,7 +26,7 @@ type Row = {
   } | null;
 };
 
-type Sales = { revenue: number; won: number; filed: number; verifiedKnocks: number };
+type Sales = { revenue: number; won: number; filed: number; verifiedKnocks: number; team: string };
 
 const WINDOWS: { key: string; label: string }[] = [
   { key: "day", label: "Today" },
@@ -98,6 +98,7 @@ export function RoleDashboard({ role, title }: { role: string; title: string }) 
               won: lb.won || 0,
               filed: lb.filed || 0,
               verifiedKnocks: lb.verifiedKnocks || 0,
+              team: lb.team || "",
             };
           }
         }
@@ -259,6 +260,7 @@ export function RoleDashboard({ role, title }: { role: string; title: string }) 
                   <tr style={{ background: "#f9fafb", textAlign: "left", color: "#6b7280", fontSize: 12.5 }}>
                     <th style={{ padding: "10px 16px", fontWeight: 600, width: 60 }}>Rank</th>
                     <th style={{ padding: "10px 16px", fontWeight: 600 }}>Performer</th>
+                    <th style={{ padding: "10px 16px", fontWeight: 600 }}>Team</th>
                     <th style={{ padding: "10px 16px", fontWeight: 600 }}>Revenue</th>
                     <th style={{ padding: "10px 16px", fontWeight: 600 }}>Deals won</th>
                     <th style={{ padding: "10px 16px", fontWeight: 600 }}>Knocks</th>
@@ -276,6 +278,7 @@ export function RoleDashboard({ role, title }: { role: string; title: string }) 
                           <span style={{ fontWeight: 600, color: "#111827" }}>{p.user.name}</span>
                         </div>
                       </td>
+                      <td style={{ padding: "10px 16px", color: "#6b7280", whiteSpace: "nowrap" }}>{p.sales!.team || "—"}</td>
                       <td style={{ padding: "10px 16px", fontWeight: 700, color: "#111827", whiteSpace: "nowrap" }}>{money(p.sales!.revenue)}</td>
                       <td style={{ padding: "10px 16px", color: "#374151" }}>{p.sales!.won}</td>
                       <td style={{ padding: "10px 16px", color: "#374151" }}>{p.sales!.verifiedKnocks}</td>
