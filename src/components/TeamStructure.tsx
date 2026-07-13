@@ -204,7 +204,7 @@ export function TeamStructure() {
       {/* Summary */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
         {stat("Admins", counts.admins, ROLE.admin.dot)}
-        {stat("Managers", counts.managers, ROLE.manager.dot)}
+        {stat("Sales Team Leads", counts.managers, ROLE["sales-team-lead"].dot)}
         {stat("Sales", counts.sales, ROLE.sales.dot)}
         {stat("Marketing", counts.marketing, ROLE.marketing.dot)}
       </div>
