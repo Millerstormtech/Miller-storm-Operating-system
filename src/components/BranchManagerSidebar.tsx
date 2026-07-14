@@ -1,18 +1,21 @@
 import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
+import { useAuth } from "../contexts/AuthContext";
+import { useFeatureToggles } from "../hooks/useFeatureToggles";
 
 // Branch Manager (executive) panel navigation. Company-wide view — every item shows the
-// whole organization, not a single team. Feature set was defined by the client.
+// whole organization, not a single team. Each item carries a feature-toggle key so
+// an admin can hide any page for this user from User Management.
 const baseItems = [
-  { id: "dashboard", label: "Branch Manager Dashboard" },
-  { id: "storm-chat", label: "StormChat" },
-  { id: "course-leaderboard", label: "Course Leaderboard" },
-  { id: "team-structure", label: "Team Structure" },
-  { id: "apps-tools", label: "Tools & Products" },
-  { id: "sales-leaderboard", label: "Sales Leaderboard" },
-  { id: "training", label: "Training Center" },
-  { id: "jays-ai-clone", label: "Jay's AI Clone" },
-  { id: "my-profile", label: "Profile" },
+  { id: "dashboard", label: "Branch Manager Dashboard", toggleKey: "dashboard" },
+  { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
+  { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
+  { id: "team-structure", label: "Team Structure", toggleKey: "teamStructure" },
+  { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
+  { id: "sales-leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
+  { id: "training", label: "Training Center", toggleKey: "training" },
+  { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 
 type BranchManagerSidebarProps = {
@@ -23,6 +26,13 @@ type BranchManagerSidebarProps = {
 
 export function BranchManagerSidebar({ activeId, isCollapsed, onToggleCollapse }: BranchManagerSidebarProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const featureToggles = useFeatureToggles(user?.id);
+
+  // Hide any page whose feature toggle is explicitly turned off for this user.
+  const sidebarItems = featureToggles
+    ? baseItems.filter(item => featureToggles[item.toggleKey] !== false)
+    : baseItems;
 
   function handleNavigation(id: string) {
     router.push(`/branch-manager/${id}`);
@@ -35,7 +45,7 @@ export function BranchManagerSidebar({ activeId, isCollapsed, onToggleCollapse }
           <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40 }} />
         </div>
       }
-      items={baseItems}
+      items={sidebarItems}
       activeId={activeId}
       onSelect={handleNavigation}
       isCollapsed={isCollapsed}

@@ -106,9 +106,10 @@ export function UserManagement(props: UserEditorProps) {
     "sales-team-lead": ["dashboard", "plans", "onlineTraining", "aiChat", "appsTools", "profile", "taskTracker"],
     sales: ["dashboard", "plan", "training", "aiChat", "appsTools", "profile"],
     marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"],
-    // C-Level always sees its full fixed feature set (no per-user toggles).
-    "c-level": [],
-    "branch-manager": []
+    // C-Level / Branch Manager: admin can hide any of these pages per user; an
+    // unchecked page disappears from that user's sidebar.
+    "c-level": ["dashboard", "trainingCenter", "teamStructure", "appsTools", "training", "leaderboard", "stormChat", "aiChat", "profile"],
+    "branch-manager": ["dashboard", "stormChat", "trainingCenter", "teamStructure", "appsTools", "leaderboard", "training", "aiChat", "profile"],
   };
 
   const featureToggleLabels: Record<string, string> = {
@@ -123,8 +124,9 @@ export function UserManagement(props: UserEditorProps) {
     aiBots: "Master Bot Builder",
     courseAiBots: "Course Bots Builder",
     messaging: "SMS Config",
-    leaderboard: "Zapier Config",
+    leaderboard: "Sales Leaderboard",
     emailConfig: "Email Config",
+    teamStructure: "Team Structure",
     // Manager
     dashboard: "Dashboard",
     plans: "Team Business Planners",
@@ -343,7 +345,9 @@ export function UserManagement(props: UserEditorProps) {
       contentApprovals: true,
       courseAiBots: true,
       messaging: true,
-      leaderboard: true
+      leaderboard: true,
+      teamStructure: true,
+      stormChat: true
     };
     const newUser: UserProfile = {
       id: `user-${Date.now()}`,

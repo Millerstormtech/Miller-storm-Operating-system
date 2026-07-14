@@ -43,7 +43,9 @@ export type ModuleKey =
   | "contentApprovals"
   | "courseAiBots"
   | "messaging"
-  | "leaderboard";
+  | "leaderboard"
+  | "teamStructure"
+  | "stormChat";
 
 export type FeatureToggles = Record<ModuleKey, boolean>;
 
