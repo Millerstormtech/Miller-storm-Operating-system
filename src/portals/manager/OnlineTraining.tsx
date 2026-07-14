@@ -89,6 +89,10 @@ export function ManagerOnlineTrainingPage(props: {
 }) {
   const publishedCourses = props.courses;
   const isLoading = props.isLoading || false;
+  // Leadership roles review training freely: every lesson is unlocked (no
+  // sequential gating) and they can fast-forward / skip videos without first
+  // completing them.
+  const isPrivileged = ["c-level", "branch-manager", "sales-team-lead"].includes(props.currentUser.role);
   // Company-wide (C-Level) → EVERY user except admins (sales + managers + more);
   // otherwise scoped to this manager's own sales team.
   const teamUsersUrl = props.companyWide
@@ -101,6 +105,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [lessonSearch, setLessonSearch] = useState(""); // filter Course Modules by video title
+  const [courseSearch, setCourseSearch] = useState(""); // filter the courses grid by course title
   const [courseViewInitialized, setCourseViewInitialized] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
@@ -383,7 +388,7 @@ export function ManagerOnlineTrainingPage(props: {
       selectedCourse.folders ?? []
     );
     if (!ordered.some(p => p.id === target)) { pendingDeepLinkRef.current = null; return; }
-    const unlocked = isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
+    const unlocked = isPrivileged || isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
     setActivePageId(target);
     setMobileCourseScreen(unlocked ? 'lesson' : 'overview');
     pendingDeepLinkRef.current = null;
@@ -527,7 +532,9 @@ export function ManagerOnlineTrainingPage(props: {
         console.log('[VideoSeq] container .course-page-body-input not found');
         return;
       }
-      const isAlreadyCompleted = activePageId ? completedPages.has(activePageId) : false;
+      // Privileged leadership roles may always fast-forward/skip (as if the
+      // video were already completed).
+      const isAlreadyCompleted = isPrivileged || (activePageId ? completedPages.has(activePageId) : false);
       const cleanup = await initVideoSequence(
         container,
         (navigate: boolean) => onVideoEndedRef.current(navigate),
@@ -1322,6 +1329,15 @@ export function ManagerOnlineTrainingPage(props: {
           >
             Team Progress
           </button>
+          {/* Search courses by title — on the tab line, right corner. Only on the Courses tab. */}
+          {!selectedCourse && activeTab === 'courses' && (
+            <input
+              value={courseSearch}
+              onChange={(e) => setCourseSearch(e.target.value)}
+              placeholder="Search courses by title…"
+              style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+            />
+          )}
         </div>
 
         {selectedCourse ? (
@@ -1358,6 +1374,9 @@ export function ManagerOnlineTrainingPage(props: {
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 
     const isPageUnlocked = (pageId: string) => {
+      // Leadership roles (C-Level / Branch Manager / Sales Team Lead) have every
+      // lesson unlocked — no sequential gating.
+      if (isPrivileged) return true;
       // A manager/admin can manually unlock this specific page — it then opens
       // without the preceding items done (only THIS page is unlocked).
       if (unlockedPages.has(pageId)) return true;
@@ -2309,6 +2328,15 @@ export function ManagerOnlineTrainingPage(props: {
           >
             Team Progress
           </button>
+          {/* Search courses by title — on the tab line, right corner. Only on the Courses tab. */}
+          {!selectedCourse && activeTab === 'courses' && (
+            <input
+              value={courseSearch}
+              onChange={(e) => setCourseSearch(e.target.value)}
+              placeholder="Search courses by title…"
+              style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+            />
+          )}
         </div>
 
         {selectedCourse ? (
@@ -2322,6 +2350,9 @@ export function ManagerOnlineTrainingPage(props: {
 
   function TabContent() {
     if (activeTab === 'courses') {
+      const shownCourses = publishedCourses.filter(c =>
+        (c.title || '').toLowerCase().includes(courseSearch.trim().toLowerCase())
+      );
       return (
         <>
           <div className="grid grid-3" style={{ marginBottom: 16 }}>
@@ -2351,9 +2382,15 @@ export function ManagerOnlineTrainingPage(props: {
                 </div>
               </div>
             </div>
+          ) : shownCourses.length === 0 ? (
+            <div className="panel" style={{ marginTop: 0 }}>
+              <div className="panel-body">
+                <div className="panel-empty">No courses match &ldquo;{courseSearch}&rdquo;.</div>
+              </div>
+            </div>
           ) : (
             <div className="training-card-grid">
-              {publishedCourses.map((course, index) => {
+              {shownCourses.map((course, index) => {
                 const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
                 return (
                   <button
@@ -2732,7 +2769,10 @@ export function ManagerOnlineTrainingPage(props: {
                 {teamProgressView === 'unlock' && (
                   <UnlockLessonPanel
                     managerId={props.currentUser.id}
-                    teamUsers={teamProgress.map(t => t.user)}
+                    // Unlock lessons / fast-forward is only for SALES REPS — not
+                    // other leaders. (Sales Team Leads see their own team; Branch
+                    // Managers & C-Level see every sales rep company-wide.)
+                    teamUsers={teamProgress.map(t => t.user).filter((u: any) => u.role === 'sales')}
                     publishedCourses={publishedCourses}
                   />
                 )}
