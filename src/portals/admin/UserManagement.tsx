@@ -108,8 +108,8 @@ export function UserManagement(props: UserEditorProps) {
     marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"],
     // C-Level / Branch Manager: admin can hide any of these pages per user; an
     // unchecked page disappears from that user's sidebar.
-    "c-level": ["dashboard", "trainingCenter", "teamStructure", "appsTools", "training", "leaderboard", "stormChat", "aiChat", "profile"],
-    "branch-manager": ["dashboard", "stormChat", "trainingCenter", "teamStructure", "appsTools", "leaderboard", "training", "aiChat", "profile"],
+    "c-level": ["dashboard", "trainingCenter", "teamStructure", "userManagement", "appsTools", "training", "leaderboard", "stormChat", "aiChat", "profile"],
+    "branch-manager": ["dashboard", "stormChat", "trainingCenter", "teamStructure", "userManagement", "appsTools", "leaderboard", "training", "aiChat", "profile"],
   };
 
   const featureToggleLabels: Record<string, string> = {
@@ -1006,20 +1006,6 @@ export function UserManagement(props: UserEditorProps) {
                         style={{ width: 15, height: 15, cursor: "pointer" }}
                       />
                       Notify user by email
-                    </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none" }}>
-                      <input
-                        type="checkbox"
-                        checked={!!notifyUsersBySMS[selectedUserId]}
-                        onChange={e => {
-                          setNotifyUsersBySMS(prev => ({ ...prev, [selectedUserId]: e.target.checked }));
-                          if (!e.target.checked) {
-                            setPhoneError("");
-                          }
-                        }}
-                        style={{ width: 15, height: 15, cursor: "pointer" }}
-                      />
-                      Notify user by SMS
                     </label>
                   </div>
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || isSaving} onClick={async () => {
