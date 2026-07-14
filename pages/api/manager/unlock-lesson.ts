@@ -5,6 +5,7 @@ import { UserModel } from "../../../src/lib/models/User";
 import { NotificationModel } from "../../../src/lib/models/Notification";
 import { sendPushNotificationToMultiple } from "../../../src/lib/firebase-admin";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
+import { trainingRouteForRole } from "../../../src/lib/trainingRoute";
 
 // Managers (and admins) can manually unlock lessons/quizzes for a team member
 // without the member watching them. Unlocked pages are stored in the member's
@@ -85,6 +86,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const title = "🔓 Training Unlocked";
       const message = `Your Sales Team Lead unlocked ${label} for you. Please check it out!`;
 
+      // Deep-link the recipient to the Training Center IN THEIR OWN PANEL,
+      // resolved from their role — never a hardcoded /sales page (which would
+      // bounce a Sales Team Lead / branch manager out via ProtectedRoute).
+      const recipient = await UserModel.findOne({ id: memberUserId }, { role: 1, fcmToken: 1 }).lean() as any;
+      const watchUrl = trainingRouteForRole(recipient?.role);
+
       await NotificationModel.create({
         id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId: memberUserId,
@@ -94,12 +101,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         read: false,
         // watchUrl lets the web bell deep-link to the training page on click;
         // courseId/pageId let the mobile app open the exact course/lesson.
-        metadata: { courseId, courseName: courseName || "", pageId: pages[0], lessonId: pages[0], watchUrl: "/sales/training" },
+        metadata: { courseId, courseName: courseName || "", pageId: pages[0], lessonId: pages[0], watchUrl },
       });
 
-      const member = await UserModel.findOne({ id: memberUserId }, { fcmToken: 1 }).lean() as any;
-      if (member?.fcmToken) {
-        await sendPushNotificationToMultiple([member.fcmToken], title, message, {
+      if (recipient?.fcmToken) {
+        await sendPushNotificationToMultiple([recipient.fcmToken], title, message, {
           type: "new_training",
           courseId: String(courseId),
           courseName: courseName || "",

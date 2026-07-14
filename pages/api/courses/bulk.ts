@@ -5,6 +5,7 @@ import { UserModel } from "../../../src/lib/models/User";
 import { NotificationModel } from "../../../src/lib/models/Notification";
 import { sendPushNotificationToMultiple } from "../../../src/lib/firebase-admin";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
+import { trainingRouteForRole } from "../../../src/lib/trainingRoute";
 
 type ContentAnnouncement = {
   course: any;
@@ -86,8 +87,7 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
 
       for (const u of recipients as any[]) {
         if (haveUnread.has(u.id)) continue; // already has an unread pop-up for this course
-        const isManager = u.role === "sales-team-lead" || (Array.isArray(u.roles) && u.roles.includes("sales-team-lead"));
-        const watchUrl = isManager ? "/manager/onlineTraining" : "/sales/training";
+        const watchUrl = trainingRouteForRole(u.role);
         docs.push({
           id: `notif-${stamp}-${i++}`,
           userId: u.id,
