@@ -345,7 +345,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
             children: [
               _navItem(Icons.school_outlined, 'Training', '/manager-training', context),
               _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat', context),
-              _navItem(Icons.apps_outlined, 'Apps & Tools', '/manager-apps-tools-items', context),
+              _navItem(Icons.apps_outlined, 'Tools', '/manager-apps-tools-items', context),
               _navItemActive(Icons.group_outlined, 'View Team'),
               _navItem(Icons.leaderboard_outlined, 'Leaderboard', '/manager-rankings', context),
             ],

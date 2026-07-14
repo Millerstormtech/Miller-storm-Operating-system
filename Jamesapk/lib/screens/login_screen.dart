@@ -52,9 +52,13 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacementNamed(context, '/courses');
     } else if (role == 'sales-team-lead') {
       Navigator.pushReplacementNamed(context, '/manager-training');
+    } else if (role == 'c-level') {
+      Navigator.pushReplacementNamed(context, '/clevel-training');
+    } else if (role == 'branch-manager') {
+      Navigator.pushReplacementNamed(context, '/bm-training');
     } else {
       setState(() {
-        _error = 'Access denied. This app is only available for Sales and Sales Team Lead roles.';
+        _error = 'Access denied. This app is only available for Sales, Sales Team Lead, C-Level and Branch Manager roles.';
       });
       AuthService.logout();
     }
@@ -95,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final role = user['role'] as String?;
       // Enable Face ID for next time only for the roles allowed into the app.
-      if (role == 'sales' || role == 'sales-team-lead') {
+      if (role == 'sales' || role == 'sales-team-lead' || role == 'c-level' || role == 'branch-manager') {
         await AuthService.enableBiometricLogin();
       }
       _navigateByRole(user);

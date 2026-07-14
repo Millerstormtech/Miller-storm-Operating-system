@@ -37,6 +37,22 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/training_leaderboard_screen.dart';
 import 'screens/sales_team_lead_training_leaderboard_screen.dart';
+import 'screens/clevel_training_screen.dart';
+import 'screens/clevel_storm_chat_screen.dart';
+import 'screens/clevel_apps_tools_items_screen.dart';
+import 'screens/clevel_apps_tools_detail_screen.dart';
+import 'screens/clevel_rankings_screen.dart';
+import 'screens/clevel_training_leaderboard_screen.dart';
+import 'screens/clevel_profile_screen.dart';
+import 'screens/clevel_user_management_screen.dart';
+import 'screens/branch_manager_training_screen.dart';
+import 'screens/branch_manager_storm_chat_screen.dart';
+import 'screens/branch_manager_apps_tools_items_screen.dart';
+import 'screens/branch_manager_apps_tools_detail_screen.dart';
+import 'screens/branch_manager_rankings_screen.dart';
+import 'screens/branch_manager_training_leaderboard_screen.dart';
+import 'screens/branch_manager_profile_screen.dart';
+import 'screens/branch_manager_user_management_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -199,6 +215,38 @@ class _MillerStormAppState extends State<MillerStormApp> {
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadTrainingLeaderboardScreen());
           case '/manager-profile':
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadProfileScreen());
+          case '/clevel-training':
+            return MaterialPageRoute(builder: (_) => const CLevelTrainingScreen());
+          case '/clevel-stormchat':
+            return MaterialPageRoute(builder: (_) => const CLevelStormChatScreen());
+          case '/clevel-apps-tools-items':
+            return MaterialPageRoute(builder: (_) => const CLevelAppsToolsItemsScreen());
+          case '/clevel-apps-tools-detail':
+            return MaterialPageRoute(builder: (_) => const CLevelAppsToolsDetailScreen(), settings: settings);
+          case '/clevel-rankings':
+            return MaterialPageRoute(builder: (_) => const CLevelRankingsScreen());
+          case '/clevel-training-leaderboard':
+            return MaterialPageRoute(builder: (_) => const CLevelTrainingLeaderboardScreen());
+          case '/clevel-profile':
+            return MaterialPageRoute(builder: (_) => const CLevelProfileScreen());
+          case '/clevel-user-management':
+            return MaterialPageRoute(builder: (_) => const CLevelUserManagementScreen());
+          case '/bm-training':
+            return MaterialPageRoute(builder: (_) => const BranchManagerTrainingScreen());
+          case '/bm-stormchat':
+            return MaterialPageRoute(builder: (_) => const BranchManagerStormChatScreen());
+          case '/bm-apps-tools-items':
+            return MaterialPageRoute(builder: (_) => const BranchManagerAppsToolsItemsScreen());
+          case '/bm-apps-tools-detail':
+            return MaterialPageRoute(builder: (_) => const BranchManagerAppsToolsDetailScreen(), settings: settings);
+          case '/bm-rankings':
+            return MaterialPageRoute(builder: (_) => const BranchManagerRankingsScreen());
+          case '/bm-training-leaderboard':
+            return MaterialPageRoute(builder: (_) => const BranchManagerTrainingLeaderboardScreen());
+          case '/bm-profile':
+            return MaterialPageRoute(builder: (_) => const BranchManagerProfileScreen());
+          case '/bm-user-management':
+            return MaterialPageRoute(builder: (_) => const BranchManagerUserManagementScreen());
           case '/profile':
             return MaterialPageRoute(builder: (_) => const ProfileScreen());
           case '/tickets':

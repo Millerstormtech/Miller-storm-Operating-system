@@ -41,6 +41,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _totalLessons = 0;
   int _progressPercent = 0;
   String? _userId;
+  String? _userRole;
+  // Leadership roles (same as web's `isPrivileged`) get every lesson & quiz
+  // unlocked and may jump/fast-forward freely — no sequential gating.
+  bool get _isPrivileged =>
+      _userRole == 'c-level' || _userRole == 'branch-manager' || _userRole == 'sales-team-lead';
   Set<String> _completedPageIds = <String>{};
   // Pages a manager manually unlocked for this user (accessible without watching,
   // but NOT counted as completed). Read from the progress API.
@@ -101,6 +106,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     final user = await AuthService.getStoredUser();
     setState(() {
       _userId = user?['id'] ?? user?['_id'] ?? '';
+      _userRole = user?['role']?.toString();
     });
   }
 
@@ -484,6 +490,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     // first incomplete item locks everything after it, so a newly-inserted
     // lesson/quiz re-locks the rest until it's done.
     bool isPageUnlocked(String pageId) {
+      // Leadership (C-Level / Branch Manager / Sales Team Lead) always has every
+      // lesson & quiz unlocked — same as the web's `isPrivileged` rule.
+      if (_isPrivileged) return true;
       // "Unlock all" on the course opens every lesson & quiz for everyone.
       if (_course?['unlockAll'] == true) return true;
       // A manager can manually unlock this specific page for the user — it then

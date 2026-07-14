@@ -37,6 +37,10 @@ class _SplashScreenState extends State<SplashScreen> {
           Navigator.pushReplacementNamed(context, '/courses');
         } else if (role == 'sales-team-lead') {
           Navigator.pushReplacementNamed(context, '/manager-training');
+        } else if (role == 'c-level') {
+          Navigator.pushReplacementNamed(context, '/clevel-training');
+        } else if (role == 'branch-manager') {
+          Navigator.pushReplacementNamed(context, '/bm-training');
         } else {
           Navigator.pushReplacementNamed(context, '/login');
         }

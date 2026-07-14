@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/clevel_bottom_nav.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import '../widgets/notification_bell.dart';
@@ -8,14 +9,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 
-class StormChatScreen extends StatefulWidget {
-  const StormChatScreen({Key? key}) : super(key: key);
+class CLevelStormChatScreen extends StatefulWidget {
+  const CLevelStormChatScreen({Key? key}) : super(key: key);
 
   @override
-  _StormChatScreenState createState() => _StormChatScreenState();
+  _CLevelStormChatScreenState createState() => _CLevelStormChatScreenState();
 }
 
-class _StormChatScreenState extends State<StormChatScreen> {
+class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
   List<dynamic> groups = [];
   Map<String, int> unreadCounts = {};
   Map<String, int> mentionCounts = {};
@@ -33,54 +34,40 @@ class _StormChatScreenState extends State<StormChatScreen> {
     final user = await AuthService.getStoredUser();
     if (user != null) {
       setState(() {
-        // Use _id for matching with group members
         userId = user['_id'] ?? user['id'];
         userRole = user['role'];
       });
-      print('🔵 User loaded - ID: $userId, Role: $userRole');
       await _fetchGroups();
     }
   }
 
   Future<void> _fetchGroups() async {
     try {
-      print('🔵 Fetching groups for user: $userId');
-      // ?mine=1 → server returns only this user's groups AND their private DMs
-      // (DMs are excluded from the unfiltered list for privacy).
+      // ?mine=1 → only this user's groups AND their private DMs.
       final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/groups?mine=1'),
       );
 
-      print('🔵 Groups API response status: ${response.statusCode}');
-      print('🔵 Groups API response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final allGroups = json.decode(response.body) as List;
-        print('🔵 Total groups from API: ${allGroups.length}');
-        
-        // Filter groups where user is a member
+
         final userGroups = allGroups.where((group) {
           final members = List<String>.from(group['members'] ?? []);
           return members.contains(userId);
         }).toList();
-
-        print('🔵 User groups after filtering: ${userGroups.length}');
 
         setState(() {
           groups = userGroups;
           isLoading = false;
         });
         
-        // Fetch unread counts
         await _fetchUnreadCounts();
       } else {
-        print('❌ Failed to fetch groups: ${response.statusCode}');
         setState(() {
           isLoading = false;
         });
       }
     } catch (e) {
-      print('❌ Error fetching groups: $e');
       setState(() {
         isLoading = false;
       });
@@ -121,53 +108,50 @@ class _StormChatScreenState extends State<StormChatScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/courses');
+        Navigator.pushReplacementNamed(context, '/clevel-training');
         return false;
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F5F5),
         body: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'StormChat',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
-                      ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'StormChat',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
                     ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        _newMessageButton(),
-                        const SizedBox(width: 10),
-                        _communityButton(),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      _newMessageButton(),
+                      const SizedBox(width: 10),
+                      _communityButton(),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              // Content
-              Expanded(
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFCB0002)))
-                    : groups.isEmpty
-                        ? _buildEmptyState()
-                        : _buildGroupsList(),
-              ),
-              // Bottom Navigation
-              _buildBottomNav(context),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFCB0002)))
+                  : groups.isEmpty
+                      ? _buildEmptyState()
+                      : _buildGroupsList(),
+            ),
+            CLevelBottomNav(active: 'stormchat'),
+          ],
         ),
+      ),
       ),
     );
   }
@@ -176,35 +160,17 @@ class _StormChatScreenState extends State<StormChatScreen> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.chat_bubble_outline,
-            size: 80,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No groups yet',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'You haven\'t been added to any groups',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
+        children: const [
+          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey),
+          SizedBox(height: 16),
+          Text('No groups yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87)),
+          SizedBox(height: 8),
+          Text('You haven\'t been added to any groups', style: TextStyle(fontSize: 14, color: Colors.grey)),
         ],
       ),
     );
   }
 
-  // Top-right "Communities" button (the dark pill). Opens the communities view.
   Widget _communityButton() {
     final count = _communityCount();
     return GestureDetector(
@@ -286,9 +252,9 @@ class _StormChatScreenState extends State<StormChatScreen> {
       },
       child: Builder(
         builder: (context) {
-          // Main list = private DMs, then "normal" groups: not a community (no
-          // subgroups) and not a subgroup itself. Communities + their subgroups
-          // live under the "Community" button in the header.
+          // Main list = only "normal" groups: not a community (no subgroups)
+          // and not a subgroup itself. Communities + their subgroups live under
+          // the "Communities" button in the header.
           final regular = _regularGroups();
           final dms = _directMessages();
           if (regular.isEmpty && dms.isEmpty) return _buildEmptyState();
@@ -598,8 +564,6 @@ class _StormChatScreenState extends State<StormChatScreen> {
     );
   }
 
-  // Open a DM thread. The room shows group['name'], so set it to the other
-  // person's name (a DM has no stored name).
   Future<void> _openDmRoom(dynamic dm) async {
     final other = dm['dmOther'] as Map<String, dynamic>?;
     final name = (other?['name'] ?? 'Direct message').toString();
@@ -616,7 +580,6 @@ class _StormChatScreenState extends State<StormChatScreen> {
     await _fetchUnreadCounts();
   }
 
-  // People picker for starting a new private message with anyone.
   Future<void> _showNewMessageSheet() async {
     List<dynamic> allUsers = [];
     bool loading = true;
@@ -716,7 +679,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
   }
 
   Future<void> _startDmWith(String targetId) async {
-    Navigator.pop(context); // close the picker sheet
+    Navigator.pop(context);
     try {
       final res = await api.post(
         Uri.parse('https://millerstorm.tech/api/storm-chat/dm'),
@@ -733,105 +696,4 @@ class _StormChatScreenState extends State<StormChatScreen> {
     }
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(top: BorderSide(color: Color(0xFFD1D5DB), width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
-              const SizedBox(width: 2),
-              _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.apps_outlined, 'Tools', false, '/apps-tools-items'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/rankings'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: const Color(0xFF9CA3AF),
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF9CA3AF),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFCB0002).withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: const Color(0xFFCB0002), size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Color(0xFFCB0002),
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

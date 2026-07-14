@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import '../widgets/clevel_bottom_nav.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
-import 'sales_team_lead_courses_screen.dart';
+import 'clevel_courses_screen.dart';
+import 'clevel_unlock_lesson_screen.dart';
 
-class SalesTeamLeadTrainingScreen extends StatefulWidget {
-  const SalesTeamLeadTrainingScreen({super.key});
+class CLevelTrainingScreen extends StatefulWidget {
+  const CLevelTrainingScreen({super.key});
 
   @override
-  State<SalesTeamLeadTrainingScreen> createState() => _SalesTeamLeadTrainingScreenState();
+  State<CLevelTrainingScreen> createState() => _CLevelTrainingScreenState();
 }
 
-class _SalesTeamLeadTrainingScreenState extends State<SalesTeamLeadTrainingScreen> {
+class _CLevelTrainingScreenState extends State<CLevelTrainingScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
@@ -107,23 +109,36 @@ class _SalesTeamLeadTrainingScreenState extends State<SalesTeamLeadTrainingScree
                       ),
                     ),
                     IconButton(
-                      icon: const Text('🏆', style: TextStyle(fontSize: 26)),
+                      icon: const Icon(Icons.lock_open, color: _primary, size: 32),
+                      tooltip: 'Unlock lessons for a rep',
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       onPressed: () {
-                        Navigator.pushNamed(context, '/manager-training-leaderboard');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CLevelUnlockLessonScreen()),
+                        );
                       },
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Text('🏆', style: TextStyle(fontSize: 32)),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/clevel-training-leaderboard');
+                      },
+                    ),
+                    const SizedBox(width: 8),
                     _buildProfileAvatar(),
                   ],
                 ),
               ),
-              const Expanded(child: SalesTeamLeadCoursesScreen()),
+              const Expanded(child: CLevelCoursesScreen()),
             ],
           ),
         ),
-        bottomNavigationBar: _buildBottomNav(context),
+        bottomNavigationBar: CLevelBottomNav(active: 'training'),
       ),
     );
   }
@@ -133,10 +148,10 @@ class _SalesTeamLeadTrainingScreenState extends State<SalesTeamLeadTrainingScree
     final img = (_headshotUrl ?? '').toString();
     final initial = (_userName ?? '').isNotEmpty ? _userName!.trim()[0].toUpperCase() : '?';
     return GestureDetector(
-      onTap: () => Navigator.pushReplacementNamed(context, '/manager-profile'),
+      onTap: () => Navigator.pushReplacementNamed(context, '/clevel-profile'),
       child: Container(
-        width: 40,
-        height: 40,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: const Color(0xFF374151),
@@ -147,99 +162,10 @@ class _SalesTeamLeadTrainingScreenState extends State<SalesTeamLeadTrainingScree
         ),
         alignment: Alignment.center,
         child: img.isEmpty
-            ? Text(initial, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))
+            ? Text(initial, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))
             : null,
       ),
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItemActive(Icons.school_outlined, 'Training'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.apps_outlined, 'Tools', false, '/manager-apps-tools-items'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/manager-rankings'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          color: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: _textPlaceholder, size: 24),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: _textPlaceholder,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: _primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: _primary,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

@@ -87,7 +87,12 @@ export function ManagerOnlineTrainingPage(props: {
   // unlock lessons for is EVERY sales rep, not just one manager's own team.
   companyWide?: boolean;
 }) {
-  const publishedCourses = props.courses;
+  // Only ever show PUBLISHED courses in the training center. The courses API
+  // returns drafts to leadership roles (C-Level / Branch Manager) for parity
+  // with admin, but the training view — like the mobile app — must hide them.
+  // (Sales Team Lead already receives published-only from the API, so this is a
+  // no-op for them.)
+  const publishedCourses = props.courses.filter(c => c.status === 'published');
   const isLoading = props.isLoading || false;
   // Leadership roles review training freely: every lesson is unlocked (no
   // sequential gating) and they can fast-forward / skip videos without first
@@ -1738,7 +1743,9 @@ export function ManagerOnlineTrainingPage(props: {
               <div className="course-page-main-header">
                 <h2 className="course-page-title-input" style={{ border: 'none', background: 'none', padding: 0 }}>{activePage.title}</h2>
               </div>
-              <LessonWatchNote />
+              {/* Leadership has every step unlocked, so the "watch to the last
+                  second to unlock the next step" reminder doesn't apply to them. */}
+              {!isPrivileged && <LessonWatchNote />}
               {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                 <div className="course-page-editor-body">
                   {quizSubmitted && quizScore && (
@@ -2052,7 +2059,7 @@ export function ManagerOnlineTrainingPage(props: {
                     Share
                   </button>
                 </div>
-                <LessonWatchNote />
+                {!isPrivileged && <LessonWatchNote />}
                 {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                   <div className="course-page-editor-body">
                     {quizSubmitted && quizScore && (

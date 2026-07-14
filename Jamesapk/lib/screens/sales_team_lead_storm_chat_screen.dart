@@ -713,7 +713,7 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
               const SizedBox(width: 2),
               _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
               const SizedBox(width: 2),
-              _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/manager-apps-tools-items'),
+              _navItem(context, Icons.apps_outlined, 'Tools', false, '/manager-apps-tools-items'),
               const SizedBox(width: 2),
               _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
               const SizedBox(width: 2),

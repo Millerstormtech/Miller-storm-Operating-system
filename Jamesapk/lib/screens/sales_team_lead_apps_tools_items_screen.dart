@@ -216,7 +216,7 @@ class _SalesTeamLeadAppsToolsItemsScreenState extends State<SalesTeamLeadAppsToo
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat', context),
               const SizedBox(width: 2),
-              _navItemActive(Icons.apps_outlined, 'Apps & Tools'),
+              _navItemActive(Icons.apps_outlined, 'Tools'),
               const SizedBox(width: 2),
               _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
               const SizedBox(width: 2),

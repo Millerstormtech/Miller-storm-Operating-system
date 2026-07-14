@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import '../widgets/branch_manager_bottom_nav.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/api_client.dart';
 
-// Sales Leaderboard for reps — same data/functionality as the web Sales
-// Leaderboard: live from AccuLynx + RepCard via /api/leaderboard, with a window
-// toggle (Today / Week / Month / Year), ranked list, and "You" highlight.
-class RankingsScreen extends StatefulWidget {
-  const RankingsScreen({super.key});
+// Sales Leaderboard for managers — same data/functionality as the web manager
+// Sales Leaderboard: live from AccuLynx + RepCard via /api/leaderboard, with a
+// window toggle (Today / Week / Month / Year), ranked list, and "You" highlight.
+class BranchManagerRankingsScreen extends StatefulWidget {
+  const BranchManagerRankingsScreen({super.key});
 
   @override
-  State<RankingsScreen> createState() => _RankingsScreenState();
+  State<BranchManagerRankingsScreen> createState() => _BranchManagerRankingsScreenState();
 }
 
-class _RankingsScreenState extends State<RankingsScreen> {
+class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
@@ -93,6 +94,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Header
             Container(
               width: double.infinity,
               color: _white,
@@ -106,6 +108,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   const Text('Live from AccuLynx + RepCard · refreshed hourly',
                       style: TextStyle(color: _textLight, fontSize: 12.5)),
                   const SizedBox(height: 14),
+                  // Window toggle
                   Row(
                     children: _windows.map((w) {
                       final active = _window == w['key'];
@@ -150,7 +153,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                           ),
                         ),
             ),
-            _buildBottomNav(context),
+            BranchManagerBottomNav(active: 'leaderboard'),
           ],
         ),
       ),
@@ -183,6 +186,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
           children: [
             Row(
               children: [
+                // Rank / medal
                 SizedBox(
                   width: 34,
                   child: medal != null
@@ -192,10 +196,14 @@ class _RankingsScreenState extends State<RankingsScreen> {
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _textLight)),
                 ),
                 const SizedBox(width: 8),
+                // Avatar
                 Container(
                   width: 44,
                   height: 44,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF374151)),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF374151),
+                  ),
                   clipBehavior: Clip.antiAlias,
                   alignment: Alignment.center,
                   child: img.isNotEmpty
@@ -207,6 +215,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                       : _initial(name),
                 ),
                 const SizedBox(width: 12),
+                // Name + branch
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,6 +231,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                     ],
                   ),
                 ),
+                // Contract amount (revenue)
                 Text(_money(r['revenue']),
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _green)),
               ],
@@ -229,6 +239,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
             const SizedBox(height: 10),
             Container(height: 1, color: const Color(0xFFF3F4F6)),
             const SizedBox(height: 8),
+            // Metrics row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -258,71 +269,4 @@ class _RankingsScreenState extends State<RankingsScreen> {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: const Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
-              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/stormchat'),
-              _navItem(context, Icons.apps_outlined, 'Tools', false, '/apps-tools-items'),
-              _navItemActive(Icons.leaderboard_outlined, 'Leaderboard'),
-              _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          color: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: TextStyle(fontSize: 10, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(color: _link.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _link, size: 24),
-            const SizedBox(height: 4),
-            Text(label,
-                style: const TextStyle(fontSize: 10, color: _link, fontWeight: FontWeight.w600),
-                maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
 }

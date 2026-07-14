@@ -619,7 +619,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
             children: [
               _navItem(Icons.school_outlined, 'Training', true, '/courses', context),
               _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, context),
-              _navItem(Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items', context),
+              _navItem(Icons.apps_outlined, 'Tools', false, '/apps-tools-items', context),
               _navItem(Icons.person_outline, 'Profile', false, '/profile', context),
             ],
           ),

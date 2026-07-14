@@ -502,7 +502,7 @@ class _SalesTeamLeadDashboardScreenState extends State<SalesTeamLeadDashboardScr
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat'),
               const SizedBox(width: 2),
-              _navItem(Icons.apps_outlined, 'Apps & Tools', '/manager-apps-tools-items'),
+              _navItem(Icons.apps_outlined, 'Tools', '/manager-apps-tools-items'),
               const SizedBox(width: 2),
               _navItem(Icons.group_outlined, 'View Team', '/manager-view-team'),
               const SizedBox(width: 2),

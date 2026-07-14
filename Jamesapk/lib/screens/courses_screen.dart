@@ -817,7 +817,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble, 'StormChat', '/stormchat'),
               const SizedBox(width: 2),
-              _navItem(Icons.apps, 'Apps & Tools', '/apps-tools-items'),
+              _navItem(Icons.apps, 'Tools', '/apps-tools-items'),
               const SizedBox(width: 2),
               _navItem(Icons.leaderboard_outlined, 'Leaderboard', '/rankings'),
               const SizedBox(width: 2),
