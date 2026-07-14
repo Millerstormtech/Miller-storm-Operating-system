@@ -7,7 +7,7 @@ import { useBotAccess } from "../hooks/useBotAccess";
 const baseItems = [
   { id: "dashboard", label: "Dashboard", toggleKey: "dashboard" },
   { id: "assets", label: "Marketing Assets", toggleKey: "assets" },
-  { id: "apps-tools", label: "Apps & Tools", toggleKey: "appsTools" },
+  { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "ai-chat", label: "AI Assistant", toggleKey: "aiAssistant" },
 ];

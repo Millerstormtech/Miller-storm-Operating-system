@@ -118,7 +118,7 @@ export function UserManagement(props: UserEditorProps) {
     trainingCenter: "Course Leaderboard",
     userManagement: "User Management",
     courseManagement: "Course Builder",
-    appsTools: "Apps & Tool Builder",
+    appsTools: "Tools & Products",
     stormChat: "StormChat",
     aiBots: "Master Bot Builder",
     courseAiBots: "Course Bots Builder",

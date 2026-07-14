@@ -56,7 +56,7 @@ const sidebarItems: { id: AdminViewId; label: string }[] = [
   { id: "aiBots", label: "AI Bot Management" },
   { id: "webTemplates", label: "Web Page Templates" },
   { id: "webText", label: "Web Text" },
-  { id: "appsTools", label: "Apps/Tool" }
+  { id: "appsTools", label: "Tools & Products" }
 ];
 
 function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
@@ -433,7 +433,7 @@ function UserManagement(props: UserEditorProps) {
     aiBots: "AI Bot Management",
     webTemplates: "Web Page Approval",
     webText: "Web Text",
-    appsTools: "Apps/Tool",
+    appsTools: "Tools & Products",
     socialMediaMetrics: "Social Media Metrics",
     team: "My Team",
     plans: "Team Business Plans",

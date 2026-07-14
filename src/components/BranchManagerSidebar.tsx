@@ -8,7 +8,7 @@ const baseItems = [
   { id: "storm-chat", label: "StormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard" },
   { id: "team-structure", label: "Team Structure" },
-  { id: "apps-tools", label: "Apps & Tools Builder" },
+  { id: "apps-tools", label: "Tools & Products" },
   { id: "sales-leaderboard", label: "Sales Leaderboard" },
   { id: "training", label: "Training Center" },
   { id: "jays-ai-clone", label: "Jay's AI Clone" },

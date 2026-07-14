@@ -7,7 +7,7 @@ const baseItems = [
   { id: "dashboard", label: "C-Level Dashboard" },
   { id: "course-leaderboard", label: "Course Leaderboard" },
   { id: "team-structure", label: "Team Structure" },
-  { id: "apps-tools", label: "Apps & Tools Builder" },
+  { id: "apps-tools", label: "Tools & Products" },
   { id: "training", label: "Training Center" },
   { id: "sales-leaderboard", label: "Sales Leaderboard" },
   { id: "storm-chat", label: "StormChat" },

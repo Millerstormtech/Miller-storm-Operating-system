@@ -6,7 +6,7 @@ const CLevelAppsToolsPage: NextPage = () => {
   return (
     <CLevelLayout currentView="apps-tools">
       <div className="page-header">
-        <h1 className="page-title">Apps & Tools Builder</h1>
+        <h1 className="page-title">Tools & Products</h1>
       </div>
       <AppsToolManagement />
     </CLevelLayout>

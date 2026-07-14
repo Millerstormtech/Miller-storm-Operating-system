@@ -15,7 +15,7 @@ const allSidebarItems: { id: string; label: string; toggleKey?: string; path?: s
   { id: "userManagement", label: "User Management", toggleKey: "userManagement" },
   { id: "teamStructure", label: "Team Structure", toggleKey: "teamStructure" },
   { id: "courseManagement", label: "Course Builder", toggleKey: "courseManagement" },
-  { id: "appsTools", label: "Apps and Tools Builder", toggleKey: "appsTools" },
+  { id: "appsTools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "aiBots", label: "Master Bots Builder", toggleKey: "aiBots" },
   { id: "leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
   { id: "stormChat", label: "StormChat", toggleKey: "stormChat" },
