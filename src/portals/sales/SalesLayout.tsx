@@ -5,7 +5,7 @@ import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
-type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "ai-bot-builder" | "task-tracker" | "rankings" | "team-structure" | "storm-chat";
+type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "ai-bot-builder" | "task-tracker" | "rankings" | "team-structure" | "storm-chat" | "course-leaderboard";
 
 type SalesLayoutProps = {
   children: React.ReactNode;
@@ -29,6 +29,8 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
     "ai-bot-builder": "aiBots",
     "task-tracker": "taskTracker",
     "storm-chat": "stormChat",
+    "course-leaderboard": "trainingCenter",
+    rankings: "rankings",
   };
 
   const allowed = useFeatureGate(user?.id, currentView, viewToToggleKey, "/sales/dashboard");

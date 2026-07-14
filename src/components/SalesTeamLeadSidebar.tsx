@@ -2,19 +2,20 @@ import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
 import { useAuth } from "../contexts/AuthContext";
 import { useFeatureToggles } from "../hooks/useFeatureToggles";
-import { useBotAccess } from "../hooks/useBotAccess";
 
+// Sales Team Lead sidebar — the exact set of features they get (order matches
+// the portal spec). Team Structure, Team Business Planners, Team Tasks and the
+// Master Bot Builder are intentionally NOT here. (Raise a Ticket lives in the
+// top bar, not the sidebar.)
 const baseItems = [
-  { id: "dashboard", label: "Team Dashboard", toggleKey: "dashboard" },
-  { id: "team-structure", label: "Team Structure", toggleKey: "teamStructure" },
-  { id: "plans", label: "Team Business Planners", toggleKey: "plans" },
-  { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
-  { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "dashboard", label: "Sales Team Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
+  { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
-  { id: "my-profile", label: "My Profile", toggleKey: "profile" },
-  { id: "task-manager", label: "Team Tasks", toggleKey: "taskTracker" },
+  { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
+  { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 
 type SalesTeamLeadSidebarProps = {
@@ -26,16 +27,11 @@ type SalesTeamLeadSidebarProps = {
 export function SalesTeamLeadSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesTeamLeadSidebarProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const hasBotAccess = useBotAccess(user?.id);
   const featureToggles = useFeatureToggles(user?.id);
 
-  const allItems = hasBotAccess
-    ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder", toggleKey: "aiBots" }]
-    : baseItems;
-
   const sidebarItems = featureToggles
-    ? allItems.filter(item => featureToggles[item.toggleKey] !== false)
-    : allItems;
+    ? baseItems.filter(item => featureToggles[item.toggleKey] !== false)
+    : baseItems;
 
   function handleNavigation(id: string) {
     router.push(`/manager/${id}`);

@@ -2621,6 +2621,9 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 Playlist Progress
               </button>
+              {/* Unlock Lesson is a company-wide leadership tool (C-Level /
+                  Branch Manager). Sales Team Leads don't get it. */}
+              {props.companyWide && (
               <button
                 type="button"
                 onClick={() => setTeamProgressView('unlock')}
@@ -2639,6 +2642,7 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 🔓 Unlock Lesson
               </button>
+              )}
             </div>
           </div>
           <div className="panel-body">

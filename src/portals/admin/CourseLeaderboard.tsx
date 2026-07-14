@@ -17,7 +17,7 @@ type UserOption = { id: string; name: string; email: string };
 
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
-export function CourseLeaderboard() {
+export function CourseLeaderboard({ readOnly = false }: { readOnly?: boolean } = {}) {
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<CourseOption | null>(null);
   const [rows, setRows] = useState<LeaderRow[]>([]);
@@ -31,11 +31,14 @@ export function CourseLeaderboard() {
   const [showHiddenList, setShowHiddenList] = useState(false);
 
   useEffect(() => {
+    // Read-only viewers (sales reps) can't manage hidden users — skip the
+    // admin-only pref fetch entirely.
+    if (readOnly) return;
     fetch("/api/admin/ui-prefs?key=hiddenLeaderboardUsers")
       .then(r => r.ok ? r.json() : { hiddenIds: [] })
       .then(data => setHiddenUsers(new Set(data.hiddenIds || [])))
       .catch(() => {});
-  }, []);
+  }, [readOnly]);
 
   async function saveHiddenUsers(newSet: Set<string>) {
     setHiddenUsers(newSet);
@@ -294,7 +297,9 @@ export function CourseLeaderboard() {
           {/* Header right side buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 
-          {/* Invisible Admin Control Button - positioned before screenshot */}
+          {/* Invisible Admin Control Button - positioned before screenshot.
+              Hidden entirely for read-only viewers (sales reps). */}
+          {!readOnly && (
           <button
             onClick={() => setShowAdminControls(!showAdminControls)}
             style={{
@@ -302,6 +307,7 @@ export function CourseLeaderboard() {
               background: "none", cursor: "pointer"
             }}
           />
+          )}
 
           {/* Admin Controls */}
           {showAdminControls && (

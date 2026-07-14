@@ -5,7 +5,7 @@ import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
-type SalesTeamLeadViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager" | "ai-bot-builder" | "team-structure" | "rankings" | "storm-chat";
+type SalesTeamLeadViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager" | "ai-bot-builder" | "team-structure" | "rankings" | "storm-chat" | "course-leaderboard";
 
 type SalesTeamLeadLayoutProps = {
   children: React.ReactNode;
@@ -26,6 +26,8 @@ export function SalesTeamLeadLayout({ children, currentView }: SalesTeamLeadLayo
     "task-manager": "taskTracker",
     "ai-bot-builder": "aiBots",
     "storm-chat": "stormChat",
+    "course-leaderboard": "trainingCenter",
+    rankings: "rankings",
   };
 
   const allowed = useFeatureGate(user?.id, currentView, viewToToggleKey, "/manager/dashboard");
