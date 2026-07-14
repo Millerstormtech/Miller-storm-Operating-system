@@ -638,6 +638,29 @@ export function CourseManagement(props: CourseEditorProps) {
     }
   }
 
+  // "Unlock all" toggle saves immediately (it lives in the header, away from the
+  // overview Save button) so the admin never has to hunt for a Save action.
+  async function handleUnlockAllToggle(value: boolean) {
+    if (!selectedCourse) return;
+    const updated = { ...selectedCourse, unlockAll: value };
+    updateCourse(updated);
+    if (isCreatingNewCourse) return; // new course persists on its own Save
+    try {
+      const cleaned = props.cleanCourses ? props.cleanCourses([updated])[0] : updated;
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify([cleaned]),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setOriginalCourse(JSON.parse(JSON.stringify(updated)));
+      showToast(value ? "🔓 All lessons unlocked for everyone" : "Unlock all turned off", "success");
+    } catch (err) {
+      console.error("Failed to save unlock-all:", err);
+      showToast("Couldn't save. Please try again.", "error");
+    }
+  }
+
   // Function to save lesson/quiz changes immediately — calls API directly
   async function saveLessonOrQuiz(type: 'lesson' | 'quiz') {
     if (!selectedCourse) return;
@@ -2223,10 +2246,10 @@ export function CourseManagement(props: CourseEditorProps) {
                     <input
                       type="checkbox"
                       checked={!!selectedCourse.unlockAll}
-                      onChange={(e) => updateCourse({ ...selectedCourse, unlockAll: e.target.checked })}
+                      onChange={(e) => handleUnlockAllToggle(e.target.checked)}
                       style={{ width: 15, height: 15, cursor: "pointer" }}
                     />
-                    🔓 Unlock all
+                    🔓 Unlock all <span style={{ fontWeight: 400, color: "#9ca3af", fontSize: 11 }}>(saves automatically)</span>
                   </label>
                   <button type="button" className="btn-ghost btn-small" onClick={() => setViewMode("grid")}>
                     Back to courses
