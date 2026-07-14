@@ -12,7 +12,7 @@ import { RepCardKnockFactModel } from "../../src/lib/models/RepCardKnockFact";
 import { RepCardUserModel } from "../../src/lib/models/RepCardUser";
 import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
 import { normEmail, normName, normPhone } from "../../src/lib/leaderboard/identity";
-import { officeToBranch } from "../../src/lib/repcard/branches";
+import { officeToBranch, saleRegion } from "../../src/lib/repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead } from "../../src/lib/repcard/org-chart";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -139,6 +139,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } },
   ]);
 
+  // Per (rep, sub-account) sales for the range -> split a rep's sales by the branch each
+  // sale was filed in (build 2). Grouped by location; bucketed into regions via saleRegion.
+  const acxLocRaw = await ScoringFactModel.aggregate([
+    { $match: { occurredAt: { $gte: start, $lte: end }, repExternalId: { $ne: null } } },
+    { $sort: { occurredAt: 1, _id: 1 } },
+    { $group: {
+        _id: { rep: "$repExternalId", loc: "$location" },
+        email: { $last: "$repEmail" }, phone: { $last: "$repPhone" }, name: { $last: "$repNameSnapshot" },
+        filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
+        won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
+        revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
+    } },
+  ]);
+
   // RepCard verified knocks aggregated per rep for the selected range.
   const rcRaw = await RepCardKnockFactModel.aggregate([
     { $match: { occurredAt: { $gte: start, $lte: end } } },
@@ -216,6 +230,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     mergeLeaderboard(acxAll, rc).map((r) => [r.id, r.source === "both"] as [string, boolean])
   );
 
+  // Per-branch split: bucket each rep's sales into raw regions (West Texas / Commercial /
+  // DFW), then merge each region onto the roster so a branch filter can show that branch's
+  // numbers only. Sums across the three regions equal each rep's combined total.
+  const regionAcc: Record<string, Map<string, any>> = { "West Texas": new Map(), Commercial: new Map(), DFW: new Map() };
+  for (const r of acxLocRaw as any[]) {
+    const region = saleRegion(r._id.loc);
+    const repId = String(r._id.rep);
+    const cur = regionAcc[region].get(repId) || { email: r.email, phone: r.phone, name: r.name, filed: 0, won: 0, revenue: 0 };
+    cur.filed += r.filed; cur.won += r.won; cur.revenue += r.revenue;
+    regionAcc[region].set(repId, cur);
+  }
+  const acxForRegion = (region: string) => [...regionAcc[region].entries()].map(([repId, v]: [string, any]) => ({
+    repExternalId: repId, email: normEmail(v.email), phone: normPhone(v.phone),
+    nameKey: normName(v.name), name: v.name || "Unknown Rep", branch: "",
+    filed: v.filed, won: v.won, revenue: v.revenue,
+  }));
+  const sumsById = (rows: any[]) => new Map<string, any>(rows.map((r) => [r.id, { filed: r.filed, won: r.won, revenue: r.revenue }]));
+  const wtById = sumsById(mergeLeaderboard(acxForRegion("West Texas"), rc));
+  const dfwById = sumsById(mergeLeaderboard(acxForRegion("DFW"), rc));
+  const commById = sumsById(mergeLeaderboard(acxForRegion("Commercial"), rc));
+
   // Light app enrichment (never gating): match a Miller Storm user by email for the
   // profile photo and the "You" highlight.
   const appUsers = await UserModel.find({ deleted: { $ne: true } }).select("id email headshotUrl name managerId").lean();
@@ -236,6 +271,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Org chart wins for Branch: follow the team's branch when the team is known;
     // fall back to the RepCard office only for reps with no team.
     const branch = (team && TEAM_BRANCH[team]) || officeToBranch(rcu?.office);
+    // Per-branch split: DFW-filed sales -> the rep's home branch; West Texas / Commercial
+    // sales -> their own branch. Knocks live only under the home branch.
+    const zero = { filed: 0, won: 0, revenue: 0 };
+    const byBranch: Record<string, any> = {};
+    const addBranch = (br: string, s: any, knocks: number) => {
+      if (!br) return;
+      const b = byBranch[br] || { verifiedKnocks: 0, filed: 0, won: 0, revenue: 0 };
+      b.filed += s.filed; b.won += s.won; b.revenue += s.revenue; b.verifiedKnocks += knocks;
+      byBranch[br] = b;
+    };
+    addBranch(branch, zero, m.verifiedKnocks);            // home branch carries the knocks
+    addBranch(branch, dfwById.get(m.id) || zero, 0);      // DFW-filed sales -> home branch
+    addBranch("West Texas", wtById.get(m.id) || zero, 0);
+    addBranch("Commercial", commById.get(m.id) || zero, 0);
     return {
       rank: i + 1, id: m.id, name: m.name, branch,
       verifiedKnocks: m.verifiedKnocks, filed: m.filed, won: m.won, revenue: m.revenue,
@@ -245,6 +294,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // "both" when the rep has an AccuLynx account at all (all-time); "repcard" ONLY
       // when there is no linked AccuLynx account -> a genuine data gap, not "idle range".
       source: linked.get(m.id) ? "both" : "repcard",
+      // Per-branch breakdown so the UI can show a rep's numbers for a single branch.
+      byBranch,
     };
   });
 
