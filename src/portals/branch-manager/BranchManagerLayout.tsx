@@ -17,6 +17,7 @@ const BRANCH_MANAGER_VIEW_TOGGLE: Record<string, string> = {
   training: "training",
   "jays-ai-clone": "aiChat",
   "my-profile": "profile",
+  "user-management": "userManagement",
 };
 
 type BranchManagerViewId =
@@ -28,7 +29,8 @@ type BranchManagerViewId =
   | "sales-leaderboard"
   | "training"
   | "jays-ai-clone"
-  | "my-profile";
+  | "my-profile"
+  | "user-management";
 
 type BranchManagerLayoutProps = {
   children: React.ReactNode;

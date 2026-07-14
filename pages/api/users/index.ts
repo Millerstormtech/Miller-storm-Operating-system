@@ -50,7 +50,7 @@ async function handler(
   }
 
   if (req.method === "POST") {
-    if (!requireRole(req, res, "admin")) return;
+    if (!requireRole(req, res, ["admin", "c-level", "branch-manager"])) return;
     const payload = req.body || {};
 
     const valid = validateUserPayload(payload);

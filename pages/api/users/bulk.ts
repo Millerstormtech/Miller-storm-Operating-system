@@ -11,7 +11,7 @@ export default async function handler(
 ) {
   try {
     if (!allowMethods(req, res, ["PUT"])) return;
-    if (!requireRole(req, res, "admin")) return;
+    if (!requireRole(req, res, ["admin", "c-level", "branch-manager"])) return;
 
     await connectMongo();
 

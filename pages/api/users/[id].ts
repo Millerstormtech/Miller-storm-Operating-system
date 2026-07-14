@@ -27,7 +27,8 @@ export default async function handler(
 
   const targetId = id;
   const isSelf = auth.sub === targetId;
-  const isAdmin = auth.role === "admin";
+  // C-Level and Branch Managers get the same user-management powers as admins.
+  const isAdmin = auth.role === "admin" || auth.role === "c-level" || auth.role === "branch-manager";
   const isManager = auth.role === "sales-team-lead";
 
   if (req.method === "GET") {

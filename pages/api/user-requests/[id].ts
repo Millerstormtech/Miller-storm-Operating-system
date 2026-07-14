@@ -11,7 +11,7 @@ export default async function handler(
 ) {
   if (!allowMethods(req, res, ["PUT"])) return;
 
-  const auth = requireRole(req, res, "admin");
+  const auth = requireRole(req, res, ["admin", "c-level", "branch-manager"]);
   if (!auth) return;
 
   await connectMongo();

@@ -11,6 +11,7 @@ const baseItems = [
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "team-structure", label: "Team Structure", toggleKey: "teamStructure" },
+  { id: "user-management", label: "User Management", toggleKey: "userManagement" },
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "sales-leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
   { id: "training", label: "Training Center", toggleKey: "training" },

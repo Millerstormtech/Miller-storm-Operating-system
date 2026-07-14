@@ -6,7 +6,7 @@ import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["POST"])) return;
-  if (!requireRole(req, res, "admin")) return;
+  if (!requireRole(req, res, ["admin", "c-level", "branch-manager"])) return;
 
   try {
     await connectMongo();

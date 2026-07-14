@@ -17,6 +17,7 @@ const C_LEVEL_VIEW_TOGGLE: Record<string, string> = {
   "storm-chat": "stormChat",
   "jays-ai-clone": "aiChat",
   "my-profile": "profile",
+  "user-management": "userManagement",
 };
 
 type CLevelViewId =
@@ -28,7 +29,8 @@ type CLevelViewId =
   | "sales-leaderboard"
   | "training"
   | "jays-ai-clone"
-  | "my-profile";
+  | "my-profile"
+  | "user-management";
 
 type CLevelLayoutProps = {
   children: React.ReactNode;

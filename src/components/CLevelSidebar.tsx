@@ -10,6 +10,7 @@ const baseItems = [
   { id: "dashboard", label: "C-Level Dashboard", toggleKey: "dashboard" },
   { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "team-structure", label: "Team Structure", toggleKey: "teamStructure" },
+  { id: "user-management", label: "User Management", toggleKey: "userManagement" },
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "training", label: "Training Center", toggleKey: "training" },
   { id: "sales-leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },

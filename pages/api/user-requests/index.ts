@@ -14,7 +14,7 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    if (!requireRole(req, res, "admin")) return;
+    if (!requireRole(req, res, ["admin", "c-level", "branch-manager"])) return;
     try {
       const requests = await UserRequestModel.find({}).sort({ requestedAt: -1 }).lean();
       res.status(200).json(requests);
@@ -87,7 +87,7 @@ export default async function handler(
       res.status(500).json({ error: "Failed to submit registration request" });
     }
   } else if (req.method === "DELETE") {
-    if (!requireRole(req, res, "admin")) return;
+    if (!requireRole(req, res, ["admin", "c-level", "branch-manager"])) return;
     try {
       const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
