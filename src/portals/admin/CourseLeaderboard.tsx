@@ -59,7 +59,6 @@ export function CourseLeaderboard() {
   const [overrideLoading, setOverrideLoading] = useState(false);
   const [overrideSaving, setOverrideSaving] = useState(false);
   const [allCoursesRaw, setAllCoursesRaw] = useState<any[]>([]);
-  const [showFormatPicker, setShowFormatPicker] = useState(false);
   const [show100Club, setShow100Club] = useState(true);
   const [showHideModal, setShowHideModal] = useState(false);
   const [hideSelection, setHideSelection] = useState<Set<string>>(new Set());
@@ -217,21 +216,6 @@ export function CourseLeaderboard() {
     setOverrideChecked(new Set());
   }
 
-  async function takeScreenshot(format: "jpeg" | "png") {
-    if (!tableRef.current) return;
-    setShowFormatPicker(false);
-    // Lazy-load html2canvas (~200 KB) only when the user actually exports an
-    // image, instead of shipping it in the admin leaderboard's page chunk.
-    const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(tableRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
-    const mimeType = format === "png" ? "image/png" : "image/jpeg";
-    const ext = format === "jpeg" ? "jpg" : "png";
-    const link = document.createElement("a");
-    link.download = `leaderboard-${selectedCourse?.title || "export"}.${ext}`;
-    link.href = canvas.toDataURL(mimeType, 0.95);
-    link.click();
-  }
-
   function exportCSV() {
     const visible = rows.filter(r => !hiddenUsers.has(r.id));
     const headers = ["Rank", "Name", "Email", "Role", "Lessons Completed", "Total Lessons", "Progress %"];
@@ -347,47 +331,6 @@ export function CourseLeaderboard() {
               </button>
             </>
           )}
-
-          {/* Screenshot button */}
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setShowFormatPicker(p => !p)}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "8px 16px", borderRadius: 8,
-                border: "1px solid #d1d5db", background: "#fff",
-                fontSize: 13, fontWeight: 600, color: "#374151",
-                cursor: "pointer",
-              }}
-            >
-              📸 Screenshot
-            </button>
-            {showFormatPicker && (
-              <div style={{
-                position: "absolute", right: 0, top: "calc(100% + 6px)",
-                background: "#fff", border: "1px solid #e5e7eb",
-                borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                zIndex: 100, overflow: "hidden", minWidth: 120,
-              }}>
-                {(["jpeg", "jpg", "png"] as const).map((fmt) => (
-                  <button
-                    key={fmt}
-                    onClick={() => takeScreenshot(fmt === "jpg" ? "jpeg" : fmt)}
-                    style={{
-                      display: "block", width: "100%", textAlign: "left",
-                      padding: "9px 16px", border: "none", background: "#fff",
-                      fontSize: 13, cursor: "pointer", color: "#111827",
-                      borderBottom: fmt !== "png" ? "1px solid #f3f4f6" : "none",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
-                  >
-                    Save as .{fmt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Export CSV button */}
           <button
