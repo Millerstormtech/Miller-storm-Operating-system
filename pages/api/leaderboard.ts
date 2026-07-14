@@ -6,7 +6,7 @@ import { UserModel } from "../../src/lib/models/User";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { ScoringFactModel } from "../../src/lib/models/ScoringFact";
-import { getWindowRange } from "../../src/lib/acculynx/windows";
+import { getWindowRange, customRange, centralDateStr } from "../../src/lib/acculynx/windows";
 import type { Window } from "../../src/lib/acculynx/windows";
 import { RepCardKnockFactModel } from "../../src/lib/models/RepCardKnockFact";
 import { RepCardUserModel } from "../../src/lib/models/RepCardUser";
@@ -118,10 +118,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Union sales leaderboard: RepCard Verified Door Knocks (spine) + AccuLynx deals.
+  // Range: an explicit from/to (YYYY-MM-DD) picks a custom range; else a quick window.
+  const fromQ = typeof req.query.from === "string" ? req.query.from : "";
+  const toQ = typeof req.query.to === "string" ? req.query.to : "";
+  const isCustom = /^\d{4}-\d{2}-\d{2}$/.test(fromQ) && /^\d{4}-\d{2}-\d{2}$/.test(toQ);
   const w = (["day", "week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
-  const { start, end } = getWindowRange(w);
+  const { start, end } = isCustom ? customRange(fromQ, toQ) : getWindowRange(w);
 
-  // AccuLynx deals aggregated per rep for the window.
+  // AccuLynx deals aggregated per rep for the selected range.
   const acxRaw = await ScoringFactModel.aggregate([
     { $match: { occurredAt: { $gte: start, $lte: end }, repExternalId: { $ne: null } } },
     { $sort: { occurredAt: 1, _id: 1 } },
@@ -135,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } },
   ]);
 
-  // RepCard verified knocks aggregated per rep for the window.
+  // RepCard verified knocks aggregated per rep for the selected range.
   const rcRaw = await RepCardKnockFactModel.aggregate([
     { $match: { occurredAt: { $gte: start, $lte: end } } },
     { $sort: { occurredAt: 1, _id: 1 } },
@@ -147,33 +151,78 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } },
   ]);
 
-  // Normalize keys, then merge (RepCard spine, email->phone->name cascade).
+  // All AccuLynx deals per rep ALL-TIME (identity only) -> flags reps who have an
+  // AccuLynx account at all, so the "no AccuLynx" dot means a true link gap rather
+  // than merely "no sales in this range".
+  const acxAllRaw = await ScoringFactModel.aggregate([
+    { $match: { repExternalId: { $ne: null } } },
+    { $sort: { occurredAt: 1, _id: 1 } },
+    { $group: { _id: "$repExternalId", email: { $last: "$repEmail" }, phone: { $last: "$repPhone" }, name: { $last: "$repNameSnapshot" } } },
+  ]);
+
+  // Reps who have knocked at least once ALL-TIME -> defines the door-knocker roster.
+  const knockerRows = await RepCardKnockFactModel.aggregate([
+    { $group: { _id: "$repcardUserId", k: { $sum: "$verifiedKnocks" } } },
+    { $match: { k: { $gte: 1 } } },
+  ]);
+  const allTimeKnockers = new Set<string>(knockerRows.map((r: any) => String(r._id)));
+
+  // RepCard directory -> roster identity + Branch/Team. Includes status/email/phone so
+  // idle reps (no knock facts in the range) can still be placed with zeros.
+  const rcUsers = await RepCardUserModel.find({}).select("repcardUserId name office team status email phone").lean();
+  const rcById = new Map<string, any>();
+  for (const u of rcUsers) rcById.set(String((u as any).repcardUserId), u);
+
+  // Normalize windowed AccuLynx + all-time AccuLynx identities.
   const acx = acxRaw.map((r: any) => ({
     repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
     nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
     filed: r.filed, won: r.won, revenue: r.revenue,
   }));
-  const rc = rcRaw.map((r: any) => ({
-    repcardUserId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
-    nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
-    verifiedKnocks: r.verifiedKnocks,
+  const acxAll = acxAllRaw.map((r: any) => ({
+    repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
+    nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: "",
+    filed: 0, won: 0, revenue: 0,
   }));
-  const merged = mergeLeaderboard(acx, rc);
 
-  // Light app enrichment (never gating): match a Miller Storm user by email for
-  // the profile photo and the "You" highlight.
+  // Build the roster: everyone with in-range knocks (active or former), PLUS idle ACTIVE
+  // door-knockers as zero rows. Former reps with no in-range activity fall off.
+  const rc: any[] = [];
+  const rosterIds = new Set<string>();
+  for (const r of rcRaw) {
+    const id = String(r._id);
+    rosterIds.add(id);
+    rc.push({
+      repcardUserId: id, email: normEmail(r.email), phone: normPhone(r.phone),
+      nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
+      verifiedKnocks: r.verifiedKnocks,
+    });
+  }
+  for (const id of allTimeKnockers) {
+    if (rosterIds.has(id)) continue;
+    const u = rcById.get(id);
+    if (!u || String((u as any).status) !== "ACTIVE") continue;
+    rosterIds.add(id);
+    rc.push({
+      repcardUserId: id, email: normEmail((u as any).email), phone: normPhone((u as any).phone),
+      nameKey: normName((u as any).name), name: (u as any).name || "Unknown Rep", branch: "",
+      verifiedKnocks: 0,
+    });
+  }
+
+  const merged = mergeLeaderboard(acx, rc);
+  // All-time link flag: which roster reps match ANY all-time AccuLynx account.
+  const linked = new Map<string, boolean>(
+    mergeLeaderboard(acxAll, rc).map((r) => [r.id, r.source === "both"] as [string, boolean])
+  );
+
+  // Light app enrichment (never gating): match a Miller Storm user by email for the
+  // profile photo and the "You" highlight.
   const appUsers = await UserModel.find({ deleted: { $ne: true } }).select("id email headshotUrl name managerId").lean();
   const byEmail = new Map<string, any>();
   for (const u of appUsers) {
     const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);
   }
-
-  // RepCard user directory -> Branch + Team. Every board row is a RepCard rep
-  // (id = `rc:<repcardUserId>`), so this resolves branch/team for everyone: the
-  // office folds into one of the 3 real branches, and team is RepCard's own team.
-  const rcUsers = await RepCardUserModel.find({}).select("repcardUserId name office team").lean();
-  const rcById = new Map<string, any>();
-  for (const u of rcUsers) rcById.set(String((u as any).repcardUserId), u);
 
   merged.sort((a, b) => b.revenue - a.revenue || b.verifiedKnocks - a.verifiedKnocks || b.won - a.won || b.filed - a.filed);
 
@@ -191,15 +240,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       rank: i + 1, id: m.id, name: m.name, branch,
       verifiedKnocks: m.verifiedKnocks, filed: m.filed, won: m.won, revenue: m.revenue,
       repUserId: u ? (u as any).id : null, headshotUrl: u ? (u as any).headshotUrl || "" : "",
-      // Team = the rep's RepCard team (e.g. "Gunner", "Lubbock Team"). Used by
-      // the board's Team filter.
       team,
-      // True when this rep leads their team (i.e. is the branch manager). Used
-      // by the admin Branch Manager dashboard to list branch managers.
       isTeamLead: isTeamLead(rcu?.name || m.name, team),
-      source: m.source,
+      // "both" when the rep has an AccuLynx account at all (all-time); "repcard" ONLY
+      // when there is no linked AccuLynx account -> a genuine data gap, not "idle range".
+      source: linked.get(m.id) ? "both" : "repcard",
     };
   });
 
-  return res.status(200).json({ window: w, leaderboard });
+  return res.status(200).json({
+    window: isCustom ? "custom" : w,
+    range: { from: isCustom ? fromQ : centralDateStr(start), to: isCustom ? toQ : centralDateStr(end) },
+    leaderboard,
+  });
 }
