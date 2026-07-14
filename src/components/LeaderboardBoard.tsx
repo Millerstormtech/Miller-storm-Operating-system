@@ -1,5 +1,7 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { BRANCHES } from "../lib/repcard/branches";
+import { TEAM_NAMES } from "../lib/repcard/org-chart";
 
 type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
@@ -30,6 +32,11 @@ const COLUMNS: { key: SortKey; label: string; type: ColType }[] = [
 
 export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) {
   const [window, setWindow] = useState<Window>("month");
+  const [isCustom, setIsCustom] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  // The active query (a quick window OR a from/to range) — the single fetch trigger.
+  const [query, setQuery] = useState("window=month");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,33 +46,39 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const load = useCallback(async (w: Window) => {
+  const load = useCallback(async (q: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/leaderboard?window=${w}`);
-      if (res.ok) setRows((await res.json()).leaderboard ?? []);
+      const res = await fetch(`/api/leaderboard?${q}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRows(data.leaderboard ?? []);
+        // Echo the resolved range into the From/To boxes (fills them for quick views).
+        if (data.range) { setFrom(data.range.from); setTo(data.range.to); }
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(window); }, [window, load]);
+  useEffect(() => { load(query); }, [query, load]);
 
-  // Distinct branch options (plus a "No branch" bucket if any row lacks one).
-  const branchOptions = useMemo(() => {
-    const set = new Set<string>();
-    let hasBlank = false;
-    for (const r of rows) { if (r.branch) set.add(r.branch); else hasBlank = true; }
-    return { list: Array.from(set).sort(), hasBlank };
-  }, [rows]);
+  // Quick view selected -> exit custom mode and refetch by window.
+  const pickWindow = (w: Window) => { setWindow(w); setIsCustom(false); setQuery(`window=${w}`); };
+  // A date edited -> custom mode; refetch once both ends are set.
+  const pickDates = (f: string, t: string) => { setFrom(f); setTo(t); if (f && t) { setIsCustom(true); setQuery(`from=${f}&to=${t}`); } };
 
-  // Distinct teams from RepCard's own team field (plus a "No team" bucket).
-  const teamOptions = useMemo(() => {
-    const set = new Set<string>();
-    let hasNone = false;
-    for (const r of rows) { if (r.team) set.add(r.team); else hasNone = true; }
-    return { list: Array.from(set).sort(), hasNone };
-  }, [rows]);
+  // Fixed, never-culled filter options: the full branch/team lists always show,
+  // regardless of which reps have data in the current range. The "(No ...)" bucket
+  // appears only when some row genuinely lacks that field.
+  const branchOptions = useMemo(
+    () => ({ list: [...BRANCHES, "Commercial"], hasBlank: rows.some((r) => !r.branch) }),
+    [rows]
+  );
+  const teamOptions = useMemo(
+    () => ({ list: TEAM_NAMES, hasNone: rows.some((r) => !r.team) }),
+    [rows]
+  );
 
   const visible = useMemo(() => {
     const filtered = rows.filter((r) => {
@@ -126,7 +139,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           <div style={{ fontSize: 34, lineHeight: 1 }}>🏆</div>
           <div style={{ flex: 1, minWidth: 160 }}>
             <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 700, letterSpacing: 0.4 }}>
-              YOUR RANK · {WINDOWS.find((w) => w.key === window)?.label}
+              YOUR RANK · {isCustom ? "Custom range" : WINDOWS.find((w) => w.key === window)?.label}
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>
               #{me.rank}
@@ -154,9 +167,22 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
           Period
-          <select value={window} onChange={(e) => setWindow(e.target.value as Window)} style={selectStyle}>
+          <select
+            value={isCustom ? "custom" : window}
+            onChange={(e) => { const v = e.target.value; if (v === "custom") pickDates(from, to); else pickWindow(v as Window); }}
+            style={selectStyle}
+          >
             {WINDOWS.map((w) => <option key={w.key} value={w.key}>{w.label}</option>)}
+            <option value="custom">Custom range</option>
           </select>
+        </label>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
+          From
+          <input type="date" value={from} max={to || undefined} onChange={(e) => pickDates(e.target.value, to)} style={selectStyle} />
+        </label>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
+          To
+          <input type="date" value={to} min={from || undefined} onChange={(e) => pickDates(from, e.target.value)} style={selectStyle} />
         </label>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
           Branch
@@ -191,7 +217,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#6b7280", flexWrap: "wrap" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-          RepCard only (door-knocks, no matched AccuLynx sales)
+          No AccuLynx account linked (door-knocks only)
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span aria-hidden="true">❌</span>
@@ -225,7 +251,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             </thead>
             <tbody>
               {visible.length === 0 ? (
-                <tr><td colSpan={COLUMNS.length + 1} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No data for this period yet.</td></tr>
+                <tr><td colSpan={COLUMNS.length + 1} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No reps match these filters.</td></tr>
               ) : visible.map((r, i) => {
                 const isYou = currentUserId && r.repUserId === currentUserId;
                 return (
@@ -236,7 +262,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                         {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} /> : null}
                         {r.source === "repcard" ? (
                           <span
-                            title="RepCard only (no matched AccuLynx sales)"
+                            title="No AccuLynx account linked"
                             style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }}
                           />
                         ) : null}
