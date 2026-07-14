@@ -484,6 +484,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     // first incomplete item locks everything after it, so a newly-inserted
     // lesson/quiz re-locks the rest until it's done.
     bool isPageUnlocked(String pageId) {
+      // "Unlock all" on the course opens every lesson & quiz for everyone.
+      if (_course?['unlockAll'] == true) return true;
       // A manager can manually unlock this specific page for the user — it then
       // opens without needing the preceding items done (only THIS page, nothing
       // after it, is unlocked).

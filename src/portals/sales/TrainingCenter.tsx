@@ -322,7 +322,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       selectedCourse.folders ?? []
     );
     if (!ordered.some(p => p.id === target)) { pendingDeepLinkRef.current = null; return; }
-    const unlocked = isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
+    const unlocked = selectedCourse?.unlockAll || isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
     setActivePageId(target);
     setMobileCourseScreen(unlocked ? 'lesson' : 'overview');
     pendingDeepLinkRef.current = null;
@@ -477,7 +477,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       }
       const shouldAutoStart = autoTriggeredRef.current;
       autoTriggeredRef.current = false; // reset after reading
-      const isAlreadyCompleted = activePageId ? completedPages.has(activePageId) : false;
+      // "Unlock all" also lets everyone fast-forward/skip freely (as if the
+      // video were already completed).
+      const isAlreadyCompleted = !!selectedCourse?.unlockAll || (activePageId ? completedPages.has(activePageId) : false);
       const cleanup = await initVideoSequence(
         container,
         (navigate: boolean) => onVideoEndedRef.current(navigate),
@@ -972,6 +974,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     pages = orderPagesByFolder(pages, folders);
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
     const isPageUnlocked = (pageId: string) => {
+      // "Unlock all" on the course opens every lesson & quiz for everyone.
+      if (selectedCourse?.unlockAll) return true;
       // A manager can manually unlock this specific page — it then opens without
       // the preceding items done (only THIS page, nothing after it, is unlocked).
       if (unlockedPages.has(pageId)) return true;

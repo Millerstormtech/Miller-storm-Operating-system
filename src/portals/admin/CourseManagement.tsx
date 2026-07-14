@@ -2214,6 +2214,20 @@ export function CourseManagement(props: CourseEditorProps) {
               <div className="panel-header-row">
                 <span>Course Details</span>
                 <div className="panel-header-actions">
+                  {/* Unlock all: ON = every lesson/quiz unlocked for ALL users;
+                      OFF = only C-Level / Branch Manager / Sales Team Lead. */}
+                  <label
+                    title="When on, every lesson & quiz is unlocked for ALL users. When off, only leadership roles (C-Level, Branch Manager, Sales Team Lead)."
+                    style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: selectedCourse.unlockAll ? "#16a34a" : "#6b7280", cursor: "pointer", userSelect: "none", marginRight: 6 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!selectedCourse.unlockAll}
+                      onChange={(e) => updateCourse({ ...selectedCourse, unlockAll: e.target.checked })}
+                      style={{ width: 15, height: 15, cursor: "pointer" }}
+                    />
+                    🔓 Unlock all
+                  </label>
                   <button type="button" className="btn-ghost btn-small" onClick={() => setViewMode("grid")}>
                     Back to courses
                   </button>

@@ -68,6 +68,11 @@ const courseFolderSchema = new Schema(
     status: String,
     coverImageUrl: String,
     accessMode: String,
+    // When true, EVERY lesson & quiz in this course is unlocked for ALL users
+    // (no sequential gating). When false, only leadership roles (C-Level,
+    // Branch Manager, Sales Team Lead) get the course unlocked; sales reps
+    // follow the normal sequential lock.
+    unlockAll: { type: Boolean, default: false },
     folders: [courseFolderSchema],
     pages: [coursePageSchema],
     order: Number
