@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../contexts/AuthContext";
+import { trainingRouteForRole } from "../lib/trainingRoute";
 
 type Notification = {
   id: string;
@@ -60,7 +61,9 @@ export function NewCoursePopup() {
 
   if (!notif) return null;
 
-  const baseWatchUrl = notif.metadata?.watchUrl || "/sales/training";
+  // Always open the recipient's OWN Training Center (resolved from their role),
+  // ignoring any stale portal path stored on older notifications.
+  const baseWatchUrl = trainingRouteForRole(user?.role);
   const courseId = notif.metadata?.courseId;
   const lessonId = notif.metadata?.lessonId;
   // Deep-link into the course (courseId is always present, even on older

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { Toast } from "./Toast";
+import { useAuth } from "../contexts/AuthContext";
+import { trainingRouteForRole } from "../lib/trainingRoute";
 
 type Notification = {
   id: string;
@@ -30,6 +32,7 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const router = useRouter();
+  const { user } = useAuth();
 
   // Tracks every notification id we've already shown the user, so a poll can
   // tell which notifications are genuinely new (and worth a pop-up).
@@ -108,11 +111,19 @@ export function NotificationBell({ userId }: { userId: string }) {
       const path = url.startsWith('http') ? new URL(url).pathname : url;
       console.log('Redirecting to:', path);
       router.push(path);
-    } else if (notif.metadata?.watchUrl) {
-      // Training notifications (e.g. a manager unlocking a lesson) deep-link to
-      // the training page so the user can go straight there.
+    } else if (notif.metadata?.watchUrl || notif.metadata?.courseId) {
+      // Training notifications (e.g. an unlocked lesson) always open the
+      // recipient's OWN Training Center, resolved from their role — NOT the
+      // portal path stored on the notification (older notifications hardcoded
+      // /sales/training, which bounced Sales Team Leads / branch managers into
+      // the wrong panel). The recipient IS the logged-in user, so this is safe.
       setShowDropdown(false);
-      router.push(notif.metadata.watchUrl);
+      const base = trainingRouteForRole(user?.role);
+      const params = new URLSearchParams();
+      if (notif.metadata?.courseId) params.set("courseId", notif.metadata.courseId);
+      if (notif.metadata?.lessonId) params.set("lessonId", notif.metadata.lessonId);
+      const qs = params.toString();
+      router.push(qs ? `${base}?${qs}` : base);
     } else {
       console.log('No deep link for this notification');
     }
