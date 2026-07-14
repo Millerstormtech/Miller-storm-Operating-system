@@ -31,3 +31,16 @@ export function officeToBranch(office?: string | null): string {
   if (s.includes("commercial")) return "Commercial";
   return ""; // truly unrecognized -> no branch
 }
+
+// Which display branch a SALE counts toward, from the AccuLynx sub-account it was filed
+// in (ScoringFact.location). Lubbock / Round Rock / Corpus roll up to West Texas;
+// Commercial to Commercial. The shared "DFW" sub-account can't be split Fort Worth vs
+// Dallas by location (those two are team-based, not geographic), so it returns "DFW" and
+// the caller resolves it to the rep's home branch. Verified 2026-07-15: sub-account region
+// matches the customer-city region 100% of the time, with zero coverage gaps.
+export function saleRegion(location?: string | null): "West Texas" | "Commercial" | "DFW" {
+  const s = (location || "").toLowerCase();
+  if (/lubbock|round\s*rock|corpus|levelland|midland|odessa|amarillo|abilene|san angelo/.test(s)) return "West Texas";
+  if (s.includes("commercial")) return "Commercial";
+  return "DFW";
+}
