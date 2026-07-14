@@ -2770,9 +2770,11 @@ export function ManagerOnlineTrainingPage(props: {
                   <UnlockLessonPanel
                     managerId={props.currentUser.id}
                     // Unlock lessons / fast-forward is only for SALES REPS — not
-                    // other leaders. (Sales Team Leads see their own team; Branch
-                    // Managers & C-Level see every sales rep company-wide.)
-                    teamUsers={teamProgress.map(t => t.user).filter((u: any) => u.role === 'sales')}
+                    // other leaders. Use the full sales-users list (not the
+                    // Team-Progress-tab subset) so EVERY sales rep shows: Sales
+                    // Team Leads see their own team; Branch Managers & C-Level
+                    // (companyWide) see every sales rep in the company.
+                    teamUsers={salesUsers.filter((u: any) => u.role === 'sales')}
                     publishedCourses={publishedCourses}
                   />
                 )}
