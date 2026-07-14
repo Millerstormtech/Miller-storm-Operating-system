@@ -17,17 +17,29 @@ test("email match merges knocks + deals into one 'both' row", () => {
   assert.equal(out[0].revenue, 50000);
 });
 
-test("RepCard-only rep is a knock-only row (0 deals)", () => {
+test("RepCard rep with no matching deals is a knock-only 'repcard' row", () => {
   const out = mergeLeaderboard([], [rc({ repcardUserId: "r1", email: "x@ms.com", name: "X", verifiedKnocks: 10 })]);
   assert.equal(out[0].source, "repcard");
   assert.equal(out[0].verifiedKnocks, 10);
   assert.equal(out[0].revenue, 0);
 });
 
-test("AccuLynx rep with no RepCard match is its own flagged row", () => {
-  const out = mergeLeaderboard([ax({ repExternalId: "a1", email: "office@ms.com", name: "Office", filed: 1 })], []);
-  assert.equal(out[0].source, "acculynx");
-  assert.equal(out[0].filed, 1);
+test("idle roster rep with 0 verified knocks is STILL returned as a zero row", () => {
+  // The gate moved to the caller; merge must not drop idle reps.
+  const out = mergeLeaderboard([], [rc({ repcardUserId: "r1", email: "idle@ms.com", name: "Idle", verifiedKnocks: 0 })]);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].verifiedKnocks, 0);
+  assert.equal(out[0].source, "repcard");
+});
+
+test("AccuLynx credit with no RepCard match is dropped entirely (no extra row)", () => {
+  const out = mergeLeaderboard(
+    [ax({ repExternalId: "a1", email: "office@ms.com", name: "Office", filed: 1 })],
+    [rc({ repcardUserId: "r1", email: "real@ms.com", name: "Real", verifiedKnocks: 1 })],
+  );
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "rc:r1");
+  assert.equal(out[0].filed, 0);
 });
 
 test("phone rescues an email typo (fernado vs fernando)", () => {
@@ -37,19 +49,18 @@ test("phone rescues an email typo (fernado vs fernando)", () => {
   );
   assert.equal(out.length, 1);
   assert.equal(out[0].source, "both");
-  assert.equal(out[0].verifiedKnocks, 481);
   assert.equal(out[0].won, 1);
 });
 
-test("ambiguous phone (2 RepCard reps share it) does NOT merge", () => {
+test("ambiguous phone (2 RepCard reps share it) does NOT merge and adds no row", () => {
   const out = mergeLeaderboard(
     [ax({ repExternalId: "a1", phone: "5550000000", name: "Zed", revenue: 100 })],
     [rc({ repcardUserId: "r1", phone: "5550000000", name: "One", verifiedKnocks: 1 }),
      rc({ repcardUserId: "r2", phone: "5550000000", name: "Two", verifiedKnocks: 2 })],
   );
-  // 2 spine rows + 1 acculynx-only row (phone was ambiguous, no email/name match)
-  assert.equal(out.length, 3);
-  assert.equal(out.filter((r) => r.source === "acculynx").length, 1);
+  assert.equal(out.length, 2); // only the 2 spine rows; the unmatched acx is dropped
+  assert.ok(out.every((r) => r.source === "repcard"));
+  assert.ok(out.every((r) => r.revenue === 0));
 });
 
 test("exact unique name is the last-resort match", () => {
