@@ -12,10 +12,12 @@ type OrgUser = {
 };
 
 const ROLE: Record<string, { label: string; bg: string; border: string; text: string; dot: string }> = {
-  admin: { label: "Admin", bg: "#fef2f2", border: "#fecaca", text: "#b91c1c", dot: "#dc2626" },
+  "c-level": { label: "C-Level", bg: "#eef2ff", border: "#c7d2fe", text: "#4338ca", dot: "#4f46e5" },
+  "branch-manager": { label: "Branch Manager", bg: "#fff7ed", border: "#fed7aa", text: "#c2410c", dot: "#ea580c" },
   "sales-team-lead": { label: "Sales Team Lead", bg: "#f5f3ff", border: "#ddd6fe", text: "#6d28d9", dot: "#7c3aed" },
   sales: { label: "Sales", bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8", dot: "#2563eb" },
   marketing: { label: "Marketing", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d", dot: "#16a34a" },
+  admin: { label: "Admin", bg: "#fef2f2", border: "#fecaca", text: "#b91c1c", dot: "#dc2626" },
 };
 
 function roleOf(u: OrgUser): string {
@@ -150,12 +152,14 @@ export function TeamStructure() {
     return () => { active = false; };
   }, []);
 
-  const { admins, managers, marketing, unassigned, counts } = useMemo(() => {
+  const { cLevel, branchManagers, admins, managers, marketing, unassigned, counts } = useMemo(() => {
     const all = users || [];
     const q = query.trim().toLowerCase();
     const match = (u: OrgUser) => !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
 
     const byRole = (role: string) => all.filter((u) => roleOf(u) === role);
+    const cLevelList = byRole("c-level");
+    const branchManagerList = byRole("branch-manager");
     const adminList = byRole("admin");
     const managerList = byRole("sales-team-lead");
     const sales = byRole("sales");
@@ -178,11 +182,20 @@ export function TeamStructure() {
       .filter(({ self, reps }) => self || reps.length > 0);
 
     return {
+      cLevel: cLevelList.filter(match),
+      branchManagers: branchManagerList.filter(match),
       admins: adminList.filter(match),
       managers,
       marketing: marketingList.filter(match),
       unassigned: noManager.filter(match),
-      counts: { admins: adminList.length, managers: managerList.length, sales: sales.length, marketing: marketingList.length },
+      counts: {
+        cLevel: cLevelList.length,
+        branchManagers: branchManagerList.length,
+        admins: adminList.length,
+        managers: managerList.length,
+        sales: sales.length,
+        marketing: marketingList.length,
+      },
     };
   }, [users, query]);
 
@@ -197,16 +210,19 @@ export function TeamStructure() {
     </div>
   );
 
-  const nothing = admins.length === 0 && managers.length === 0 && marketing.length === 0 && unassigned.length === 0;
+  const nothing = cLevel.length === 0 && branchManagers.length === 0 && admins.length === 0 && managers.length === 0 && marketing.length === 0 && unassigned.length === 0;
+  const hasLeadership = cLevel.length > 0 || branchManagers.length > 0;
 
   return (
     <div>
       {/* Summary */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
-        {stat("Admins", counts.admins, ROLE.admin.dot)}
+        {stat("C-Level", counts.cLevel, ROLE["c-level"].dot)}
+        {stat("Branch Managers", counts.branchManagers, ROLE["branch-manager"].dot)}
         {stat("Sales Team Leads", counts.managers, ROLE["sales-team-lead"].dot)}
         {stat("Sales", counts.sales, ROLE.sales.dot)}
         {stat("Marketing", counts.marketing, ROLE.marketing.dot)}
+        {stat("Admins", counts.admins, ROLE.admin.dot)}
       </div>
 
       <input
@@ -229,17 +245,26 @@ export function TeamStructure() {
           onMouseUp={onDragEnd}
         >
           <div className="tree" style={{ zoom }}>
-            {/* Tier 1: Admins */}
-            {admins.length > 0 && (
+            {/* Tier 1: C-Level */}
+            {cLevel.length > 0 && (
               <div className="admin-row">
-                {admins.map((a) => <Node key={a.id} user={a} isYou={a.id === user?.id} />)}
+                {cLevel.map((a) => <Node key={a.id} user={a} isYou={a.id === user?.id} />)}
               </div>
             )}
 
-            {/* connector from admins down to the managers bus */}
-            {admins.length > 0 && managers.length > 0 && <div className="trunk" />}
+            {cLevel.length > 0 && branchManagers.length > 0 && <div className="trunk" />}
 
-            {/* Tier 2 + 3: Managers with their reps */}
+            {/* Tier 2: Branch Managers */}
+            {branchManagers.length > 0 && (
+              <div className="admin-row">
+                {branchManagers.map((a) => <Node key={a.id} user={a} isYou={a.id === user?.id} />)}
+              </div>
+            )}
+
+            {/* connector from leadership down to the Sales Team Leads bus */}
+            {hasLeadership && managers.length > 0 && <div className="trunk" />}
+
+            {/* Tier 3 + 4: Sales Team Leads with their reps */}
             {managers.length > 0 && (
               <ul className="branch">
                 {managers.map(({ manager, reps }) => (
@@ -281,6 +306,16 @@ export function TeamStructure() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Admins — always at the very bottom, under Marketing. */}
+      {admins.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <div className="side-title" style={{ color: ROLE.admin.text }}>Admins · {admins.length}</div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {admins.map((a) => <Node key={a.id} user={a} isYou={a.id === user?.id} />)}
+          </div>
         </div>
       )}
 
