@@ -100,6 +100,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [lessonSearch, setLessonSearch] = useState(""); // filter Course Modules by video title
   const [courseViewInitialized, setCourseViewInitialized] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
@@ -396,6 +397,9 @@ export function ManagerOnlineTrainingPage(props: {
     setCollapsedFolders(new Set(folders.map(f => f.id)));
     setCourseViewInitialized(selectedCourse.id);
   }, [selectedCourse, activePageId, courseViewInitialized]);
+
+  // Clear the "search videos by title" box when switching to a different course.
+  useEffect(() => { setLessonSearch(""); }, [selectedCourse?.id]);
 
   useEffect(() => {
     if (!activePageId || !selectedCourse) return;
@@ -1848,9 +1852,19 @@ export function ManagerOnlineTrainingPage(props: {
             <div className="course-modules-mobile-header">
               <h3>Course Modules</h3>
             </div>
-            
-            {/* Expand/Collapse All Buttons */}
-            {folders.length > 0 && (
+
+            {/* Search videos by title */}
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+              <input
+                value={lessonSearch}
+                onChange={(e) => setLessonSearch(e.target.value)}
+                placeholder="Search videos by title…"
+                style={{ width: '100%', padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* Expand/Collapse All Buttons (hidden while searching) */}
+            {folders.length > 0 && !lessonSearch.trim() && (
               <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
                 <button
                   type="button"
@@ -1871,6 +1885,30 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
             )}
             <div className="course-pages-sidebar">
+              {lessonSearch.trim() ? (() => {
+                const q = lessonSearch.trim().toLowerCase();
+                const matches = pages.filter((p) => (p.title || "").toLowerCase().includes(q));
+                if (matches.length === 0) {
+                  return <div style={{ padding: 16, color: "#9ca3af", fontSize: 13 }}>No videos match &ldquo;{lessonSearch}&rdquo;.</div>;
+                }
+                return matches.map((page) => {
+                  const unlocked = isPageUnlocked(page.id);
+                  const folderName = page.folderId ? (folders.find((f) => f.id === page.folderId)?.title || "") : "";
+                  return (
+                    <div
+                      key={page.id}
+                      className={activePage?.id === page.id ? "course-pages-item active" : "course-pages-item"}
+                      onClick={() => { if (unlocked) { setActivePageId(page.id); setIsMobileSidebarOpen(false); } }}
+                      style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
+                    >
+                      <span className="course-pages-item-title">
+                        {!unlocked && "🔒 "}{page.title}
+                        {folderName ? <span style={{ color: "#9ca3af", fontWeight: 400 }}> · {folderName}</span> : null}
+                      </span>
+                    </div>
+                  );
+                });
+              })() : (<>
               {pages.filter((page) => !page.folderId).map((page) => {
                 const unlocked = isPageUnlocked(page.id);
                 return (
@@ -1937,9 +1975,10 @@ export function ManagerOnlineTrainingPage(props: {
                   </div>
                 );
               })}
+              </>)}
             </div>
           </div>
-          
+
           {/* Mobile Toggle Button */}
           <button
             className="course-modules-mobile-toggle"
