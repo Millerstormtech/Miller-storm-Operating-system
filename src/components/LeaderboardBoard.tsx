@@ -134,6 +134,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   const selectStyle = { padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" } as const;
 
+  // While a real branch filter is active, the numbers are that ONE branch's sales, so a
+  // rep's home Branch/Team would only contradict the filter (a Fort Worth rep in the West
+  // Texas list). Hide those two columns to remove the confusion; the banner explains why.
+  const branchActive = !!branchFilter && branchFilter !== NONE;
+  const visibleColumns = branchActive ? COLUMNS.filter((c) => c.key !== "branch" && c.key !== "team") : COLUMNS;
+
   return (
     <div>
       {/* "Your rank" pop-out — shown to any user who is on the board (sales rep,
@@ -228,7 +234,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           the "why is this rep here?" confusion happens. */}
       {branchFilter && branchFilter !== NONE ? (
         <div style={{ marginBottom: 12, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: "#1e40af" }}>
-          Showing <strong>{branchFilter}</strong> sales. Numbers are for this branch only; a rep based elsewhere who sold here still appears, and the Branch column shows their <strong>home</strong> branch.
+          Showing <strong>{branchFilter}</strong> sales. Numbers are for this branch only. Branch and Team columns are hidden while a branch filter is on, because a rep based in another branch can appear here for their {branchFilter} sales.
         </div>
       ) : null}
 
@@ -241,7 +247,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           <li><strong>Who&apos;s listed:</strong> every active door-knocker.</li>
           <li><strong>The columns:</strong> <em>Verified Door Knocks</em> = GPS-verified doors knocked. <em>Claims Filed</em> = insurance claims started. <em>Contracts</em> = signed contracts. <em>Contract Amount</em> = $ value of those contracts.</li>
           <li><strong>Branch &amp; Team</strong> = the rep&apos;s home branch and team.</li>
-          <li><strong>Filtering by branch</strong> shows only the sales made in that branch. If a rep sells in more than one branch, each branch shows just its own share. Remove the filter to see their full total.</li>
+          <li><strong>Filtering by branch</strong> shows only the sales made in that branch. If a rep sells in more than one branch, each branch shows just its own share. Remove the filter to see their full total. While a branch filter is on, the Branch and Team columns are hidden to avoid confusion.</li>
           <li><strong>Verified Door Knocks</strong> count only under a rep&apos;s home branch. If you filter to a different branch where they made sales, their knocks show as 0 there.</li>
           <li><strong>$0 is normal:</strong> a rep can knock a lot and still show $0 if they set appointments a closer finishes (the closer gets the contract credit).</li>
           <li>🟠 <strong>orange dot</strong> = no AccuLynx account. ❌ = former rep.</li>
@@ -268,7 +274,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
                 <th style={{ padding: "10px 14px", textAlign: "center", fontSize: 13, fontWeight: 600 }}>#</th>
-                {COLUMNS.map((c) => (
+                {visibleColumns.map((c) => (
                   <th
                     key={c.key}
                     onClick={() => onSort(c.key)}
@@ -286,7 +292,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             </thead>
             <tbody>
               {visible.length === 0 ? (
-                <tr><td colSpan={COLUMNS.length + 1} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No reps match these filters.</td></tr>
+                <tr><td colSpan={visibleColumns.length + 1} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No reps match these filters.</td></tr>
               ) : visible.map((r, i) => {
                 const isYou = currentUserId && r.repUserId === currentUserId;
                 return (
@@ -297,15 +303,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                         {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} /> : null}
                         {r.source === "repcard" ? (
                           <span
-                            title="No AccuLynx account linked"
+                            title="No AccuLynx account"
                             style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }}
                           />
                         ) : null}
                         <span>{r.name}{isYou ? " (You)" : ""}</span>
                       </span>
                     </td>
-                    <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.branch || "—"}</td>
-                    <td style={{ padding: "10px 14px", color: "#6b7280" }}>{TEAM_LEADS[r.team] || r.team || "—"}</td>
+                    {!branchActive ? (
+                      <>
+                        <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.branch || "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#6b7280" }}>{TEAM_LEADS[r.team] || r.team || "—"}</td>
+                      </>
+                    ) : null}
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center" }}>{r.filed}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.won}</td>
