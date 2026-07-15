@@ -1291,8 +1291,8 @@ export function UserManagement(props: UserEditorProps) {
               {selectedUser.role === "sales" && (
                 <label className="field">
                   <span className="field-label">Sales Team Lead <span style={{ color: "#dc2626" }}>*</span></span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <select className="field-input" style={{ flex: 1, borderColor: (!selectedUser.managerId || managerError) ? "#dc2626" : undefined }} value={managerDraftId} onChange={(e) => {
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <select className="field-input" style={{ flex: 1, minWidth: 0, borderColor: (!selectedUser.managerId || managerError) ? "#dc2626" : undefined }} value={managerDraftId} onChange={(e) => {
                       const nextManagerId = e.target.value;
                       setManagerDraftId(nextManagerId);
                       setManagerError("");

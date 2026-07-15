@@ -1882,6 +1882,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* Let the grid cell shrink below its content's intrinsic width (a native
+     <select> with long option text would otherwise overflow into the next
+     column). */
+  min-width: 0;
 }
 
 .field-label {
@@ -1947,6 +1951,11 @@ body {
   padding: 8px 10px;
   font-size: 14px;
   font-family: inherit;
+  /* Fill the field and allow shrinking so long-content inputs/selects don't
+     overflow their column. */
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .field-input:focus {
