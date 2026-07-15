@@ -7,6 +7,9 @@ dist/
 firebase-service-account.json
 *.plist
 google-services.json
+# ...but the Android app's google-services.json IS needed at build time by the
+# google-services gradle plugin, so keep this one in version control.
+!Jamesapk/android/app/google-services.json
 
 # Build artifacts / OS files
 .DS_Store
