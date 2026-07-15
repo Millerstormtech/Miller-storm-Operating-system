@@ -38,7 +38,9 @@ export function UserManagement(props: UserEditorProps) {
   const [showWebPreview, setShowWebPreview] = useState(false);
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
   const [showTerritoryDropdown, setShowTerritoryDropdown] = useState(false);
-  const TERRITORY_OPTIONS = ["DFW, Texas", "Lubbock, Texas", "Round Rock, Texas", "Other"];
+  // Branch options (stored on the existing `territory` field). Fixed list keeps
+  // every account consistent — no typos/duplicates from free text.
+  const TERRITORY_OPTIONS = ["Dallas", "West Texas", "Fort Worth"];
   const [managerDraftId, setManagerDraftId] = useState<string>(props.users.find((u) => u.id === selectedUserId)?.managerId ?? "");
   const [emailError, setEmailError] = useState("");
   const [phoneError, setPhoneError] = useState("");
@@ -1211,7 +1213,7 @@ export function UserManagement(props: UserEditorProps) {
                 )}
               </label>
               <label className="field">
-                <span className="field-label">Territory</span>
+                <span className="field-label">Branch</span>
                 <div className="territory-field">
                   <button
                     type="button"
@@ -1221,7 +1223,7 @@ export function UserManagement(props: UserEditorProps) {
                     <span className="territory-trigger-value" style={{ color: !selectedUser.territory ? "#9ca3af" : undefined }}>
                       {selectedUser.territory && selectedUser.territory.trim().length > 0
                         ? selectedUser.territory
-                        : "Select territory"}
+                        : "Select branch"}
                     </span>
                     <span className="territory-trigger-icon">{showTerritoryDropdown ? "▲" : "▼"}</span>
                   </button>

@@ -32,7 +32,7 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
   ];
 
   // Territory options (same as the web User Management dropdown).
-  static const List<String> _territories = ['DFW, Texas', 'Lubbock, Texas', 'Round Rock, Texas', 'Other'];
+  static const List<String> _territories = ['Dallas', 'West Texas', 'Fort Worth'];
 
   List<dynamic> _active = [];
   List<dynamic> _deleted = [];
@@ -540,7 +540,7 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                   _field('Email', emailC, keyboard: TextInputType.emailAddress),
                   _field('Phone', phoneC, keyboard: TextInputType.phone),
                   const SizedBox(height: 6),
-                  const Text('Territory', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                  const Text('Branch', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -550,7 +550,7 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                       child: DropdownButton<String>(
                         value: territory.isEmpty ? null : territory,
                         isExpanded: true,
-                        hint: const Text('Select territory'),
+                        hint: const Text('Select branch'),
                         items: [
                           ..._territories,
                           if (territory.isNotEmpty && !_territories.contains(territory)) territory,
