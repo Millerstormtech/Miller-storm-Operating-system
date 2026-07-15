@@ -16,7 +16,7 @@ const ORG_TEAMS: Record<string, string[]> = {
   Jonathan: ["Jonathan Chambers", "Austin Porter", "David Bolles", "Esteban Serna", "Fernando Cano", "Jordan Dillon", "Kelvin Burdiez"],
   // Dallas branch (mgr Mike Muscari)
   "Mike Muscari": ["Mike Muscari", "Jaren Lushaj", "Johnny Franco", "Nathan Gregory", "Nate Gregory", "Dylan Looney", "Justin Jones"],
-  Cooper: ["Cooper Bledsoe", "Colton Lathrom", "Declan Mathison", "Jason Nguyen", "Martin Ramirez", "Victor Ramirez", "Ashton Foster"],
+  Cooper: ["Cooper Bledsoe", "Colton Lathrom", "Declan Mathison", "Jason Nguyen", "Martin Ramirez", "Victor Ramirez", "Victor Gonzalez", "Ashton Foster"],
   // West Texas branch (mgr Daniel Sabedra) — Brighton Jenkins folded in as a regular
   // rep (with Matthew Stevens + Chris Holman) 2026-07-14; he is no longer a team lead.
   "Daniel Sabedra": ["Daniel Sabedra", "Sergio Flores", "Shane Goldsmith", "Waylon Dean", "Eduardo Ramos", "Colton Randolph", "Brighton Jenkins", "Matthew Stevens", "Chris Holman"],
@@ -55,6 +55,25 @@ export const TEAM_BRANCH: Record<string, string> = {
   "Daniel Sabedra": "West Texas",
   Commercial: "Commercial",
 };
+
+// Direct name -> branch overrides for reps with a KNOWN home branch but no sales team
+// (former reps, cross-branch execs). Consulted after the team's branch and before the
+// RepCard-office fallback. Keys are matched via the same `norm()` as team lookup.
+export const NAME_TO_BRANCH: Record<string, string> = {
+  "austin apple": "Fort Worth", // former rep, no RepCard directory entry -> no team to derive from
+};
+
+export function resolveNameBranch(name?: string | null): string {
+  return NAME_TO_BRANCH[norm(name)] || "";
+}
+
+// Reps who should show NO branch — cross-branch execs (e.g. the CRO who storm-chases
+// across regions). Pinning them to one branch would mislead; their office fallback is
+// suppressed. Their sales still split by region under a branch filter like anyone else.
+const BRANCHLESS_NAMES = new Set<string>([norm("Naaman Taylor")]);
+export function isBranchless(name?: string | null): boolean {
+  return BRANCHLESS_NAMES.has(norm(name));
+}
 
 const NAME_TO_TEAM = new Map<string, string>();
 for (const [team, members] of Object.entries(ORG_TEAMS)) {

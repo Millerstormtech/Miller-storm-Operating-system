@@ -1,7 +1,7 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { BRANCHES } from "../lib/repcard/branches";
-import { TEAM_NAMES } from "../lib/repcard/org-chart";
+import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 
 type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
@@ -134,6 +134,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   const selectStyle = { padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" } as const;
 
+  // While a real branch filter is active, the numbers are that ONE branch's sales, so a
+  // rep's home Branch/Team would only contradict the filter (a Fort Worth rep in the West
+  // Texas list). Hide those two columns to remove the confusion; the banner explains why.
+  const branchActive = !!branchFilter && branchFilter !== NONE;
+  const visibleColumns = branchActive ? COLUMNS.filter((c) => c.key !== "branch" && c.key !== "team") : COLUMNS;
+
   return (
     <div>
       {/* "Your rank" pop-out — shown to any user who is on the board (sales rep,
@@ -207,7 +213,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           Team
           <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} style={selectStyle}>
             <option value={ALL}>All teams</option>
-            {teamOptions.list.map((t) => <option key={t} value={t}>{t}</option>)}
+            {teamOptions.list.map((t) => <option key={t} value={t}>{TEAM_LEADS[t] || t}</option>)}
             {teamOptions.hasNone ? <option value={NONE}>(No team)</option> : null}
           </select>
         </label>
@@ -224,11 +230,35 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </span>
       </div>
 
+      {/* Contextual banner — only while a real branch filter is active, right where
+          the "why is this rep here?" confusion happens. */}
+      {branchFilter && branchFilter !== NONE ? (
+        <div style={{ marginBottom: 12, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: "#1e40af" }}>
+          Showing <strong>{branchFilter}</strong> sales. Numbers are for this branch only. Branch and Team columns are hidden while a branch filter is on, because a rep based in another branch can appear here for their {branchFilter} sales.
+        </div>
+      ) : null}
+
+      {/* Collapsible "how to read this board" guide — collapsed by default so it never clutters. */}
+      <details style={{ marginBottom: 12, background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px" }}>
+        <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#374151" }}>
+          ℹ️ How to read this board
+        </summary>
+        <ul style={{ margin: "10px 0 2px", paddingLeft: 18, fontSize: 12.5, color: "#4b5563", lineHeight: 1.6 }}>
+          <li><strong>Who&apos;s listed:</strong> every active door-knocker.</li>
+          <li><strong>The columns:</strong> <em>Verified Door Knocks</em> = GPS-verified doors knocked. <em>Claims Filed</em> = insurance claims started. <em>Contracts</em> = signed contracts. <em>Contract Amount</em> = $ value of those contracts.</li>
+          <li><strong>Branch &amp; Team</strong> = the rep&apos;s home branch and team.</li>
+          <li><strong>Filtering by branch</strong> shows only the sales made in that branch. If a rep sells in more than one branch, each branch shows just its own share. Remove the filter to see their full total. While a branch filter is on, the Branch and Team columns are hidden to avoid confusion.</li>
+          <li><strong>Verified Door Knocks</strong> count only under a rep&apos;s home branch. If you filter to a different branch where they made sales, their knocks show as 0 there.</li>
+          <li><strong>$0 is normal:</strong> a rep can knock a lot and still show $0 if they set appointments a closer finishes (the closer gets the contract credit).</li>
+          <li>🟠 <strong>orange dot</strong> = no AccuLynx account. ❌ = former rep.</li>
+        </ul>
+      </details>
+
       {/* Legend for the flags shown next to a rep's name. */}
       <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#6b7280", flexWrap: "wrap" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-          No AccuLynx account linked (door-knocks only)
+          No AccuLynx account (rep not set up in AccuLynx)
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span aria-hidden="true">❌</span>
@@ -244,7 +274,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
                 <th style={{ padding: "10px 14px", textAlign: "center", fontSize: 13, fontWeight: 600 }}>#</th>
-                {COLUMNS.map((c) => (
+                {visibleColumns.map((c) => (
                   <th
                     key={c.key}
                     onClick={() => onSort(c.key)}
@@ -262,7 +292,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             </thead>
             <tbody>
               {visible.length === 0 ? (
-                <tr><td colSpan={COLUMNS.length + 1} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No reps match these filters.</td></tr>
+                <tr><td colSpan={visibleColumns.length + 1} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No reps match these filters.</td></tr>
               ) : visible.map((r, i) => {
                 const isYou = currentUserId && r.repUserId === currentUserId;
                 return (
@@ -273,15 +303,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                         {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} /> : null}
                         {r.source === "repcard" ? (
                           <span
-                            title="No AccuLynx account linked"
+                            title="No AccuLynx account"
                             style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }}
                           />
                         ) : null}
                         <span>{r.name}{isYou ? " (You)" : ""}</span>
                       </span>
                     </td>
-                    <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.branch || "—"}</td>
-                    <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.team || "—"}</td>
+                    {!branchActive ? (
+                      <>
+                        <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.branch || "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#6b7280" }}>{TEAM_LEADS[r.team] || r.team || "—"}</td>
+                      </>
+                    ) : null}
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center" }}>{r.filed}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.won}</td>

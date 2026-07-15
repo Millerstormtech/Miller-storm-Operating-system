@@ -17,3 +17,17 @@ export function normPhone(s?: string): string {
   if (d.length === 11 && d[0] === "1") d = d.slice(1);
   return d.length === 10 ? d : "";
 }
+
+// True when a rep matches ANY AccuLynx account by the same email -> phone -> name
+// cascade used for sales. All inputs are pre-normalized (normEmail/normPhone/normName).
+// Empty sets (e.g. before the first AccuLynx sync populates AcculynxUser) -> always
+// false, so the caller falls back to its sales-based flag and never mass-flags reps.
+export function hasAcculynxAccount(
+  rep: { email?: string; phone?: string; nameKey?: string },
+  sets: { emails: Set<string>; phones: Set<string>; names: Set<string> }
+): boolean {
+  if (rep.email && sets.emails.has(rep.email)) return true;
+  if (rep.phone && sets.phones.has(rep.phone)) return true;
+  if (rep.nameKey && sets.names.has(rep.nameKey)) return true;
+  return false;
+}
