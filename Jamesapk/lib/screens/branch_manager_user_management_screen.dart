@@ -31,6 +31,9 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
     ['admin', 'Admin'],
   ];
 
+  // Territory options (same as the web User Management dropdown).
+  static const List<String> _territories = ['DFW, Texas', 'Lubbock, Texas', 'Round Rock, Texas', 'Other'];
+
   List<dynamic> _active = [];
   List<dynamic> _deleted = [];
   bool _loading = true;
@@ -115,6 +118,7 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
       'roles': [form['role']],
       'phone': form['phone'] ?? '',
       'territory': form['territory'] ?? '',
+      'managerId': form['managerId'],
       'strengths': '',
       'weaknesses': '',
       'publicProfile': {
@@ -149,6 +153,7 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
     body['roles'] = [form['role']];
     body['phone'] = form['phone'] ?? '';
     body['territory'] = form['territory'] ?? '';
+    body['managerId'] = form['managerId'];
     if ((form['password'] ?? '').toString().isNotEmpty) {
       body['password'] = form['password'];
     }
@@ -494,9 +499,12 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
     final nameC = TextEditingController(text: user?['name']?.toString() ?? '');
     final emailC = TextEditingController(text: user?['email']?.toString() ?? '');
     final phoneC = TextEditingController(text: user?['phone']?.toString() ?? '');
-    final territoryC = TextEditingController(text: user?['territory']?.toString() ?? '');
     final passC = TextEditingController();
+    String territory = user?['territory']?.toString() ?? '';
+    String? managerId = user?['managerId']?.toString();
     String role = (user?['role']?.toString().isNotEmpty ?? false) ? user!['role'].toString() : 'sales';
+    // Sales Team Leads to choose from when assigning a sales rep's manager.
+    final teamLeads = _active.where((u) => u['role'] == 'sales-team-lead').toList();
 
     showModalBottomSheet(
       context: context,
@@ -531,7 +539,27 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                   _field('Name', nameC),
                   _field('Email', emailC, keyboard: TextInputType.emailAddress),
                   _field('Phone', phoneC, keyboard: TextInputType.phone),
-                  _field('Territory', territoryC),
+                  const SizedBox(height: 6),
+                  const Text('Territory', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                        color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: territory.isEmpty ? null : territory,
+                        isExpanded: true,
+                        hint: const Text('Select territory'),
+                        items: [
+                          ..._territories,
+                          if (territory.isNotEmpty && !_territories.contains(territory)) territory,
+                        ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        onChanged: (v) => setSheet(() => territory = v ?? ''),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _field(isNew ? 'Password' : 'Reset Password', passC,
                       obscure: true, hint: isNew ? 'Set a login password' : 'Leave blank to keep current'),
                   const SizedBox(height: 6),
@@ -552,6 +580,33 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                       ),
                     ),
                   ),
+                  if (role == 'sales') ...[
+                    const SizedBox(height: 12),
+                    Row(children: const [
+                      Text('Sales Team Lead ', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                      Text('*', style: TextStyle(fontSize: 13, color: _primary, fontWeight: FontWeight.w700)),
+                    ]),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                          color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: teamLeads.any((m) => (m['id'] ?? m['_id']).toString() == managerId) ? managerId : null,
+                          isExpanded: true,
+                          hint: const Text('Select a Sales Team Lead'),
+                          items: teamLeads
+                              .map((m) => DropdownMenuItem(
+                                    value: (m['id'] ?? m['_id']).toString(),
+                                    child: Text((m['name'] ?? 'Unknown').toString()),
+                                  ))
+                              .toList(),
+                          onChanged: (v) => setSheet(() => managerId = v),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -566,13 +621,18 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                           _toast('Name and email are required');
                           return;
                         }
+                        if (role == 'sales' && (managerId == null || managerId!.isEmpty)) {
+                          _toast('Please assign a Sales Team Lead to this sales rep');
+                          return;
+                        }
                         final form = {
                           'name': nameC.text.trim(),
                           'email': emailC.text.trim(),
                           'phone': phoneC.text.trim(),
-                          'territory': territoryC.text.trim(),
+                          'territory': territory,
                           'password': passC.text,
                           'role': role,
+                          'managerId': role == 'sales' ? managerId : null,
                         };
                         Navigator.pop(ctx);
                         if (isNew) {
