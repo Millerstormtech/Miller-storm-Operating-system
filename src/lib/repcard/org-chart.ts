@@ -67,6 +67,14 @@ export function resolveNameBranch(name?: string | null): string {
   return NAME_TO_BRANCH[norm(name)] || "";
 }
 
+// Reps who should show NO branch — cross-branch execs (e.g. the CRO who storm-chases
+// across regions). Pinning them to one branch would mislead; their office fallback is
+// suppressed. Their sales still split by region under a branch filter like anyone else.
+const BRANCHLESS_NAMES = new Set<string>([norm("Naaman Taylor")]);
+export function isBranchless(name?: string | null): boolean {
+  return BRANCHLESS_NAMES.has(norm(name));
+}
+
 const NAME_TO_TEAM = new Map<string, string>();
 for (const [team, members] of Object.entries(ORG_TEAMS)) {
   for (const m of members) NAME_TO_TEAM.set(norm(m), team);

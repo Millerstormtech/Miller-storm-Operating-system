@@ -1,7 +1,7 @@
 // src/lib/repcard/org-chart.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveTeam, TEAM_NAMES, TEAM_BRANCH, resolveNameBranch } from "./org-chart.ts";
+import { resolveTeam, TEAM_NAMES, TEAM_BRANCH, resolveNameBranch, isBranchless } from "./org-chart.ts";
 
 test("Brighton Jenkins and his reps resolve to Daniel Sabedra's team", () => {
   assert.equal(resolveTeam("Brighton Jenkins"), "Daniel Sabedra");
@@ -39,4 +39,9 @@ test("Austin Apple resolves to Fort Worth via name-branch override", () => {
 
 test("resolveNameBranch returns '' for a normal rep", () => {
   assert.equal(resolveNameBranch("Daniel Reyes"), "");
+});
+
+test("Naaman Taylor is branchless (cross-branch CRO)", () => {
+  assert.equal(isBranchless("Naaman Taylor"), true);
+  assert.equal(isBranchless("Daniel Reyes"), false);
 });
