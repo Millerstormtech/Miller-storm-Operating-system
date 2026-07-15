@@ -1,7 +1,7 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { BRANCHES } from "../lib/repcard/branches";
-import { TEAM_NAMES } from "../lib/repcard/org-chart";
+import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 
 type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
@@ -207,7 +207,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           Team
           <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} style={selectStyle}>
             <option value={ALL}>All teams</option>
-            {teamOptions.list.map((t) => <option key={t} value={t}>{t}</option>)}
+            {teamOptions.list.map((t) => <option key={t} value={t}>{TEAM_LEADS[t] || t}</option>)}
             {teamOptions.hasNone ? <option value={NONE}>(No team)</option> : null}
           </select>
         </label>
@@ -223,6 +223,30 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           {visible.length} rep{visible.length === 1 ? "" : "s"}
         </span>
       </div>
+
+      {/* Contextual banner — only while a real branch filter is active, right where
+          the "why is this rep here?" confusion happens. */}
+      {branchFilter && branchFilter !== NONE ? (
+        <div style={{ marginBottom: 12, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: "#1e40af" }}>
+          Showing <strong>{branchFilter}</strong> sales. Numbers are for this branch only; a rep based elsewhere who sold here still appears, and the Branch column shows their <strong>home</strong> branch.
+        </div>
+      ) : null}
+
+      {/* Collapsible "how to read this board" guide — collapsed by default so it never clutters. */}
+      <details style={{ marginBottom: 12, background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px" }}>
+        <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#374151" }}>
+          ℹ️ How to read this board
+        </summary>
+        <ul style={{ margin: "10px 0 2px", paddingLeft: 18, fontSize: 12.5, color: "#4b5563", lineHeight: 1.6 }}>
+          <li><strong>Who&apos;s listed:</strong> every active door-knocker.</li>
+          <li><strong>The columns:</strong> <em>Verified Door Knocks</em> = GPS-verified doors knocked. <em>Claims Filed</em> = insurance claims started. <em>Contracts</em> = signed contracts. <em>Contract Amount</em> = $ value of those contracts.</li>
+          <li><strong>Branch &amp; Team</strong> = the rep&apos;s home branch and team.</li>
+          <li><strong>Filtering by branch</strong> shows only the sales made in that branch. If a rep sells in more than one branch, each branch shows just its own share. Remove the filter to see their full total.</li>
+          <li><strong>Verified Door Knocks</strong> count only under a rep&apos;s home branch. If you filter to a different branch where they made sales, their knocks show as 0 there.</li>
+          <li><strong>$0 is normal:</strong> a rep can knock a lot and still show $0 if they set appointments a closer finishes (the closer gets the contract credit).</li>
+          <li>🟠 <strong>orange dot</strong> = no AccuLynx account. ❌ = former rep.</li>
+        </ul>
+      </details>
 
       {/* Legend for the flags shown next to a rep's name. */}
       <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#6b7280", flexWrap: "wrap" }}>
@@ -281,7 +305,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                       </span>
                     </td>
                     <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.branch || "—"}</td>
-                    <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.team || "—"}</td>
+                    <td style={{ padding: "10px 14px", color: "#6b7280" }}>{TEAM_LEADS[r.team] || r.team || "—"}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center" }}>{r.filed}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.won}</td>
