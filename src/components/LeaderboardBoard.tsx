@@ -228,7 +228,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#6b7280", flexWrap: "wrap" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-          No AccuLynx account linked (door-knocks only)
+          No AccuLynx account (rep not set up in AccuLynx)
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span aria-hidden="true">❌</span>
