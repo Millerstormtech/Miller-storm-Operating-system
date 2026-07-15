@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { DevWarningBanner } from "../../components/DevWarningBanner";
 
 type Row = {
   id: string;
@@ -151,6 +152,7 @@ export function RoleDashboard({ role, title }: { role: string; title: string }) 
 
   return (
     <div style={{ padding: 24 }}>
+      <DevWarningBanner />
       <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 700, color: "#111827" }}>{title}</h1>
       <p style={{ margin: "0 0 20px", color: "#6b7280", fontSize: 14 }}>
         All {title.replace(/ Dashboard$/, "")} users — training progress and top sales performers.
