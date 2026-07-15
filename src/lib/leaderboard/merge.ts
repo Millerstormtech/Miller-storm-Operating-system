@@ -1,11 +1,11 @@
 // src/lib/leaderboard/merge.ts
-// Pure, import-free. RepCard is the SOLE GATE for who appears: a person is a sales rep
-// only if they have a RepCard account with >= 1 verified knock. One bucket per RepCard
-// rep. AccuLynx deal rows attach onto a bucket via email -> phone -> name (ONLY when that
-// key maps to exactly one RepCard rep — ambiguity guard) to supply the sales numbers.
-// AccuLynx credits with NO RepCard match are dropped entirely (they aren't door-knocking
-// reps — e.g. managers-only, office/PM accounts, vendors, departed non-RepCard reps).
-// Inputs are already normalized by the caller.
+// Pure, import-free. One bucket per RepCard rep in the roster the CALLER supplies
+// (the leaderboard API builds it: active door-knockers + in-range former reps). EVERY
+// bucket is returned, so an idle roster rep survives as a zero row. AccuLynx deal rows
+// attach onto a bucket via email -> phone -> name (ONLY when that key maps to exactly one
+// RepCard rep — ambiguity guard) to supply the sales numbers. AccuLynx credits with NO
+// RepCard match are dropped entirely (not door-knocking reps). Inputs are already
+// normalized by the caller.
 
 export interface AcxAgg { repExternalId: string; email: string; phone: string; nameKey: string; name: string; branch: string; filed: number; won: number; revenue: number; }
 export interface RcAgg { repcardUserId: string; email: string; phone: string; nameKey: string; name: string; branch: string; verifiedKnocks: number; }
@@ -52,9 +52,8 @@ export function mergeLeaderboard(acx: AcxAgg[], rc: RcAgg[]): MergedRow[] {
     // they aren't door-knocking sales reps, so they don't belong on the board.
   }
 
-  // Only RepCard reps with at least one verified knock make the board.
+  // Return EVERY bucket the caller supplied (the roster is the gate, applied upstream).
   return buckets
-    .filter((b) => b.verifiedKnocks >= 1)
     .map((b) => ({
       id: b.id, name: b.name, branch: b.branch, email: b.email,
       verifiedKnocks: b.verifiedKnocks, filed: b.filed, won: b.won, revenue: b.revenue,

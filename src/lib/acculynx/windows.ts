@@ -60,3 +60,22 @@ export function getWindowRange(window: Window, now: Date = new Date()): { start:
   const mp = centralParts(mondayUtcMidday);
   return { start: centralWallToUtc(mp.year, mp.month, mp.day), end: now };
 }
+
+// Format an instant as its YYYY-MM-DD calendar date in Central time (for echoing a
+// resolved quick-view range back to the UI's From/To boxes).
+export function centralDateStr(d: Date): string {
+  const { year, month, day } = centralParts(d);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+// Explicit custom range. `from`/`to` are YYYY-MM-DD Central calendar dates.
+// start = 00:00 Central of `from`; end = end-of-day Central of `to` (so the To
+// date is fully inclusive), clamped so it never runs past `now`.
+export function customRange(from: string, to: string, now: Date = new Date()): { start: Date; end: Date } {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  const start = centralWallToUtc(fy, fm, fd);
+  const toEnd = centralWallToUtc(ty, tm, td, 23, 59, 59);
+  const end = toEnd.getTime() > now.getTime() ? now : toEnd;
+  return { start, end };
+}

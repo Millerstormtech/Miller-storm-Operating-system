@@ -17,9 +17,9 @@ const ORG_TEAMS: Record<string, string[]> = {
   // Dallas branch (mgr Mike Muscari)
   "Mike Muscari": ["Mike Muscari", "Jaren Lushaj", "Johnny Franco", "Nathan Gregory", "Nate Gregory", "Dylan Looney", "Justin Jones"],
   Cooper: ["Cooper Bledsoe", "Colton Lathrom", "Declan Mathison", "Jason Nguyen", "Martin Ramirez", "Victor Ramirez", "Ashton Foster"],
-  // West Texas branch (mgr Daniel Sabedra)
-  "Daniel Sabedra": ["Daniel Sabedra", "Sergio Flores", "Shane Goldsmith", "Waylon Dean", "Eduardo Ramos", "Colton Randolph"],
-  "Brighton Jenkins": ["Brighton Jenkins", "Matthew Stevens", "Chris Holman"],
+  // West Texas branch (mgr Daniel Sabedra) — Brighton Jenkins folded in as a regular
+  // rep (with Matthew Stevens + Chris Holman) 2026-07-14; he is no longer a team lead.
+  "Daniel Sabedra": ["Daniel Sabedra", "Sergio Flores", "Shane Goldsmith", "Waylon Dean", "Eduardo Ramos", "Colton Randolph", "Brighton Jenkins", "Matthew Stevens", "Chris Holman"],
 };
 
 // Normalize RepCard's own team label to org-chart naming. "Management" is a
@@ -53,7 +53,6 @@ export const TEAM_BRANCH: Record<string, string> = {
   "Mike Muscari": "Dallas",
   Cooper: "Dallas",
   "Daniel Sabedra": "West Texas",
-  "Brighton Jenkins": "West Texas",
   Commercial: "Commercial",
 };
 
@@ -86,3 +85,7 @@ export function isTeamLead(name?: string | null, team?: string | null): boolean 
   const lead = TEAM_LEADS[team];
   return !!lead && norm(name) === norm(lead);
 }
+
+// Fixed, ordered team list for the leaderboard's Team filter, so the dropdown
+// options never disappear based on which reps have data in the current range.
+export const TEAM_NAMES: string[] = Object.keys(ORG_TEAMS);
