@@ -1311,6 +1311,24 @@ export function UserManagement(props: UserEditorProps) {
                   )}
                 </label>
               )}
+              {/* Branch Manager — auto-filled from the selected Branch: the
+                  branch-manager account whose own Branch matches. Shown for
+                  Sales Team Lead + Sales Rep once a Branch is picked. */}
+              {(selectedUser.role === "sales" || selectedUser.role === "sales-team-lead") && (selectedUser.territory || "").trim() && (() => {
+                const branch = (selectedUser.territory || "").trim().toLowerCase();
+                const branchMgr = draftUsers.find(u => u.role === "branch-manager" && (u.territory || "").trim().toLowerCase() === branch);
+                return (
+                  <label className="field">
+                    <span className="field-label">Branch Manager</span>
+                    <input
+                      className="field-input"
+                      readOnly
+                      value={branchMgr ? branchMgr.name : "No branch manager set for this branch"}
+                      style={{ background: "#f9fafb", cursor: "default", color: branchMgr ? undefined : "#9ca3af" }}
+                    />
+                  </label>
+                );
+              })()}
             </div>
             <div className="form-grid">
               <label className="field">

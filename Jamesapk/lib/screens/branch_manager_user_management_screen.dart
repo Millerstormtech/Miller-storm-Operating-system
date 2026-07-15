@@ -607,6 +607,28 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                       ),
                     ),
                   ],
+                  // Branch Manager — auto-filled from the selected Branch (the
+                  // branch-manager account whose Branch matches). Read-only.
+                  if ((role == 'sales' || role == 'sales-team-lead') && territory.trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text('Branch Manager', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Builder(builder: (_) {
+                      final bm = _active.firstWhere(
+                        (u) => u['role'] == 'branch-manager' &&
+                            (u['territory'] ?? '').toString().trim().toLowerCase() == territory.trim().toLowerCase(),
+                        orElse: () => null,
+                      );
+                      final name = bm != null ? (bm['name'] ?? '').toString() : 'No branch manager set for this branch';
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                        decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+                        child: Text(name,
+                            style: TextStyle(fontSize: 14, color: bm != null ? _textDark : const Color(0xFF9CA3AF))),
+                      );
+                    }),
+                  ],
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
