@@ -149,6 +149,14 @@ class _MillerStormAppState extends State<MillerStormApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFCB0002)),
         fontFamily: 'sans-serif',
         useMaterial3: true,
+        // Smooth fade when moving between screens (no zoom/rotation) — pages
+        // open like WhatsApp/Instagram instead of the default Android zoom.
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: _FadePageTransitionsBuilder(),
+            TargetPlatform.iOS: _FadePageTransitionsBuilder(),
+          },
+        ),
       ),
       initialRoute: '/',
       onGenerateRoute: (settings) {
@@ -255,6 +263,27 @@ class _MillerStormAppState extends State<MillerStormApp> {
             return MaterialPageRoute(builder: (_) => const SplashScreen());
         }
       },
+    );
+  }
+}
+
+/// A clean cross-fade page transition — no zoom, slide or rotation. Applied to
+/// every route so navigating (including bottom-nav taps) feels like a smooth
+/// open rather than the default Android zoom animation.
+class _FadePageTransitionsBuilder extends PageTransitionsBuilder {
+  const _FadePageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+      child: child,
     );
   }
 }
