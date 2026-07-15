@@ -84,7 +84,8 @@ class _BranchManagerUnlockLessonScreenState extends State<BranchManagerUnlockLes
   Future<void> _fetchTeam() async {
     // lite=1 → light payload (id/name/email/photo/status only), not the full
     // user docs, so the team list opens fast.
-    final url = Uri.parse('https://millerstorm.tech/api/users?role=sales&lite=1');
+    // Branch Manager unlocks only for their OWN team (reps whose managerId is them).
+    final url = Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_managerId&lite=1');
     // Retry a few times — on the iOS simulator the initial request burst can
     // make a single call time out, which would leave the list empty.
     for (int attempt = 0; attempt < 3; attempt++) {
