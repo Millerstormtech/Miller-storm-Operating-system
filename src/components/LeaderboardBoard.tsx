@@ -81,15 +81,26 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   );
 
   const visible = useMemo(() => {
-    const filtered = rows.filter((r) => {
-      // Branch filter
-      if (branchFilter === NONE) { if (r.branch) return false; }
-      else if (branchFilter && r.branch !== branchFilter) return false;
-      // Team filter
-      if (teamFilter === NONE) { if (r.team) return false; }
-      else if (teamFilter && r.team !== teamFilter) return false;
-      return true;
-    });
+    const branchActive = !!branchFilter && branchFilter !== NONE;
+    const filtered = rows
+      .map((r) => {
+        // A real branch filter scopes a rep's numbers to just that branch's sales
+        // (from byBranch). Rows with no data in that branch drop out. No filter -> totals.
+        if (branchActive) {
+          const b = r.byBranch?.[branchFilter];
+          if (!b) return null;
+          return { ...r, verifiedKnocks: b.verifiedKnocks, filed: b.filed, won: b.won, revenue: b.revenue };
+        }
+        return r;
+      })
+      .filter((r: any) => r !== null)
+      .filter((r: any) => {
+        if (branchFilter === NONE && r.branch) return false; // "(No branch)" bucket only
+        // Team filter
+        if (teamFilter === NONE) { if (r.team) return false; }
+        else if (teamFilter && r.team !== teamFilter) return false;
+        return true;
+      });
 
     const col = COLUMNS.find((c) => c.key === sortKey);
     const dir = sortDir === "asc" ? 1 : -1;
