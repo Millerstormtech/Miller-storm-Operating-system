@@ -10,8 +10,9 @@ import { getWindowRange, customRange, centralDateStr } from "../../src/lib/accul
 import type { Window } from "../../src/lib/acculynx/windows";
 import { RepCardKnockFactModel } from "../../src/lib/models/RepCardKnockFact";
 import { RepCardUserModel } from "../../src/lib/models/RepCardUser";
+import { AcculynxUserModel } from "../../src/lib/models/AcculynxUser";
 import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
-import { normEmail, normName, normPhone } from "../../src/lib/leaderboard/identity";
+import { normEmail, normName, normPhone, hasAcculynxAccount } from "../../src/lib/leaderboard/identity";
 import { officeToBranch, saleRegion } from "../../src/lib/repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead } from "../../src/lib/repcard/org-chart";
 
@@ -230,6 +231,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     mergeLeaderboard(acxAll, rc).map((r) => [r.id, r.source === "both"] as [string, boolean])
   );
 
+  // AccuLynx account roster -> normalized identity sets. A rep "has an account" when their
+  // email/phone/name matches any AccuLynx login (same cascade as sales). Empty collection
+  // (before the first sync) -> all matches false -> source falls back to the sales flag below.
+  const acctDocs = await AcculynxUserModel.find({}).select("email nameKey phone").lean();
+  const acctSets = { emails: new Set<string>(), phones: new Set<string>(), names: new Set<string>() };
+  for (const a of acctDocs as any[]) {
+    if (a.email) acctSets.emails.add(a.email);
+    if (a.phone) acctSets.phones.add(a.phone);
+    if (a.nameKey) acctSets.names.add(a.nameKey);
+  }
+  // Roster identity by repcardUserId (rc values are already normalized) -> lets us match a
+  // merged row (which only carries email) by phone/name too.
+  const rcIdentityById = new Map<string, { email: string; phone: string; nameKey: string }>(
+    rc.map((r) => [r.repcardUserId, { email: r.email, phone: r.phone, nameKey: r.nameKey }])
+  );
+
   // Per-branch split: bucket each rep's sales into raw regions (West Texas / Commercial /
   // DFW), then merge each region onto the roster so a branch filter can show that branch's
   // numbers only. Sums across the three regions equal each rep's combined total.
@@ -266,6 +283,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Resolve Branch + Team from RepCard's own office/team for this rep.
     const rcId = m.id.startsWith("rc:") ? m.id.slice(3) : "";
     const rcu = rcId ? rcById.get(rcId) : null;
+    // Does this rep have an AccuLynx account? (roster match by email/phone/name)
+    const acctIdent = rcId ? rcIdentityById.get(rcId) : undefined;
+    const hasAccount = acctIdent ? hasAcculynxAccount(acctIdent, acctSets) : false;
     // Team from the official org chart (by name), RepCard's team as fallback.
     const team = resolveTeam(rcu?.name || m.name, rcu?.team) || null;
     // Org chart wins for Branch: follow the team's branch when the team is known;
@@ -291,9 +311,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       repUserId: u ? (u as any).id : null, headshotUrl: u ? (u as any).headshotUrl || "" : "",
       team,
       isTeamLead: isTeamLead(rcu?.name || m.name, team),
-      // "both" when the rep has an AccuLynx account at all (all-time); "repcard" ONLY
-      // when there is no linked AccuLynx account -> a genuine data gap, not "idle range".
-      source: linked.get(m.id) ? "both" : "repcard",
+      // "both" = the rep has an AccuLynx ACCOUNT (roster match) OR any all-time sales
+      // (backstop — a selling rep can never be flagged). "repcard" = a genuine account gap.
+      source: hasAccount || linked.get(m.id) ? "both" : "repcard",
       // Per-branch breakdown so the UI can show a rep's numbers for a single branch.
       byBranch,
     };
