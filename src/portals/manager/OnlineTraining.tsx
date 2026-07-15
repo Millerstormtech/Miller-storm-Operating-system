@@ -83,13 +83,10 @@ export function ManagerOnlineTrainingPage(props: {
   currentUser: AuthenticatedUser;
   courses: Course[];
   isLoading?: boolean;
-  // C-Level runs this page company-wide: the "team" it can assign playlists to /
-  // unlock lessons for is EVERY sales rep, not just one manager's own team.
+  // C-Level / Branch Manager run this page company-wide: the "team" they can
+  // assign playlists to / unlock lessons for is EVERY sales rep, not just one
+  // manager's own team.
   companyWide?: boolean;
-  // Branch Managers are also team leads: keep the company-wide chrome (Unlock
-  // Lesson tab, playlist assign) but scope the rep list to their OWN team only
-  // (reps whose managerId is them), not the whole company.
-  restrictToOwnReps?: boolean;
 }) {
   // Only ever show PUBLISHED courses in the training center. The courses API
   // returns drafts to leadership roles (C-Level / Branch Manager) for parity
@@ -112,9 +109,7 @@ export function ManagerOnlineTrainingPage(props: {
   // otherwise scoped to this manager's own sales team.
   // lite=1 → only the light fields (id/name/role/photo/status) the roster needs;
   // full user docs for the whole company were a big, slow payload.
-  // restrictToOwnReps (Branch Manager) scopes to their own team even in
-  // company-wide mode.
-  const teamUsersUrl = (props.companyWide && !props.restrictToOwnReps)
+  const teamUsersUrl = props.companyWide
     ? `/api/users?lite=1`
     : `/api/users?role=sales&managerId=${props.currentUser.id}&lite=1`;
   const router = useRouter();

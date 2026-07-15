@@ -53,9 +53,9 @@ const BranchManagerTrainingPage: NextPage = () => {
     <BranchManagerLayout currentView="training">
       {/* companyWide → Branch Manager can assign playlists / unlock lessons for ANY rep,
           not just one manager's team. */}
-      {/* companyWide chrome (Unlock Lesson + playlist assign) but scoped to the
-          branch manager's OWN team of reps. */}
-      <ManagerOnlineTrainingPage currentUser={currentUser} courses={courses} isLoading={isLoading} companyWide restrictToOwnReps />
+      {/* companyWide → Branch Manager can assign playlists / unlock lessons for
+          ANY sales rep (whole company), not just their own team. */}
+      <ManagerOnlineTrainingPage currentUser={currentUser} courses={courses} isLoading={isLoading} companyWide />
     </BranchManagerLayout>
   );
 };

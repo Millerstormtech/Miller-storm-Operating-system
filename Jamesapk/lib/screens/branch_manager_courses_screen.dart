@@ -315,9 +315,9 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
   void _showAssignPlaylistDialog(Map<String, dynamic> playlist) async {
     final playlistId = playlist['_id'] ?? playlist['id'];
     
-    // Fetch sales users under THIS branch manager's own team only.
+    // Fetch ALL sales users (company-wide) for playlist assignment.
     final salesResponse = await api.get(
-      Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_userId'),
+      Uri.parse('https://millerstorm.tech/api/users?role=sales'),
     );
     
     if (salesResponse.statusCode != 200) return;
