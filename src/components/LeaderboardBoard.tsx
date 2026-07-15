@@ -244,13 +244,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           ℹ️ How to read this board
         </summary>
         <ul style={{ margin: "10px 0 2px", paddingLeft: 18, fontSize: 12.5, color: "#4b5563", lineHeight: 1.6 }}>
-          <li><strong>Who&apos;s listed:</strong> every active door-knocker.</li>
-          <li><strong>The columns:</strong> <em>Verified Door Knocks</em> = GPS-verified doors knocked. <em>Claims Filed</em> = insurance claims started. <em>Contracts</em> = signed contracts. <em>Contract Amount</em> = $ value of those contracts.</li>
-          <li><strong>Branch &amp; Team</strong> = the rep&apos;s home branch and team.</li>
-          <li><strong>Filtering by branch</strong> shows only the sales made in that branch. If a rep sells in more than one branch, each branch shows just its own share. Remove the filter to see their full total. While a branch filter is on, the Branch and Team columns are hidden to avoid confusion.</li>
-          <li><strong>Verified Door Knocks</strong> count only under a rep&apos;s home branch. If you filter to a different branch where they made sales, their knocks show as 0 there.</li>
-          <li><strong>$0 is normal:</strong> a rep can knock a lot and still show $0 if they set appointments a closer finishes (the closer gets the contract credit).</li>
-          <li>🟠 <strong>orange dot</strong> = no AccuLynx account. ❌ = former rep.</li>
+          <li><strong>Who&apos;s listed here:</strong> every active sales rep.</li>
+          <li>A rep can sell in more than one branch (for example, when storm-chasing away from home). Filtering by branch shows only the sales made in that branch. In this case each row shows only that rep&apos;s sales data for the filtered branch. Remove the branch filter to see their full total across every branch.</li>
+          <li>However, <strong>Verified Door Knocks</strong> is the only data point that always counts under a rep&apos;s home branch. So if you filter to another branch where the rep made sales, you&apos;ll see those sales (as mentioned in the previous point) but their knocks show as 0 there.</li>
         </ul>
       </details>
 
