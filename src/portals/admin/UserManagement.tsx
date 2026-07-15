@@ -1288,6 +1288,25 @@ export function UserManagement(props: UserEditorProps) {
                   <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>Role is required</div>
                 )}
               </label>
+              {/* A Branch Manager can also run their own team (dual role): adds
+                  "sales-team-lead" to their roles so they appear in the Sales
+                  Team Lead picker and reps can be assigned under them. */}
+              {selectedUser.role === "branch-manager" && (
+                <label className="field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 16, height: 16 }}
+                    checked={(selectedUser.roles || []).includes("sales-team-lead")}
+                    onChange={(e) => {
+                      const roles: UserRole[] = e.target.checked
+                        ? ["branch-manager", "sales-team-lead"]
+                        : ["branch-manager"];
+                      updateUser({ ...selectedUser, roles });
+                    }}
+                  />
+                  <span className="field-label" style={{ margin: 0 }}>Also a Sales Team Lead (has their own team of reps)</span>
+                </label>
+              )}
               {selectedUser.role === "sales" && (
                 <label className="field">
                   <span className="field-label">Sales Team Lead <span style={{ color: "#dc2626" }}>*</span></span>
@@ -1299,7 +1318,7 @@ export function UserManagement(props: UserEditorProps) {
                       updateUser({ ...selectedUser, managerId: nextManagerId || undefined });
                     }}>
                       <option value="">-- Select a Sales Team Lead (required) --</option>
-                      {draftUsers.filter((u) => u.role === "sales-team-lead").map((manager) => (
+                      {draftUsers.filter((u) => u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead")).map((manager) => (
                         <option key={manager.id} value={manager.id}>{manager.name}</option>
                       ))}
                     </select>
@@ -1316,7 +1335,7 @@ export function UserManagement(props: UserEditorProps) {
                   Sales Team Lead + Sales Rep once a Branch is picked. */}
               {(selectedUser.role === "sales" || selectedUser.role === "sales-team-lead") && (selectedUser.territory || "").trim() && (() => {
                 const branch = (selectedUser.territory || "").trim().toLowerCase();
-                const branchMgr = draftUsers.find(u => u.role === "branch-manager" && (u.territory || "").trim().toLowerCase() === branch);
+                const branchMgr = draftUsers.find(u => (u.role === "branch-manager" || (u.roles || []).includes("branch-manager")) && (u.territory || "").trim().toLowerCase() === branch);
                 return (
                   <label className="field">
                     <span className="field-label">Branch Manager</span>

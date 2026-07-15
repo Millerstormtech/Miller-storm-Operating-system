@@ -150,7 +150,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
     body['name'] = form['name'];
     body['email'] = form['email'];
     body['role'] = form['role'];
-    body['roles'] = [form['role']];
+    if (form['role'] != original['role']) body['roles'] = [form['role']];
     body['phone'] = form['phone'] ?? '';
     body['territory'] = form['territory'] ?? '';
     body['managerId'] = form['managerId'];
@@ -504,7 +504,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
     String? managerId = user?['managerId']?.toString();
     String role = (user?['role']?.toString().isNotEmpty ?? false) ? user!['role'].toString() : 'sales';
     // Sales Team Leads to choose from when assigning a sales rep's manager.
-    final teamLeads = _active.where((u) => u['role'] == 'sales-team-lead').toList();
+    final teamLeads = _active.where((u) => u['role'] == 'sales-team-lead' || ((u['roles'] as List?)?.contains('sales-team-lead') ?? false)).toList();
 
     showModalBottomSheet(
       context: context,
@@ -615,7 +615,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                     const SizedBox(height: 6),
                     Builder(builder: (_) {
                       final bm = _active.firstWhere(
-                        (u) => u['role'] == 'branch-manager' &&
+                        (u) => (u['role'] == 'branch-manager' || ((u['roles'] as List?)?.contains('branch-manager') ?? false)) &&
                             (u['territory'] ?? '').toString().trim().toLowerCase() == territory.trim().toLowerCase(),
                         orElse: () => null,
                       );
