@@ -26,18 +26,55 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    const userId = auth.sub;
-    const { courseIds } = req.query;
-
-    console.log('📊 Course Progress API called for userId:', userId, 'courseIds:', courseIds);
+    const { courseIds, userIds } = req.query;
 
     if (!courseIds) {
       res.status(400).json({ error: 'courseIds are required' });
       return;
     }
 
+    const courseIdArray = (courseIds as string).split(',');
+
+    // Bulk mode: an authorized leader reads MANY team members' progress in ONE
+    // query. { userId: { courseId: progress } }. This replaces the old
+    // per-user fetch loop (N round-trips) that made the company-wide Team
+    // Progress view slow — and which also returned the wrong user's data,
+    // because the single-user path below is locked to the caller's own id.
+    if (userIds) {
+      const leaderRoles = ['admin', 'c-level', 'branch-manager', 'sales-team-lead'];
+      if (!leaderRoles.includes((auth.role || '').toString())) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+      try {
+        const userIdArray = (userIds as string).split(',').filter(Boolean);
+        const records = await UserProgressModel.find({
+          userId: { $in: userIdArray },
+          courseId: { $in: courseIdArray },
+        }).select('userId courseId completedPages quizResults courseCompleted').lean();
+        const out: Record<string, Record<string, any>> = {};
+        for (const uid of userIdArray) out[uid] = {};
+        records.forEach((r: any) => {
+          (out[r.userId] ||= {})[r.courseId] = {
+            completedPages: r.completedPages || [],
+            quizResults: r.quizResults || [],
+            courseCompleted: r.courseCompleted || false,
+          };
+        });
+        res.status(200).json(out);
+        return;
+      } catch (error) {
+        console.error('❌ Error fetching bulk course progress:', error);
+        res.status(500).json({ error: 'Internal server error' });
+        return;
+      }
+    }
+
+    // Single-user (default): a user only ever reads their OWN progress.
+    const userId = auth.sub;
+    console.log('📊 Course Progress API called for userId:', userId, 'courseIds:', courseIds);
+
     try {
-      const courseIdArray = (courseIds as string).split(',');
       const result: Record<string, any> = {};
       
       // Read-only: select just the fields the response maps below, and .lean()

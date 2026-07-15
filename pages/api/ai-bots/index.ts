@@ -16,7 +16,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // other role only ever sees published bots, so drafts stay hidden from users.
     const isAdmin = auth.role?.toString().toLowerCase() === 'admin';
     const query: any = isAdmin ? { isActive: true } : { isActive: true, status: 'published' };
-    const bots = await AiBotModel.find(query).lean();
+    // light=1 → drop the heavy training data (links/text/Q&A/course chunks) that
+    // the picker + chat UI never need. Keeps the mobile bot list/open fast.
+    const light = req.query.light === '1' || req.query.light === 'true';
+    const q = AiBotModel.find(query);
+    if (light) {
+      q.select('-trainingLinks -trainingText -qaItems -selectedCourses -selectedFolders -selectedPages -courseTrainingText -systemPrompt');
+    }
+    const bots = await q.lean();
     const normalized = bots.map(normalizeBot);
     // Sort: bots with sortOrder set come first (by sortOrder asc), rest by createdAt desc
     normalized.sort((a: any, b: any) => {

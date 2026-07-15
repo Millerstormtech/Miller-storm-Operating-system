@@ -106,9 +106,11 @@ export function ManagerOnlineTrainingPage(props: {
   const isPrivileged = ["c-level", "branch-manager", "sales-team-lead"].includes(props.currentUser.role);
   // Company-wide (C-Level) → EVERY user except admins (sales + managers + more);
   // otherwise scoped to this manager's own sales team.
+  // lite=1 → only the light fields (id/name/role/photo/status) the roster needs;
+  // full user docs for the whole company were a big, slow payload.
   const teamUsersUrl = props.companyWide
-    ? `/api/users`
-    : `/api/users?role=sales&managerId=${props.currentUser.id}`;
+    ? `/api/users?lite=1`
+    : `/api/users?role=sales&managerId=${props.currentUser.id}&lite=1`;
   const router = useRouter();
   // Lesson a deep link (notification / pop-up) wants to open, pending a lock check.
   const pendingDeepLinkRef = useRef<string | null>(null);
@@ -265,23 +267,31 @@ export function ManagerOnlineTrainingPage(props: {
       // 3. For each assigned user, list them with their progress (name always
       // comes from the assignment record, so it shows even if the course/progress
       // fetch fails).
-      const progressPromises = assignments.map(async (assignment: any) => {
+      // ONE bulk fetch for every assigned user's progress (was one fetch per
+      // assignment — slow, and it returned the caller's own data).
+      let bulk: Record<string, any> = {};
+      if (course) {
+        const userIds = assignments.map((a: any) => a.assignedToUserId).filter(Boolean);
+        if (userIds.length) {
+          try {
+            const bulkRes = await fetch(`/api/course-progress?userIds=${encodeURIComponent(userIds.join(','))}&courseIds=${playlist.courseId}`);
+            if (bulkRes.ok) bulk = await bulkRes.json();
+          } catch { /* keep empty — still show the users */ }
+        }
+      }
+      const results = assignments.map((assignment: any) => {
         const userId = assignment.assignedToUserId;
         let completedCount = 0;
         if (course) {
-          try {
-            const progRes = await fetch(`/api/course-progress?userId=${userId}&courseIds=${playlist.courseId}`);
-            const progData = await progRes.json();
-            const courseProg = progData[playlist.courseId] || {};
-            const quizResults = courseProg.quizResults || [];
-            const completedSet = new Set(courseProg.completedPages || []);
-            completedCount = (playlist.selectedModules || []).filter((id: string) => {
-              const page = (course.pages || []).find((p: any) => p.id === id);
-              return page?.isQuiz
-                ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === id))
-                : completedSet.has(id);
-            }).length;
-          } catch { /* keep 0 — still show the user */ }
+          const courseProg = (bulk[userId] || {})[playlist.courseId] || {};
+          const quizResults = courseProg.quizResults || [];
+          const completedSet = new Set(courseProg.completedPages || []);
+          completedCount = (playlist.selectedModules || []).filter((id: string) => {
+            const page = (course.pages || []).find((p: any) => p.id === id);
+            return page?.isQuiz
+              ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === id))
+              : completedSet.has(id);
+          }).length;
         }
         const pct = totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
 
@@ -292,8 +302,6 @@ export function ManagerOnlineTrainingPage(props: {
           pct: pct
         };
       });
-
-      const results = await Promise.all(progressPromises);
       setPlaylistProgressData(prev => ({ ...prev, [playlist.id]: results }));
     } catch (err) {
       console.error('Failed to load playlist progress:', err);
@@ -663,24 +671,28 @@ export function ManagerOnlineTrainingPage(props: {
       const teamUsers = (users || []).filter((u: any) =>
         !u.deleted && (u.role === 'sales' || u.role === 'sales-team-lead') && u.id !== props.currentUser.id
       );
-      const results = await Promise.all(
-        teamUsers.map(async (user: any) => {
-          const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
-          const progData = res.ok ? await res.json() : {};
-          const rows = publishedCourses.map(course => {
-            const publishedPages = (course.pages || []).filter((p: any) => p.status === 'published');
-            const rec = progData[course.id] || {};
-            const { completed, total, isCompleted } = computeItemProgress(
-              publishedPages,
-              new Set(rec.completedPages || []),
-              rec.quizResults || [],
-              rec.courseCompleted
-            );
-            return { course, completed, total, isCompleted };
-          }).filter(r => r.total > 0);
-          return { user, rows };
-        })
-      );
+      // ONE bulk fetch for every team member's progress (was N per-user fetches,
+      // which was slow company-wide AND returned the caller's own data).
+      const userIds = teamUsers.map((u: any) => u.id).join(',');
+      const bulkRes = userIds
+        ? await fetch(`/api/course-progress?userIds=${encodeURIComponent(userIds)}&courseIds=${courseIds}`)
+        : null;
+      const bulk = bulkRes && bulkRes.ok ? await bulkRes.json() : {};
+      const results = teamUsers.map((user: any) => {
+        const progData = bulk[user.id] || {};
+        const rows = publishedCourses.map(course => {
+          const publishedPages = (course.pages || []).filter((p: any) => p.status === 'published');
+          const rec = progData[course.id] || {};
+          const { completed, total, isCompleted } = computeItemProgress(
+            publishedPages,
+            new Set(rec.completedPages || []),
+            rec.quizResults || [],
+            rec.courseCompleted
+          );
+          return { course, completed, total, isCompleted };
+        }).filter(r => r.total > 0);
+        return { user, rows };
+      });
       setTeamProgress(results);
     }).catch(console.error).finally(() => setIsLoadingTeam(false));
   }, [activeTab, props.currentUser?.id, publishedCourses]);

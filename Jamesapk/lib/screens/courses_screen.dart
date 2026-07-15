@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
+import 'jays_ai_clone_screen.dart';
+import 'ai_clone_chat_screen.dart';
 import 'training_leaderboard_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -34,6 +36,10 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   // Red-badge count on the Assigned tab: assignments arrived since the rep last
   // opened that tab. Clears to 0 when they open it.
   int _assignedBadge = 0;
+  // AI bots assigned to this rep's panel (light payload). Drives the header
+  // icon avatar and the "open chat directly" behaviour.
+  List<dynamic> _jayBots = [];
+  String? _jayAvatarUrl;
   bool _isLoading = true;
   bool _hasCachedData = false;
   // True when the last course fetch failed (network/API) — lets the UI show a
@@ -86,7 +92,50 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
       _fetchCourses(),
       _fetchMyPlaylists(),
       _fetchAssignedPlaylists(),
+      _fetchJayAvatar(),
     ]);
+  }
+
+  // Fetch the bots assigned to this rep's panel (light payload = fast). Used for
+  // the header avatar and to open the chat directly when there's a single bot.
+  Future<void> _fetchJayAvatar() async {
+    try {
+      final user = await AuthService.getStoredUser();
+      final role = user?['role']?.toString();
+      final res = await api.get(Uri.parse('https://millerstorm.tech/api/ai-bots?light=1'));
+      if (res.statusCode != 200) return;
+      final data = json.decode(res.body) as List;
+      final assigned = data.where((b) {
+        final ar = b['assignedRoles'];
+        return ar is List && role != null && ar.contains(role);
+      }).toList();
+      if (!mounted) return;
+      String? avatar;
+      if (assigned.isNotEmpty) {
+        final raw = (assigned.first['botAvatarUrl'] ?? assigned.first['imageUrl'] ?? '').toString();
+        if (raw.isNotEmpty) avatar = raw.startsWith('http') ? raw : 'https://millerstorm.tech$raw';
+      }
+      setState(() {
+        _jayBots = assigned;
+        _jayAvatarUrl = avatar;
+      });
+    } catch (_) {
+      // Keep the fallback robot icon on any error.
+    }
+  }
+
+  // Open Jay's AI Clone: a single bot goes straight into chat (no list screen);
+  // multiple bots show the picker; none shows a toast.
+  void _openJaysAi() {
+    if (_jayBots.length == 1) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => AiCloneChatScreen(bot: _jayBots.first)));
+    } else if (_jayBots.length > 1) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const JaysAiCloneScreen()));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No AI assistant available yet')),
+      );
+    }
   }
 
   Future<void> _loadCachedCourses() async {
@@ -287,6 +336,20 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [
+          IconButton(
+            icon: _jayAvatarUrl != null
+                ? Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: DecorationImage(image: NetworkImage(_jayAvatarUrl!), fit: BoxFit.cover),
+                    ),
+                  )
+                : const Icon(Icons.smart_toy_outlined, color: _primary, size: 26),
+            tooltip: "Jay's AI Clone",
+            onPressed: _openJaysAi,
+          ),
           IconButton(
             icon: const Text('🏆', style: TextStyle(fontSize: 26)),
             onPressed: () {

@@ -2074,7 +2074,7 @@ function TestPanel({ bot }: { bot: AiBot }) {
 
 // ─── Appearance Panel ─────────────────────────────────────────────────────────
 
-const COLOR_THEMES = ["#3b82f6","#1f2937","#7c3aed","#0f766e","#15803d","#ca8a04","#ea580c","#dc2626","#be185d","#9333ea"];
+const COLOR_THEMES = ["#3b82f6","#1f2937","#7c3aed","#0f766e","#15803d","#ca8a04","#ea580c","#dc2626","#be185d","#9333ea","#ffffff"];
 
 // Maps sound name → Web Audio API tone sequence: [frequency, duration][]
 function playAttentionSound(sound: string) {
@@ -2460,9 +2460,16 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
           <div style={{ background: "#fff", padding: "18px 20px" }}>
             <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Color Theme</div>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "12px" }}>
-              {COLOR_THEMES.map(c => (
-                <button key={c} onClick={() => setColorTheme(c)} style={{ width: 36, height: 36, borderRadius: "50%", background: c, border: "none", cursor: "pointer", boxShadow: colorTheme === c ? `0 0 0 2px #fff, 0 0 0 4px ${c}` : "none", transition: "box-shadow 0.15s" }} />
-              ))}
+              {COLOR_THEMES.map(c => {
+                // A white swatch is invisible on the white card, so give it a
+                // black outline; use a dark selection ring too (a white ring
+                // wouldn't show on white).
+                const isLight = c.toLowerCase() === "#ffffff" || c.toLowerCase() === "#fff";
+                const ring = isLight ? "#111827" : c;
+                return (
+                  <button key={c} onClick={() => setColorTheme(c)} style={{ width: 36, height: 36, borderRadius: "50%", background: c, border: isLight ? "1px solid #111827" : "none", cursor: "pointer", boxShadow: colorTheme === c ? `0 0 0 2px #fff, 0 0 0 4px ${ring}` : "none", transition: "box-shadow 0.15s" }} />
+                );
+              })}
             </div>
           </div>
 
@@ -2537,7 +2544,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
 function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean; onGoToSettings: () => void }) {
   const [assignedRoles, setAssignedRoles] = useState<string[]>(bot.assignedRoles || []);
   const [copied, setCopied] = useState<string | null>(null);
-  const roles = ["sales-team-lead", "sales", "marketing"];
+  const roles = ["c-level", "branch-manager", "sales-team-lead", "sales", "marketing"];
 
   // Re-sync when bot prop updates
   const prevIdRef = useRef<string>("");

@@ -118,9 +118,9 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
 
   Future<void> _pickFile() async {
     try {
+      // Photos + videos straight from the device gallery.
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'txt'],
+        type: FileType.media,
       );
 
       if (result != null && result.files.single.path != null) {
@@ -299,7 +299,13 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
   @override
   Widget build(BuildContext context) {
     final botName = widget.bot['name'] ?? 'AI Bot';
-    final botImageUrl = widget.bot['imageUrl'] ?? '';
+    // Admin-set avatar lives in botAvatarUrl (an image URL). Fall back to the
+    // legacy imageUrl. botAvatarUrl is usually a full URL; older/relative paths
+    // get the site origin prepended.
+    final rawAvatar = (widget.bot['botAvatarUrl'] ?? widget.bot['imageUrl'] ?? '').toString();
+    final botImageUrl = rawAvatar.isEmpty
+        ? ''
+        : (rawAvatar.startsWith('http') ? rawAvatar : 'https://millerstorm.tech$rawAvatar');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -320,7 +326,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                 borderRadius: BorderRadius.circular(8),
                 image: botImageUrl.isNotEmpty
                     ? DecorationImage(
-                        image: NetworkImage('https://millerstorm.tech$botImageUrl'),
+                        image: NetworkImage(botImageUrl),
                         fit: BoxFit.cover,
                       )
                     : null,
@@ -386,7 +392,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 image: botImageUrl.isNotEmpty
                                     ? DecorationImage(
-                                        image: NetworkImage('https://millerstorm.tech$botImageUrl'),
+                                        image: NetworkImage(botImageUrl),
                                         fit: BoxFit.cover,
                                       )
                                     : null,
