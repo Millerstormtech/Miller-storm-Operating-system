@@ -1021,7 +1021,10 @@ export function UserManagement(props: UserEditorProps) {
                       return;
                     }
                     setPhoneError("");
-                    const isNewUser = selectedUser.id.startsWith("user-");
+                    // New = a draft not yet in the saved list. (Do NOT use the
+                    // "user-" id prefix — saved users can have that prefix too,
+                    // which made editing them wrongly demand a password + POST.)
+                    const isNewUser = !props.users.some((u) => u.id === selectedUser.id);
                     if (isNewUser && !selectedUser.role) {
                       alert("Please select a Role before saving.");
                       return;
@@ -1042,7 +1045,10 @@ export function UserManagement(props: UserEditorProps) {
                       const adminData = adminRaw ? JSON.parse(adminRaw) : null;
                       const userToSave = usersToSave.find(u => u.id === selectedUser.id);
                       if (userToSave) {
-                        const isNewUser = selectedUser.id.startsWith("user-");
+                        // New = a draft not yet in the saved list. (Do NOT use the
+                    // "user-" id prefix — saved users can have that prefix too,
+                    // which made editing them wrongly demand a password + POST.)
+                    const isNewUser = !props.users.some((u) => u.id === selectedUser.id);
                         if (isNewUser && !userToSave.email) {
                           alert("Please enter an email address before saving.");
                           return;
@@ -1278,7 +1284,7 @@ export function UserManagement(props: UserEditorProps) {
                     </div>
                   )}
                 </div>
-                {selectedUser.id.startsWith("user-") && !selectedUser.role && (
+                {!props.users.some((u) => u.id === selectedUser.id) && !selectedUser.role && (
                   <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>Role is required</div>
                 )}
               </label>
