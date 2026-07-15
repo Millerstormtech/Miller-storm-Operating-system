@@ -3,13 +3,14 @@ import { connectMongo } from "../mongodb";
 import { ScoringFactModel } from "../models/ScoringFact";
 import { SyncStateModel } from "../models/SyncState";
 import { UserModel } from "../models/User";
+import { AcculynxUserModel } from "../models/AcculynxUser";
 import { STAGE_TO_METRIC, REVENUE_STAGE, REP_TYPES, getLocationKeys, cleanBranchName } from "./config";
 import { createClient } from "./client";
 import type { AcculynxClient } from "./client";
 import { mapJobToFacts, isJobDead } from "./mapping";
 import type { MappingConfig } from "./mapping";
 import { getWindowRange } from "./windows";
-import { normEmail, normPhone } from "../leaderboard/identity";
+import { normEmail, normName, normPhone } from "../leaderboard/identity";
 
 const MAPPING_CFG: MappingConfig = {
   repTypes: REP_TYPES,
@@ -141,6 +142,24 @@ async function syncOneLocation(
     else since = new Date(state.lastSyncAt.getTime() - 86400000);
 
     const userMap = await client.fetchUserMap();
+
+    // Persist this sub-account's AccuLynx user roster (identities only) so the
+    // leaderboard can answer "does this rep have an AccuLynx account?" at read time.
+    // No extra API calls — userMap is already fetched above for name resolution.
+    if (!dryRun) {
+      const roster = Object.entries(userMap).map(([acculynxId, u]) => ({
+        updateOne: {
+          filter: { companyId, acculynxId },
+          update: { $set: {
+            email: normEmail(u.email), nameKey: normName(u.name), phone: normPhone(u.phone),
+            branch, lastSyncedAt: new Date(),
+          } },
+          upsert: true,
+        },
+      }));
+      if (roster.length) await AcculynxUserModel.bulkWrite(roster, { ordered: false });
+    }
+
     let jobs = await client.fetchJobsModifiedSince(toDateOnly(since));
     if (limitJobs && jobs.length > limitJobs) jobs = jobs.slice(0, limitJobs); // smoke/test cap
 
