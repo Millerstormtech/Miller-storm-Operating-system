@@ -14,7 +14,7 @@ import { AcculynxUserModel } from "../../src/lib/models/AcculynxUser";
 import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "../../src/lib/leaderboard/identity";
 import { officeToBranch, saleRegion } from "../../src/lib/repcard/branches";
-import { resolveTeam, TEAM_BRANCH, isTeamLead } from "../../src/lib/repcard/org-chart";
+import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch } from "../../src/lib/repcard/org-chart";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -290,7 +290,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const team = resolveTeam(rcu?.name || m.name, rcu?.team) || null;
     // Org chart wins for Branch: follow the team's branch when the team is known;
     // fall back to the RepCard office only for reps with no team.
-    const branch = (team && TEAM_BRANCH[team]) || officeToBranch(rcu?.office);
+    const branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(rcu?.name || m.name) || officeToBranch(rcu?.office);
     // Per-branch split: DFW-filed sales -> the rep's home branch; West Texas / Commercial
     // sales -> their own branch. Knocks live only under the home branch.
     const zero = { filed: 0, won: 0, revenue: 0 };
