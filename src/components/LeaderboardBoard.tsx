@@ -140,6 +140,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const branchActive = !!branchFilter && branchFilter !== NONE;
   const visibleColumns = branchActive ? COLUMNS.filter((c) => c.key !== "branch" && c.key !== "team") : COLUMNS;
 
+  // Footer "Sum" row totals. Reduced over `visible` (the on-screen rows), so it reflects
+  // the current view automatically — filters, branch scoping, and date range all included.
+  const totals = visible.reduce(
+    (a, r) => {
+      a.verifiedKnocks += r.verifiedKnocks ?? 0;
+      a.filed += r.filed ?? 0;
+      a.won += r.won ?? 0;
+      a.revenue += r.revenue ?? 0;
+      return a;
+    },
+    { verifiedKnocks: 0, filed: 0, won: 0, revenue: 0 }
+  );
+
   return (
     <div>
       {/* "Your rank" pop-out — shown to any user who is on the board (sales rep,
@@ -320,6 +333,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                 );
               })}
             </tbody>
+            {visible.length > 0 ? (
+              <tfoot>
+                <tr style={{ borderTop: "2px solid #cbd5e1", background: "#f1f5f9", fontWeight: 700 }}>
+                  <td colSpan={branchActive ? 2 : 4} style={{ padding: "10px 14px", textAlign: "left" }}>
+                    Sum ({visible.length} rep{visible.length === 1 ? "" : "s"})
+                  </td>
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.verifiedKnocks}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.filed}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.won}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "center", color: "#16a34a" }}>{fmtMoney(totals.revenue)}</td>
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         </div>
       )}
