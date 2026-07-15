@@ -20,6 +20,8 @@ type Notification = {
     watchUrl?: string;
     courseId?: string;
     courseName?: string;
+    tab?: string;
+    playlistId?: string;
   };
 };
 
@@ -111,6 +113,12 @@ export function NotificationBell({ userId }: { userId: string }) {
       const path = url.startsWith('http') ? new URL(url).pathname : url;
       console.log('Redirecting to:', path);
       router.push(path);
+    } else if (notif.type === 'playlist_assigned') {
+      // A newly-assigned playlist opens the recipient's OWN training center on
+      // the Assigned Playlists tab.
+      setShowDropdown(false);
+      const base = trainingRouteForRole(user?.role);
+      router.push(`${base}?tab=assignedPlaylists`);
     } else if (notif.metadata?.watchUrl || notif.metadata?.courseId) {
       // Training notifications (e.g. an unlocked lesson) always open the
       // recipient's OWN Training Center, resolved from their role — NOT the

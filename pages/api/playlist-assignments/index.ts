@@ -3,6 +3,10 @@ import { connectMongo } from '../../../src/lib/mongodb';
 import PlaylistAssignment from '../../../src/lib/models/PlaylistAssignment';
 import Playlist from '../../../src/lib/models/Playlist';
 import { UserProgressModel } from '../../../src/lib/models/UserProgress';
+import { UserModel } from '../../../src/lib/models/User';
+import { NotificationModel } from '../../../src/lib/models/Notification';
+import { sendPushNotificationToMultiple } from '../../../src/lib/firebase-admin';
+import { trainingRouteForRole } from '../../../src/lib/trainingRoute';
 import { requireUser, requireRole, allowMethods } from '../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -94,6 +98,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch (unlockErr) {
         // Don't fail the assignment if the auto-unlock hiccups.
         console.error('Auto-unlock on playlist assign failed:', unlockErr);
+      }
+
+      // Notify the assigned rep — in-app bell (web) + push (app). Clicking/tapping
+      // deep-links to their Assigned Playlists tab. Best-effort: never fail the
+      // assignment because a notification hiccups.
+      try {
+        const recipient = (await UserModel.findOne({ id: assignedToUserId }).lean()) as any;
+        const plName = playlistName || 'a playlist';
+        const byName = managerName || 'Your leader';
+        const title = '🎵 New Playlist Assigned';
+        const message = `${byName} assigned you the playlist "${plName}". Open Assigned Playlists to start.`;
+        const watchUrl = trainingRouteForRole(recipient?.role);
+        await NotificationModel.create({
+          id: `notif-${Date.now()}-${String(assignment._id)}`,
+          userId: assignedToUserId,
+          type: 'playlist_assigned',
+          title,
+          message,
+          // tab tells the web/app to open the Assigned Playlists tab; watchUrl is
+          // the recipient's own training route (bell deep-links there).
+          metadata: {
+            assignmentId: String(assignment._id),
+            playlistId,
+            playlistName: plName,
+            courseId,
+            assignedByName: byName,
+            tab: 'assignedPlaylists',
+            watchUrl,
+          },
+        });
+        if (recipient?.fcmToken) {
+          await sendPushNotificationToMultiple([recipient.fcmToken], title, message, {
+            type: 'playlist_assigned',
+            tab: 'assignedPlaylists',
+            playlistId: String(playlistId || ''),
+          });
+        }
+      } catch (notifyErr) {
+        console.error('Playlist-assign notify failed:', notifyErr);
       }
 
       return res.status(201).json(assignment);

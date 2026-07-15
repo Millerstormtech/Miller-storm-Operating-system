@@ -10,7 +10,10 @@ import 'course_detail_screen.dart';
 import 'training_leaderboard_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
-  const CoursesScreen({super.key});
+  // Which tab to open on (0 = Courses, 1 = My Playlists, 2 = Assigned). A
+  // "playlist assigned" push opens straight to the Assigned tab.
+  final int initialTabIndex;
+  const CoursesScreen({super.key, this.initialTabIndex = 0});
 
   @override
   State<CoursesScreen> createState() => _CoursesScreenState();
@@ -28,6 +31,9 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   List<dynamic> _filteredCourses = [];
   List<dynamic> _myPlaylists = [];
   List<dynamic> _assignedPlaylists = [];
+  // Red-badge count on the Assigned tab: assignments arrived since the rep last
+  // opened that tab. Clears to 0 when they open it.
+  int _assignedBadge = 0;
   bool _isLoading = true;
   bool _hasCachedData = false;
   // True when the last course fetch failed (network/API) — lets the UI show a
@@ -43,15 +49,29 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
+    _tabController.addListener(_onTabChanged);
     _loadData();
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    if (_tabController.index == 2 && _assignedBadge > 0) _markAssignedSeen();
+  }
+
+  // Remember the current assignment count so only FUTURE assignments re-badge.
+  Future<void> _markAssignedSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('assigned_playlists_seen_$_userId', _assignedPlaylists.length);
+    if (mounted) setState(() => _assignedBadge = 0);
   }
 
   Future<void> _loadData() async {
@@ -217,9 +237,17 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
         Uri.parse('https://millerstorm.tech/api/playlist-assignments?userId=$_userId'),
       );
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final prefs = await SharedPreferences.getInstance();
+        final seen = prefs.getInt('assigned_playlists_seen_$_userId') ?? 0;
+        final total = (data is List) ? data.length : 0;
+        if (!mounted) return;
         setState(() {
-          _assignedPlaylists = jsonDecode(response.body);
+          _assignedPlaylists = data;
+          _assignedBadge = (total - seen) > 0 ? (total - seen) : 0;
         });
+        // Already viewing the Assigned tab (e.g. opened from a push) → clear.
+        if (_tabController.index == 2 && _assignedBadge > 0) _markAssignedSeen();
       }
     } catch (e) {
       print('Error fetching assigned playlists: $e');
@@ -273,10 +301,28 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           unselectedLabelColor: _textLight,
           indicatorColor: _blue,
           labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          tabs: const [
-            Tab(text: 'Courses'),
-            Tab(text: 'My Playlists'),
-            Tab(text: 'Assigned'),
+          tabs: [
+            const Tab(text: 'Courses'),
+            const Tab(text: 'My Playlists'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Assigned'),
+                  if (_assignedBadge > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      constraints: const BoxConstraints(minWidth: 18),
+                      decoration: BoxDecoration(color: _primary, borderRadius: BorderRadius.circular(10)),
+                      alignment: Alignment.center,
+                      child: Text('$_assignedBadge',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),

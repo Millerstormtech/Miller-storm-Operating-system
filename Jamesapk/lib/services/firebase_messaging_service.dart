@@ -217,6 +217,18 @@ class FirebaseMessagingService {
 
     if (_navigatorKey?.currentState == null) return;
 
+    // SECURITY: every branch below opens an in-app screen backed by the user's
+    // OWN data. Never navigate there without a valid session — a tapped
+    // notification must not reveal any panel or another user's data. If there is
+    // no stored session (logged out / cleared), send them to login instead. A
+    // panel is only reachable after a real email+password / Face ID / biometric
+    // sign-in; a notification tap can never bypass that.
+    final storedUser = await AuthService.getStoredUser();
+    if (storedUser == null) {
+      _navigatorKey!.currentState!.pushNamedAndRemoveUntil('/login', (route) => false);
+      return;
+    }
+
     // New training (new lesson/quiz published) -> open that course and jump
     // straight into the new lesson/quiz when we know which page it is.
     if (type == 'new_training' && data['courseId'] != null) {
@@ -238,6 +250,14 @@ class FirebaseMessagingService {
     if (type == 'ticket_update') {
       print('🚀 Navigating to tickets');
       _navigatorKey!.currentState!.pushNamed('/tickets');
+      return;
+    }
+
+    // A playlist was assigned to this rep -> open the courses screen on the
+    // Assigned tab.
+    if (type == 'playlist_assigned') {
+      print('🚀 Navigating to assigned playlists');
+      _navigatorKey!.currentState!.pushNamed('/courses', arguments: {'tab': 'assigned'});
       return;
     }
 

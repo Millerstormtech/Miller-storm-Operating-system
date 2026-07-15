@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { appConfirm } from "../../lib/appDialogs";
 import { useRouter } from "next/router";
 import { DashboardCard } from "../../components/DashboardCard";
@@ -92,7 +92,13 @@ export function ManagerOnlineTrainingPage(props: {
   // with admin, but the training view — like the mobile app — must hide them.
   // (Sales Team Lead already receives published-only from the API, so this is a
   // no-op for them.)
-  const publishedCourses = props.courses.filter(c => c.status === 'published');
+  // Memoized so the array identity is stable across renders — otherwise effects
+  // that depend on publishedCourses (e.g. playlist-progress loading) would re-run
+  // every render and flood the API with fetches.
+  const publishedCourses = useMemo(
+    () => props.courses.filter(c => c.status === 'published'),
+    [props.courses]
+  );
   const isLoading = props.isLoading || false;
   // Leadership roles review training freely: every lesson is unlocked (no
   // sequential gating) and they can fast-forward / skip videos without first

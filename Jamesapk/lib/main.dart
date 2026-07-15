@@ -183,7 +183,9 @@ class _MillerStormAppState extends State<MillerStormApp> {
           case '/planner':
             return MaterialPageRoute(builder: (_) => const PlannerScreen());
           case '/courses':
-            return MaterialPageRoute(builder: (_) => CoursesScreen());
+            final coursesArgs = settings.arguments as Map?;
+            final coursesTab = (coursesArgs != null && coursesArgs['tab'] == 'assigned') ? 2 : 0;
+            return MaterialPageRoute(builder: (_) => CoursesScreen(initialTabIndex: coursesTab));
           case '/training-leaderboard':
             return MaterialPageRoute(builder: (_) => const TrainingLeaderboardScreen());
           case '/apps-tools-items':

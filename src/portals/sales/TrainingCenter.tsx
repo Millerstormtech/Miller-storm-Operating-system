@@ -212,6 +212,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     pendingDeepLinkRef.current = lessonId || null;
     enterCourse(targetCourse, lessonId ?? (targetCourse.pages?.[0]?.id ?? null));
   }, [courses, router.query.courseId, router.query.lessonId]);
+  // Deep-link from a "playlist assigned" notification: open the Assigned
+  // Playlists tab.
+  useEffect(() => {
+    if (router.query.tab === 'assignedPlaylists') {
+      setActiveTab('assignedPlaylists');
+    }
+  }, [router.query.tab]);
   // Load this rep's fast-forward grant (set by a manager/admin/C-Level).
   useEffect(() => {
     if (!user?.id) return;
@@ -246,11 +253,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         .then(res => res.json())
         .then(data => {
           setAssignedPlaylists(data);
-          // Set unread count from localStorage
-          const viewed = localStorage.getItem(`assigned-playlists-viewed-${user.id}`);
-          if (!viewed) {
-            setUnreadAssignedCount(data.length);
-          }
+          // Badge = how many assignments arrived since the rep last opened this
+          // tab (count delta). This re-badges for every NEW assignment, unlike a
+          // one-shot "viewed" flag.
+          const seenRaw = localStorage.getItem(`assigned-playlists-seen-${user.id}`);
+          const seen = seenRaw ? (parseInt(seenRaw, 10) || 0) : 0;
+          setUnreadAssignedCount(Math.max(0, (Array.isArray(data) ? data.length : 0) - seen));
         })
         .catch(err => console.error('Failed to load assigned playlists:', err));
     }
@@ -660,9 +668,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               setViewingPlaylist(null);
               setCourseViewInitialized(null);
             }
-            // Mark as viewed
+            // Mark as viewed: remember the current assignment count so only
+            // FUTURE assignments re-badge.
             if (user?.id) {
-              localStorage.setItem(`assigned-playlists-viewed-${user.id}`, 'true');
+              localStorage.setItem(`assigned-playlists-seen-${user.id}`, String(assignedPlaylists.length));
               setUnreadAssignedCount(0);
             }
           }}
