@@ -27,6 +27,7 @@ type AdminViewId =
   | "socialMediaMetrics"
   | "webText"
   | "trainingExecutive"
+  | "onlineTraining"
   | "messaging"
   | "leaderboard"
   | "emailConfig"

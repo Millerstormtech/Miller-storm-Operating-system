@@ -103,7 +103,7 @@ export function ManagerOnlineTrainingPage(props: {
   // Leadership roles review training freely: every lesson is unlocked (no
   // sequential gating) and they can fast-forward / skip videos without first
   // completing them.
-  const isPrivileged = ["c-level", "branch-manager", "sales-team-lead"].includes(props.currentUser.role);
+  const isPrivileged = ["admin", "c-level", "branch-manager", "sales-team-lead"].includes(props.currentUser.role);
   // Company-wide (C-Level) → EVERY user except admins (sales + managers + more);
   // otherwise scoped to this manager's own sales team.
   // lite=1 → only the light fields (id/name/role/photo/status) the roster needs;
@@ -662,7 +662,10 @@ export function ManagerOnlineTrainingPage(props: {
 
   // Load team progress when team tab is active
   useEffect(() => {
-    if (activeTab !== 'team' || !props.currentUser?.id || publishedCourses.length === 0) return;
+    // companyWide (Admin / C-Level / Branch Manager) hides the Courses Progress
+    // view — the only consumer of this data — so skip the (heavy, company-wide)
+    // per-user course-progress load entirely.
+    if (activeTab !== 'team' || props.companyWide || !props.currentUser?.id || publishedCourses.length === 0) return;
     setIsLoadingTeam(true);
     const courseIds = publishedCourses.map(c => c.id).join(',');
     Promise.all([
@@ -2664,9 +2667,12 @@ export function ManagerOnlineTrainingPage(props: {
             </div>
           </div>
           <div className="panel-body">
-            {isLoadingTeam ? (
+            {/* The team course-progress load only feeds the Courses Progress
+                view, so its Loading/empty states must NOT block Playlist
+                Progress or Unlock Lesson (which have their own data). */}
+            {isLoadingTeam && teamProgressView === 'courses' ? (
               <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
-            ) : (teamProgress.length === 0 && playlists.length === 0) ? (
+            ) : (teamProgressView === 'courses' && teamProgress.length === 0 && playlists.length === 0) ? (
               <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No team members or playlists found.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>

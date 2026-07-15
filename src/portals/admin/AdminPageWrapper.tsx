@@ -20,6 +20,7 @@ export function AdminPageWrapper({ children, currentView }: AdminPageWrapperProp
     socialMediaMetrics: "socialMediaMetrics",
     businessUnits: "businessUnits",
     trainingExecutive: "trainingCenter",
+    onlineTraining: "onlineTraining",
     userManagement: "userManagement",
     courseManagement: "courseManagement",
     appsTools: "appsTools",
