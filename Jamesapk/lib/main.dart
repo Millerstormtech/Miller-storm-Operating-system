@@ -95,7 +95,7 @@ class MillerStormApp extends StatefulWidget {
   State<MillerStormApp> createState() => _MillerStormAppState();
 }
 
-class _MillerStormAppState extends State<MillerStormApp> {
+class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObserver {
   // Shared with the API client (see api_client.dart) so a 401 can force re-login.
   final GlobalKey<NavigatorState> navigatorKey = appNavigatorKey;
 
@@ -108,10 +108,23 @@ class _MillerStormAppState extends State<MillerStormApp> {
     // Pass navigator key to messaging service
     FirebaseMessagingService.setNavigatorKey(navigatorKey);
     _initDeepLinks();
+    // Keep the session fresh: renew the token on launch and every time the app
+    // comes back to the foreground, so the 1-year clock resets on each open and
+    // an active user never hits an expired token / "No courses" state.
+    WidgetsBinding.instance.addObserver(this);
+    api.refreshTokenNow();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      api.refreshTokenNow();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _linkSub?.cancel();
     super.dispose();
   }

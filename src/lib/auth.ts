@@ -12,7 +12,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 // ---------------------------------------------------------------------------
 
 const COOKIE_NAME = "ms_session";
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
+// 1-year sessions. The mobile app refreshes this on every launch/resume (see
+// /api/refresh-token), so the clock resets each time the app is opened — a user
+// who opens the app even once a year never logs out and never hits the expired-
+// token "No courses available" state. The long window also means users still on
+// an older store build (which can't refresh) effectively never get logged out.
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 365 days
 
 // Secret used to sign tokens. AUTH_SECRET MUST be set in the server .env.
 // In production a missing secret is a hard error so we never silently sign

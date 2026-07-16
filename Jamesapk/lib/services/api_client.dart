@@ -11,8 +11,10 @@ final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 const String _apiBase = 'https://millerstorm.tech';
 
 // Refresh the token once it has less than this long left before expiry, so the
-// user never actually hits an expired-token 401 during normal use.
-const int _refreshThresholdSeconds = 2 * 24 * 60 * 60; // 2 days
+// user never actually hits an expired-token 401 during normal use. Kept wide (7
+// days) relative to the 30-day server token so any user who opens the app even
+// occasionally gets a fresh token long before the old one can expire.
+const int _refreshThresholdSeconds = 7 * 24 * 60 * 60; // 7 days
 
 /// Global HTTP client that automatically attaches the server-issued JWT as an
 /// `Authorization: Bearer <token>` header on every request.
@@ -53,6 +55,18 @@ class AuthClient extends http.BaseClient {
   void clearToken() {
     _cachedToken = null;
     _loaded = true;
+  }
+
+  /// Force a token refresh right now — called on every app launch and whenever
+  /// the app returns to the foreground. This resets the session's 1-year clock
+  /// each time the user opens the app, so an active user never hits an expired
+  /// token (and never sees the "No courses available" state). No-op if the user
+  /// isn't logged in. Fire-and-forget safe; shares the in-flight refresh.
+  Future<void> refreshTokenNow() async {
+    final t = await _getToken();
+    if (t != null && t.isNotEmpty) {
+      await _refreshToken();
+    }
   }
 
   @override
