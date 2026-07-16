@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'POST') {
     // Send a message
     try {
-      const { senderName, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender } = req.body;
+      const { senderName, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender, poll } = req.body;
       const senderId = auth.sub;
       const senderRole = auth.role;
 
@@ -145,6 +145,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mediaUrl: mediaUrl || '',
         mentions: mentionedUserIds
       };
+
+      // Poll payload: normalize options into { text, votes: [] }.
+      if (messageType === 'poll' && poll && Array.isArray(poll.options)) {
+        messageData.poll = {
+          question: String(poll.question || '').trim(),
+          allowMultiple: !!poll.allowMultiple,
+          options: poll.options
+            .map((o: any) => ({ text: String((typeof o === 'string' ? o : o?.text) || '').trim(), votes: [] }))
+            .filter((o: any) => o.text.length > 0),
+        };
+      }
 
       // Add reply fields if they exist
       if (replyTo) {

@@ -610,9 +610,181 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 }
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.poll_outlined, color: Color(0xFFCB0002)),
+              title: const Text('Create Poll'),
+              onTap: () {
+                Navigator.pop(context);
+                _openPollDialog();
+              },
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  void _openPollDialog() {
+    final questionC = TextEditingController();
+    final optionCs = [TextEditingController(), TextEditingController()];
+    bool multiple = false;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          title: const Text('Create Poll'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: questionC, decoration: const InputDecoration(hintText: 'Ask a question...')),
+                const SizedBox(height: 12),
+                ...optionCs.asMap().entries.map((e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(children: [
+                        Expanded(child: TextField(controller: e.value, decoration: InputDecoration(hintText: 'Option ${e.key + 1}'))),
+                        if (optionCs.length > 2)
+                          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => setDlg(() => optionCs.removeAt(e.key))),
+                      ]),
+                    )),
+                if (optionCs.length < 10)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () => setDlg(() => optionCs.add(TextEditingController())),
+                      child: const Text('+ Add option'),
+                    ),
+                  ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: multiple,
+                  onChanged: (v) => setDlg(() => multiple = v ?? false),
+                  title: const Text('Allow multiple answers', style: TextStyle(fontSize: 13)),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFCB0002)),
+              onPressed: () {
+                final q = questionC.text.trim();
+                final opts = optionCs.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
+                if (q.isEmpty || opts.length < 2) return;
+                Navigator.pop(ctx);
+                _sendPoll(q, opts, multiple);
+              },
+              child: const Text('Send', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendPoll(String question, List<String> options, bool allowMultiple) async {
+    try {
+      await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'senderId': widget.userId,
+          'senderName': userName,
+          'senderRole': widget.userRole,
+          'message': question,
+          'messageType': 'poll',
+          'poll': {'question': question, 'options': options, 'allowMultiple': allowMultiple},
+        }),
+      );
+      await _fetchMessages();
+    } catch (e) {
+      _showError('Failed to create poll');
+    }
+  }
+
+  Future<void> _votePoll(String messageId, int optionIndex) async {
+    try {
+      final res = await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/poll-vote'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'messageId': messageId, 'optionIndex': optionIndex}),
+      );
+      if (res.statusCode == 200) await _fetchMessages();
+    } catch (e) {
+      print('poll vote error: $e');
+    }
+  }
+
+  Widget _buildPollCard(Map<String, dynamic> message, bool isMyMessage, Color textColor) {
+    final poll = message['poll'] as Map<String, dynamic>;
+    final options = (poll['options'] as List?) ?? [];
+    int totalVotes = 0;
+    for (final o in options) {
+      totalVotes += ((o['votes'] as List?)?.length ?? 0);
+    }
+    final myId = widget.userId;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('📊 ${poll['question'] ?? ''}',
+            style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 15)),
+        const SizedBox(height: 8),
+        ...options.asMap().entries.map((entry) {
+          final i = entry.key;
+          final o = entry.value as Map<String, dynamic>;
+          final votes = (o['votes'] as List?)?.length ?? 0;
+          final pct = totalVotes > 0 ? ((votes / totalVotes) * 100).round() : 0;
+          final voted = ((o['votes'] as List?) ?? []).contains(myId);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: GestureDetector(
+              onTap: () => _votePoll(message['_id'].toString(), i),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: isMyMessage ? Colors.white54 : const Color(0xFFE5E7EB)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: pct / 100.0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isMyMessage ? Colors.white24 : const Color(0x1F2563EB),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Text('${voted ? '✓ ' : ''}${o['text'] ?? ''}',
+                                style: TextStyle(color: textColor, fontSize: 13, fontWeight: voted ? FontWeight.w700 : FontWeight.w500),
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          const SizedBox(width: 6),
+                          Text('$votes · $pct%', style: TextStyle(color: textColor, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+        Text('$totalVotes vote${totalVotes != 1 ? 's' : ''} · tap to vote${poll['allowMultiple'] == true ? ' (multiple)' : ''}',
+            style: TextStyle(color: textColor.withOpacity(0.75), fontSize: 11)),
+      ],
     );
   }
 
@@ -1985,6 +2157,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
     if (messageType == 'text') {
       return _buildTextWithLinks(message['message'] ?? '', textColor, isMyMessage);
+    } else if (messageType == 'poll' && message['poll'] != null) {
+      return _buildPollCard(message, isMyMessage, textColor);
     } else if (messageType == 'image' && message['mediaUrl'] != null) {
       final imageUrl = message['mediaUrl'].toString().startsWith('http')
           ? message['mediaUrl'].toString()

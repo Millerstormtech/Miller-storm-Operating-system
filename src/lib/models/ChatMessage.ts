@@ -6,14 +6,26 @@ interface IReaction {
   userName: string;
 }
 
+interface IPollOption {
+  text: string;
+  votes: string[]; // userIds who picked this option
+}
+
+interface IPoll {
+  question: string;
+  options: IPollOption[];
+  allowMultiple: boolean;
+}
+
 export interface IChatMessage extends Document {
   groupId: string;
   senderId: string;
   senderName: string;
   senderRole: string;
   message: string;
-  messageType: 'text' | 'image' | 'video' | 'file';
+  messageType: 'text' | 'image' | 'video' | 'file' | 'poll';
   mediaUrl?: string;
+  poll?: IPoll;
   replyTo?: string;
   replyToMessage?: string;
   replyToSender?: string;
@@ -41,10 +53,24 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     message: { type: String, default: '' },
     messageType: {
       type: String,
-      enum: ['text', 'image', 'video', 'file'],
+      enum: ['text', 'image', 'video', 'file', 'poll'],
       default: 'text'
     },
     mediaUrl: { type: String, default: '' },
+    poll: {
+      type: new Schema<IPoll>(
+        {
+          question: { type: String, required: true },
+          options: {
+            type: [new Schema<IPollOption>({ text: { type: String, required: true }, votes: { type: [String], default: [] } }, { _id: false })],
+            default: [],
+          },
+          allowMultiple: { type: Boolean, default: false },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
     replyTo: { type: String },
     replyToMessage: { type: String },
     replyToSender: { type: String },

@@ -9,8 +9,9 @@ type ChatMessage = {
   senderName: string;
   senderRole: string;
   message: string;
-  messageType: 'text' | 'image' | 'video' | 'file';
+  messageType: 'text' | 'image' | 'video' | 'file' | 'poll';
   mediaUrl?: string;
+  poll?: { question: string; options: { text: string; votes: string[] }[]; allowMultiple: boolean };
   replyTo?: string;
   replyToMessage?: string;
   replyToSender?: string;
@@ -52,6 +53,11 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
+  // Poll composer
+  const [showPoll, setShowPoll] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [pollMultiple, setPollMultiple] = useState(false);
   // @mention autocomplete: the group's members and the current "@…" query.
   const [members, setMembers] = useState<{ _id: string; name: string; headshotUrl?: string }[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -188,6 +194,56 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
       console.error('[STORM-CHAT] ❌ Error in fetchMessages:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function sendPoll() {
+    const q = pollQuestion.trim();
+    const opts = pollOptions.map(o => o.trim()).filter(Boolean);
+    if (!q || opts.length < 2 || sending) return;
+    setSending(true);
+    try {
+      const response = await fetch(`/api/storm-chat/messages/${group._id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: user?._id || user?.id,
+          senderName: user?.name,
+          senderRole: user?.role,
+          message: q,
+          messageType: 'poll',
+          poll: { question: q, options: opts, allowMultiple: pollMultiple },
+        }),
+      });
+      if (response.ok) {
+        const message = await response.json();
+        setMessages([...messages, message]);
+        setShowPoll(false);
+        setPollQuestion("");
+        setPollOptions(["", ""]);
+        setPollMultiple(false);
+        setShouldAutoScroll(true);
+      }
+    } catch (e) {
+      console.error('[STORM-CHAT] poll send error', e);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function votePoll(messageId: string, optionIndex: number) {
+    try {
+      const res = await fetch('/api/storm-chat/poll-vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId, optionIndex }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setMessages(prev => prev.map(m => (m._id === messageId ? { ...m, poll: updated.poll } : m)));
+      }
+    } catch (e) {
+      console.error('[STORM-CHAT] poll vote error', e);
     }
   }
 
@@ -424,8 +480,33 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               </div>
             )}
             
+            {msg.messageType === 'poll' && msg.poll && (() => {
+              const totalVotes = msg.poll.options.reduce((s, o) => s + (o.votes?.length || 0), 0);
+              const myId = user?._id || user?.id || '';
+              return (
+                <div style={{ backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6', color: isMyMessage ? '#fff' : '#111827', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>📊 {msg.poll.question}</div>
+                  {msg.poll.options.map((opt, i) => {
+                    const votes = opt.votes?.length || 0;
+                    const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+                    const voted = (opt.votes || []).includes(myId);
+                    return (
+                      <button key={i} type="button" onClick={() => votePoll(msg._id, i)}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', position: 'relative', border: `1px solid ${isMyMessage ? 'rgba(255,255,255,0.4)' : '#e5e7eb'}`, background: 'transparent', borderRadius: 8, padding: '8px 10px', marginBottom: 6, cursor: 'pointer', overflow: 'hidden', color: 'inherit' }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`, background: isMyMessage ? 'rgba(255,255,255,0.2)' : 'rgba(37,99,235,0.12)' }} />
+                        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, fontWeight: voted ? 700 : 500 }}>
+                          <span>{voted ? '✓ ' : ''}{opt.text}</span>
+                          <span style={{ whiteSpace: 'nowrap' }}>{votes} · {pct}%</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''} · tap to vote{msg.poll.allowMultiple ? ' (multiple)' : ''}</div>
+                </div>
+              );
+            })()}
             {msg.messageType === 'text' && (
-              <div 
+              <div
                 onMouseEnter={() => setHoveredMessageId(msg._id)}
                 onMouseLeave={() => {
                   setHoveredMessageId(null);
@@ -826,6 +907,32 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 </div>
               );
             })()}
+            {showPoll && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowPoll(false)}>
+                <div style={{ background: '#fff', borderRadius: 12, padding: 20, width: 380, maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Create a poll</div>
+                  <input value={pollQuestion} onChange={e => setPollQuestion(e.target.value)} placeholder="Ask a question..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 12, fontSize: 14, boxSizing: 'border-box' }} />
+                  {pollOptions.map((opt, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                      <input value={opt} onChange={e => setPollOptions(prev => prev.map((o, idx) => idx === i ? e.target.value : o))} placeholder={`Option ${i + 1}`} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+                      {pollOptions.length > 2 && (
+                        <button type="button" onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 20 }}>×</button>
+                      )}
+                    </div>
+                  ))}
+                  {pollOptions.length < 10 && (
+                    <button type="button" onClick={() => setPollOptions(prev => [...prev, ''])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontSize: 13, fontWeight: 600, marginBottom: 12, padding: 0 }}>+ Add option</button>
+                  )}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={pollMultiple} onChange={e => setPollMultiple(e.target.checked)} /> Allow multiple answers
+                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button type="button" onClick={() => setShowPoll(false)} style={{ padding: '8px 16px', background: '#f3f4f6', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
+                    <button type="button" onClick={sendPoll} disabled={!pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2 || sending} style={{ padding: '8px 16px', background: '#CB0002', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Send Poll</button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
             {/* Emoji picker */}
             {showEmoji && (
@@ -881,6 +988,23 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             >
               GIF
             </button>
+            {!isDirect && (
+              <button
+                type="button"
+                onClick={() => setShowPoll(true)}
+                style={{
+                  padding: '10px 12px',
+                  backgroundColor: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontSize: 18
+                }}
+                title="Create a poll"
+              >
+                📊
+              </button>
+            )}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
