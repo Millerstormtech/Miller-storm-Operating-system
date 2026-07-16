@@ -1747,6 +1747,52 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                         ],
                       ),
                     ),
+                    // Always-visible reaction button beside the bubble; tapping
+                    // opens the same emoji tray as a long-press. Top/bottom insets
+                    // skip the sender name (above) and the time + reaction pill
+                    // (below) so the button centers on the message body, lining up
+                    // with the bubble instead of the whole column.
+                    Positioned(
+                      top: isMyMessage ? 0 : 20,
+                      bottom: 8 +
+                          (isMyMessage ? 18 : 0) +
+                          (((message['reactions'] as List?)?.isNotEmpty ?? false) ? 22 : 0),
+                      left: isMyMessage ? -32 : null,
+                      right: isMyMessage ? null : -32,
+                      child: Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _emojiTrayMessageId =
+                                  _emojiTrayMessageId == message['_id'] ? null : message['_id'];
+                            });
+                          },
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: _isDarkTheme ? const Color(0xFF2C2C2E) : Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _isDarkTheme ? Colors.grey[700]! : Colors.grey[300]!,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.12),
+                                  blurRadius: 3,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.add_reaction_outlined,
+                              size: 15,
+                              color: _isDarkTheme ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ), // Stack
                   ], // Column children
@@ -1776,25 +1822,27 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     
     if (reactionCounts.isEmpty) return const SizedBox();
 
-    // Rendered BELOW the bubble (not overlapping the text). Compact pill.
-    return Padding(
-      padding: EdgeInsets.only(
-        top: 4,
-        left: isMyMessage ? 0 : 8,
-        right: isMyMessage ? 8 : 0,
-      ),
-      child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+    // WhatsApp-style: the reaction pill sits ON the bubble's bottom edge. The
+    // negative-Y Transform pulls it up so it overlaps the bubble slightly.
+    return Transform.translate(
+      offset: const Offset(0, -10),
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: isMyMessage ? 0 : 8,
+          right: isMyMessage ? 8 : 0,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: _isDarkTheme ? const Color(0xFF2C2C2E) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: _isDarkTheme ? Colors.grey[700]! : Colors.grey[300]!,
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withOpacity(0.15),
                 blurRadius: 3,
                 offset: const Offset(0, 1),
               ),
@@ -1812,16 +1860,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(emoji, style: const TextStyle(fontSize: 11)),
-                      const SizedBox(width: 2),
-                      Text(
-                        count.toString(),
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: _isDarkTheme ? Colors.white70 : Colors.black54,
-                          fontWeight: FontWeight.w600,
+                      Text(emoji, style: const TextStyle(fontSize: 12)),
+                      if (count > 1) ...[
+                        const SizedBox(width: 2),
+                        Text(
+                          count.toString(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: _isDarkTheme ? Colors.white70 : Colors.black54,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -1829,6 +1879,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             }).toList(),
           ),
         ),
+      ),
     );
   }
 
@@ -1980,6 +2031,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                   });
                 },
               ),
+              ListTile(
+                leading: Icon(Icons.forward, color: textColor),
+                title: Text('Forward', style: TextStyle(color: textColor)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openForwardSheet(message);
+                },
+              ),
               // Message this sender privately (groups only, others' messages).
               if (!isMyMessage && widget.group['isDirect'] != true)
                 ListTile(
@@ -2084,6 +2143,254 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the conversation')));
     }
+  }
+
+  // Forward a message: pick one or more users from the directory, then drop a
+  // copy of the message into each recipient's DM.
+  Future<void> _openForwardSheet(dynamic message) async {
+    List<dynamic> allUsers = [];
+    bool loading = true;
+    bool didLoad = false;
+    bool sending = false;
+    final selected = <String>{};
+    String search = '';
+    final textColor = _isDarkTheme ? Colors.white : Colors.black;
+    final bgColor = _isDarkTheme ? const Color(0xFF1C1C1E) : Colors.white;
+
+    final mType = (message['messageType'] ?? 'text').toString();
+    final preview = mType == 'text'
+        ? (message['message'] ?? '').toString()
+        : mType == 'image'
+            ? '📷 Photo'
+            : mType == 'video'
+                ? '🎥 Video'
+                : mType == 'poll'
+                    ? '📊 ${message['poll']?['question'] ?? 'Poll'}'
+                    : '📎 File';
+
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) {
+          // Load the directory once, when the sheet first builds.
+          if (!didLoad) {
+            didLoad = true;
+            () async {
+              try {
+                final res = await api.get(
+                  Uri.parse('https://millerstorm.tech/api/users/directory'),
+                );
+                if (res.statusCode == 200) {
+                  final data = json.decode(res.body) as List;
+                  allUsers = data
+                      .where((u) => (u['id'] ?? u['_id']).toString() != widget.userId)
+                      .toList();
+                }
+              } catch (_) {}
+              loading = false;
+              setSheet(() {});
+            }();
+          }
+
+          final q = search.trim().toLowerCase();
+          final list = q.isEmpty
+              ? allUsers
+              : allUsers.where((u) {
+                  final n = (u['name'] ?? '').toString().toLowerCase();
+                  final r = (u['role'] ?? '').toString().toLowerCase();
+                  return n.contains(q) || r.contains(q);
+                }).toList();
+
+          return Container(
+            height: MediaQuery.of(sheetContext).size.height * 0.72,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                    child: Row(
+                      children: [
+                        Text('Forward message',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)),
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.close, color: textColor),
+                          onPressed: () => Navigator.pop(sheetContext),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(preview,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13, color: textColor.withOpacity(0.7))),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                    child: TextField(
+                      style: TextStyle(color: textColor),
+                      decoration: InputDecoration(
+                        hintText: 'Search people...',
+                        hintStyle: TextStyle(color: textColor.withOpacity(0.5)),
+                        prefixIcon: Icon(Icons.search, color: textColor.withOpacity(0.5)),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onChanged: (v) => setSheet(() => search = v),
+                    ),
+                  ),
+                  Expanded(
+                    child: loading
+                        ? const Center(child: CircularProgressIndicator(color: Color(0xFFCB0002)))
+                        : list.isEmpty
+                            ? Center(
+                                child: Text('No people found',
+                                    style: TextStyle(color: textColor.withOpacity(0.5))))
+                            : ListView.builder(
+                                itemCount: list.length,
+                                itemBuilder: (_, i) {
+                                  final u = list[i];
+                                  final uid = (u['id'] ?? u['_id']).toString();
+                                  final checked = selected.contains(uid);
+                                  final headshot = (u['headshotUrl'] ?? '').toString();
+                                  return CheckboxListTile(
+                                    value: checked,
+                                    activeColor: const Color(0xFFCB0002),
+                                    controlAffinity: ListTileControlAffinity.leading,
+                                    onChanged: (_) => setSheet(() {
+                                      if (checked) {
+                                        selected.remove(uid);
+                                      } else {
+                                        selected.add(uid);
+                                      }
+                                    }),
+                                    secondary: CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor: const Color(0xFFE5E7EB),
+                                      backgroundImage: headshot.isNotEmpty
+                                          ? NetworkImage(headshot.startsWith('http')
+                                              ? headshot
+                                              : 'https://millerstorm.tech$headshot')
+                                          : null,
+                                      child: headshot.isEmpty
+                                          ? Text(
+                                              (u['name'] ?? '?').toString().isNotEmpty
+                                                  ? (u['name'] ?? '?').toString()[0].toUpperCase()
+                                                  : '?',
+                                              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)))
+                                          : null,
+                                    ),
+                                    title: Text((u['name'] ?? 'Unknown').toString(),
+                                        style: TextStyle(fontSize: 14, color: textColor)),
+                                    subtitle: (u['role'] ?? '').toString().isNotEmpty
+                                        ? Text((u['role']).toString(),
+                                            style: TextStyle(fontSize: 11, color: textColor.withOpacity(0.5)))
+                                        : null,
+                                  );
+                                },
+                              ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+                    child: Row(
+                      children: [
+                        Text('${selected.length} selected',
+                            style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13)),
+                        const Spacer(),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFCB0002),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: (selected.isEmpty || sending)
+                              ? null
+                              : () async {
+                                  setSheet(() => sending = true);
+                                  final ok = await _forwardToUsers(message, selected.toList());
+                                  if (!mounted) return;
+                                  Navigator.pop(sheetContext);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(ok > 0
+                                        ? 'Forwarded to $ok ${ok == 1 ? 'person' : 'people'}'
+                                        : 'Could not forward the message')),
+                                  );
+                                },
+                          child: Text(sending ? 'Sending...' : 'Send'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Deliver a copy of [message] to each user id: open/create their DM, post it.
+  Future<int> _forwardToUsers(dynamic message, List<String> userIds) async {
+    final mType = (message['messageType'] ?? 'text').toString();
+    final Map<String, dynamic> baseBody = {
+      'senderId': widget.userId,
+      'senderName': userName,
+      'senderRole': widget.userRole,
+      'message': message['message'] ?? '',
+      'messageType': mType,
+      'mediaUrl': message['mediaUrl'] ?? '',
+    };
+    if (mType == 'poll' && message['poll'] != null) {
+      final poll = message['poll'] as Map<String, dynamic>;
+      baseBody['poll'] = {
+        'question': poll['question'],
+        'options': ((poll['options'] as List?) ?? [])
+            .map((o) => (o is Map ? o['text'] : o).toString())
+            .toList(),
+        'allowMultiple': poll['allowMultiple'] == true,
+      };
+    }
+
+    int ok = 0;
+    for (final uid in userIds) {
+      try {
+        final dmRes = await api.post(
+          Uri.parse('https://millerstorm.tech/api/storm-chat/dm'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'userId': uid}),
+        );
+        if (dmRes.statusCode != 200) continue;
+        final dm = json.decode(dmRes.body);
+        final msgRes = await api.post(
+          Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${dm['_id']}'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(baseBody),
+        );
+        if (msgRes.statusCode == 200 || msgRes.statusCode == 201) ok++;
+      } catch (_) {}
+    }
+    return ok;
   }
 
   Widget _buildEmojiOption(String emoji, VoidCallback onTap) {

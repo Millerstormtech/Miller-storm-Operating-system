@@ -95,9 +95,20 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [menuMessageId, setMenuMessageId] = useState<string | null>(null);
+  // WhatsApp-style reaction bar: which message's emoji picker is open, and
+  // whether the full emoji grid ("+") is expanded within it.
+  const [reactionPickerId, setReactionPickerId] = useState<string | null>(null);
+  const [reactionPickerExpanded, setReactionPickerExpanded] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   // Fullscreen image viewer (with a Download button), like the app's viewer.
   const [viewerImage, setViewerImage] = useState<string | null>(null);
+  // Forward a message to other users (each becomes a DM). Holds the message being
+  // forwarded, the (lazily loaded) directory, the picked user ids, and search.
+  const [forwardMsg, setForwardMsg] = useState<ChatMessage | null>(null);
+  const [forwardUsers, setForwardUsers] = useState<{ id: string; name: string; role?: string; headshotUrl?: string }[]>([]);
+  const [forwardSelected, setForwardSelected] = useState<Set<string>>(new Set());
+  const [forwardSearch, setForwardSearch] = useState("");
+  const [forwardSending, setForwardSending] = useState(false);
 
   // Save a photo/video to the user's device. Fetch the blob so it downloads
   // (with a filename) instead of just navigating to it.
@@ -290,6 +301,73 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     } catch (e) {
       console.error('[STORM-CHAT] reaction error', e);
     }
+  }
+
+  // Open the forward dialog for a message; lazy-load the user directory once.
+  function openForward(msg: ChatMessage) {
+    setForwardMsg(msg);
+    setForwardSelected(new Set());
+    setForwardSearch("");
+    setMenuMessageId(null);
+    if (forwardUsers.length === 0) {
+      const myId = user?._id || user?.id || '';
+      // Use the public directory (any authenticated user, incl. sales) — the
+      // admin-only /api/users returns 403 for reps, which left it "Loading…".
+      fetch('/api/users/directory')
+        .then(r => r.json())
+        .then((list) => {
+          const arr = (Array.isArray(list) ? list : []).filter((u: any) => u.id !== myId && u._id !== myId);
+          setForwardUsers(arr.map((u: any) => ({ id: u.id || u._id, name: u.name, role: u.role, headshotUrl: u.headshotUrl })));
+        })
+        .catch(() => {});
+    }
+  }
+
+  function toggleForwardUser(id: string) {
+    setForwardSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  // Forward the message to each picked user: open/create their DM, then post a
+  // copy (text/media/poll) into it.
+  async function sendForward() {
+    if (!forwardMsg || forwardSelected.size === 0 || forwardSending) return;
+    setForwardSending(true);
+    const m = forwardMsg;
+    const body: any = {
+      senderName: user?.name,
+      senderRole: user?.role,
+      message: m.message || '',
+      messageType: m.messageType,
+      mediaUrl: m.mediaUrl || '',
+    };
+    if (m.messageType === 'poll' && m.poll) {
+      body.poll = { question: m.poll.question, options: m.poll.options.map(o => o.text), allowMultiple: m.poll.allowMultiple };
+    }
+    let ok = 0, fail = 0;
+    for (const uid of Array.from(forwardSelected)) {
+      try {
+        const dmRes = await fetch('/api/storm-chat/dm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid }),
+        });
+        if (!dmRes.ok) { fail++; continue; }
+        const dm = await dmRes.json();
+        const msgRes = await fetch(`/api/storm-chat/messages/${dm._id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (msgRes.ok) ok++; else fail++;
+      } catch { fail++; }
+    }
+    setForwardSending(false);
+    setForwardMsg(null);
+    alert(fail === 0 ? `Forwarded to ${ok} ${ok === 1 ? 'person' : 'people'}.` : `Forwarded to ${ok}; ${fail} failed.`);
   }
 
   async function sendMessage() {
@@ -494,6 +572,87 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     return out;
   }
 
+  // WhatsApp-style reaction affordance: a small 😊 button beside the message
+  // (on hover) that opens a floating emoji bar; picking one applies the reaction.
+  function reactionAffordance(msg: ChatMessage, isMyMessage: boolean) {
+    const open = reactionPickerId === msg._id;
+    return (
+      <>
+        {/* Hover trigger */}
+        <button
+          onClick={() => { setReactionPickerId(open ? null : msg._id); setReactionPickerExpanded(false); }}
+          title="React"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            ...(isMyMessage ? { left: -54 } : { right: -54 }),
+            width: 26, height: 26, borderRadius: '50%',
+            background: '#fff', border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+            cursor: 'pointer', fontSize: 14, lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 5,
+          }}
+        >
+          🙂
+        </button>
+        {/* Click-away backdrop */}
+        {open && (
+          <div onClick={() => { setReactionPickerId(null); setReactionPickerExpanded(false); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 1100 }} />
+        )}
+        {/* Floating emoji bar */}
+        {open && (
+          <div
+            style={{
+              position: 'absolute', bottom: '100%', marginBottom: 6,
+              ...(isMyMessage ? { right: 0 } : { left: 0 }),
+              background: '#fff', borderRadius: 22,
+              boxShadow: '0 6px 20px rgba(0,0,0,0.18)', border: '1px solid #eee',
+              padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 2, zIndex: 1200,
+            }}
+          >
+            {REACTION_EMOJIS.map((em) => (
+              <button
+                key={em}
+                onClick={() => { toggleReaction(msg._id, em); setReactionPickerId(null); }}
+                title={em}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, padding: 3, borderRadius: '50%', lineHeight: 1 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.transform = 'scale(1.15)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                {em}
+              </button>
+            ))}
+            <button
+              onClick={() => setReactionPickerExpanded(v => !v)}
+              title="More"
+              style={{ background: '#f3f4f6', border: 'none', cursor: 'pointer', fontSize: 16, width: 30, height: 30, borderRadius: '50%', lineHeight: 1, color: '#6b7280', marginLeft: 2 }}
+            >
+              +
+            </button>
+            {reactionPickerExpanded && (
+              <div style={{ position: 'absolute', top: '100%', marginTop: 6, ...(isMyMessage ? { right: 0 } : { left: 0 }), width: 300, maxHeight: 200, overflowY: 'auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, zIndex: 1300 }}>
+                {CHAT_EMOJIS.map((em) => (
+                  <button
+                    key={em}
+                    onClick={() => { toggleReaction(msg._id, em); setReactionPickerId(null); setReactionPickerExpanded(false); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 4, borderRadius: 6, lineHeight: 1 }}
+                    onMouseEnter={(ev) => (ev.currentTarget.style.background = '#f3f4f6')}
+                    onMouseLeave={(ev) => (ev.currentTarget.style.background = 'none')}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </>
+    );
+  }
+
   function renderMessage(msg: ChatMessage, index: number) {
     const isMyMessage = msg.senderId === (user?._id || user?.id);
     const showDate = index === 0 || 
@@ -532,7 +691,10 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             padding: isBlinking ? 4 : 0,
             position: 'relative'
           }}>
-          <div style={{ 
+          <div
+            onMouseEnter={() => setHoveredMessageId(msg._id)}
+            onMouseLeave={() => { setHoveredMessageId(null); if (menuMessageId === msg._id) setMenuMessageId(null); }}
+            style={{
             maxWidth: '70%',
             display: 'flex',
             flexDirection: 'column',
@@ -544,7 +706,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 {msg.senderName}
               </div>
             )}
-            
+
+            {/* Message body wrapper: the reaction 🙂 button anchors here (only the
+                bubble), so it lines up with the ⋮ button — not shifted by the
+                sender name above or reaction badges below. */}
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: isMyMessage ? 'flex-end' : 'flex-start' }}>
+            {reactionAffordance(msg, isMyMessage)}
             {msg.messageType === 'poll' && msg.poll && (() => {
               // Percentage is out of the group's total members, not just the votes
               // cast — so a single vote in a 9-member group reads ~11%, not 100%.
@@ -577,12 +744,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             })()}
             {msg.messageType === 'text' && (
               <div
-                onMouseEnter={() => setHoveredMessageId(msg._id)}
-                onMouseLeave={() => {
-                  setHoveredMessageId(null);
-                  if (!showMenu) setMenuMessageId(null);
-                }}
-                style={{ 
+                style={{
                   backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
                   color: isMyMessage ? '#fff' : '#111827',
                   padding: '10px 14px',
@@ -630,21 +792,6 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       overflow: 'hidden'
                     }}
                   >
-                    {/* Quick emoji reactions */}
-                    <div style={{ display: 'flex', gap: 2, padding: '6px 8px', borderBottom: '1px solid #374151' }}>
-                      {REACTION_EMOJIS.map((em) => (
-                        <button
-                          key={em}
-                          onClick={() => { toggleReaction(msg._id, em); setMenuMessageId(null); }}
-                          title={`React ${em}`}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3, borderRadius: 6, lineHeight: 1 }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#374151')}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                        >
-                          {em}
-                        </button>
-                      ))}
-                    </div>
                     {/* Message this sender privately (groups only, others' messages) */}
                     {!isDirect && !isMyMessage && onMessagePrivately && (
                       <button
@@ -678,6 +825,26 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       ↩ Reply
+                    </button>
+                    <button
+                      onClick={() => openForward(msg)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      ➦ Forward
                     </button>
                     <button
                       onClick={() => {
@@ -825,8 +992,11 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 </a>
               </div>
             )}
+            </div>{/* end message body wrapper */}
 
-            {/* Reaction chips below the bubble (grouped by emoji, click to toggle) */}
+            {/* Reaction badges that sit ON the bubble's bottom edge (WhatsApp
+                style): pulled up with a negative margin so they overlap the
+                bubble slightly, each a white pill with a shadow. */}
             {msg.reactions && msg.reactions.length > 0 && (() => {
               const myId = user?._id || user?.id || '';
               const counts: Record<string, { count: number; mine: boolean }> = {};
@@ -836,21 +1006,22 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 if (r.userId === myId) counts[r.emoji].mine = true;
               });
               return (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4, justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: -11, marginRight: isMyMessage ? 6 : 0, marginLeft: isMyMessage ? 0 : 6, justifyContent: isMyMessage ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 3 }}>
                   {Object.entries(counts).map(([em, { count, mine }]) => (
                     <button
                       key={em}
                       onClick={() => toggleReaction(msg._id, em)}
                       title={mine ? 'Remove your reaction' : 'React'}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 3,
-                        background: mine ? '#dbeafe' : '#f3f4f6',
+                        display: 'flex', alignItems: 'center', gap: 2,
+                        background: '#fff',
                         border: `1px solid ${mine ? '#93c5fd' : '#e5e7eb'}`,
-                        borderRadius: 12, padding: '1px 7px', cursor: 'pointer', fontSize: 12, lineHeight: 1.6,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                        borderRadius: 999, padding: '1px 6px', cursor: 'pointer', fontSize: 12, lineHeight: 1.5,
                       }}
                     >
                       <span>{em}</span>
-                      <span style={{ color: '#4b5563', fontWeight: 600 }}>{count}</span>
+                      {count > 1 && <span style={{ color: '#4b5563', fontWeight: 600, fontSize: 11 }}>{count}</span>}
                     </button>
                   ))}
                 </div>
@@ -1049,6 +1220,59 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 </div>
               </div>
             )}
+            {/* Forward-to-users dialog */}
+            {forwardMsg && (() => {
+              const q = forwardSearch.trim().toLowerCase();
+              const list = q ? forwardUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.role || '').toLowerCase().includes(q)) : forwardUsers;
+              const preview = forwardMsg.messageType === 'text' ? forwardMsg.message
+                : forwardMsg.messageType === 'image' ? '📷 Photo'
+                : forwardMsg.messageType === 'video' ? '🎥 Video'
+                : forwardMsg.messageType === 'poll' ? `📊 ${forwardMsg.poll?.question || 'Poll'}`
+                : '📎 File';
+              return (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setForwardMsg(null)}>
+                  <div style={{ background: '#fff', borderRadius: 12, padding: 18, width: 420, maxWidth: '92vw', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Forward message</div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 12, padding: '6px 10px', background: '#f3f4f6', borderRadius: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{preview}</div>
+                    <input
+                      value={forwardSearch}
+                      onChange={e => setForwardSearch(e.target.value)}
+                      placeholder="Search people..."
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 10, fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                    <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #f3f4f6', borderRadius: 8 }}>
+                      {list.length === 0 && (
+                        <div style={{ padding: 16, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+                          {forwardUsers.length === 0 ? 'Loading people…' : 'No matches'}
+                        </div>
+                      )}
+                      {list.map(u => {
+                        const checked = forwardSelected.has(u.id);
+                        return (
+                          <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: checked ? '#eff6ff' : 'transparent' }}>
+                            <input type="checkbox" checked={checked} onChange={() => toggleForwardUser(u.id)} />
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#6b7280', flex: '0 0 auto' }}>
+                              {u.headshotUrl ? <img src={u.headshotUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (u.name?.[0]?.toUpperCase() || '?')}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name}</div>
+                              {u.role && <div style={{ fontSize: 11, color: '#9ca3af' }}>{u.role}</div>}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                      <span style={{ fontSize: 13, color: '#6b7280' }}>{forwardSelected.size} selected</span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button type="button" onClick={() => setForwardMsg(null)} style={{ padding: '8px 16px', background: '#f3f4f6', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
+                        <button type="button" onClick={sendForward} disabled={forwardSelected.size === 0 || forwardSending} style={{ padding: '8px 16px', background: forwardSelected.size === 0 || forwardSending ? '#fca5a5' : '#CB0002', color: '#fff', border: 'none', borderRadius: 8, cursor: forwardSelected.size === 0 || forwardSending ? 'not-allowed' : 'pointer', fontWeight: 600 }}>{forwardSending ? 'Sending…' : 'Send'}</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
             {/* Emoji picker */}
             {showEmoji && (
