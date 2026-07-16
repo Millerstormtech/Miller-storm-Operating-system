@@ -86,4 +86,14 @@ ChatMessageSchema.index({ groupId: 1, createdAt: -1 });
 // so this is a multikey index.
 ChatMessageSchema.index({ groupId: 1, mentions: 1, createdAt: -1 });
 
+// Next.js dev keeps the mongoose singleton alive across hot reloads, so a model
+// compiled before a schema change (e.g. adding the 'poll' messageType) stays
+// cached with the OLD schema and rejects the new value — a browser refresh alone
+// won't fix it. Drop the stale model in dev so schema edits take effect without a
+// full server restart. Production compiles once from a fresh build, so it's a no-op.
+if (process.env.NODE_ENV !== 'production') {
+  delete (mongoose.models as any).ChatMessage;
+  delete ((mongoose.connection && (mongoose.connection as any).models) || {}).ChatMessage;
+}
+
 export default mongoose.models.ChatMessage || mongoose.model<IChatMessage>('ChatMessage', ChatMessageSchema);
