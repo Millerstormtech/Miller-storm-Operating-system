@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:video_compress/video_compress.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,7 +57,22 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   bool _hasNewMessages = false;
   dynamic _longPressedMessage;
   String? _emojiTrayMessageId;
-  
+  // Composer emoji picker
+  bool _showEmojiPicker = false;
+  static const List<String> _chatEmojis = [
+    '😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😋','😛','😜','🤪','🤨','🧐','🤓','😎','🥳','😏','😒','😔','😟','🙁','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','🙄','😮','😲','🥱','😴','🤤','🤢','🤮','🤧','😷','🤒','🤑','🤠','😈','👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','👋','🙌','🤝','🙏','💪','🔥','⭐','🌟','✨','💯','✅','❌','❤️','🧡','💛','💚','💙','💜','🖤','💔','🎉','🎊','🚀','💰','📈','🏆','🥇','💡','👀','🎯',
+  ];
+
+  void _insertEmoji(String e) {
+    final text = _messageController.text;
+    final sel = _messageController.selection;
+    final start = sel.start >= 0 ? sel.start : text.length;
+    final end = sel.end >= 0 ? sel.end : text.length;
+    final newText = text.replaceRange(start, end, e);
+    _messageController.text = newText;
+    _messageController.selection = TextSelection.collapsed(offset: start + e.length);
+  }
+
   // Mention feature
   bool _showMentionList = false;
   List<dynamic> _filteredMembers = [];
@@ -578,6 +594,22 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 }
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.gif_box_outlined, color: Color(0xFFCB0002)),
+              title: const Text('Send GIF'),
+              onTap: () async {
+                Navigator.pop(context);
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['gif'],
+                );
+                if (result != null && result.files.single.path != null) {
+                  // Upload the raw .gif as-is (no editor / re-encode) so it stays
+                  // animated; sent as an image message.
+                  _uploadFile(File(result.files.single.path!), 'image');
+                }
+              },
+            ),
           ],
         ),
       ),
@@ -1095,8 +1127,41 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           textAlign: TextAlign.center,
                         ),
                       )
-                    : Row(
+                    : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_showEmojiPicker)
+                          Container(
+                            height: 200,
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: textFieldColor,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: GridView.count(
+                              crossAxisCount: 8,
+                              padding: const EdgeInsets.all(8),
+                              children: _chatEmojis
+                                  .map((e) => InkWell(
+                                        onTap: () => _insertEmoji(e),
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Center(child: Text(e, style: const TextStyle(fontSize: 22))),
+                                      ))
+                                  .toList(),
+                            ),
+                          ),
+                        Row(
                         children: [
+                          IconButton(
+                            icon: Icon(
+                              _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
+                              color: const Color(0xFFCB0002),
+                            ),
+                            onPressed: () {
+                              if (!_showEmojiPicker) FocusScope.of(context).unfocus();
+                              setState(() => _showEmojiPicker = !_showEmojiPicker);
+                            },
+                          ),
                           IconButton(
                             icon: Icon(
                               isUploading ? Icons.hourglass_empty : Icons.attach_file,
@@ -1164,6 +1229,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           ),
                         ],
                       ),
+                      ],
+                    ),
               ],
             ),
           ),

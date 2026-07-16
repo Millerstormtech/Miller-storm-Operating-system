@@ -43,11 +43,15 @@ type Props = {
   onMessagePrivately?: (userId: string, name: string) => void;
 };
 
+// Common emojis for the composer picker (unicode — no dependency needed).
+const CHAT_EMOJIS = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😜","🤪","🤨","🧐","🤓","😎","🥳","😏","😒","😔","😟","🙁","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","🙄","😮","😲","🥱","😴","🤤","🤢","🤮","🤧","😷","🤒","🤑","🤠","😈","👍","👎","👌","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","👋","🙌","🤝","🙏","💪","🔥","⭐","🌟","✨","💯","✅","❌","❤️","🧡","💛","💚","💙","💜","🖤","💔","🎉","🎊","🚀","💰","📈","🏆","🥇","💡","👀","🎯"];
+
 export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivately }: Props) {
   const { user } = useAuth();
   const isDirect = !!group.isDirect;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [showEmoji, setShowEmoji] = useState(false);
   // @mention autocomplete: the group's members and the current "@…" query.
   const [members, setMembers] = useState<{ _id: string; name: string; headshotUrl?: string }[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -58,6 +62,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const gifInputRef = useRef<HTMLInputElement>(null);
   const [blinkingMessageId, setBlinkingMessageId] = useState<string | null>(null);
   const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -821,7 +826,61 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 </div>
               );
             })()}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
+            {/* Emoji picker */}
+            {showEmoji && (
+              <div style={{ position: 'absolute', bottom: 56, left: 0, width: 296, maxHeight: 220, overflowY: 'auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, zIndex: 30 }}>
+                {CHAT_EMOJIS.map((e) => (
+                  <button key={e} type="button" onClick={() => { setNewMessage(prev => prev + e); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 4, borderRadius: 6, lineHeight: 1 }}
+                    onMouseEnter={(ev) => (ev.currentTarget.style.background = '#f3f4f6')}
+                    onMouseLeave={(ev) => (ev.currentTarget.style.background = 'none')}>{e}</button>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowEmoji(v => !v)}
+              style={{
+                padding: '10px 12px',
+                backgroundColor: showEmoji ? '#e5e7eb' : '#f3f4f6',
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontSize: 18
+              }}
+            >
+              😊
+            </button>
+            {/* GIF: pick a .gif from the device; sent as an image (animates). */}
+            <input
+              ref={gifInputRef}
+              type="file"
+              accept=".gif,image/gif"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+                e.currentTarget.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => gifInputRef.current?.click()}
+              disabled={uploading}
+              style={{
+                padding: '10px 12px',
+                backgroundColor: '#f3f4f6',
+                border: 'none',
+                borderRadius: 8,
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#6b7280'
+              }}
+            >
+              GIF
+            </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
