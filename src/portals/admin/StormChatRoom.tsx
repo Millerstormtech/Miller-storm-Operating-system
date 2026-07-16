@@ -45,6 +45,24 @@ type Props = {
 };
 
 // Common emojis for the composer picker (unicode — no dependency needed).
+// Shared square style so the composer's emoji / GIF / poll / attach buttons are
+// all identical 40×40 boxes with centered content.
+const COMPOSER_BTN: React.CSSProperties = {
+  width: 40,
+  height: 40,
+  padding: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flex: '0 0 auto',
+  backgroundColor: '#f3f4f6',
+  border: 'none',
+  borderRadius: 8,
+  cursor: 'pointer',
+  fontSize: 18,
+  lineHeight: 1,
+};
+
 const CHAT_EMOJIS = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😜","🤪","🤨","🧐","🤓","😎","🥳","😏","😒","😔","😟","🙁","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","🙄","😮","😲","🥱","😴","🤤","🤢","🤮","🤧","😷","🤒","🤑","🤠","😈","👍","👎","👌","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","👋","🙌","🤝","🙏","💪","🔥","⭐","🌟","✨","💯","✅","❌","❤️","🧡","💛","💚","💙","💜","🖤","💔","🎉","🎊","🚀","💰","📈","🏆","🥇","💡","👀","🎯"];
 
 export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivately }: Props) {
@@ -959,14 +977,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <button
               type="button"
               onClick={() => setShowEmoji(v => !v)}
-              style={{
-                padding: '10px 12px',
-                backgroundColor: showEmoji ? '#e5e7eb' : '#f3f4f6',
-                border: 'none',
-                borderRadius: 8,
-                cursor: 'pointer',
-                fontSize: 18
-              }}
+              title="Emoji"
+              style={{ ...COMPOSER_BTN, backgroundColor: showEmoji ? '#e5e7eb' : '#f3f4f6' }}
             >
               😊
             </button>
@@ -986,16 +998,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               type="button"
               onClick={() => gifInputRef.current?.click()}
               disabled={uploading}
-              style={{
-                padding: '10px 12px',
-                backgroundColor: '#f3f4f6',
-                border: 'none',
-                borderRadius: 8,
-                cursor: uploading ? 'not-allowed' : 'pointer',
-                fontSize: 13,
-                fontWeight: 700,
-                color: '#6b7280'
-              }}
+              title="Send a GIF"
+              style={{ ...COMPOSER_BTN, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, color: '#6b7280' }}
             >
               GIF
             </button>
@@ -1003,14 +1007,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               <button
                 type="button"
                 onClick={() => setShowPoll(true)}
-                style={{
-                  padding: '10px 12px',
-                  backgroundColor: '#f3f4f6',
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontSize: 18
-                }}
+                style={COMPOSER_BTN}
                 title="Create a poll"
               >
                 📊
@@ -1020,14 +1017,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              style={{
-                padding: '10px 12px',
-                backgroundColor: '#f3f4f6',
-                border: 'none',
-                borderRadius: 8,
-                cursor: uploading ? 'not-allowed' : 'pointer',
-                fontSize: 18
-              }}
+              title="Attach photo or video"
+              style={{ ...COMPOSER_BTN, cursor: uploading ? 'not-allowed' : 'pointer' }}
             >
               {uploading ? '⏳' : '📎'}
             </button>
