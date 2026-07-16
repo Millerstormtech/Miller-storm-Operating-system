@@ -15,6 +15,7 @@ type ChatMessage = {
   replyTo?: string;
   replyToMessage?: string;
   replyToSender?: string;
+  reactions?: { emoji: string; userId: string; userName: string }[];
   createdAt: Date;
 };
 
@@ -62,6 +63,9 @@ const COMPOSER_BTN: React.CSSProperties = {
   fontSize: 18,
   lineHeight: 1,
 };
+
+// Quick-reaction row shown on a message (matches the app's reaction tray).
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '😢', '👎'];
 
 const CHAT_EMOJIS = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😜","🤪","🤨","🧐","🤓","😎","🥳","😏","😒","😔","😟","🙁","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","🙄","😮","😲","🥱","😴","🤤","🤢","🤮","🤧","😷","🤒","🤑","🤠","😈","👍","👎","👌","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","👋","🙌","🤝","🙏","💪","🔥","⭐","🌟","✨","💯","✅","❌","❤️","🧡","💛","💚","💙","💜","🖤","💔","🎉","🎊","🚀","💰","📈","🏆","🥇","💡","👀","🎯"];
 
@@ -268,6 +272,23 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
       }
     } catch (e) {
       console.error('[STORM-CHAT] poll vote error', e);
+    }
+  }
+
+  // Add or toggle off an emoji reaction on a message (same PATCH the app uses).
+  async function toggleReaction(messageId: string, emoji: string) {
+    try {
+      const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId, emoji, userName: user?.name }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setMessages(prev => prev.map(m => (m._id === messageId ? { ...m, reactions: updated.reactions || [] } : m)));
+      }
+    } catch (e) {
+      console.error('[STORM-CHAT] reaction error', e);
     }
   }
 
@@ -609,6 +630,21 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       overflow: 'hidden'
                     }}
                   >
+                    {/* Quick emoji reactions */}
+                    <div style={{ display: 'flex', gap: 2, padding: '6px 8px', borderBottom: '1px solid #374151' }}>
+                      {REACTION_EMOJIS.map((em) => (
+                        <button
+                          key={em}
+                          onClick={() => { toggleReaction(msg._id, em); setMenuMessageId(null); }}
+                          title={`React ${em}`}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3, borderRadius: 6, lineHeight: 1 }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#374151')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        >
+                          {em}
+                        </button>
+                      ))}
+                    </div>
                     {/* Message this sender privately (groups only, others' messages) */}
                     {!isDirect && !isMyMessage && onMessagePrivately && (
                       <button
@@ -789,6 +825,37 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 </a>
               </div>
             )}
+
+            {/* Reaction chips below the bubble (grouped by emoji, click to toggle) */}
+            {msg.reactions && msg.reactions.length > 0 && (() => {
+              const myId = user?._id || user?.id || '';
+              const counts: Record<string, { count: number; mine: boolean }> = {};
+              msg.reactions.forEach(r => {
+                if (!counts[r.emoji]) counts[r.emoji] = { count: 0, mine: false };
+                counts[r.emoji].count += 1;
+                if (r.userId === myId) counts[r.emoji].mine = true;
+              });
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4, justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }}>
+                  {Object.entries(counts).map(([em, { count, mine }]) => (
+                    <button
+                      key={em}
+                      onClick={() => toggleReaction(msg._id, em)}
+                      title={mine ? 'Remove your reaction' : 'React'}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 3,
+                        background: mine ? '#dbeafe' : '#f3f4f6',
+                        border: `1px solid ${mine ? '#93c5fd' : '#e5e7eb'}`,
+                        borderRadius: 12, padding: '1px 7px', cursor: 'pointer', fontSize: 12, lineHeight: 1.6,
+                      }}
+                    >
+                      <span>{em}</span>
+                      <span style={{ color: '#4b5563', fontWeight: 600 }}>{count}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
