@@ -6,6 +6,7 @@ import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../sr
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
+import { addUserToBranchGroup } from "../../../src/lib/branchGroup";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -76,6 +77,8 @@ async function handler(
           { returnDocument: "after" }
         ).lean();
         const { passwordHash: _rph, ...safeRestored } = restored;
+        // Auto-add the (re-activated) user to their branch's StormChat group.
+        await addUserToBranchGroup(String((safeRestored as any)._id), (safeRestored as any).territory);
         res.status(201).json(safeRestored);
         return;
       }
@@ -96,6 +99,9 @@ async function handler(
     }
     const createdObj = (await UserModel.findOne({ id }).lean()) as any;
     const { passwordHash: _ph, ...safeUser } = createdObj;
+
+    // Auto-add the new user to their branch's StormChat group chat.
+    await addUserToBranchGroup(String(createdObj._id), createdObj.territory);
 
     // Send notification email if requested
     if (sendNotification && safeUser.email) {
