@@ -721,8 +721,17 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               const votersCount = voterSet.size;
               const myId = user?._id || user?.id || '';
               return (
-                <div style={{ backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6', color: isMyMessage ? '#fff' : '#111827', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>📊 {msg.poll.question}</div>
+                <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6', color: isMyMessage ? '#fff' : '#111827', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
+                  {(isMyMessage || (isAdmin && !isDirect)) && (
+                    <button
+                      onClick={() => deleteMessage(msg._id)}
+                      title="Delete poll"
+                      style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: '50%', border: 'none', background: isMyMessage ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: 'inherit', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      🗑
+                    </button>
+                  )}
+                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, paddingRight: (isMyMessage || (isAdmin && !isDirect)) ? 28 : 0 }}>📊 {msg.poll.question}</div>
                   {msg.poll.options.map((opt, i) => {
                     const votes = opt.votes?.length || 0;
                     const pct = Math.round((votes / totalMembers) * 100);

@@ -738,8 +738,24 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('📊 ${poll['question'] ?? ''}',
-            style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 15)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text('📊 ${poll['question'] ?? ''}',
+                  style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+            // Sender can delete their own poll (long-press options also work).
+            if (isMyMessage)
+              GestureDetector(
+                onTap: () => _confirmDeleteMessage(message),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Icon(Icons.delete_outline, size: 18, color: textColor.withOpacity(0.85)),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 8),
         ...options.asMap().entries.map((entry) {
           final i = entry.key;
