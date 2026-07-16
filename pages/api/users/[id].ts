@@ -6,6 +6,7 @@ import { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } from "../../.
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { validateUserPayload } from "../../../src/lib/sanitize";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
+import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
 
 export default async function handler(
   req: NextApiRequest,
@@ -95,6 +96,14 @@ export default async function handler(
       return;
     }
     const { passwordHash: updatedPasswordHash, ...safeUser } = updated;
+
+    // Keep branch group-chat membership in sync when branches change on edit
+    // (only ever adds — never removes existing memberships).
+    {
+      const u = safeUser as any;
+      const branches = (u.branches && u.branches.length > 0) ? u.branches : [u.territory];
+      await addUserToBranchGroups(String(u._id), branches);
+    }
 
     let emailWarning: string | null = null;
 

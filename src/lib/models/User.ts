@@ -67,6 +67,7 @@ const userSchema = new Schema(
     headshotUrl: String,
     phone: String,
     territory: String,
+    branches: [String],
     passwordHash: String,
     businessPlan: businessPlanSchema,
     videoUrl: String,

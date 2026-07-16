@@ -95,6 +95,9 @@ export type UserProfile = {
   headshotUrl?: string;
   phone?: string;
   territory?: string;
+  // A user can belong to more than one branch. `territory` stays the primary
+  // (first) branch for single-branch logic; `branches` holds the full set.
+  branches?: string[];
   businessPlan?: BusinessPlan;
   videoUrl?: string;
   webPage?: WebPageStatus;
