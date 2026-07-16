@@ -610,14 +610,16 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 }
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.poll_outlined, color: Color(0xFFCB0002)),
-              title: const Text('Create Poll'),
-              onTap: () {
-                Navigator.pop(context);
-                _openPollDialog();
-              },
-            ),
+            // Polls only make sense in groups/subgroups, not 1:1 personal chats.
+            if (widget.group['isDirect'] != true)
+              ListTile(
+                leading: const Icon(Icons.poll_outlined, color: Color(0xFFCB0002)),
+                title: const Text('Create Poll'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openPollDialog();
+                },
+              ),
           ],
         ),
       ),
