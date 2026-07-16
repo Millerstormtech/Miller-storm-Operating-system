@@ -140,6 +140,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const branchActive = !!branchFilter && branchFilter !== NONE;
   const visibleColumns = branchActive ? COLUMNS.filter((c) => c.key !== "branch" && c.key !== "team") : COLUMNS;
 
+  // Footer "Sum" row totals. Reduced over `visible` (the on-screen rows), so it reflects
+  // the current view automatically — filters, branch scoping, and date range all included.
+  const totals = visible.reduce(
+    (a, r) => {
+      a.verifiedKnocks += r.verifiedKnocks ?? 0;
+      a.filed += r.filed ?? 0;
+      a.won += r.won ?? 0;
+      a.revenue += r.revenue ?? 0;
+      return a;
+    },
+    { verifiedKnocks: 0, filed: 0, won: 0, revenue: 0 }
+  );
+
   return (
     <div>
       {/* "Your rank" pop-out — shown to any user who is on the board (sales rep,
@@ -244,13 +257,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           ℹ️ How to read this board
         </summary>
         <ul style={{ margin: "10px 0 2px", paddingLeft: 18, fontSize: 12.5, color: "#4b5563", lineHeight: 1.6 }}>
-          <li><strong>Who&apos;s listed:</strong> every active door-knocker.</li>
-          <li><strong>The columns:</strong> <em>Verified Door Knocks</em> = GPS-verified doors knocked. <em>Claims Filed</em> = insurance claims started. <em>Contracts</em> = signed contracts. <em>Contract Amount</em> = $ value of those contracts.</li>
-          <li><strong>Branch &amp; Team</strong> = the rep&apos;s home branch and team.</li>
-          <li><strong>Filtering by branch</strong> shows only the sales made in that branch. If a rep sells in more than one branch, each branch shows just its own share. Remove the filter to see their full total. While a branch filter is on, the Branch and Team columns are hidden to avoid confusion.</li>
-          <li><strong>Verified Door Knocks</strong> count only under a rep&apos;s home branch. If you filter to a different branch where they made sales, their knocks show as 0 there.</li>
-          <li><strong>$0 is normal:</strong> a rep can knock a lot and still show $0 if they set appointments a closer finishes (the closer gets the contract credit).</li>
-          <li>🟠 <strong>orange dot</strong> = no AccuLynx account. ❌ = former rep.</li>
+          <li><strong>Who&apos;s listed here:</strong> every active sales rep.</li>
+          <li>A rep can sell in more than one branch (for example, when storm-chasing away from home). Filtering by branch shows only the sales made in that branch. In this case each row shows only that rep&apos;s sales data for the filtered branch. Remove the branch filter to see their full total across every branch.</li>
+          <li>However, <strong>Verified Door Knocks</strong> is the only data point that always counts under a rep&apos;s home branch. So if you filter to another branch where the rep made sales, you&apos;ll see those sales (as mentioned in the previous point) but their knocks show as 0 there.</li>
         </ul>
       </details>
 
@@ -324,6 +333,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                 );
               })}
             </tbody>
+            {visible.length > 0 ? (
+              <tfoot>
+                <tr style={{ borderTop: "2px solid #cbd5e1", background: "#f1f5f9", fontWeight: 700 }}>
+                  <td colSpan={branchActive ? 2 : 4} style={{ padding: "10px 14px", textAlign: "left" }}>
+                    Sum ({visible.length} rep{visible.length === 1 ? "" : "s"})
+                  </td>
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.verifiedKnocks}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.filed}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.won}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "center", color: "#16a34a" }}>{fmtMoney(totals.revenue)}</td>
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         </div>
       )}
