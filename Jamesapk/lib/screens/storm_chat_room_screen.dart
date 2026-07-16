@@ -720,10 +720,17 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   Widget _buildPollCard(Map<String, dynamic> message, bool isMyMessage, Color textColor) {
     final poll = message['poll'] as Map<String, dynamic>;
     final options = (poll['options'] as List?) ?? [];
-    int totalVotes = 0;
+    // Percentage is out of the group's total members, not just the votes cast —
+    // so a single vote in a 9-member group reads ~11%, not 100%.
+    final totalMembers = ((widget.group['members'] as List?)?.length ?? 0);
+    final denom = totalMembers > 0 ? totalMembers : 1;
+    final voterSet = <String>{};
     for (final o in options) {
-      totalVotes += ((o['votes'] as List?)?.length ?? 0);
+      for (final v in ((o['votes'] as List?) ?? [])) {
+        voterSet.add(v.toString());
+      }
     }
+    final votersCount = voterSet.length;
     final myId = widget.userId;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -736,7 +743,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           final i = entry.key;
           final o = entry.value as Map<String, dynamic>;
           final votes = (o['votes'] as List?)?.length ?? 0;
-          final pct = totalVotes > 0 ? ((votes / totalVotes) * 100).round() : 0;
+          final pct = ((votes / denom) * 100).round();
           final voted = ((o['votes'] as List?) ?? []).contains(myId);
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),
@@ -782,7 +789,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ),
           );
         }),
-        Text('$totalVotes vote${totalVotes != 1 ? 's' : ''} · tap to vote${poll['allowMultiple'] == true ? ' (multiple)' : ''}',
+        Text('$votersCount of $denom voted · tap to vote${poll['allowMultiple'] == true ? ' (multiple)' : ''}',
             style: TextStyle(color: textColor.withOpacity(0.75), fontSize: 11)),
       ],
     );

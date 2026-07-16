@@ -487,14 +487,19 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             )}
             
             {msg.messageType === 'poll' && msg.poll && (() => {
-              const totalVotes = msg.poll.options.reduce((s, o) => s + (o.votes?.length || 0), 0);
+              // Percentage is out of the group's total members, not just the votes
+              // cast — so a single vote in a 9-member group reads ~11%, not 100%.
+              const totalMembers = Math.max(group.members?.length || 0, 1);
+              const voterSet = new Set<string>();
+              msg.poll.options.forEach(o => (o.votes || []).forEach(v => voterSet.add(v)));
+              const votersCount = voterSet.size;
               const myId = user?._id || user?.id || '';
               return (
                 <div style={{ backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6', color: isMyMessage ? '#fff' : '#111827', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>📊 {msg.poll.question}</div>
                   {msg.poll.options.map((opt, i) => {
                     const votes = opt.votes?.length || 0;
-                    const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+                    const pct = Math.round((votes / totalMembers) * 100);
                     const voted = (opt.votes || []).includes(myId);
                     return (
                       <button key={i} type="button" onClick={() => votePoll(msg._id, i)}
@@ -507,7 +512,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       </button>
                     );
                   })}
-                  <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''} · tap to vote{msg.poll.allowMultiple ? ' (multiple)' : ''}</div>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{votersCount} of {totalMembers} voted · tap to vote{msg.poll.allowMultiple ? ' (multiple)' : ''}</div>
                 </div>
               );
             })()}
