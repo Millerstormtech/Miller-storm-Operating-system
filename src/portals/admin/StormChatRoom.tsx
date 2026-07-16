@@ -217,15 +217,21 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
       });
       if (response.ok) {
         const message = await response.json();
-        setMessages([...messages, message]);
+        setMessages(prev => [...prev, message]);
         setShowPoll(false);
         setPollQuestion("");
         setPollOptions(["", ""]);
         setPollMultiple(false);
         setShouldAutoScroll(true);
+      } else {
+        let err = '';
+        try { err = (await response.json())?.error || ''; } catch {}
+        console.error('[STORM-CHAT] poll send failed', response.status, err);
+        alert(`Poll could not be sent: ${err || response.status}`);
       }
     } catch (e) {
       console.error('[STORM-CHAT] poll send error', e);
+      alert('Poll could not be sent. Check your connection and try again.');
     } finally {
       setSending(false);
     }
