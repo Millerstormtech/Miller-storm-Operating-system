@@ -428,13 +428,22 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
 
   function renderTextWithLinks(text: string, textColor: string) {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-    
-    return parts.map((part, index) => {
-      if (urlRegex.test(part)) {
-        return (
+    // Highlight @Name mentions using the group's member names (longest first so
+    // "@John Doe" wins over "@John"). Names come from the mention autocomplete list.
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const names = members.map(m => m.name).filter(Boolean).sort((a, b) => b.length - a.length);
+    const mentionSet = new Set(names.map(n => '@' + n));
+    const mentionRegex = names.length ? new RegExp(`(@(?:${names.map(esc).join('|')}))`, 'g') : null;
+    const onColoredBubble = textColor === '#fff';
+    const mentionColor = onColoredBubble ? '#ffffff' : '#1d4ed8';
+    const mentionBg = onColoredBubble ? 'rgba(255,255,255,0.25)' : 'rgba(37,99,235,0.12)';
+
+    const out: React.ReactNode[] = [];
+    text.split(urlRegex).forEach((part, index) => {
+      if (/^https?:\/\//.test(part)) {
+        out.push(
           <a
-            key={index}
+            key={`u${index}`}
             href={part}
             target="_blank"
             rel="noopener noreferrer"
@@ -448,9 +457,20 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             {part}
           </a>
         );
+        return;
       }
-      return part;
+      if (!mentionRegex) { out.push(part); return; }
+      part.split(mentionRegex).forEach((seg, j) => {
+        if (seg && mentionSet.has(seg)) {
+          out.push(
+            <span key={`m${index}-${j}`} style={{ color: mentionColor, fontWeight: 700, backgroundColor: mentionBg, borderRadius: 4, padding: '0 3px' }}>{seg}</span>
+          );
+        } else if (seg) {
+          out.push(seg);
+        }
+      });
     });
+    return out;
   }
 
   function renderMessage(msg: ChatMessage, index: number) {

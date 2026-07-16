@@ -2442,17 +2442,24 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             },
         ));
       } else if (type == 'mention') {
-        // Add mention - white for my messages, white in dark theme for others, red in light theme for others
-        final mentionColor = isMyMessage 
-            ? Colors.white 
-            : (_isDarkTheme ? Colors.white : const Color(0xFFCB0002));
-        
+        // Mentions get a tinted "pill" behind bold text so they stand out on any
+        // bubble — including my own (red) bubble where plain white blended in.
+        final Color mentionFg = isMyMessage
+            ? Colors.white
+            : (_isDarkTheme ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8));
+        final Color mentionBg = isMyMessage
+            ? Colors.white.withOpacity(0.25)
+            : (_isDarkTheme
+                ? const Color(0xFF1D4ED8).withOpacity(0.38)
+                : const Color(0xFF2563EB).withOpacity(0.12));
+
         spans.add(TextSpan(
           text: content,
           style: TextStyle(
             fontSize: 14,
-            color: mentionColor,
-            fontWeight: FontWeight.w600,
+            color: mentionFg,
+            fontWeight: FontWeight.w700,
+            background: Paint()..color = mentionBg,
           ),
         ));
       }
