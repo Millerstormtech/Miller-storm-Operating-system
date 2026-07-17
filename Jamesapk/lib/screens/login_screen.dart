@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import '../services/firebase_messaging_service.dart';
@@ -21,11 +22,43 @@ class _LoginScreenState extends State<LoginScreen> {
   String _error = '';
   bool _biometricAvailable = false;
   String _biometricLabel = 'Face ID';
+  // "Remember me": saved email + password (encrypted, iOS Keychain/Android Keystore).
+  bool _rememberMe = true;
+  static const _secure = FlutterSecureStorage();
+  static const _kRememberEmail = 'remember_email';
+  static const _kRememberPassword = 'remember_password';
 
   @override
   void initState() {
     super.initState();
     _checkBiometric();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final email = await _secure.read(key: _kRememberEmail);
+      final password = await _secure.read(key: _kRememberPassword);
+      if (mounted && email != null && email.isNotEmpty) {
+        setState(() {
+          _emailController.text = email;
+          if (password != null) _passwordController.text = password;
+          _rememberMe = true;
+        });
+      }
+    } catch (_) {/* ignore */}
+  }
+
+  Future<void> _saveOrClearCredentials(String email, String password) async {
+    try {
+      if (_rememberMe) {
+        await _secure.write(key: _kRememberEmail, value: email);
+        await _secure.write(key: _kRememberPassword, value: password);
+      } else {
+        await _secure.delete(key: _kRememberEmail);
+        await _secure.delete(key: _kRememberPassword);
+      }
+    } catch (_) {/* ignore */}
   }
 
   // Show the "Login with Face ID" button only when the device has biometrics AND
@@ -91,11 +124,13 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() { _isLoading = true; _error = ''; });
 
     try {
-      final user = await AuthService.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      final user = await AuthService.login(email, password);
       if (!mounted) return;
+
+      // Remember (or forget) the credentials per the checkbox.
+      await _saveOrClearCredentials(email, password);
 
       final role = user['role'] as String?;
       // Enable Face ID for next time only for the roles allowed into the app.
@@ -235,7 +270,27 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: const Text('Forgot Password', style: TextStyle(fontSize: 13, color: Color(0xFFCB0002))),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          // Remember me — save email + password securely for next time.
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: _rememberMe,
+                                  activeColor: const Color(0xFFCB0002),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => setState(() => _rememberMe = !_rememberMe),
+                                child: const Text('Remember me', style: TextStyle(fontSize: 13, color: Color(0xFF374151))),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
                           // Sign In button
                           SizedBox(
                             width: double.infinity,
