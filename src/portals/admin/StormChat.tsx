@@ -232,9 +232,12 @@ export function StormChatManagement() {
   function filterUsers() {
     let filtered = users;
     
-    // Filter by role
+    // Filter by role — match the primary role OR any role in a multi-role user's
+    // `roles` array (e.g. a branch manager who is also a sales team lead).
     if (roleFilter !== "all") {
-      filtered = filtered.filter(u => u.role === roleFilter);
+      filtered = filtered.filter(u =>
+        u.role === roleFilter || (Array.isArray((u as any).roles) && (u as any).roles.includes(roleFilter))
+      );
     }
     
     // Filter by search query
@@ -485,6 +488,8 @@ export function StormChatManagement() {
             >
               <option value="all">All Roles</option>
               <option value="admin">Admin</option>
+              <option value="c-level">C-Level</option>
+              <option value="branch-manager">Branch Manager</option>
               <option value="sales-team-lead">Sales Team Lead</option>
               <option value="sales">Sales</option>
               <option value="marketing">Marketing</option>
