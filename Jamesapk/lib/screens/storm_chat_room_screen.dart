@@ -57,21 +57,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   bool _hasNewMessages = false;
   dynamic _longPressedMessage;
   String? _emojiTrayMessageId;
-  // Composer emoji picker
-  bool _showEmojiPicker = false;
-  static const List<String> _chatEmojis = [
-    '😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😋','😛','😜','🤪','🤨','🧐','🤓','😎','🥳','😏','😒','😔','😟','🙁','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','🙄','😮','😲','🥱','😴','🤤','🤢','🤮','🤧','😷','🤒','🤑','🤠','😈','👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','👋','🙌','🤝','🙏','💪','🔥','⭐','🌟','✨','💯','✅','❌','❤️','🧡','💛','💚','💙','💜','🖤','💔','🎉','🎊','🚀','💰','📈','🏆','🥇','💡','👀','🎯',
-  ];
-
-  void _insertEmoji(String e) {
-    final text = _messageController.text;
-    final sel = _messageController.selection;
-    final start = sel.start >= 0 ? sel.start : text.length;
-    final end = sel.end >= 0 ? sel.end : text.length;
-    final newText = text.replaceRange(start, end, e);
-    _messageController.text = newText;
-    _messageController.selection = TextSelection.collapsed(offset: start + e.length);
-  }
+  // (Emojis come from the device keyboard; the composer's picker button opens
+  // GIFs/Stickers instead — see _openGiphyPicker.)
 
   // Mention feature
   bool _showMentionList = false;
@@ -592,14 +579,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 if (video != null) {
                   _uploadFile(File(video.path), 'video');
                 }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.gif_box_outlined, color: Color(0xFFCB0002)),
-              title: const Text('GIF / Stickers'),
-              onTap: () {
-                Navigator.pop(context);
-                _openGiphyPicker('gifs');
               },
             ),
             // Polls only make sense in groups/subgroups, not 1:1 personal chats.
@@ -1456,36 +1435,19 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (_showEmojiPicker)
-                          Container(
-                            height: 200,
-                            margin: const EdgeInsets.only(bottom: 8),
-                            decoration: BoxDecoration(
-                              color: textFieldColor,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: GridView.count(
-                              crossAxisCount: 8,
-                              padding: const EdgeInsets.all(8),
-                              children: _chatEmojis
-                                  .map((e) => InkWell(
-                                        onTap: () => _insertEmoji(e),
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Center(child: Text(e, style: const TextStyle(fontSize: 22))),
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
                         Row(
                         children: [
+                          // GIF / Stickers (GIPHY). Emojis come from the device
+                          // keyboard, so this replaces the old emoji picker.
                           IconButton(
-                            icon: Icon(
-                              _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
-                              color: const Color(0xFFCB0002),
+                            icon: const Icon(
+                              Icons.gif_box_outlined,
+                              color: Color(0xFFCB0002),
                             ),
+                            tooltip: 'GIF / Stickers',
                             onPressed: () {
-                              if (!_showEmojiPicker) FocusScope.of(context).unfocus();
-                              setState(() => _showEmojiPicker = !_showEmojiPicker);
+                              FocusScope.of(context).unfocus();
+                              _openGiphyPicker('gifs');
                             },
                           ),
                           IconButton(
