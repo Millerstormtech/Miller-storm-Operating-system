@@ -1494,7 +1494,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                   fillColor: textFieldColor,
                                 ),
                                 focusNode: _messageFocusNode,
-                                maxLines: null,
+                                // Grow up to ~4 lines, then scroll INSIDE the box
+                                // (a long paragraph no longer stretches the whole
+                                // composer off-screen).
+                                minLines: 1,
+                                maxLines: 4,
+                                keyboardType: TextInputType.multiline,
                                 textInputAction: TextInputAction.send,
                                 onSubmitted: (_) => _sendMessage(),
                               ),
@@ -1611,7 +1616,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final effectiveReplyMediaUrl = (message['replyToMediaUrl'] ?? originalMsg?['mediaUrl'] ?? '').toString();
     
     // Theme colors for message bubbles
-    final messageBubbleOther = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
+    // Received (from others) bubbles are dark; the user's own are red. White text on both.
+    final messageBubbleOther = const Color(0xFF2C2C2E);
     final dateChipColor = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
     final dateTextColor = _isDarkTheme ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
@@ -1726,28 +1732,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           if (!isMyMessage)
                             Padding(
                               padding: const EdgeInsets.only(left: 8, bottom: 4),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    message['senderName'] ?? 'Unknown',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF6B7280),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    _formatTime(message['createdAt']),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Color(0xFF9CA3AF),
-                                    ),
-                                  ),
-                                ],
+                              child: Text(
+                                message['senderName'] ?? 'Unknown',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF6B7280),
+                                ),
                               ),
                             ),
                           // Different styling for different message types
@@ -1847,16 +1838,42 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                         ),
                                       ),
                                     ),
-                                  _buildMessageContent(message, isMyMessage),
+                                  // Text + time on one line (time bottom-right) so the
+                                  // bubble hugs its content — WhatsApp style.
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Flexible(child: _buildMessageContent(message, isMyMessage)),
+                                      const SizedBox(width: 8),
+                                      Padding(
+                                        padding: const EdgeInsets.only(bottom: 1),
+                                        child: Text(
+                                          _formatTime(message['createdAt']),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: isMyMessage
+                                                ? Colors.white.withOpacity(0.75)
+                                                : Colors.white54,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             )
                           else
                             // No background for images/videos
                             _buildMessageContent(message, isMyMessage),
-                          if (isMyMessage)
+                          // Reaction pill sits ON the bubble's bottom edge,
+                          // overlapping it slightly — WhatsApp style.
+                          _buildReactions(message, isMyMessage),
+                          // Images/videos have no bubble, so show their time below.
+                          if (message['messageType'] != 'text')
                             Padding(
                               padding: const EdgeInsets.only(
+                                left: 8,
                                 right: 8,
                                 top: 4,
                               ),
@@ -1868,8 +1885,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 ),
                               ),
                             ),
-                          // Reactions below the bubble (no overlap with text)
-                          _buildReactions(message, isMyMessage),
                         ],
                       ),
                     ),
@@ -2600,7 +2615,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   Widget _buildMessageContent(dynamic message, bool isMyMessage) {
     final messageType = message['messageType'] ?? 'text';
-    final textColor = isMyMessage ? Colors.white : (_isDarkTheme ? Colors.white : const Color(0xFF111827));
+    // Red (my) and dark (others') bubbles both use white text.
+    final textColor = Colors.white;
 
     if (messageType == 'text') {
       return _buildTextWithLinks(message['message'] ?? '', textColor, isMyMessage);
