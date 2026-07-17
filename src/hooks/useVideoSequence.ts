@@ -10,8 +10,10 @@
  *   - Mobile-friendly: attempts autoplay with 2-3 second delay and user interaction simulation
  *
  * When autoPlay is OFF:
- *   - Videos don't auto-chain
- *   - Last video ending still calls onAllEnded() so navigation still works
+ *   - Videos don't auto-chain and don't auto-start
+ *   - Last video ending marks the lesson watched and UNLOCKS the next step, but
+ *     does NOT navigate — the user stays on the current video and starts the
+ *     next lesson/quiz manually (via the Next button)
  *
  * Vimeo: rewrites iframe src to add ?api=1 so the JS SDK can communicate,
  *        then waits for the iframe to reload before attaching the SDK.
@@ -435,7 +437,17 @@ export async function initVideoSequence(
     if (advanced.has(seqIdx)) return;
     advanced.add(seqIdx);
     if (seqIdx === total - 1) {
-      onAllEnded(true); // true end of the last video → navigate to next step
+      // Netflix-style autoplay: auto-advance to the next lesson/quiz ONLY when
+      // Autoplay is ON. With Autoplay OFF, stay on the current video after it
+      // ends — the next step was already unlocked in the last 5s, so the user
+      // starts it manually. We still call onAllEnded(false) to guarantee the
+      // lesson is marked watched + Next unlocked (e.g. for very short videos),
+      // just without navigating away.
+      if (autoPlayRef.current) {
+        onAllEnded(true); // true end → navigate to the next step
+      } else {
+        onAllEnded(false); // stay put; ensure watched + Next unlocked, no navigate
+      }
     } else if (autoPlayRef.current) {
       playItem(seqIdx + 1); // auto-advance within the lesson's video sequence
     }
