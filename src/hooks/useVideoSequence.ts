@@ -421,11 +421,14 @@ export async function initVideoSequence(
     }
   }
 
-  // Within the last few seconds of the LAST video we only UNLOCK the next
-  // step (enable the Next button) — we do NOT auto-advance. Auto-advance /
-  // navigation happens only when a video truly ends. So: reach the last 5s →
-  // Next becomes clickable; watch to the end → it advances on its own.
-  const UNLOCK_BEFORE_END = 5; // seconds before the end
+  // Within the last moment of the LAST video we only UNLOCK the next step
+  // (enable the Next button) — we do NOT auto-advance. Auto-advance / navigation
+  // happens only when a video truly ends. Kept at 1s (not 5s) so a lesson is
+  // considered "watched" essentially at 100%, not 5 seconds early — the video
+  // must play to the very end before it completes / unlocks / (autoplay) jumps.
+  // The `ended` event is the primary trigger; this 1s window is just a safety
+  // net in case a player doesn't fire `ended` exactly at duration.
+  const UNLOCK_BEFORE_END = 1; // seconds before the end
   let unlockedNextStep = false;
   const advanced = new Set<number>();
   function unlockNextStep(seqIdx: number) {
@@ -438,11 +441,12 @@ export async function initVideoSequence(
     advanced.add(seqIdx);
     if (seqIdx === total - 1) {
       // Netflix-style autoplay: auto-advance to the next lesson/quiz ONLY when
-      // Autoplay is ON. With Autoplay OFF, stay on the current video after it
-      // ends — the next step was already unlocked in the last 5s, so the user
-      // starts it manually. We still call onAllEnded(false) to guarantee the
-      // lesson is marked watched + Next unlocked (e.g. for very short videos),
-      // just without navigating away.
+      // Autoplay is ON, and only once the video has played to its true end.
+      // With Autoplay OFF, stay on the current video/lesson/quiz after it ends
+      // — it never jumps to the next step, even after the lesson is complete;
+      // the user advances manually via Next. We still call onAllEnded(false) to
+      // guarantee the lesson is marked watched + Next unlocked, just without
+      // navigating away.
       if (autoPlayRef.current) {
         onAllEnded(true); // true end → navigate to the next step
       } else {
