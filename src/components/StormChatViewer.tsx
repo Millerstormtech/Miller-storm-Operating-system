@@ -18,6 +18,12 @@ type ChatGroup = {
   parentGroupId?: string;
   isDirect?: boolean;
   dmOther?: DmOther;
+  visibility?: 'public' | 'private';
+  // Set by the groups API (?mine=1): false = the group is visible to the user
+  // but they are NOT a member yet (a private group they can request to join).
+  isMember?: boolean;
+  // The caller's own request state for a non-member private group.
+  joinStatus?: 'pending' | 'denied' | 'none';
 };
 
 type PickUser = { _id?: string; id: string; name: string; email: string; role: string; headshotUrl?: string };
@@ -34,6 +40,10 @@ export function StormChatViewer() {
   const [users, setUsers] = useState<PickUser[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [opening, setOpening] = useState(false);
+  // Request-to-join (private groups the user isn't a member of yet)
+  const [joinTarget, setJoinTarget] = useState<ChatGroup | null>(null);
+  const [joinSending, setJoinSending] = useState(false);
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { if (user?.id) loadGroups(); }, [user?.id]);
 
@@ -63,6 +73,18 @@ export function StormChatViewer() {
   }
 
   async function openGroup(g: ChatGroup) {
+    // A private group the user isn't in yet → handle by request state.
+    if (g.isMember === false && !g.isDirect) {
+      const status = requestedIds.has(g._id) ? 'pending' : (g.joinStatus || 'none');
+      if (status === 'denied') {
+        alert("Rejected by admin — you can't access this group.");
+      } else if (status === 'pending') {
+        alert('Your request is pending the group admin’s approval.');
+      } else {
+        setJoinTarget(g);
+      }
+      return;
+    }
     setSelected(g);
     setUnread(prev => ({ ...prev, [g._id]: 0 }));
     try {
@@ -71,6 +93,36 @@ export function StormChatViewer() {
         body: JSON.stringify({ groupId: g._id })
       });
     } catch { /* ignore */ }
+  }
+
+  async function sendJoinRequest() {
+    if (!joinTarget || joinSending) return;
+    setJoinSending(true);
+    try {
+      const res = await fetch("/api/storm-chat/join-requests", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId: joinTarget._id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        if (data.alreadyMember) {
+          // Admin already added them — just open it.
+          setJoinTarget(null);
+          loadGroups();
+        } else {
+          setRequestedIds(prev => new Set(prev).add(joinTarget._id));
+          setJoinTarget(null);
+        }
+      } else {
+        // 403 with error 'denied' = the admin already rejected them.
+        alert(data.message || data.error || "Couldn't send the request. Please try again.");
+        setJoinTarget(null);
+      }
+    } catch {
+      alert("Couldn't send the request. Please try again.");
+    } finally {
+      setJoinSending(false);
+    }
   }
 
   async function openPicker() {
@@ -143,6 +195,8 @@ export function StormChatViewer() {
   function GroupRow({ g }: { g: ChatGroup }) {
     const count = unread[g._id] || 0;
     const img = imageFor(g);
+    const notMember = g.isMember === false && !g.isDirect;
+    const status: 'pending' | 'denied' | 'none' = requestedIds.has(g._id) ? 'pending' : (g.joinStatus || 'none');
     return (
       <button
         key={g._id}
@@ -162,8 +216,22 @@ export function StormChatViewer() {
           {g.isDirect && (
             <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>Private message</div>
           )}
+          {notMember && (
+            <div style={{ fontSize: 12, marginTop: 2, fontWeight: 500, color: status === 'denied' ? "#6b7280" : status === 'pending' ? "#059669" : "#dc2626" }}>
+              {status === 'denied' ? "🚫 Rejected · no access" : status === 'pending' ? "✓ Request pending" : "🔒 Private · tap to request to join"}
+            </div>
+          )}
         </div>
-        {count > 0 && (
+        {notMember ? (
+          <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999,
+            ...(status === 'denied'
+              ? { background: "#f3f4f6", color: "#6b7280", border: "1px solid #e5e7eb" }
+              : status === 'pending'
+                ? { background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }
+                : { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }) }}>
+            {status === 'denied' ? "Rejected" : status === 'pending' ? "Pending" : "Join"}
+          </span>
+        ) : count > 0 && (
           <span style={{ background: "#ef4444", color: "#fff", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", flexShrink: 0 }}>
             {count > 99 ? "99+" : count}
           </span>
@@ -240,6 +308,31 @@ export function StormChatViewer() {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Request-to-join popup for a private group */}
+      {joinTarget && (
+        <div onClick={() => setJoinTarget(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 400, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", textAlign: "center" }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#1f2937", marginBottom: 6 }}>Join “{joinTarget.name}”?</div>
+            <div style={{ fontSize: 13.5, color: "#6b7280", marginBottom: 20 }}>
+              This is a private group. Your request will be sent to the group admin — you’ll be added once it’s approved.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setJoinTarget(null)} disabled={joinSending}
+                style={{ flex: 1, padding: "10px 16px", background: "#f3f4f6", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, color: "#374151" }}>
+                Cancel
+              </button>
+              <button onClick={sendJoinRequest} disabled={joinSending}
+                style={{ flex: 1, padding: "10px 16px", background: "#CB0002", color: "#fff", border: "none", borderRadius: 10, cursor: joinSending ? "not-allowed" : "pointer", fontWeight: 600 }}>
+                {joinSending ? "Sending…" : "Request to Join"}
+              </button>
             </div>
           </div>
         </div>

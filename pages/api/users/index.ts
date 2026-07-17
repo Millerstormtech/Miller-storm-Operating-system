@@ -7,6 +7,7 @@ import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
+import { addUserToPublicGroups } from "../../../src/lib/publicGroups";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -77,11 +78,13 @@ async function handler(
           { returnDocument: "after" }
         ).lean();
         const { passwordHash: _rph, ...safeRestored } = restored;
-        // Auto-add the (re-activated) user to their branch group chat(s).
+        // Auto-add the (re-activated) user to their branch group chat(s) and to
+        // every public StormChat group.
         {
           const r = safeRestored as any;
           const branches = (r.branches && r.branches.length > 0) ? r.branches : [r.territory];
           await addUserToBranchGroups(String(r._id), branches);
+          await addUserToPublicGroups(String(r._id));
         }
         res.status(201).json(safeRestored);
         return;
@@ -104,10 +107,12 @@ async function handler(
     const createdObj = (await UserModel.findOne({ id }).lean()) as any;
     const { passwordHash: _ph, ...safeUser } = createdObj;
 
-    // Auto-add the new user to their branch group chat(s).
+    // Auto-add the new user to their branch group chat(s) and to every public
+    // StormChat group.
     {
       const branches = (createdObj.branches && createdObj.branches.length > 0) ? createdObj.branches : [createdObj.territory];
       await addUserToBranchGroups(String(createdObj._id), branches);
+      await addUserToPublicGroups(String(createdObj._id));
     }
 
     // Send notification email if requested

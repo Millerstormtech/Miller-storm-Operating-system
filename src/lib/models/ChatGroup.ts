@@ -7,6 +7,9 @@ export interface IChatGroup extends Document {
   members: string[];
   admins: string[];
   onlyAdminCanChat: boolean;
+  // 'public'  = every account (existing + new) is auto-added as a member.
+  // 'private' = members are managed manually (the default for existing groups).
+  visibility: 'public' | 'private';
   createdBy: string;
   order: number;
   // When set, this group is a SUBGROUP nested under the parent group's _id.
@@ -48,6 +51,11 @@ const ChatGroupSchema = new Schema<IChatGroup>(
     onlyAdminCanChat: {
       type: Boolean,
       default: false
+    },
+    visibility: {
+      type: String,
+      enum: ['public', 'private'],
+      default: 'private'
     },
     createdBy: {
       type: String,

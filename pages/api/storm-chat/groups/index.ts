@@ -28,9 +28,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const me = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
         const myId = me?._id?.toString();
         const myIds = [auth.sub, myId].filter(Boolean) as string[];
-        groups = groups.filter((g: any) =>
+        const isMemberOf = (g: any) =>
           (g.members || []).some((m: string) => myIds.includes(m)) ||
-          (g.admins || []).some((m: string) => myIds.includes(m))
+          (g.admins || []).some((m: string) => myIds.includes(m));
+        // DMs stay strictly members-only. All other groups (public AND private)
+        // are visible to EVERYONE so non-members can find a private group and
+        // request to join — each carries an `isMember` flag the UI uses to show
+        // the chat vs a "Request to Join" prompt.
+        groups = groups
+          .filter((g: any) => (g.isDirect ? isMemberOf(g) : true))
+          .map((g: any) => (g.isDirect ? g : { ...g, isMember: isMemberOf(g) }));
+
+        // Attach the caller's join-request status for private groups they aren't
+        // in yet, so the UI can show Requested / Rejected instead of a fresh Join.
+        const GroupJoinRequest = (await import('../../../../src/lib/models/GroupJoinRequest')).default;
+        const myReqs = await GroupJoinRequest.find({ userId: myId }).lean() as any[];
+        const statusByGroup = new Map(myReqs.map((r) => [String(r.groupId), r.status]));
+        groups = groups.map((g: any) =>
+          (g.isDirect || g.isMember) ? g : { ...g, joinStatus: statusByGroup.get(String(g._id)) || 'none' }
         );
         // Enrich DMs with the OTHER participant's display info so the client can
         // render the thread with that person's name/avatar (DMs have no name).
@@ -63,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth = requireRole(req, res, ['admin', 'sales-team-lead', 'c-level', 'branch-manager']);
     if (!auth) return;
     try {
-      const { name, description, imageUrl, members, admins, onlyAdminCanChat, parentGroupId } = req.body;
+      const { name, description, imageUrl, members, admins, onlyAdminCanChat, parentGroupId, visibility } = req.body;
       const createdBy = auth.sub;
 
       if (!name || !members || members.length === 0) {
@@ -77,6 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const last = await db.collection('chatgroups').findOne(orderScope, { sort: { order: -1 } });
       const nextOrder = last && last.order != null ? last.order + 1 : 0;
 
+      const isPublic = visibility === 'public';
       const group = await ChatGroup.create({
         name,
         description: description || '',
@@ -84,10 +100,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         members,
         admins: admins || [],
         onlyAdminCanChat: onlyAdminCanChat || false,
+        visibility: isPublic ? 'public' : 'private',
         createdBy,
         order: nextOrder,
         parentGroupId: parentGroupId || ''
       });
+
+      // A public group contains every account — pull them all in now, then
+      // return the refreshed group so the client shows the real member count.
+      if (isPublic) {
+        const { addAllUsersToGroup } = await import('../../../../src/lib/publicGroups');
+        await addAllUsersToGroup(group._id as any);
+        const refreshed = await ChatGroup.findById(group._id);
+        return res.status(201).json(refreshed || group);
+      }
 
       res.status(201).json(group);
     } catch (error) {

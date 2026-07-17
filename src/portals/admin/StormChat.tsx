@@ -21,6 +21,7 @@ type ChatGroup = {
   members: string[];
   admins: string[];
   onlyAdminCanChat: boolean;
+  visibility?: 'public' | 'private';
   createdBy: string;
   parentGroupId?: string;
   createdAt: Date;
@@ -33,6 +34,7 @@ export function StormChatManagement() {
   const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [joinRequests, setJoinRequests] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
@@ -59,6 +61,8 @@ export function StormChatManagement() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [selectedAdmins, setSelectedAdmins] = useState<string[]>([]);
   const [onlyAdminCanChat, setOnlyAdminCanChat] = useState(false);
+  // Public = every account (existing + new) is auto-added; Private = manual members.
+  const [groupVisibility, setGroupVisibility] = useState<'public' | 'private'>('private');
   // When set, the create form is creating a SUBGROUP under this parent group.
   const [parentGroupId, setParentGroupId] = useState<string>("");
 
@@ -72,7 +76,29 @@ export function StormChatManagement() {
     fetchGroups();
     fetchUsers();
     fetchMyDms();
+    fetchJoinRequests();
   }, []);
+
+  async function fetchJoinRequests() {
+    try {
+      const res = await fetch('/api/storm-chat/join-requests');
+      if (res.ok) setJoinRequests(await res.json());
+    } catch { /* ignore */ }
+  }
+
+  async function decideJoinRequest(requestId: string, action: 'approve' | 'deny') {
+    try {
+      const res = await fetch('/api/storm-chat/join-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action }),
+      });
+      if (res.ok) {
+        setJoinRequests(prev => prev.filter(r => r._id !== requestId));
+        if (action === 'approve') fetchGroups(); // member count updates
+      }
+    } catch { /* ignore */ }
+  }
 
   // The admin's own private messages (server returns only DMs the admin is in,
   // enriched with the other person's name/avatar). Admins never see DMs they
@@ -145,7 +171,12 @@ export function StormChatManagement() {
           {!group.imageUrl && '👥'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isSub ? '↳ ' : ''}{group.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isSub ? '↳ ' : ''}{group.name}</div>
+            <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 999, ...(group.visibility === 'public' ? { background: '#dbeafe', color: '#1d4ed8' } : { background: '#f3f4f6', color: '#6b7280' }) }}>
+              {group.visibility === 'public' ? '🌐 Public' : '🔒 Private'}
+            </span>
+          </div>
           <div style={{ fontSize: 12, color: '#9ca3af' }}>{isSub ? 'Subgroup · ' : ''}👥 {group.members.length}{group.admins.length > 0 ? ` · 👑 ${group.admins.length}` : ''}{!isSub && subCount > 0 ? ` · ${subCount} subgroup${subCount === 1 ? '' : 's'}` : ''}</div>
         </div>
         {unread > 0 && (
@@ -283,10 +314,16 @@ export function StormChatManagement() {
       return;
     }
 
-    if (selectedMembers.length === 0) {
+    // Public groups get every account server-side, so no manual selection is
+    // required — seed with the creator just to satisfy the API.
+    if (selectedMembers.length === 0 && groupVisibility !== 'public') {
       alert('Please select at least one member');
       return;
     }
+
+    const membersToSend = groupVisibility === 'public' && selectedMembers.length === 0
+      ? [user?._id || user?.id].filter(Boolean) as string[]
+      : selectedMembers;
 
     try {
       const response = await fetch('/api/storm-chat/groups', {
@@ -296,9 +333,10 @@ export function StormChatManagement() {
           name: groupName,
           description: groupDescription,
           imageUrl: groupImage,
-          members: selectedMembers,
+          members: membersToSend,
           admins: selectedAdmins,
           onlyAdminCanChat,
+          visibility: groupVisibility,
           parentGroupId,
           createdBy: user?._id || user?.id
         })
@@ -334,7 +372,8 @@ export function StormChatManagement() {
           imageUrl: groupImage,
           members: selectedMembers,
           admins: selectedAdmins,
-          onlyAdminCanChat
+          onlyAdminCanChat,
+          visibility: groupVisibility
         })
       });
 
@@ -379,6 +418,7 @@ export function StormChatManagement() {
     setSelectedMembers(group.members);
     setSelectedAdmins(group.admins);
     setOnlyAdminCanChat(group.onlyAdminCanChat);
+    setGroupVisibility(group.visibility === 'public' ? 'public' : 'private');
   }
 
   // Open the create form as a subgroup of the given parent group.
@@ -396,6 +436,7 @@ export function StormChatManagement() {
     setSelectedMembers([]);
     setSelectedAdmins([]);
     setOnlyAdminCanChat(false);
+    setGroupVisibility('private');
     setParentGroupId("");
     setRoleFilter("all");
     setSearchQuery("");
@@ -776,6 +817,36 @@ export function StormChatManagement() {
               </div>
             </div>
           </label>
+
+          {/* Public vs Private */}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Group visibility</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['private', 'public'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => {
+                    setGroupVisibility(v);
+                    // Public = everyone is a member, so auto-select all accounts.
+                    if (v === 'public') setSelectedMembers(users.map(u => u._id));
+                  }}
+                  style={{
+                    flex: 1, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                    border: `2px solid ${groupVisibility === v ? '#2563eb' : '#e5e7eb'}`,
+                    backgroundColor: groupVisibility === v ? '#eff6ff' : '#f9fafb',
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, color: groupVisibility === v ? '#2563eb' : '#374151' }}>
+                    {v === 'public' ? '🌐 Public' : '🔒 Private'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>
+                    {v === 'public' ? 'Everyone auto-added (existing + new)' : 'You choose the members'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -825,7 +896,9 @@ export function StormChatManagement() {
         .sc-info { color:#c4c9d2; font-size:18px; padding:2px 6px; flex-shrink:0; transition:color .15s; }
         .sc-info:hover { color:#DC2626; }
       `}</style>
-      {/* ── StormChat — DMs + groups ── */}
+      {/* ── StormChat — DMs + groups (hidden while creating/editing a group so
+           only the form shows; the list returns after save with the new group) ── */}
+      {!(isCreating || isEditing) && (
       <div className="sc-wrap" style={{ marginBottom: 24 }}>
         <div className="sc-head">
           <div className="sc-head-badge">💬</div>
@@ -839,6 +912,28 @@ export function StormChatManagement() {
           </div>
         </div>
         <div style={{ padding: '18px 20px' }}>
+          {/* Pending join requests for private groups */}
+          {joinRequests.length > 0 && (
+            <div style={{ marginBottom: 18, padding: 14, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 10 }}>
+                🔔 Pending join requests ({joinRequests.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {joinRequests.map(r => (
+                  <div key={r._id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.userName || 'A user'} <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>({r.userRole})</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>wants to join “{r.groupName}”</div>
+                    </div>
+                    <button type="button" onClick={() => decideJoinRequest(r._id, 'approve')} style={{ padding: '6px 12px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Approve</button>
+                    <button type="button" onClick={() => decideJoinRequest(r._id, 'deny')} style={{ padding: '6px 12px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Deny</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Direct Messages */}
           <div className="sc-label" style={{ marginBottom: 10 }}>Direct Messages</div>
           {myDms.length === 0 ? (
@@ -895,6 +990,7 @@ export function StormChatManagement() {
           )}
         </div>
       </div>
+      )}
 
       {/* New-message people picker (any user) */}
       {dmPickerOpen && (

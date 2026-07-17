@@ -27,27 +27,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'PUT') {
     if (!requireRole(req, res, ['admin', 'sales-team-lead', 'c-level', 'branch-manager'])) return;
     try {
-      const { name, description, imageUrl, members, admins, onlyAdminCanChat } = req.body;
-      
+      const { name, description, imageUrl, members, admins, onlyAdminCanChat, visibility } = req.body;
+
       if (!name || !members || members.length === 0) {
         return res.status(400).json({ error: 'Name and members are required' });
       }
 
-      const group = await ChatGroup.findByIdAndUpdate(
-        id,
-        {
-          name,
-          description: description || '',
-          imageUrl: imageUrl || '',
-          members,
-          admins: admins || [],
-          onlyAdminCanChat: onlyAdminCanChat || false
-        },
-        { new: true }
-      );
+      const update: any = {
+        name,
+        description: description || '',
+        imageUrl: imageUrl || '',
+        members,
+        admins: admins || [],
+        onlyAdminCanChat: onlyAdminCanChat || false,
+      };
+      // Only touch visibility when the client sends it (older callers omit it).
+      const isPublic = visibility === 'public';
+      if (visibility === 'public' || visibility === 'private') update.visibility = visibility;
+
+      const group = await ChatGroup.findByIdAndUpdate(id, update, { new: true });
 
       if (!group) {
         return res.status(404).json({ error: 'Group not found' });
+      }
+
+      // If it's now public, make sure every account is a member.
+      if (isPublic) {
+        const { addAllUsersToGroup } = await import('../../../../src/lib/publicGroups');
+        await addAllUsersToGroup(id as string);
+        const refreshed = await ChatGroup.findById(id);
+        return res.status(200).json(refreshed || group);
       }
 
       res.status(200).json(group);
