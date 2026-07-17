@@ -15,7 +15,7 @@ import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "../../src/lib/leaderboard/identity";
 import { officeToBranch, saleRegion } from "../../src/lib/repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch, isBranchless } from "../../src/lib/repcard/org-chart";
-import { courseStats, isRankedUser } from "../../src/lib/training/scoring";
+import { courseStats, isRankedUser, RANKED_ROLES } from "../../src/lib/training/scoring";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // put branch managers and admins on the board as salespeople: `roles[]`
     // marks leadership who also run a sales team. Leadership does not compete.
     let usersQuery: any = {
-      role: { $in: ["sales", "sales-team-lead"] },
+      role: { $in: [...RANKED_ROLES] },
       deleted: { $ne: true },
       suspended: { $ne: true }
     };
@@ -92,7 +92,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pct: stats.pct
       };
     });
-    const total = rows.length ? rows[0].total : 0;
+    // Independent of `rows` on purpose: an empty or fully-scrubbed roster
+    // (empty team, all reports removed by isRankedUser) must still report the
+    // course's real item count, not 0. courseStats() with no progress reduces
+    // to the course's own itemsTotal.
+    const total = courseStats(course as any, undefined).itemsTotal;
 
     // Sort rows
     rows.sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
