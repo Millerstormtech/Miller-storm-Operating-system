@@ -1226,36 +1226,29 @@ export function UserManagement(props: UserEditorProps) {
                     className={showTerritoryDropdown ? "territory-trigger territory-trigger-open" : "territory-trigger"}
                     onClick={() => setShowTerritoryDropdown(!showTerritoryDropdown)}
                   >
-                    <span className="territory-trigger-value" style={{ color: ((selectedUser.branches && selectedUser.branches.length > 0) || selectedUser.territory) ? undefined : "#9ca3af" }}>
-                      {(() => {
-                        const list = (selectedUser.branches && selectedUser.branches.length > 0)
-                          ? selectedUser.branches
-                          : (selectedUser.territory ? [selectedUser.territory] : []);
-                        return list.length > 0 ? list.join(", ") : "Select branch(es)";
-                      })()}
+                    <span className="territory-trigger-value" style={{ color: selectedUser.territory ? undefined : "#9ca3af" }}>
+                      {selectedUser.territory && selectedUser.territory.trim().length > 0
+                        ? selectedUser.territory
+                        : "Select branch"}
                     </span>
                     <span className="territory-trigger-icon">{showTerritoryDropdown ? "▲" : "▼"}</span>
                   </button>
                   {showTerritoryDropdown && (
                     <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }} role="listbox">
                       {TERRITORY_OPTIONS.map((option) => {
-                        // Multi-select: a user can belong to several branches.
-                        const current = (selectedUser.branches && selectedUser.branches.length > 0)
-                          ? selectedUser.branches
-                          : (selectedUser.territory ? [selectedUser.territory] : []);
-                        const checked = current.includes(option);
+                        // Single-select: a user belongs to exactly one branch. The
+                        // chosen branch is stored on `territory` (and mirrored into
+                        // `branches` for the group auto-add helper).
+                        const checked = selectedUser.territory === option;
                         return (
                           <label key={option} className={checked ? "territory-option territory-option-active" : "territory-option"}>
                             <input
                               type="checkbox"
                               checked={checked}
                               onChange={(e) => {
-                                const next = e.target.checked
-                                  ? [...current, option]
-                                  : current.filter((b) => b !== option);
-                                // Keep `territory` as the primary (first) branch so
-                                // single-branch logic (branch manager, display) works.
-                                updateUser({ ...selectedUser, branches: next, territory: next[0] || "" });
+                                const value = e.target.checked ? option : "";
+                                updateUser({ ...selectedUser, territory: value, branches: value ? [value] : [] });
+                                setShowTerritoryDropdown(false);
                               }}
                             />
                             <span>{option}</span>
