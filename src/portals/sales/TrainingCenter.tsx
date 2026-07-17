@@ -164,10 +164,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // True when the page change was triggered by a video ending (so next lesson's video should auto-start)
   const autoTriggeredRef = useRef(false);
   const [autoPlay, setAutoPlay] = useState<boolean>(() => {
+    // Autoplay defaults to OFF for everyone; it's ON only if the user explicitly
+    // turned it on (stored as 'true'). Absent/'false' → OFF.
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('sales-autoplay') !== 'false';
+      return localStorage.getItem('sales-autoplay') === 'true';
     }
-    return true;
+    return false;
   });
   // Ref so the video sequence always reads the live autoPlay value without re-initing
   const autoPlayRef = useRef(autoPlay);

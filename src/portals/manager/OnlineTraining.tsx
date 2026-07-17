@@ -172,10 +172,12 @@ export function ManagerOnlineTrainingPage(props: {
   const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
   const videoCallbackRef = useRef<(() => void) | undefined>(undefined);
   const [autoPlay, setAutoPlay] = useState<boolean>(() => {
+    // Autoplay defaults to OFF for everyone; it's ON only if the user explicitly
+    // turned it on (stored as 'true'). Absent/'false' → OFF.
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('manager-autoplay') !== 'false';
+      return localStorage.getItem('manager-autoplay') === 'true';
     }
-    return true;
+    return false;
   });
   // Ref so the video sequence always reads the live autoPlay value without re-initing
   const autoPlayRef = useRef(autoPlay);
