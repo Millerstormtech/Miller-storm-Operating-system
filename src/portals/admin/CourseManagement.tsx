@@ -3236,7 +3236,16 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 setIsChangeModuleModalOpen(true);
                                                 setOpenPageMenuId(null); 
                                               }}>
-                                                Change Module  
+                                                Change Module
+                                              </button>
+                                              <button type="button" className="course-page-menu-item" onClick={() => {
+                                                setMoveCoursePageId(page.id);
+                                                setMoveTargetCourseId("");
+                                                setMoveTargetFolderId(undefined);
+                                                setIsMoveCourseModalOpen(true);
+                                                setOpenPageMenuId(null);
+                                              }}>
+                                                Move to Course
                                               </button>
                                               <button
                                                 type="button"
