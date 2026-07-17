@@ -105,6 +105,7 @@ export function AiBotBuilder() {
       if (found) {
         setSelectedBot(found);
         setActiveView((view as BotView) || "links");
+        hydrateBot(found.id); // deep-link open: load full training data too
       } else {
         // Bot not found — clear URL and stay on list
         router.replace(basePath, undefined, { shallow: true });
@@ -112,8 +113,26 @@ export function AiBotBuilder() {
     }
   }, [botsLoaded]);
 
+  // Fetch the full bot (heavy training text/Q&A/course chunks) when one is
+  // opened. The list loads in light mode for speed, so the editor hydrates the
+  // selected bot's full data on demand. saveBot() only PATCHes the edited fields,
+  // so editing before hydration finishes can't lose data.
+  async function hydrateBot(botId: string) {
+    try {
+      const res = await fetch(`/api/ai-bots/${botId}`);
+      if (!res.ok) return;
+      const full: AiBot = await res.json();
+      setSelectedBot(prev => (prev && prev.id === botId ? { ...prev, ...full } : prev));
+      setBots(prev => prev.map(b => (b.id === botId ? { ...b, ...full } : b)));
+    } catch {
+      // Non-fatal: the light bot still renders; a retry happens on next open.
+    }
+  }
+
   async function loadBots() {
-    const res = await fetch("/api/ai-bots");
+    // light=1 → drop heavy training data (crawled text, transcripts, Q&A, course
+    // chunks) so the bot LIST loads fast. Full data is fetched per-bot on open.
+    const res = await fetch("/api/ai-bots?light=1");
     if (res.ok) {
       const data: AiBot[] = await res.json();
       // Admin: show all bots (published + draft)
@@ -130,8 +149,9 @@ export function AiBotBuilder() {
   }
 
   function selectBot(bot: AiBot, view: BotView = "links") {
-    setSelectedBot(bot);
+    setSelectedBot(bot); // instant nav with the light bot
     setActiveView(view);
+    hydrateBot(bot.id); // then load its full training data in the background
     router.push(`${basePath}?bot=${bot.id}&view=${view}`, undefined, { shallow: true });
   }
 
