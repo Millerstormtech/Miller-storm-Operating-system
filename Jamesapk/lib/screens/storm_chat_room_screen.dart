@@ -1827,73 +1827,78 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     
     if (reactions.isEmpty) return const SizedBox();
     
-    // Count reactions by emoji
+    // Count reactions by emoji + track which ones the current user reacted with.
     final Map<String, int> reactionCounts = {};
+    final Set<String> myEmojis = {};
     for (final reaction in reactions) {
       final emoji = reaction['emoji'] as String?;
       if (emoji != null) {
         reactionCounts[emoji] = (reactionCounts[emoji] ?? 0) + 1;
+        if (reaction['userId']?.toString() == widget.userId) myEmojis.add(emoji);
       }
     }
-    
+
     if (reactionCounts.isEmpty) return const SizedBox();
 
-    // WhatsApp-style: the reaction pill sits ON the bubble's bottom edge. The
-    // negative-Y Transform pulls it up so it overlaps the bubble slightly.
+    // Match the web exactly: each emoji is its own small white pill/circle that
+    // sits ON the bubble's bottom edge (negative-Y Transform overlaps it). The
+    // pill the current user reacted with gets a blue border; count shows only
+    // when >1.
     return Transform.translate(
-      offset: const Offset(0, -10),
+      offset: const Offset(0, -11),
       child: Padding(
         padding: EdgeInsets.only(
-          left: isMyMessage ? 0 : 8,
-          right: isMyMessage ? 8 : 0,
+          left: isMyMessage ? 0 : 6,
+          right: isMyMessage ? 6 : 0,
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: _isDarkTheme ? const Color(0xFF2C2C2E) : Colors.white,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: _isDarkTheme ? Colors.grey[700]! : Colors.grey[300]!,
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 3,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: reactionCounts.entries.map((entry) {
-              final emoji = entry.key;
-              final count = entry.value;
-              return GestureDetector(
-                onTap: () => _showReactionDetails(message, emoji),
-                child: Container(
-                  margin: EdgeInsets.only(right: entry != reactionCounts.entries.last ? 3 : 0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(emoji, style: const TextStyle(fontSize: 12)),
-                      if (count > 1) ...[
-                        const SizedBox(width: 2),
-                        Text(
-                          count.toString(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: _isDarkTheme ? Colors.white70 : Colors.black54,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: reactionCounts.entries.map((entry) {
+            final emoji = entry.key;
+            final count = entry.value;
+            final mine = myEmojis.contains(emoji);
+            return GestureDetector(
+              onTap: () => _showReactionDetails(message, emoji),
+              child: Container(
+                margin: EdgeInsets.only(right: entry != reactionCounts.entries.last ? 3 : 0),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _isDarkTheme ? const Color(0xFF2C2C2E) : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: mine
+                        ? const Color(0xFF93C5FD)
+                        : (_isDarkTheme ? Colors.grey[700]! : const Color(0xFFE5E7EB)),
+                    width: 1,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
-              );
-            }).toList(),
-          ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(emoji, style: const TextStyle(fontSize: 13)),
+                    if (count > 1) ...[
+                      const SizedBox(width: 3),
+                      Text(
+                        count.toString(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _isDarkTheme ? Colors.white70 : const Color(0xFF4B5563),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ),
     );
