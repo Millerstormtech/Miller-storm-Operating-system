@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { publishedItems, courseStats, rankTitleFor, badgesFor, teamScore, type CourseLike, type ProgressLike } from "./scoring";
+import { publishedItems, courseStats, rankTitleFor, badgesFor, teamScore, isRankedRole, isRankedUser, type CourseLike, type ProgressLike } from "./scoring";
+import { isExcludedAccount } from "./excluded-accounts";
 
 const course: CourseLike = {
   id: "c1",
@@ -234,5 +235,66 @@ describe("teamScore", () => {
 
   it("returns 0 for an empty team rather than dividing by zero", () => {
     expect(teamScore([])).toBe(0);
+  });
+});
+
+describe("isRankedRole", () => {
+  it("accepts only the two sales primary roles", () => {
+    expect(isRankedRole("sales")).toBe(true);
+    expect(isRankedRole("sales-team-lead")).toBe(true);
+  });
+
+  it("rejects leadership — they do not compete", () => {
+    expect(isRankedRole("branch-manager")).toBe(false);
+    expect(isRankedRole("admin")).toBe(false);
+    expect(isRankedRole("c-level")).toBe(false);
+    expect(isRankedRole("marketing")).toBe(false);
+  });
+
+  it("rejects missing roles", () => {
+    expect(isRankedRole(undefined)).toBe(false);
+    expect(isRankedRole(null)).toBe(false);
+    expect(isRankedRole("")).toBe(false);
+  });
+});
+
+describe("isExcludedAccount", () => {
+  it("scrubs the developer test accounts", () => {
+    expect(isExcludedAccount("ishitapatel3456@gmail.com")).toBe(true);
+    expect(isExcludedAccount("k81565600@gmail.com")).toBe(true);
+  });
+
+  it("scrubs the CEO and shared mailboxes", () => {
+    expect(isExcludedAccount("jaymiller@millerstorm.com")).toBe(true);
+    expect(isExcludedAccount("tech@millerstorm.com")).toBe(true);
+  });
+
+  it("is case-insensitive and tolerates whitespace", () => {
+    expect(isExcludedAccount("  JayMiller@MillerStorm.com ")).toBe(true);
+  });
+
+  it("keeps real reps", () => {
+    expect(isExcludedAccount("preston.taylor@millerstorm.com")).toBe(false);
+    expect(isExcludedAccount("sarahbeth3013@gmail.com")).toBe(false);
+  });
+
+  it("does not crash on a missing email", () => {
+    expect(isExcludedAccount(undefined)).toBe(false);
+    expect(isExcludedAccount(null)).toBe(false);
+  });
+});
+
+describe("isRankedUser", () => {
+  it("ranks a real rep", () => {
+    expect(isRankedUser({ role: "sales", email: "preston.taylor@millerstorm.com" })).toBe(true);
+  });
+
+  it("rejects a branch manager even though they train", () => {
+    expect(isRankedUser({ role: "branch-manager", email: "gunner@millerstorm.com" })).toBe(false);
+  });
+
+  it("rejects a scrubbed account that holds a sales role", () => {
+    expect(isRankedUser({ role: "sales", email: "jaymiller@millerstorm.com" })).toBe(false);
+    expect(isRankedUser({ role: "sales-team-lead", email: "ishitapatel3456@gmail.com" })).toBe(false);
   });
 });

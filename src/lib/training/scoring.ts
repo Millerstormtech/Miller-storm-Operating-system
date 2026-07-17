@@ -173,3 +173,25 @@ export function teamScore(memberPcts: number[]): number {
   if (!memberPcts.length) return 0;
   return Math.round(memberPcts.reduce((a, b) => a + b, 0) / memberPcts.length);
 }
+
+import { isExcludedAccount } from "./excluded-accounts";
+
+/**
+ * The only roles that appear on the leaderboard.
+ *
+ * IMPORTANT: match on the PRIMARY `role` only — never on `roles[]`. The legacy
+ * query also matched `roles[]`, which is why branch managers and admins were
+ * ranked as salespeople: `roles[]` is used to mark leadership who also run a
+ * sales team (Gunner, Mike Muscari, Daniel Sabedra). Decision: leadership does
+ * not compete.
+ */
+export const RANKED_ROLES = ["sales", "sales-team-lead"] as const;
+
+export function isRankedRole(role?: string | null): boolean {
+  return role === "sales" || role === "sales-team-lead";
+}
+
+/** Full eligibility: a ranked primary role AND not on the scrub-list. */
+export function isRankedUser(user: { role?: string | null; email?: string | null }): boolean {
+  return isRankedRole(user.role) && !isExcludedAccount(user.email);
+}
