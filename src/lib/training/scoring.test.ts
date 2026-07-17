@@ -138,4 +138,29 @@ describe("courseStats", () => {
   it("is never complete when a course has no videos", () => {
     expect(courseStats({ id: "empty" }, { completedPages: [] }).complete).toBe(false);
   });
+
+  it("does not let a malformed attempt poison a later passing retry", () => {
+    const p: ProgressLike = {
+      completedPages: ["v1", "v2"],
+      quizResults: [
+        { pageId: "q1", score: { total: 10 } as any },   // malformed: no `correct`
+        { pageId: "q1", score: pass },
+        { pageId: "qf", score: pass },
+      ],
+    };
+    expect(courseStats(c, p).quizzesPassed).toBe(2);
+    expect(courseStats(c, p).complete).toBe(true);
+  });
+
+  it("keeps credit when a passing attempt is followed by a failing one", () => {
+    const p: ProgressLike = {
+      completedPages: ["v1", "v2"],
+      quizResults: [
+        { pageId: "q1", score: pass },
+        { pageId: "q1", score: fail },
+        { pageId: "qf", score: pass },
+      ],
+    };
+    expect(courseStats(c, p).complete).toBe(true);
+  });
 });
