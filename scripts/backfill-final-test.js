@@ -26,8 +26,24 @@ const APPLY = process.argv.includes("--apply");
     flagged++;
 
     if (APPLY) {
-      const pages = (c.pages || []).map((p) => ({ ...p, isFinalTest: p.id === finalId }));
-      await courses.updateOne({ _id: c._id }, { $set: { pages } });
+      // Targeted field updates via arrayFilters instead of rebuilding and
+      // $set-ing the whole `pages` array. A whole-array $set is a
+      // read-modify-write over a stale in-memory snapshot: any concurrent
+      // Course Builder edit to a page's title/video/body between our find()
+      // and this write would be silently overwritten (lost update). Flipping
+      // only the isFinalTest field on the matched array elements leaves every
+      // other field — and any concurrent edit to it — untouched. Do not
+      // "simplify" this back into a single $set: { pages }.
+      await courses.updateOne(
+        { _id: c._id },
+        { $set: { "pages.$[f].isFinalTest": true } },
+        { arrayFilters: [{ "f.id": finalId }] }
+      );
+      await courses.updateOne(
+        { _id: c._id },
+        { $set: { "pages.$[o].isFinalTest": false } },
+        { arrayFilters: [{ "o.id": { $ne: finalId } }] }
+      );
     }
   }
   console.log(`\n${APPLY ? "APPLIED" : "DRY RUN"} — ${flagged}/${all.length} courses flagged`);
