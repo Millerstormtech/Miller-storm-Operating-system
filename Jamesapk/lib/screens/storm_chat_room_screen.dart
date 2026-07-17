@@ -596,18 +596,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.gif_box_outlined, color: Color(0xFFCB0002)),
-              title: const Text('Send GIF'),
-              onTap: () async {
+              title: const Text('GIF / Stickers'),
+              onTap: () {
                 Navigator.pop(context);
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['gif'],
-                );
-                if (result != null && result.files.single.path != null) {
-                  // Upload the raw .gif as-is (no editor / re-encode) so it stays
-                  // animated; sent as an image message.
-                  _uploadFile(File(result.files.single.path!), 'image');
-                }
+                _openGiphyPicker('gifs');
               },
             ),
             // Polls only make sense in groups/subgroups, not 1:1 personal chats.
@@ -933,6 +925,143 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     } finally {
       setState(() { isUploading = false; });
     }
+  }
+
+  // Send a GIPHY GIF/sticker — it's already hosted, so post an image message
+  // pointing at its URL (no upload).
+  Future<void> _sendGiphy(String url, bool isSticker) async {
+    try {
+      await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'senderId': widget.userId,
+          'senderName': userName,
+          'senderRole': widget.userRole,
+          'message': isSticker ? 'Sticker' : 'GIF',
+          'messageType': 'image',
+          'mediaUrl': url,
+        }),
+      );
+      await _fetchMessages();
+    } catch (e) {
+      print('GIPHY send error: $e');
+    }
+  }
+
+  // GIPHY GIF / sticker search sheet (via our /api/giphy proxy — no upload).
+  void _openGiphyPicker(String initialMode) {
+    String mode = initialMode;
+    String query = '';
+    List<dynamic> items = [];
+    bool loading = true;
+    bool didLoad = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) {
+          Future<void> load(String q) async {
+            setSheet(() => loading = true);
+            try {
+              final res = await api.get(Uri.parse(
+                'https://millerstorm.tech/api/giphy?type=$mode&q=${Uri.encodeQueryComponent(q)}&limit=24'));
+              if (res.statusCode == 200) {
+                items = (json.decode(res.body)['items'] as List?) ?? [];
+              }
+            } catch (_) {}
+            loading = false;
+            setSheet(() {});
+          }
+
+          if (!didLoad) { didLoad = true; load(''); }
+
+          Widget tab(String m, String label) {
+            final active = mode == m;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () { mode = m; load(query); },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: active ? const Color(0xFF111827) : (_isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13,
+                      color: active ? Colors.white : (_isDarkTheme ? Colors.white70 : const Color(0xFF6B7280)))),
+                ),
+              ),
+            );
+          }
+
+          return Container(
+            height: MediaQuery.of(sheetCtx).size.height * 0.62,
+            decoration: BoxDecoration(
+              color: _isDarkTheme ? const Color(0xFF1C1C1E) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(9, 12, 9, 6),
+                    child: Row(children: [tab('gifs', 'GIF'), tab('stickers', 'Stickers')]),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                    child: TextField(
+                      style: TextStyle(color: _isDarkTheme ? Colors.white : Colors.black),
+                      decoration: InputDecoration(
+                        hintText: 'Search ${mode == 'stickers' ? 'stickers' : 'GIFs'}…',
+                        prefixIcon: const Icon(Icons.search),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onChanged: (v) { query = v; load(v); },
+                    ),
+                  ),
+                  Expanded(
+                    child: loading
+                        ? const Center(child: CircularProgressIndicator(color: Color(0xFFCB0002)))
+                        : items.isEmpty
+                            ? Center(child: Text('No results', style: TextStyle(color: _isDarkTheme ? Colors.white54 : Colors.black45)))
+                            : GridView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2, crossAxisSpacing: 6, mainAxisSpacing: 6),
+                                itemCount: items.length,
+                                itemBuilder: (_, i) {
+                                  final it = items[i] as Map<String, dynamic>;
+                                  final preview = (it['preview'] ?? it['url'] ?? '').toString();
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.pop(sheetCtx);
+                                      _sendGiphy((it['url'] ?? '').toString(), mode == 'stickers');
+                                    },
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(preview, fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade200)),
+                                    ),
+                                  );
+                                },
+                              ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Text('Powered by GIPHY', style: TextStyle(fontSize: 9, color: Colors.grey)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showError(String message) {

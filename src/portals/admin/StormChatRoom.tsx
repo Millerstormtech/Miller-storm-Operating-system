@@ -75,6 +75,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
+  // GIPHY GIF / sticker picker
+  const [giphyOpen, setGiphyOpen] = useState(false);
+  const [giphyMode, setGiphyMode] = useState<'gifs' | 'stickers'>('gifs');
+  const [giphyQuery, setGiphyQuery] = useState('');
+  const [giphyItems, setGiphyItems] = useState<{ id: string; url: string; preview: string }[]>([]);
+  const [giphyLoading, setGiphyLoading] = useState(false);
   // Poll composer
   const [showPoll, setShowPoll] = useState(false);
   const [pollQuestion, setPollQuestion] = useState("");
@@ -497,6 +503,54 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
       alert('Failed to upload file');
     } finally {
       setUploading(false);
+    }
+  }
+
+  // ── GIPHY GIF / sticker picker ──────────────────────────────────────────────
+  function openGiphy(mode: 'gifs' | 'stickers') {
+    setGiphyMode(mode);
+    setGiphyOpen(true);
+    setShowEmoji(false);
+    loadGiphy(mode, giphyQuery);
+  }
+
+  async function loadGiphy(mode: 'gifs' | 'stickers', q: string) {
+    setGiphyLoading(true);
+    try {
+      const res = await fetch(`/api/giphy?type=${mode}&q=${encodeURIComponent(q)}&limit=24`);
+      const data = res.ok ? await res.json() : { items: [] };
+      setGiphyItems(data.items || []);
+    } catch {
+      setGiphyItems([]);
+    } finally {
+      setGiphyLoading(false);
+    }
+  }
+
+  // Send a GIPHY GIF/sticker: it's already hosted, so just post an image message
+  // pointing at its URL (no upload).
+  async function sendGiphy(url: string) {
+    setGiphyOpen(false);
+    try {
+      const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: user?._id || user?.id,
+          senderName: user?.name,
+          senderRole: user?.role,
+          message: giphyMode === 'stickers' ? 'Sticker' : 'GIF',
+          messageType: 'image',
+          mediaUrl: url,
+        }),
+      });
+      if (res.ok) {
+        const message = await res.json();
+        setMessages(prev => [...prev, message]);
+        setShouldAutoScroll(true);
+      }
+    } catch (e) {
+      console.error('[STORM-CHAT] GIPHY send error', e);
     }
   }
 
@@ -1305,6 +1359,55 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 ))}
               </div>
             )}
+            {/* GIPHY GIF / sticker picker */}
+            {giphyOpen && (
+              <div style={{ position: 'absolute', bottom: 56, left: 0, width: 320, maxHeight: 360, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 30 }}>
+                {/* GIF | Stickers tabs */}
+                <div style={{ display: 'flex', gap: 4, padding: 6, borderBottom: '1px solid #f0f0f0' }}>
+                  {(['gifs', 'stickers'] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => { setGiphyMode(m); loadGiphy(m, giphyQuery); }}
+                      style={{ flex: 1, padding: '6px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12,
+                        background: giphyMode === m ? '#111827' : '#f3f4f6', color: giphyMode === m ? '#fff' : '#6b7280' }}
+                    >
+                      {m === 'gifs' ? 'GIF' : 'Stickers'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 8, borderBottom: '1px solid #f0f0f0' }}>
+                  <input
+                    autoFocus
+                    value={giphyQuery}
+                    onChange={(e) => { setGiphyQuery(e.target.value); loadGiphy(giphyMode, e.target.value); }}
+                    placeholder={`Search ${giphyMode === 'stickers' ? 'stickers' : 'GIFs'}…`}
+                    style={{ flex: 1, padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none' }}
+                  />
+                  <button type="button" onClick={() => setGiphyOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#9ca3af', lineHeight: 1 }}>×</button>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
+                  {giphyLoading ? (
+                    <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: 20 }}>Loading…</div>
+                  ) : giphyItems.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: 20 }}>No results</div>
+                  ) : (
+                    <div style={{ columnCount: 2, columnGap: 6 }}>
+                      {giphyItems.map((it) => (
+                        <img
+                          key={it.id}
+                          src={it.preview}
+                          alt=""
+                          onClick={() => sendGiphy(it.url)}
+                          style={{ width: '100%', marginBottom: 6, borderRadius: 6, cursor: 'pointer', display: 'block' }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right', fontSize: 9, color: '#c4c9d2', padding: '2px 8px' }}>Powered by GIPHY</div>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setShowEmoji(v => !v)}
@@ -1313,24 +1416,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             >
               😊
             </button>
-            {/* GIF: pick a .gif from the device; sent as an image (animates). */}
-            <input
-              ref={gifInputRef}
-              type="file"
-              accept=".gif,image/gif"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileUpload(file);
-                e.currentTarget.value = '';
-              }}
-            />
+            {/* GIF/Stickers: one button opens the GIPHY picker (tabs inside). */}
             <button
               type="button"
-              onClick={() => gifInputRef.current?.click()}
-              disabled={uploading}
-              title="Send a GIF"
-              style={{ ...COMPOSER_BTN, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, color: '#6b7280' }}
+              onClick={() => openGiphy('gifs')}
+              title="GIFs & Stickers"
+              style={{ ...COMPOSER_BTN, backgroundColor: giphyOpen ? '#e5e7eb' : '#f3f4f6', fontSize: 13, fontWeight: 700, color: '#6b7280' }}
             >
               GIF
             </button>
