@@ -59,7 +59,21 @@ export async function addUserToBranchGroups(userMongoId: string, branches: Array
       // 1. Exact name match.
       let match = groups.find((g) => norm(g.name) === branch);
 
-      // 2. Fall back to the group whose members mostly belong to this branch.
+      // 2. Name-contains match: the group name includes the branch name, or vice
+      //    versa (case-insensitive). This handles "Fort Worth Branch" for the
+      //    "Fort Worth" branch. If several match, take the shortest name (closest
+      //    to the branch) so an unrelated longer group is never grabbed.
+      if (!match) {
+        const nameMatches = groups.filter((g) => {
+          const n = norm(g.name);
+          return !!n && (n.includes(branch) || branch.includes(n));
+        });
+        if (nameMatches.length) {
+          match = nameMatches.slice().sort((a, b) => norm(a.name).length - norm(b.name).length)[0];
+        }
+      }
+
+      // 3. Fall back to the group whose members mostly belong to this branch.
       if (!match) {
         let best: any = null;
         let bestCount = 0;
