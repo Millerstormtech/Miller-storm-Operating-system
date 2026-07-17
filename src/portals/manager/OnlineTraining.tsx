@@ -1759,7 +1759,7 @@ export function ManagerOnlineTrainingPage(props: {
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '12px 16px', fontSize: 14, color: '#374151', fontWeight: 500 }}
             >← Course Content</button>
             <div className="course-page-main">
-              <div className="course-page-main-header" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="course-page-main-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <LessonTick page={activePage} completedPages={completedPages} quizResults={savedQuizResults} size={22} />
                 <h2 className="course-page-title-input" style={{ border: 'none', background: 'none', padding: 0 }}>{activePage.title}</h2>
               </div>
@@ -2061,7 +2061,7 @@ export function ManagerOnlineTrainingPage(props: {
           <div className="course-page-main">
             {activePage && (
               <>
-                <div className="course-page-main-header" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="course-page-main-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <LessonTick page={activePage} completedPages={completedPages} quizResults={savedQuizResults} size={22} />
                   <h2 className="course-page-title-input" style={{ border: "none", background: "none", padding: 0 }}>{activePage.title}</h2>
                 </div>
