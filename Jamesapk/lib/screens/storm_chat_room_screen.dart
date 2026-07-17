@@ -1487,6 +1487,25 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         _formatDate(messages[index - 1]['createdAt']) != _formatDate(message['createdAt']);
     final isBlinking = _blinkingMessageId == message['_id'];
 
+    // System notices (e.g. "X joined the group") → centered gray pill, no bubble.
+    if (message['messageType'] == 'system') {
+      return Container(
+        alignment: Alignment.center,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFEEF2F7),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            (message['message'] ?? '').toString(),
+            style: TextStyle(fontSize: 12, color: _isDarkTheme ? Colors.white60 : const Color(0xFF6B7280)),
+          ),
+        ),
+      );
+    }
+
     // Look up original replied-to message from local list (server may not return these fields)
     final replyToId = message['replyTo']?.toString() ?? '';
     dynamic originalMsg;

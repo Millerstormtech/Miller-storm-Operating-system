@@ -121,6 +121,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         jr.status = 'approved';
         await jr.save();
+
+        // Post a WhatsApp-style system message in the group so members see the join.
+        try {
+          const ChatMessage = (await import('../../../src/lib/models/ChatMessage')).default;
+          await ChatMessage.create({
+            groupId: String(jr.groupId),
+            senderId: 'system',
+            senderName: 'System',
+            senderRole: 'system',
+            message: `${jr.userName || 'A new member'} joined the group`,
+            messageType: 'system',
+          });
+        } catch (e) { console.error('[join-requests] system message failed:', e); }
         await notify(jr.appUserId, 'group_join_approved', `You're in: ${group.name}`,
           `Your request to join "${group.name}" was approved.`,
           { groupId: String(jr.groupId), groupName: group.name });

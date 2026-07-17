@@ -23,7 +23,7 @@ export interface IChatMessage extends Document {
   senderName: string;
   senderRole: string;
   message: string;
-  messageType: 'text' | 'image' | 'video' | 'file' | 'poll';
+  messageType: 'text' | 'image' | 'video' | 'file' | 'poll' | 'system';
   mediaUrl?: string;
   poll?: IPoll;
   replyTo?: string;
@@ -53,7 +53,7 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     message: { type: String, default: '' },
     messageType: {
       type: String,
-      enum: ['text', 'image', 'video', 'file', 'poll'],
+      enum: ['text', 'image', 'video', 'file', 'poll', 'system'],
       default: 'text'
     },
     mediaUrl: { type: String, default: '' },

@@ -9,7 +9,7 @@ type ChatMessage = {
   senderName: string;
   senderRole: string;
   message: string;
-  messageType: 'text' | 'image' | 'video' | 'file' | 'poll';
+  messageType: 'text' | 'image' | 'video' | 'file' | 'poll' | 'system';
   mediaUrl?: string;
   poll?: { question: string; options: { text: string; votes: string[] }[]; allowMultiple: boolean };
   replyTo?: string;
@@ -655,11 +655,22 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
 
   function renderMessage(msg: ChatMessage, index: number) {
     const isMyMessage = msg.senderId === (user?._id || user?.id);
-    const showDate = index === 0 || 
+    const showDate = index === 0 ||
       new Date(messages[index - 1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
     const isBlinking = blinkingMessageId === msg._id;
     const isHovered = hoveredMessageId === msg._id;
     const showMenu = menuMessageId === msg._id;
+
+    // System notices (e.g. "X joined the group") render as a centered gray pill.
+    if (msg.messageType === 'system') {
+      return (
+        <div key={msg._id} style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
+          <span style={{ background: '#eef2f7', color: '#6b7280', fontSize: 12, padding: '4px 12px', borderRadius: 12 }}>
+            {msg.message}
+          </span>
+        </div>
+      );
+    }
 
     return (
       <div key={msg._id} ref={(el) => { messageRefs.current[msg._id] = el; }}>
