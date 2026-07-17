@@ -95,6 +95,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             lessonId: targetId,
             lessonTitle: page['title']?.toString() ?? 'Lesson',
             playlistModules: widget.playlistModules,
+            isPrivileged: _isPrivileged,
           ),
         ),
       );
@@ -384,6 +385,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   lessonId: nextLesson['id'] ?? '',
                   lessonTitle: nextLesson['title'] ?? 'Lesson',
                   playlistModules: widget.playlistModules,
+                  isPrivileged: _isPrivileged,
                 ),
               ),
             );
@@ -694,6 +696,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                     lessonId: pageId,
                                     lessonTitle: page['title'] ?? 'Lesson ${pageIndex + 1}',
                                     playlistModules: widget.playlistModules,
+                                    isPrivileged: _isPrivileged,
                                   ),
                                 ),
                               );

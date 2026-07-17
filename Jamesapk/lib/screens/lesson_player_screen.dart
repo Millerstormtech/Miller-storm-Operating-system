@@ -35,6 +35,10 @@ class LessonPlayerScreen extends StatefulWidget {
   final String lessonId;
   final String lessonTitle;
   final List<String>? playlistModules;
+  // Leadership roles (c-level / branch-manager / sales-team-lead) get every
+  // lesson unlocked, so the "watch to the very last second" note is hidden for
+  // them — same as the web's `!isPrivileged` rule.
+  final bool isPrivileged;
 
   const LessonPlayerScreen({
     super.key,
@@ -43,6 +47,7 @@ class LessonPlayerScreen extends StatefulWidget {
     required this.lessonId,
     required this.lessonTitle,
     this.playlistModules,
+    this.isPrivileged = false,
   });
 
   @override
@@ -766,6 +771,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           lessonId: prevLesson['id'],
           lessonTitle: prevLesson['title'],
           playlistModules: widget.playlistModules,
+          isPrivileged: widget.isPrivileged,
         ),
       ),
     );
@@ -821,6 +827,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
               lessonId: nextLesson['id'],
               lessonTitle: nextLesson['title'],
               playlistModules: widget.playlistModules,
+              isPrivileged: widget.isPrivileged,
             ),
           ),
         );
@@ -1536,8 +1543,10 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                     if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null && _lesson!['videoUrl'].toString().trim().isNotEmpty)
                       _buildVideoPlayer(),
 
-                    // Watch-to-unlock reminder (shown on every step)
-                    Container(
+                    // Watch-to-unlock reminder — hidden for leadership roles
+                    // (they get every lesson unlocked), matching the web.
+                    if (!widget.isPrivileged)
+                      Container(
                         width: double.infinity,
                         margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
