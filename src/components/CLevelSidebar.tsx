@@ -35,6 +35,11 @@ export function CLevelSidebar({ activeId, isCollapsed, onToggleCollapse }: CLeve
     : baseItems;
 
   function handleNavigation(id: string) {
+    // Clicking "Training Center" while already on it returns to the course list.
+    if (id === "training" && router.pathname === "/c-level/training") {
+      window.dispatchEvent(new CustomEvent("reset-training-view"));
+      return;
+    }
     router.push(`/c-level/${id}`);
   }
 

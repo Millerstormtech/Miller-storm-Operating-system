@@ -339,6 +339,20 @@ export function ManagerOnlineTrainingPage(props: {
     }
   }, [props.currentUser?.id]);
 
+  // Clicking "Training Center" in the sidebar while already on this page (inside
+  // a course) returns to the course list. The sidebar dispatches this event
+  // because same-route navigation doesn't remount the component.
+  useEffect(() => {
+    const resetToCourseList = () => {
+      setSelectedCourse(null);
+      setActivePageId(null);
+      setViewingPlaylist(null);
+      setActiveTab('courses');
+    };
+    window.addEventListener('reset-training-view', resetToCourseList);
+    return () => window.removeEventListener('reset-training-view', resetToCourseList);
+  }, []);
+
   useEffect(() => {
     if (selectedCourse) {
       // Enter on the overview; the deep-link resolver upgrades to the lesson

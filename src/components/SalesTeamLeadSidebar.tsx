@@ -34,6 +34,11 @@ export function SalesTeamLeadSidebar({ activeId, isCollapsed, onToggleCollapse }
     : baseItems;
 
   function handleNavigation(id: string) {
+    // Clicking "Training Center" while already on it returns to the course list.
+    if (id === "onlineTraining" && router.pathname === "/manager/onlineTraining") {
+      window.dispatchEvent(new CustomEvent("reset-training-view"));
+      return;
+    }
     router.push(`/manager/${id}`);
   }
 

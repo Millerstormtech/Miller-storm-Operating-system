@@ -35,6 +35,11 @@ export function BranchManagerSidebar({ activeId, isCollapsed, onToggleCollapse }
     : baseItems;
 
   function handleNavigation(id: string) {
+    // Clicking "Training Center" while already on it returns to the course list.
+    if (id === "training" && router.pathname === "/branch-manager/training") {
+      window.dispatchEvent(new CustomEvent("reset-training-view"));
+      return;
+    }
     router.push(`/branch-manager/${id}`);
   }
 

@@ -34,6 +34,13 @@ export function SalesSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesS
     : baseItems;
 
   function handleNavigation(id: string) {
+    // Clicking "Training Center" while already on it should return to the course
+    // list. Same-route navigation doesn't remount the page (so a course stays
+    // open), so we signal the Training Center to reset to its course grid.
+    if (id === "training" && router.pathname === "/sales/training") {
+      window.dispatchEvent(new CustomEvent("reset-training-view"));
+      return;
+    }
     router.push(`/sales/${id}`);
   }
 
