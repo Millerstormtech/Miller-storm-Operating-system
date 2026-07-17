@@ -26,8 +26,14 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
+    // ⏱️ PERF: total time spent in the GET handler
+    console.time("🚀 COURSES API TOTAL");
+
     const auth = requireUser(req, res);
-    if (!auth) return;
+    if (!auth) {
+      console.timeEnd("🚀 COURSES API TOTAL");
+      return;
+    }
     const userId = auth.sub;
     const userRole = auth.role;
     // Lightweight list mode (mobile course list): strip heavy per-page content
@@ -56,7 +62,10 @@ export default async function handler(
       // screen, so we keep it.
       courseQuery.select('id title description icon coverImageUrl order status accessMode unlockAll folders.id folders.title folders.status pages.id pages.title pages.status pages.isQuiz pages.folderId');
     }
+    // ⏱️ PERF: MongoDB course query
+    console.time("📦 Mongo Course Query");
     const courses = await courseQuery.lean();
+    console.timeEnd("📦 Mongo Course Query");
     console.log('📚 Total courses in DB:', courses.length);
 
     // Admins manage every course (including drafts), so never filter for them.
@@ -65,55 +74,74 @@ export default async function handler(
     // training center company-wide (assign playlists / unlock lessons for anyone).
     if (!userId || !userRole || userRole === 'admin' || userRole === 'c-level' || userRole === 'branch-manager') {
       console.log('📚 Admin/no-context request — returning all courses (incl. drafts)');
+      // ⏱️ PERF: response serialization (admin / no-context early return)
+      console.time("📤 Response Time");
       res.status(200).json(courses);
+      console.timeEnd("📤 Response Time");
+      console.timeEnd("🚀 COURSES API TOTAL");
       return;
     }
 
     // Get user to check training center feature toggle
+    // ⏱️ PERF: user query
+    console.time("👤 User Query");
     const user = await UserModel.findOne({ id: userId }).lean();
+    console.timeEnd("👤 User Query");
     if (!user) {
       console.log('📚 User not found, returning empty array');
+      // ⏱️ PERF: response serialization (empty early return)
+      console.time("📤 Response Time");
       res.status(200).json([]);
+      console.timeEnd("📤 Response Time");
+      console.timeEnd("🚀 COURSES API TOTAL");
       return;
     }
-    
+
     console.log('📚 User found:', user.name, 'trainingCenter toggle:', user.featureToggles?.trainingCenter);
-    
+
     // Filter courses based on access mode and user's training center toggle
+    // ⏱️ PERF: course filtering
+    console.time("🔍 Course Filtering");
     const filteredCourses = courses.filter((course: any) => {
       // Only show published courses (not draft)
       if (course.status !== "published") {
         return false;
       }
-      
+
       // Check if user has training center enabled
       if (!user.featureToggles?.trainingCenter) {
         return false;
       }
-      
+
       // If course is open to all members, show it
       if (course.accessMode === "open" || !course.accessMode) {
         return true;
       }
-      
+
       // If course is assigned only, show only to managers
       if (course.accessMode === "assigned" && userRole === "sales-team-lead") {
         return true;
       }
-      
+
       return false;
     });
-    
+    console.timeEnd("🔍 Course Filtering");
+
     console.log('📚 Filtered courses count:', filteredCourses.length);
-    
+
     // Get progress data directly from UserProgressModel
     const courseIds = filteredCourses.map(c => c.id);
+    // ⏱️ PERF: progress query
+    console.time("📈 Progress Query");
     const progressRecords = await UserProgressModel.find({
       userId: userId,
       courseId: { $in: courseIds }
     }).lean();
-    
+    console.timeEnd("📈 Progress Query");
+
     // Create a map of courseId -> progress
+    // ⏱️ PERF: progress calculation (build courseId -> progress map)
+    console.time("⚙️ Progress Calculation");
     const progressMap = new Map();
     progressRecords.forEach(record => {
       progressMap.set(record.courseId, {
@@ -122,14 +150,17 @@ export default async function handler(
         courseCompleted: record.courseCompleted || false
       });
     });
-    
+    console.timeEnd("⚙️ Progress Calculation");
+
+    // ⏱️ PERF: course mapping (per-course progress % + sort)
+    console.time("📝 Course Mapping");
     const coursesWithProgress = filteredCourses.map((course: any) => {
       const progress = progressMap.get(course.id);
-      
+
       // Filter out draft lessons/pages - only show published ones
       const publishedPages = course.pages?.filter((p: any) => p.status === 'published') || [];
       const publishedFolders = course.folders?.filter((f: any) => f.status === 'published') || [];
-      
+
       // Progress counts BOTH lessons (completed) and quizzes (passed) out of all
       // published pages — matches the web so a new quiz drops % below 100%.
       const completedSet = new Set(progress?.completedPages || []);
@@ -158,16 +189,21 @@ export default async function handler(
         }
       };
     });
-    
+
     // Sort courses by order field
     coursesWithProgress.sort((a: any, b: any) => {
       const orderA = a.order ?? 999999;
       const orderB = b.order ?? 999999;
       return orderA - orderB;
     });
-    
+    console.timeEnd("📝 Course Mapping");
+
     console.log('✅ Returning courses with progress data');
+    // ⏱️ PERF: response serialization
+    console.time("📤 Response Time");
     res.status(200).json(coursesWithProgress);
+    console.timeEnd("📤 Response Time");
+    console.timeEnd("🚀 COURSES API TOTAL");
     return;
   }
 
