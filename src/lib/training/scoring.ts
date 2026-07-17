@@ -50,3 +50,74 @@ export function publishedItems(course: CourseLike): CourseItems {
     finalTestId: final ? final.id : null,
   };
 }
+
+import { QUIZ_PASS_THRESHOLD, quizPct } from "../quiz";
+
+export type QuizResultLike = { pageId: string; score?: { correct?: number; total?: number } | null };
+
+export type ProgressLike = {
+  completedPages?: string[];
+  quizResults?: QuizResultLike[];
+} | null | undefined;
+
+export type CourseStats = {
+  videosWatched: number;
+  videosTotal: number;
+  quizzesPassed: number;
+  quizzesTotal: number;
+  itemsCompleted: number;
+  itemsTotal: number;
+  pct: number;
+  complete: boolean;
+  finalTestPerfect: boolean;
+  started: boolean;
+};
+
+/**
+ * Best fraction (0..1) achieved per quiz page. A rep may retry a quiz, which
+ * appends another result — the best attempt is the one that counts.
+ */
+function bestQuizScores(progress: ProgressLike, quizIds: string[]): Map<string, number> {
+  const wanted = new Set(quizIds);
+  const best = new Map<string, number>();
+  for (const r of progress?.quizResults || []) {
+    if (!wanted.has(r.pageId)) continue;
+    const pct = quizPct((r.score as { correct: number; total: number } | null) ?? null);
+    best.set(r.pageId, Math.max(best.get(r.pageId) ?? 0, pct));
+  }
+  return best;
+}
+
+/**
+ * One rep's standing in one course.
+ *
+ * COMPLETE = every published video watched AND every published quiz passed
+ * (>=80%), including the Final Test. Watching alone is never enough.
+ */
+export function courseStats(course: CourseLike, progress: ProgressLike): CourseStats {
+  const { videoIds, quizIds, finalTestId } = publishedItems(course);
+  const watched = new Set(progress?.completedPages || []);
+  const videosWatched = videoIds.filter((id) => watched.has(id)).length;
+
+  const best = bestQuizScores(progress, quizIds);
+  const quizzesPassed = [...best.values()].filter((v) => v >= QUIZ_PASS_THRESHOLD).length;
+
+  const itemsCompleted = videosWatched + quizzesPassed;
+  const itemsTotal = videoIds.length + quizIds.length;
+
+  return {
+    videosWatched,
+    videosTotal: videoIds.length,
+    quizzesPassed,
+    quizzesTotal: quizIds.length,
+    itemsCompleted,
+    itemsTotal,
+    pct: itemsTotal > 0 ? Math.round((itemsCompleted / itemsTotal) * 100) : 0,
+    complete:
+      videoIds.length > 0 &&
+      videosWatched === videoIds.length &&
+      quizzesPassed === quizIds.length,
+    finalTestPerfect: finalTestId ? (best.get(finalTestId) ?? 0) >= 1 : false,
+    started: itemsCompleted > 0,
+  };
+}
