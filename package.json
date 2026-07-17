@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev -p 6790",
     "build": "next build",
-    "start": "next start -p 6790"
+    "start": "next start -p 6790",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
@@ -46,6 +48,7 @@
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
   }
 }
