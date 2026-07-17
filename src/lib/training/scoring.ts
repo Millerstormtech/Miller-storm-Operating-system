@@ -121,3 +121,55 @@ export function courseStats(course: CourseLike, progress: ProgressLike): CourseS
     started: itemsCompleted > 0,
   };
 }
+
+export const RANK_TITLES = ["Rookie", "Rising", "Pro", "Ace", "Elite", "Legend"] as const;
+export type RankTitle = (typeof RANK_TITLES)[number];
+
+/**
+ * Rank title from courses completed. Legend is DYNAMIC ("every published
+ * course"), never hard-coded to 10 — the library can grow. The middle bands are
+ * tuned for today's 10-course library.
+ */
+export function rankTitleFor(coursesCompleted: number, totalCourses: number): RankTitle {
+  if (totalCourses > 0 && coursesCompleted >= totalCourses) return "Legend";
+  if (coursesCompleted >= 7) return "Elite";
+  if (coursesCompleted >= 5) return "Ace";
+  if (coursesCompleted >= 3) return "Pro";
+  if (coursesCompleted >= 1) return "Rising";
+  return "Rookie";
+}
+
+export type BadgeId = "first-steps" | "halfway" | "finisher" | "graduate" | "quiz-ace";
+
+export type BadgeInput = {
+  videosWatched: number;
+  itemsCompleted: number;
+  itemsTotal: number;
+  coursesCompleted: number;
+  totalCourses: number;
+  hasQuizAce: boolean;
+};
+
+/**
+ * Permanent badges only. 🏆 Podium is deliberately absent: it is derived live
+ * from the current standings, so persisting it would let it drift out of sync.
+ */
+export function badgesFor(input: BadgeInput): BadgeId[] {
+  const badges: BadgeId[] = [];
+  if (input.videosWatched >= 1) badges.push("first-steps");
+  if (input.itemsTotal > 0 && input.itemsCompleted / input.itemsTotal >= 0.5) badges.push("halfway");
+  if (input.coursesCompleted >= 1) badges.push("finisher");
+  if (input.totalCourses > 0 && input.coursesCompleted >= input.totalCourses) badges.push("graduate");
+  if (input.hasQuizAce) badges.push("quiz-ace");
+  return badges;
+}
+
+/**
+ * A team's score is the AVERAGE of its members' percentages, so a tight
+ * 5-person team can beat a 9-person one. A raw total would let bigger teams win
+ * on headcount alone.
+ */
+export function teamScore(memberPcts: number[]): number {
+  if (!memberPcts.length) return 0;
+  return Math.round(memberPcts.reduce((a, b) => a + b, 0) / memberPcts.length);
+}

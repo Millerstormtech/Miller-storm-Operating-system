@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { publishedItems, courseStats, type CourseLike, type ProgressLike } from "./scoring";
+import { publishedItems, courseStats, rankTitleFor, badgesFor, teamScore, type CourseLike, type ProgressLike } from "./scoring";
 
 const course: CourseLike = {
   id: "c1",
@@ -162,5 +162,77 @@ describe("courseStats", () => {
       ],
     };
     expect(courseStats(c, p).complete).toBe(true);
+  });
+});
+
+describe("rankTitleFor (10-course library)", () => {
+  it("maps courses completed to the rank ladder", () => {
+    expect(rankTitleFor(0, 10)).toBe("Rookie");
+    expect(rankTitleFor(1, 10)).toBe("Rising");
+    expect(rankTitleFor(2, 10)).toBe("Rising");
+    expect(rankTitleFor(3, 10)).toBe("Pro");
+    expect(rankTitleFor(4, 10)).toBe("Pro");
+    expect(rankTitleFor(5, 10)).toBe("Ace");
+    expect(rankTitleFor(6, 10)).toBe("Ace");
+    expect(rankTitleFor(7, 10)).toBe("Elite");
+    expect(rankTitleFor(9, 10)).toBe("Elite");
+    expect(rankTitleFor(10, 10)).toBe("Legend");
+  });
+
+  it("makes Legend dynamic, not hard-coded to 10", () => {
+    expect(rankTitleFor(6, 6)).toBe("Legend");
+    expect(rankTitleFor(12, 12)).toBe("Legend");
+  });
+
+  it("never returns Legend when the library is empty", () => {
+    expect(rankTitleFor(0, 0)).toBe("Rookie");
+  });
+});
+
+describe("badgesFor", () => {
+  const base = { videosWatched: 0, itemsCompleted: 0, itemsTotal: 100, coursesCompleted: 0, totalCourses: 10, hasQuizAce: false };
+
+  it("gives no badges to a rep who has done nothing", () => {
+    expect(badgesFor(base)).toEqual([]);
+  });
+
+  it("awards first-steps on the first VIDEO, not the first quiz", () => {
+    expect(badgesFor({ ...base, videosWatched: 1, itemsCompleted: 1 })).toContain("first-steps");
+    expect(badgesFor({ ...base, videosWatched: 0, itemsCompleted: 1 })).not.toContain("first-steps");
+  });
+
+  it("awards halfway at exactly 50% of all items", () => {
+    expect(badgesFor({ ...base, itemsCompleted: 49 })).not.toContain("halfway");
+    expect(badgesFor({ ...base, itemsCompleted: 50 })).toContain("halfway");
+  });
+
+  it("awards finisher on one completed course", () => {
+    expect(badgesFor({ ...base, coursesCompleted: 1 })).toContain("finisher");
+  });
+
+  it("awards graduate only when every course is complete", () => {
+    expect(badgesFor({ ...base, coursesCompleted: 9 })).not.toContain("graduate");
+    expect(badgesFor({ ...base, coursesCompleted: 10 })).toContain("graduate");
+  });
+
+  it("awards quiz-ace from the flag", () => {
+    expect(badgesFor({ ...base, hasQuizAce: true })).toContain("quiz-ace");
+  });
+
+  it("never awards podium — it is live state, not a badge", () => {
+    const all = badgesFor({ videosWatched: 139, itemsCompleted: 293, itemsTotal: 293, coursesCompleted: 10, totalCourses: 10, hasQuizAce: true });
+    expect(all).not.toContain("podium");
+    expect(all).toEqual(["first-steps", "halfway", "finisher", "graduate", "quiz-ace"]);
+  });
+});
+
+describe("teamScore", () => {
+  it("averages member percentages so team size does not decide it", () => {
+    expect(teamScore([100, 50])).toBe(75);
+    expect(teamScore([90, 90, 90, 90, 90, 90, 90, 90, 90])).toBe(90);
+  });
+
+  it("returns 0 for an empty team rather than dividing by zero", () => {
+    expect(teamScore([])).toBe(0);
   });
 });
