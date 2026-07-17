@@ -123,6 +123,13 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isChangeModuleModalOpen, setIsChangeModuleModalOpen] = useState(false);
   const [changeModulePageId, setChangeModulePageId] = useState<string | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | undefined>(undefined);
+  // Move a lesson to a DIFFERENT course.
+  const [isMoveCourseModalOpen, setIsMoveCourseModalOpen] = useState(false);
+  const [moveCoursePageId, setMoveCoursePageId] = useState<string | null>(null);
+  const [moveTargetCourseId, setMoveTargetCourseId] = useState<string>("");
+  // Which module (folder) inside the destination course to drop the lesson into.
+  const [moveTargetFolderId, setMoveTargetFolderId] = useState<string | undefined>(undefined);
+  const [isMovingLesson, setIsMovingLesson] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   const [isSavingLesson, setIsSavingLesson] = useState(false);
@@ -879,10 +886,64 @@ export function CourseManagement(props: CourseEditorProps) {
   function movePageToFolder(pageId: string, targetFolderId?: string) {
     if (!selectedCourse) return;
     const pages = selectedCourse.pages ?? [];
-    const nextPages = pages.map((page) => 
+    const nextPages = pages.map((page) =>
       page.id === pageId ? { ...page, folderId: targetFolderId } : page
     );
     updateCourse({ ...selectedCourse, pages: nextPages });
+  }
+
+  // Move a lesson/quiz OUT of the current course and INTO another course. Both
+  // courses are persisted in one bulk save. The moved page lands at the target
+  // course's root (folders are course-specific, so it loses its folder).
+  async function moveLessonToCourse(pageId: string, targetCourseId: string, targetFolderId?: string) {
+    if (!selectedCourse || !targetCourseId || targetCourseId === selectedCourse.id) return;
+    const page = (selectedCourse.pages ?? []).find((p) => p.id === pageId);
+    const target = props.courses.find((c) => c.id === targetCourseId);
+    if (!page || !target) return;
+
+    // Only keep the chosen module if it actually exists in the target course.
+    const validFolderId = targetFolderId && (target.folders ?? []).some((f) => f.id === targetFolderId)
+      ? targetFolderId
+      : undefined;
+
+    const sourceUpdated: Course = { ...selectedCourse, pages: (selectedCourse.pages ?? []).filter((p) => p.id !== pageId) };
+    const movedPage: CoursePage = { ...page, folderId: validFolderId };
+    const targetUpdated: Course = { ...target, pages: [...(target.pages ?? []), movedPage] };
+
+    // Reflect both courses in local state right away.
+    props.onCoursesChange(
+      props.courses.map((c) => (c.id === sourceUpdated.id ? sourceUpdated : c.id === targetUpdated.id ? targetUpdated : c))
+    );
+
+    setIsMovingLesson(true);
+    try {
+      const cleaned = props.cleanCourses ? props.cleanCourses([sourceUpdated, targetUpdated]) : [sourceUpdated, targetUpdated];
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleaned),
+      });
+      if (!res.ok) throw new Error("move failed");
+      // Drop this lesson's progress from the SOURCE course so its % reflects only
+      // the lessons that remain (no transfer to the destination — best-effort).
+      fetch("/api/courses/move-lesson-cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageId, fromCourseId: selectedCourse.id }),
+      }).catch((e) => console.error("Move progress cleanup failed:", e));
+      setOriginalCourse(JSON.parse(JSON.stringify(sourceUpdated)));
+      if (activePageId === pageId) setActivePageId(null);
+      showToast(`Lesson moved to "${target.title || 'the selected course'}"`, "success");
+    } catch (err) {
+      console.error("Failed to move lesson:", err);
+      showToast("Couldn't move the lesson. Please try again.", "error");
+    } finally {
+      setIsMovingLesson(false);
+      setIsMoveCourseModalOpen(false);
+      setMoveCoursePageId(null);
+      setMoveTargetCourseId("");
+      setMoveTargetFolderId(undefined);
+    }
   }
 
   function reorderPages(draggedPageId: string, targetPageId: string, position: 'above' | 'below', targetFolderId?: string) {
@@ -1675,6 +1736,79 @@ export function CourseManagement(props: CourseEditorProps) {
                   }}
                 >
                   Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {isMoveCourseModalOpen && selectedCourse && (
+        <div className="overlay">
+          <div className="dialog">
+            <div className="dialog-title">Move Lesson to Another Course</div>
+            <label className="field">
+              <span className="field-label">Destination course</span>
+              <select
+                className="field-input"
+                value={moveTargetCourseId}
+                onChange={(e) => { setMoveTargetCourseId(e.target.value); setMoveTargetFolderId(undefined); }}
+              >
+                <option value="">Select a course…</option>
+                {props.courses
+                  .filter((c) => c.id !== selectedCourse.id)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title || "Untitled course"}{c.status === "draft" ? " (Draft)" : ""}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            {(() => {
+              const moveTargetCourse = props.courses.find((c) => c.id === moveTargetCourseId);
+              const folders = moveTargetCourse?.folders ?? [];
+              if (folders.length === 0) return null;
+              // Destination course has modules → ask which one (or the course root).
+              return (
+                <label className="field">
+                  <span className="field-label">Module in that course</span>
+                  <select
+                    className="field-input"
+                    value={moveTargetFolderId || "none"}
+                    onChange={(e) => setMoveTargetFolderId(e.target.value === "none" ? undefined : e.target.value)}
+                  >
+                    <option value="none">No Module (Course Root)</option>
+                    {folders.map((f) => (
+                      <option key={f.id} value={f.id}>{f.title || "Untitled module"}</option>
+                    ))}
+                  </select>
+                </label>
+              );
+            })()}
+            <div className="dialog-footer">
+              <div />
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="btn-secondary btn-cancel"
+                  disabled={isMovingLesson}
+                  onClick={() => {
+                    setIsMoveCourseModalOpen(false);
+                    setMoveCoursePageId(null);
+                    setMoveTargetCourseId("");
+                    setMoveTargetFolderId(undefined);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary btn-success"
+                  disabled={!moveTargetCourseId || isMovingLesson}
+                  onClick={() => {
+                    if (moveCoursePageId && moveTargetCourseId) moveLessonToCourse(moveCoursePageId, moveTargetCourseId, moveTargetFolderId);
+                  }}
+                >
+                  {isMovingLesson ? "Moving…" : "Move Lesson"}
                 </button>
               </div>
             </div>
@@ -2766,7 +2900,15 @@ export function CourseManagement(props: CourseEditorProps) {
                                           setIsChangeModuleModalOpen(true);
                                           setOpenPageMenuId(null); 
                                         }}>
-                                          Change Module  
+                                          Change Module
+                                        </button>
+                                        <button type="button" className="course-page-menu-item" onClick={() => {
+                                          setMoveCoursePageId(page.id);
+                                          setMoveTargetCourseId("");
+                                          setIsMoveCourseModalOpen(true);
+                                          setOpenPageMenuId(null);
+                                        }}>
+                                          Move to Course
                                         </button>
                                         <button
                                           type="button"
