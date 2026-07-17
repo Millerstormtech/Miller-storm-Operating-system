@@ -79,6 +79,13 @@ export function StormChatManagement() {
     fetchJoinRequests();
   }, []);
 
+  // Keep the admin list live (WhatsApp style): re-fetch every 8s so a group
+  // with a new message re-sorts to the top on its own, without a reload.
+  useEffect(() => {
+    const t = setInterval(() => fetchGroups(), 8000);
+    return () => clearInterval(t);
+  }, []);
+
   async function fetchJoinRequests() {
     try {
       const res = await fetch('/api/storm-chat/join-requests');
@@ -230,6 +237,7 @@ export function StormChatManagement() {
 
   async function fetchGroups() {
     try {
+      // WhatsApp-style: recency-sorted (group with the newest message on top).
       const response = await fetch('/api/storm-chat/groups');
       if (response.ok) {
         const data: ChatGroup[] = await response.json();

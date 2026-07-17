@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../widgets/notification_bell.dart';
 import 'storm_chat_room_screen.dart';
 import 'storm_communities_screen.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
@@ -23,11 +24,23 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
   bool isLoading = true;
   String? userId;
   String? userRole;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _loadUserAndGroups();
+    // Auto-refresh so a group with a new message re-sorts to the top on its
+    // own (WhatsApp style), without a manual pull-to-refresh.
+    _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted) _fetchGroups();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUserAndGroups() async {

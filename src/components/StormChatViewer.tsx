@@ -54,6 +54,14 @@ export function StormChatViewer() {
     return () => clearInterval(t);
   }, [groups]);
 
+  // Keep the list live (WhatsApp style): re-fetch every few seconds so a group
+  // that just got a new message re-sorts to the top on its own, no reload.
+  useEffect(() => {
+    if (!user?.id) return;
+    const t = setInterval(() => loadGroups(), 7000);
+    return () => clearInterval(t);
+  }, [user?.id]);
+
   async function loadGroups() {
     try {
       const res = await fetch("/api/storm-chat/groups?mine=1");

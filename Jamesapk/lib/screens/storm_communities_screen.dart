@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -22,11 +23,23 @@ class _StormCommunitiesScreenState extends State<StormCommunitiesScreen> {
   static const _primary = Color(0xFFCB0002);
   List<dynamic> _groups = [];
   bool _loading = true;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchGroups();
+    // Auto-refresh so a group with a new message re-sorts to the top on its
+    // own (WhatsApp style), without a manual pull-to-refresh.
+    _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted) _fetchGroups();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchGroups() async {

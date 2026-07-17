@@ -69,6 +69,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Never leak private DM threads into the unfiltered list.
         groups = groups.filter((g: any) => !g.isDirect);
       }
+
+      // WhatsApp-style ordering: the group/DM with the newest message floats to
+      // the top. `lastMessageAt` is attached to every group (falling back to the
+      // group's own createdAt when it has no messages yet) so the client can
+      // show it too. The admin management view opts out with ?manage=1 to keep
+      // its manual drag order.
+      {
+        const ids = groups.map((g: any) => String(g._id));
+        const rows = ids.length
+          ? await db.collection('chatmessages').aggregate([
+              { $match: { groupId: { $in: ids } } },
+              { $group: { _id: '$groupId', last: { $max: '$createdAt' } } },
+            ]).toArray()
+          : [];
+        const lastById = new Map(rows.map((r: any) => [String(r._id), r.last]));
+        groups = groups.map((g: any) => ({
+          ...g,
+          lastMessageAt: lastById.get(String(g._id)) || g.createdAt,
+        }));
+        if (!req.query.manage) {
+          groups.sort((a: any, b: any) =>
+            new Date(b.lastMessageAt as any).getTime() - new Date(a.lastMessageAt as any).getTime()
+          );
+        }
+      }
+
       res.status(200).json(groups);
     } catch (error) {
       console.error('Error fetching groups:', error);
