@@ -174,10 +174,21 @@ export default async function handler(
       return;
     }
     // Soft delete: mark as deleted instead of removing
-    await UserModel.findOneAndUpdate(
+    const deletedUser = await UserModel.findOneAndUpdate(
       { id },
-      { deleted: true, deletedAt: new Date() }
-    );
+      { deleted: true, deletedAt: new Date() },
+      { returnDocument: "after" }
+    ).lean() as any;
+    // Also remove them from every StormChat group so member counts (and rosters)
+    // update — a deleted account shouldn't still be counted in a group.
+    if (deletedUser?._id) {
+      const uid = String(deletedUser._id);
+      const { default: ChatGroup } = await import("../../../src/lib/models/ChatGroup");
+      await ChatGroup.updateMany(
+        { isDirect: { $ne: true } },
+        { $pull: { members: { $in: [uid, id] }, admins: { $in: [uid, id] } } }
+      );
+    }
     res.status(204).end();
     return;
   }
