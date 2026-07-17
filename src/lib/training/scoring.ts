@@ -51,7 +51,7 @@ export function publishedItems(course: CourseLike): CourseItems {
   };
 }
 
-import { QUIZ_PASS_THRESHOLD, quizPct } from "../quiz";
+import { QUIZ_PASS_THRESHOLD, quizPct, isQuizResultPassing } from "../quiz";
 
 export type QuizResultLike = { pageId: string; score?: { correct?: number; total?: number } | null };
 
@@ -194,4 +194,29 @@ export function isRankedRole(role?: string | null): boolean {
 /** Full eligibility: a ranked primary role AND not on the scrub-list. */
 export function isRankedUser(user: { role?: string | null; email?: string | null }): boolean {
   return isRankedRole(user.role) && !isExcludedAccount(user.email);
+}
+
+/**
+ * Is a single page finished, for this rep?
+ *
+ * Videos and quizzes are finished in DIFFERENT ways, and conflating them is the
+ * bug this replaces: quiz ids never appear in `completedPages` (a quiz is
+ * recorded in `quizResults`), so asking `completedPages.has(quiz.id)` was always
+ * false and a quiz tick could never turn green.
+ *
+ *   video -> watched (id present in completedPages)
+ *   quiz  -> passed  (a saved result scoring >= 80%; best attempt wins)
+ */
+export function isPageComplete(
+  page: CoursePage,
+  completedPages: Set<string> | string[],
+  quizResults: QuizResultLike[]
+): boolean {
+  if (page.isQuiz) {
+    return (quizResults || []).some(
+      (r) => r.pageId === page.id && isQuizResultPassing(r as { score?: { correct: number; total: number } | null })
+    );
+  }
+  const watched = completedPages instanceof Set ? completedPages : new Set(completedPages || []);
+  return watched.has(page.id);
 }

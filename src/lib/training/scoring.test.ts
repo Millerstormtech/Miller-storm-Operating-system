@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { publishedItems, courseStats, rankTitleFor, badgesFor, teamScore, isRankedRole, isRankedUser, type CourseLike, type ProgressLike } from "./scoring";
+import { publishedItems, courseStats, rankTitleFor, badgesFor, teamScore, isRankedRole, isRankedUser, isPageComplete, type CourseLike, type ProgressLike } from "./scoring";
 import { isExcludedAccount } from "./excluded-accounts";
 
 const course: CourseLike = {
@@ -296,5 +296,49 @@ describe("isRankedUser", () => {
   it("rejects a scrubbed account that holds a sales role", () => {
     expect(isRankedUser({ role: "sales", email: "jaymiller@millerstorm.com" })).toBe(false);
     expect(isRankedUser({ role: "sales-team-lead", email: "ishitapatel3456@gmail.com" })).toBe(false);
+  });
+});
+
+describe("isPageComplete", () => {
+  const video = { id: "v1", status: "published", isQuiz: false };
+  const quiz = { id: "q1", status: "published", isQuiz: true };
+  const pass = { pageId: "q1", score: { correct: 8, total: 10 } };   // 80% — exactly the bar
+  const fail = { pageId: "q1", score: { correct: 7, total: 10 } };   // 70%
+
+  it("greens a video once it is watched", () => {
+    expect(isPageComplete(video, new Set(["v1"]), [])).toBe(true);
+  });
+
+  it("leaves an unwatched video grey", () => {
+    expect(isPageComplete(video, new Set(), [])).toBe(false);
+  });
+
+  it("greens a quiz once it is passed", () => {
+    expect(isPageComplete(quiz, new Set(), [pass])).toBe(true);
+  });
+
+  it("leaves a failed quiz grey", () => {
+    expect(isPageComplete(quiz, new Set(), [fail])).toBe(false);
+  });
+
+  it("leaves an unattempted quiz grey", () => {
+    expect(isPageComplete(quiz, new Set(), [])).toBe(false);
+  });
+
+  it("does NOT green a quiz just because its id is in completedPages", () => {
+    // The bug this fixes in reverse: a quiz is only ever green by PASSING.
+    expect(isPageComplete(quiz, new Set(["q1"]), [])).toBe(false);
+  });
+
+  it("greens a retried quiz when any attempt passed", () => {
+    expect(isPageComplete(quiz, new Set(), [fail, pass])).toBe(true);
+  });
+
+  it("accepts completedPages as an array as well as a Set", () => {
+    expect(isPageComplete(video, ["v1"], [])).toBe(true);
+  });
+
+  it("does not crash on missing quiz results", () => {
+    expect(isPageComplete(quiz, new Set(), [])).toBe(false);
   });
 });
