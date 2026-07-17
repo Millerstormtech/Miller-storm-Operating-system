@@ -23,7 +23,9 @@ const CLevelTrainingPage: NextPage = () => {
     async function loadData() {
       setIsLoading(true);
       try {
-        const coursesRes = await fetch(`/api/courses?userId=${user!.id}&userRole=${user!.role}&t=${Date.now()}`);
+        // list=1 → light payload (no lesson HTML/transcripts) for a fast load;
+        // full lesson content is fetched per-course when a course is opened.
+        const coursesRes = await fetch(`/api/courses?userId=${user!.id}&userRole=${user!.role}&list=1`);
         if (coursesRes.ok && mounted) {
           const data = await coursesRes.json();
           const sortedData = data.sort((a: Course, b: Course) => {

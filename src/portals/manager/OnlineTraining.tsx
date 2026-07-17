@@ -213,9 +213,30 @@ export function ManagerOnlineTrainingPage(props: {
     // Enter the course now; a resolver opens the lesson only if it's unlocked
     // (a locked lesson — or no lesson id — just lands on the course overview).
     pendingDeepLinkRef.current = lessonId || null;
-    setSelectedCourse(targetCourse);
-    setActivePageId(lessonId ?? (targetCourse.pages?.[0]?.id ?? null));
+    openCourse(targetCourse, lessonId ?? (targetCourse.pages?.[0]?.id ?? null));
   }, [publishedCourses, router.query.courseId, router.query.lessonId]);
+
+  // Open a course: show it instantly from the light list metadata, then hydrate
+  // the heavy lesson content (bodies / videos / quizzes) from /api/courses/:id in
+  // the background. This lets the course LIST load fast with ?list=1 (no lesson
+  // content) without breaking lesson playback when a course is opened.
+  async function openCourse(course: Course, pageId: string | null, playlist: Playlist | null = null) {
+    setActivePageId(pageId);
+    setViewingPlaylist(playlist);
+    setSelectedCourse(course); // instant open with the light structure
+    try {
+      const res = await fetch(`/api/courses/${course.id}${props.currentUser?.id ? `?userId=${props.currentUser.id}` : ''}`);
+      if (res.ok) {
+        const full = await res.json();
+        if (full && full.id) {
+          // Only swap in the full course if the user is still viewing it.
+          setSelectedCourse(prev => (prev && prev.id === full.id ? full : prev));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to hydrate full course:', err);
+    }
+  }
 
   // Check for missed playlist deadlines and notify the manager (idempotent;
   // only notifies once per overdue, incomplete assignment).
@@ -2442,8 +2463,7 @@ export function ManagerOnlineTrainingPage(props: {
                     className="training-card"
                     onClick={() => {
                       const firstPage = (course.pages ?? []).filter(p => p.status === 'published')[0];
-                      setActivePageId(firstPage?.id ?? null);
-                      setSelectedCourse(course);
+                      openCourse(course, firstPage?.id ?? null);
                     }}
                     style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
                   >
@@ -2532,12 +2552,10 @@ export function ManagerOnlineTrainingPage(props: {
                               const playlistPages = (course.pages ?? [])
                                 .filter(p => p.status === 'published' && playlist.selectedModules.includes(p.id))
                                 .sort((a, b) => playlist.selectedModules.indexOf(a.id) - playlist.selectedModules.indexOf(b.id));
-                              setActivePageId(playlistPages[0]?.id ?? null);
-                              setViewingPlaylist({
+                              openCourse(course, playlistPages[0]?.id ?? null, {
                                 ...playlist,
                                 id: playlist._id || playlist.id,
                               });
-                              setSelectedCourse(course);
                             }
                           }}
                         >
