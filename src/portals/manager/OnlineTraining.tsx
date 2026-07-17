@@ -5,6 +5,7 @@ import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { LessonWatchNote } from "../../components/LessonWatchNote";
+import { LessonTick } from "../../components/LessonTick";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
@@ -1639,9 +1640,7 @@ export function ManagerOnlineTrainingPage(props: {
                   opacity: unlocked ? 1 : 0.6
                 }}
               >
-                <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                  {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
-                </div>
+                <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
                 <span style={{ fontSize: 14, color: '#111827' }}>
                   {!unlocked && "🔒 "}{page.title}
                 </span>
@@ -1679,9 +1678,7 @@ export function ManagerOnlineTrainingPage(props: {
                         opacity: unlocked ? 1 : 0.6
                       }}
                     >
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                        {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
-                      </div>
+                      <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
                       <span style={{ fontSize: 14, color: '#111827' }}>
                         {!unlocked && "🔒 "}{page.title}
                       </span>

@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { LessonWatchNote } from "../../components/LessonWatchNote";
+import { LessonTick } from "../../components/LessonTick";
 import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
@@ -1098,9 +1099,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
-                  </div>
+                  <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
                   <span style={{ fontSize: 14, color: '#111827' }}>
                     {!unlocked && "🔒 "}{page.title}
                   </span>
@@ -1147,9 +1146,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
-                        </div>
+                        <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
                         <span style={{ fontSize: 14, color: '#111827' }}>
                           {!unlocked && "🔒 "}{page.title}
                         </span>
