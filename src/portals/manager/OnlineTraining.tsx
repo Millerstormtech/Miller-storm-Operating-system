@@ -1947,9 +1947,9 @@ export function ManagerOnlineTrainingPage(props: {
                       onClick={() => { if (unlocked) { setActivePageId(page.id); setIsMobileSidebarOpen(false); } }}
                       style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                     >
-                      <span className="course-pages-item-title">
-                        {!unlocked && "🔒 "}{page.title}
-                        {folderName ? <span style={{ color: "#9ca3af", fontWeight: 400 }}> · {folderName}</span> : null}
+                      <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{folderName ? <span style={{ color: "#9ca3af", fontWeight: 400 }}> · {folderName}</span> : null}</span>
                       </span>
                     </div>
                   );
@@ -1969,8 +1969,9 @@ export function ManagerOnlineTrainingPage(props: {
                     }}
                     style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                   >
-                    <span className="course-pages-item-title">
-                      {!unlocked && "🔒 "}{page.title}
+                    <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
                     </span>
                   </div>
                 );
@@ -2012,8 +2013,9 @@ export function ManagerOnlineTrainingPage(props: {
                           }}
                           style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                         >
-                          <span className="course-pages-item-title">
-                            {!unlocked && "🔒 "}{page.title}
+                          <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
                           </span>
                         </div>
                       );
