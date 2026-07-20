@@ -46,6 +46,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // Rep filter (multi-select, deferred apply): `draftReps` = in-panel checkboxes;
+  // `appliedReps` = what the table filters by (only updated on "Show Selected").
+  const [appliedReps, setAppliedReps] = useState<Set<string>>(new Set());
+  const [draftReps, setDraftReps] = useState<Set<string>>(new Set());
+  const [repOpen, setRepOpen] = useState(false);
+  const [repSearch, setRepSearch] = useState("");
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -69,6 +75,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   // A date edited -> custom mode; refetch once both ends are set.
   const pickDates = (f: string, t: string) => { setFrom(f); setTo(t); if (f && t) { setIsCustom(true); setQuery(`from=${f}&to=${t}`); } };
 
+  // Rep multi-select handlers. Opening seeds the draft from the applied set; ticking only
+  // mutates the draft (table unchanged); "Show Selected" commits draft -> applied.
+  const openRepPanel = () => { setDraftReps(new Set(appliedReps)); setRepSearch(""); setRepOpen(true); };
+  const toggleDraftRep = (id: string) => setDraftReps((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const applyReps = () => { setAppliedReps(new Set(draftReps)); setRepOpen(false); };
+
   // Fixed, never-culled filter options: the full branch/team lists always show,
   // regardless of which reps have data in the current range. The "(No ...)" bucket
   // appears only when some row genuinely lacks that field.
@@ -80,6 +92,14 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     () => ({ list: TEAM_NAMES, hasNone: rows.some((r) => !r.team) }),
     [rows]
   );
+
+  // Every rep on the board (stable across windows -> roster = all active reps), for the
+  // Rep multi-select. De-duplicated by id, sorted by name.
+  const repList = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows) if (r.id && !seen.has(r.id)) seen.set(r.id, r.name || "Unknown Rep");
+    return [...seen.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [rows]);
 
   const visible = useMemo(() => {
     const branchActive = !!branchFilter && branchFilter !== NONE;
@@ -96,6 +116,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       })
       .filter((r: any) => r !== null)
       .filter((r: any) => {
+        if (appliedReps.size > 0 && !appliedReps.has(r.id)) return false; // Rep multi-select
         if (branchFilter === NONE && r.branch) return false; // "(No branch)" bucket only
         // Team filter
         if (teamFilter === NONE) { if (r.team) return false; }
@@ -112,7 +133,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       return ((a[sortKey] ?? 0) - (b[sortKey] ?? 0)) * dir;
     });
     return sorted;
-  }, [rows, branchFilter, teamFilter, sortKey, sortDir]);
+  }, [rows, branchFilter, teamFilter, appliedReps, sortKey, sortDir]);
 
   // The logged-in user's own row — drives the "your rank" pop-out banner.
   // `rank` is the overall revenue rank for the selected window (from the API).
@@ -232,9 +253,42 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             {teamOptions.hasNone ? <option value={NONE}>(No team)</option> : null}
           </select>
         </label>
-        {(branchFilter || teamFilter) ? (
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <button onClick={() => (repOpen ? setRepOpen(false) : openRepPanel())} style={selectStyle}>
+            Rep: {appliedReps.size ? `${appliedReps.size} selected` : "All reps"} ▾
+          </button>
+          {repOpen ? (
+            <>
+              {/* click-outside overlay: closes WITHOUT applying (draft discarded) */}
+              <div onClick={() => setRepOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
+              <div style={{ position: "absolute", zIndex: 21, top: "calc(100% + 4px)", left: 0, width: 260, background: "#fff", border: "1px solid #d1d5db", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: 10 }}>
+                <input
+                  value={repSearch}
+                  onChange={(e) => setRepSearch(e.target.value)}
+                  placeholder="Search reps…"
+                  style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #d1d5db", marginBottom: 8, boxSizing: "border-box", fontSize: 13 }}
+                />
+                <div style={{ maxHeight: 220, overflowY: "auto", marginBottom: 8 }}>
+                  {repList.filter((rp) => rp.name.toLowerCase().includes(repSearch.toLowerCase())).map((rp) => (
+                    <label key={rp.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 2px", fontSize: 13, cursor: "pointer" }}>
+                      <input type="checkbox" checked={draftReps.has(rp.id)} onChange={() => toggleDraftRep(rp.id)} />
+                      {rp.name}
+                    </label>
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button onClick={() => setDraftReps(new Set())} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontSize: 12, padding: 0 }}>Clear</button>
+                  <button onClick={applyReps} style={{ padding: "6px 12px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                    Show Selected ({draftReps.size})
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+        {(branchFilter || teamFilter || appliedReps.size) ? (
           <button
-            onClick={() => { setBranchFilter(ALL); setTeamFilter(ALL); }}
+            onClick={() => { setBranchFilter(ALL); setTeamFilter(ALL); setAppliedReps(new Set()); }}
             style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", cursor: "pointer", fontWeight: 600 }}
           >
             Clear filters
