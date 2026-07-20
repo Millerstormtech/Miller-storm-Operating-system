@@ -27,12 +27,15 @@ class _LoginScreenState extends State<LoginScreen> {
   static const _secure = FlutterSecureStorage();
   static const _kRememberEmail = 'remember_email';
   static const _kRememberPassword = 'remember_password';
+  // Show the "enable biometrics in Settings" nudge at most once per app launch.
+  static bool _enrollPromptShown = false;
 
   @override
   void initState() {
     super.initState();
     _checkBiometric();
     _loadSavedCredentials();
+    _maybePromptEnableBiometric();
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -76,6 +79,52 @@ class _LoginScreenState extends State<LoginScreen> {
         _biometricLabel = label;
       });
     }
+  }
+
+  // If the phone HAS a fingerprint sensor / Face ID but the user hasn't turned
+  // it on, gently tell them (once per app launch) that they must enable it in
+  // their device Settings before biometric login can work.
+  Future<void> _maybePromptEnableBiometric() async {
+    if (_enrollPromptShown) return;
+    final needs = await BiometricService.needsEnrollment();
+    if (!needs) return;
+    _enrollPromptShown = true;
+    // Let the login screen finish building before showing the dialog.
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.fingerprint, color: Color(0xFFCB0002)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Enable Face ID / Fingerprint',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          "Your phone supports Face ID / Fingerprint, but it isn't turned on yet.\n\n"
+          "To log in with your face or fingerprint, please enable it in your device Settings first. "
+          "After that, sign in once with your email and password — then you can use biometric login every time.",
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Got it',
+              style: TextStyle(color: Color(0xFFCB0002), fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _navigateByRole(Map<String, dynamic> user) {

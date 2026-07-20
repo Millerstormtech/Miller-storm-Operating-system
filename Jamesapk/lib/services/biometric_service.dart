@@ -22,6 +22,22 @@ class BiometricService {
     }
   }
 
+  /// True when the device HAS biometric hardware (Face ID / fingerprint sensor)
+  /// but the user hasn't set up / enrolled any yet — i.e. biometric login can't
+  /// work until they turn it on in the device Settings. Used to nudge the user
+  /// to enable it. (Returns false when the hardware simply isn't there, so we
+  /// never nag those devices.)
+  static Future<bool> needsEnrollment() async {
+    try {
+      final supported = await _auth.isDeviceSupported();
+      if (!supported) return false;
+      final enrolled = await _auth.getAvailableBiometrics();
+      return enrolled.isEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// A human label for the button — "Face ID" on iOS Face phones, otherwise a
   /// generic "Biometrics" / "Fingerprint".
   static Future<String> label() async {

@@ -134,16 +134,17 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         'VideoEndChannel',
         onMessageReceived: (JavaScriptMessage message) {
           if (!mounted) return;
-          // 'unlock' = last 5s reached → enable the Next button only (no
-          // redirect). 'ended' = video fully finished → enable + auto-advance.
+          // No auto-advance (matches web): 'unlock' (last second) and 'ended'
+          // (fully finished) BOTH just unlock the Next button. Nothing jumps on
+          // its own — the user must tap Next to move to the next lesson/quiz.
+          // On full completion we also mark the lesson done so the NEXT lesson
+          // unlocks while the user stays on this screen.
           setState(() => _canGoNext = true);
           if (message.message == 'ended') {
-            print('🎬 Video fully complete - auto-advancing');
-            Future.delayed(const Duration(milliseconds: 800), () {
-              if (mounted && _canGoNext) _markCompleteAndNext();
-            });
+            print('🎬 Video fully complete - Next unlocked (no auto-advance)');
+            _markLessonComplete();
           } else {
-            print('🎬 Last 5s reached - Next button enabled');
+            print('🎬 Video near end - Next button enabled');
           }
         },
       )
@@ -682,9 +683,10 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       print('❌ Error saving quiz result: $e');
     }
 
-    // Auto-advance after a short delay
-    await Future.delayed(const Duration(milliseconds: 1500));
-    _markCompleteAndNext();
+    // No auto-advance (matches web): the quiz pass is saved above, so just
+    // unlock the Next button. The user taps Next to move on to the next
+    // lesson/quiz — nothing jumps on its own.
+    if (mounted) setState(() => _canGoNext = true);
   }
 
   // Top-up dialog shown when a quiz is failed (< 80%).
@@ -777,6 +779,39 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     );
   }
   
+  // Save progress for the current lesson WITHOUT navigating — used when a video
+  // finishes so the NEXT lesson unlocks while the user stays on this screen
+  // until they tap Next. Quizzes are marked complete separately (on pass).
+  Future<void> _markLessonComplete() async {
+    if (_lesson == null || _lesson!['isQuiz'] == true) return;
+    try {
+      final user = await AuthService.getStoredUser();
+      final userId = user?['id'] ?? '';
+      final response = await api.post(
+        Uri.parse('https://millerstorm.tech/api/progress/save'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+          'courseId': widget.courseId,
+          'pageId': _lesson!['id'],
+        }),
+      );
+      if (response.statusCode == 200 && mounted) {
+        final data = jsonDecode(response.body);
+        if (data['progress'] != null) {
+          setState(() {
+            _completedCount = data['progress']['completedLessons'] ?? _completedCount;
+            _totalCount = data['progress']['totalLessons'] ?? _totalCount;
+            _progressPercent = data['progress']['progressPercent'] ?? _progressPercent;
+          });
+        }
+      }
+      print('✅ Lesson marked complete (stay on screen): ${_lesson!['title']}');
+    } catch (e) {
+      print('❌ Error marking lesson complete: $e');
+    }
+  }
+
   Future<void> _markCompleteAndNext() async {
     if (_lesson == null) return;
     
