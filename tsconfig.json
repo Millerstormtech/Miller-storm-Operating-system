@@ -35,6 +35,7 @@
     "seed.js",
     "*.js",
     "test-*.js",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "vitest.config.ts"
   ]
 }
