@@ -191,39 +191,46 @@ describe("rankTitleFor (10-course library)", () => {
 });
 
 describe("badgesFor", () => {
-  const base = { videosWatched: 0, itemsCompleted: 0, itemsTotal: 100, coursesCompleted: 0, totalCourses: 10, hasQuizAce: false };
+  const base = {
+    itemsCompleted: 0,
+    itemsTotal: 293,
+    coursesCompleted: 0,
+    totalCourses: 10,
+    hasTestAce: false,
+  };
 
-  it("gives no badges to a rep who has done nothing", () => {
+  it("earns nothing with no progress", () => {
     expect(badgesFor(base)).toEqual([]);
   });
 
-  it("awards first-steps on the first VIDEO, not the first quiz", () => {
-    expect(badgesFor({ ...base, videosWatched: 1, itemsCompleted: 1 })).toContain("first-steps");
-    expect(badgesFor({ ...base, videosWatched: 0, itemsCompleted: 1 })).not.toContain("first-steps");
+  it("does NOT award anything for merely watching videos (First Steps was removed)", () => {
+    expect(badgesFor({ ...base, itemsCompleted: 1 })).toEqual([]);
   });
 
-  it("awards halfway at exactly 50% of all items", () => {
-    expect(badgesFor({ ...base, itemsCompleted: 49 })).not.toContain("halfway");
-    expect(badgesFor({ ...base, itemsCompleted: 50 })).toContain("halfway");
+  it("awards halfway at 50% of the library", () => {
+    expect(badgesFor({ ...base, itemsCompleted: 147 })).toEqual(["halfway"]);
   });
 
-  it("awards finisher on one completed course", () => {
-    expect(badgesFor({ ...base, coursesCompleted: 1 })).toContain("finisher");
+  it("does not award halfway just below 50%", () => {
+    expect(badgesFor({ ...base, itemsCompleted: 146 })).toEqual([]);
   });
 
-  it("awards graduate only when every course is complete", () => {
-    expect(badgesFor({ ...base, coursesCompleted: 9 })).not.toContain("graduate");
-    expect(badgesFor({ ...base, coursesCompleted: 10 })).toContain("graduate");
+  it("awards finisher on the first completed course", () => {
+    expect(badgesFor({ ...base, coursesCompleted: 1 })).toEqual(["finisher"]);
   });
 
-  it("awards quiz-ace from the flag", () => {
-    expect(badgesFor({ ...base, hasQuizAce: true })).toContain("quiz-ace");
+  it("awards graduate (with halfway + finisher) when every course is complete", () => {
+    expect(
+      badgesFor({ ...base, itemsCompleted: 293, coursesCompleted: 10 })
+    ).toEqual(["halfway", "finisher", "graduate"]);
   });
 
-  it("never awards podium — it is live state, not a badge", () => {
-    const all = badgesFor({ videosWatched: 139, itemsCompleted: 293, itemsTotal: 293, coursesCompleted: 10, totalCourses: 10, hasQuizAce: true });
-    expect(all).not.toContain("podium");
-    expect(all).toEqual(["first-steps", "halfway", "finisher", "graduate", "quiz-ace"]);
+  it("awards test-ace on a perfect Final Test", () => {
+    expect(badgesFor({ ...base, hasTestAce: true })).toEqual(["test-ace"]);
+  });
+
+  it("awards no graduate when totalCourses is 0", () => {
+    expect(badgesFor({ ...base, itemsTotal: 0, totalCourses: 0 })).toEqual([]);
   });
 });
 

@@ -139,28 +139,30 @@ export function rankTitleFor(coursesCompleted: number, totalCourses: number): Ra
   return "Rookie";
 }
 
-export type BadgeId = "first-steps" | "halfway" | "finisher" | "graduate" | "quiz-ace";
+export type BadgeId = "halfway" | "finisher" | "graduate" | "test-ace";
 
 export type BadgeInput = {
-  videosWatched: number;
   itemsCompleted: number;
   itemsTotal: number;
   coursesCompleted: number;
   totalCourses: number;
-  hasQuizAce: boolean;
+  hasTestAce: boolean;
 };
 
 /**
  * Permanent badges only. 🏆 Podium is deliberately absent: it is derived live
  * from the current standings, so persisting it would let it drift out of sync.
+ *
+ * 🌱 First Steps was removed on purpose (2026-07-20): a badge nearly everyone
+ * earns carries no signal. 🎯 was renamed quiz-ace -> test-ace because it is
+ * earned on the Final TEST.
  */
 export function badgesFor(input: BadgeInput): BadgeId[] {
   const badges: BadgeId[] = [];
-  if (input.videosWatched >= 1) badges.push("first-steps");
   if (input.itemsTotal > 0 && input.itemsCompleted / input.itemsTotal >= 0.5) badges.push("halfway");
   if (input.coursesCompleted >= 1) badges.push("finisher");
   if (input.totalCourses > 0 && input.coursesCompleted >= input.totalCourses) badges.push("graduate");
-  if (input.hasQuizAce) badges.push("quiz-ace");
+  if (input.hasTestAce) badges.push("test-ace");
   return badges;
 }
 
