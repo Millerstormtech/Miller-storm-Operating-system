@@ -3,6 +3,10 @@ import {
   aggregateOverall,
   nextMilestone,
   rankRequirementLabels,
+  filterRows,
+  filtersActive,
+  teamStandings,
+  teamSummaryFor,
 } from "./board";
 import type { CourseStats } from "./scoring";
 
@@ -87,5 +91,61 @@ describe("rankRequirementLabels", () => {
     const labels = rankRequirementLabels(12);
     expect(labels.Elite).toBe("7 to 11");
     expect(labels.Legend).toBe("all 12");
+  });
+});
+
+describe("filterRows / filtersActive", () => {
+  const rows = [
+    { name: "Fernando Cano", branch: "West Texas", team: "Daniel Sabedra" },
+    { name: "Sarah Beth", branch: "Dallas", team: "Mike Muscari" },
+    { name: "Marcus Reed", branch: "Dallas", team: "Cooper" },
+  ];
+
+  it("no filters returns everything", () => {
+    expect(filterRows(rows, { search: "", branch: "", team: "" })).toHaveLength(3);
+    expect(filtersActive({ search: "", branch: "", team: "" })).toBe(false);
+  });
+
+  it("search matches case-insensitively on name", () => {
+    expect(filterRows(rows, { search: "sarah", branch: "", team: "" })).toEqual([rows[1]]);
+    expect(filtersActive({ search: "sarah", branch: "", team: "" })).toBe(true);
+  });
+
+  it("branch and team filters combine", () => {
+    expect(filterRows(rows, { search: "", branch: "Dallas", team: "" })).toHaveLength(2);
+    expect(filterRows(rows, { search: "", branch: "Dallas", team: "Cooper" })).toEqual([rows[2]]);
+  });
+
+  it("whitespace-only search is inactive", () => {
+    expect(filtersActive({ search: "   ", branch: "", team: "" })).toBe(false);
+  });
+});
+
+describe("teamStandings / teamSummaryFor", () => {
+  const rows = [
+    { team: "Cooper", pct: 40 },
+    { team: "Cooper", pct: 60 },
+    { team: "Luke", pct: 80 },
+    { team: "Luke", pct: 0 },   // not-started members still count toward the average
+    { team: "", pct: 90 },      // teamless reps never form a team
+  ];
+
+  it("ranks teams by average pct, including zero-progress members", () => {
+    const st = teamStandings(rows);
+    expect(st).toEqual([
+      { team: "Cooper", size: 2, avgPct: 50, rank: 1 },
+      { team: "Luke", size: 2, avgPct: 40, rank: 2 },
+    ]);
+  });
+
+  it("summarizes one team with the total team count", () => {
+    expect(teamSummaryFor(rows, "Luke")).toEqual({
+      team: "Luke", size: 2, avgPct: 40, rank: 2, teamCount: 2,
+    });
+  });
+
+  it("returns null for an unknown or empty team", () => {
+    expect(teamSummaryFor(rows, "Nope")).toBeNull();
+    expect(teamSummaryFor(rows, "")).toBeNull();
   });
 });

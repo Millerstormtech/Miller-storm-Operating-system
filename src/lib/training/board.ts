@@ -108,3 +108,62 @@ export type OverallResponse = {
   courses: Array<{ id: string; title: string }>;
   rows: OverallRow[];
 };
+
+import { teamScore } from "./scoring";
+
+export type BoardFilters = { search: string; branch: string; team: string };
+
+/** "" on any filter means "all". Search is a case-insensitive name substring. */
+export function filterRows<T extends { name: string; branch: string; team: string }>(
+  rows: T[],
+  f: BoardFilters
+): T[] {
+  const q = f.search.trim().toLowerCase();
+  return rows.filter(
+    (r) =>
+      (!q || r.name.toLowerCase().includes(q)) &&
+      (!f.branch || r.branch === f.branch) &&
+      (!f.team || r.team === f.team)
+  );
+}
+
+export function filtersActive(f: BoardFilters): boolean {
+  return !!(f.search.trim() || f.branch || f.team);
+}
+
+export type TeamStanding = { team: string; size: number; avgPct: number; rank: number };
+
+/**
+ * All teams ranked by average completion %. Every ranked rep on the team
+ * counts, including not-started members at 0%: a team carries its whole
+ * roster. Teamless reps ("") never form a team.
+ */
+export function teamStandings(rows: Array<{ team: string; pct: number }>): TeamStanding[] {
+  const byTeam = new Map<string, number[]>();
+  for (const r of rows) {
+    if (!r.team) continue;
+    const list = byTeam.get(r.team) || [];
+    list.push(r.pct);
+    byTeam.set(r.team, list);
+  }
+  const standings = [...byTeam.entries()].map(([team, pcts]) => ({
+    team,
+    size: pcts.length,
+    avgPct: teamScore(pcts),
+    rank: 0,
+  }));
+  standings.sort((a, b) => b.avgPct - a.avgPct || a.team.localeCompare(b.team));
+  standings.forEach((s, i) => (s.rank = i + 1));
+  return standings;
+}
+
+/** The one team a team lead cares about, plus how many teams it competes with. */
+export function teamSummaryFor(
+  rows: Array<{ team: string; pct: number }>,
+  team: string
+): (TeamStanding & { teamCount: number }) | null {
+  if (!team) return null;
+  const standings = teamStandings(rows);
+  const mine = standings.find((s) => s.team === team);
+  return mine ? { ...mine, teamCount: standings.length } : null;
+}
