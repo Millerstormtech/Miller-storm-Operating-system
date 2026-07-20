@@ -127,6 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         _id: "$repExternalId",
         email: { $last: "$repEmail" }, phone: { $last: "$repPhone" },
         name: { $last: "$repNameSnapshot" }, branch: { $last: "$location" },
+        lead: { $sum: { $cond: [{ $eq: ["$metric", "lead"] }, "$value", 0] } },
         filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
         won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
         revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
@@ -141,6 +142,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     { $group: {
         _id: { rep: "$repExternalId", loc: "$location" },
         email: { $last: "$repEmail" }, phone: { $last: "$repPhone" }, name: { $last: "$repNameSnapshot" },
+        lead: { $sum: { $cond: [{ $eq: ["$metric", "lead"] }, "$value", 0] } },
         filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
         won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
         revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
@@ -185,12 +187,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const acx = acxRaw.map((r: any) => ({
     repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
     nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
-    filed: r.filed, won: r.won, revenue: r.revenue,
+    lead: r.lead, filed: r.filed, won: r.won, revenue: r.revenue,
   }));
   const acxAll = acxAllRaw.map((r: any) => ({
     repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
     nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: "",
-    filed: 0, won: 0, revenue: 0,
+    lead: 0, filed: 0, won: 0, revenue: 0,
   }));
 
   // Build the roster: everyone with in-range knocks (active or former), PLUS idle ACTIVE
@@ -247,16 +249,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   for (const r of acxLocRaw as any[]) {
     const region = saleRegion(r._id.loc);
     const repId = String(r._id.rep);
-    const cur = regionAcc[region].get(repId) || { email: r.email, phone: r.phone, name: r.name, filed: 0, won: 0, revenue: 0 };
-    cur.filed += r.filed; cur.won += r.won; cur.revenue += r.revenue;
+    const cur = regionAcc[region].get(repId) || { email: r.email, phone: r.phone, name: r.name, lead: 0, filed: 0, won: 0, revenue: 0 };
+    cur.lead += r.lead; cur.filed += r.filed; cur.won += r.won; cur.revenue += r.revenue;
     regionAcc[region].set(repId, cur);
   }
   const acxForRegion = (region: string) => [...regionAcc[region].entries()].map(([repId, v]: [string, any]) => ({
     repExternalId: repId, email: normEmail(v.email), phone: normPhone(v.phone),
     nameKey: normName(v.name), name: v.name || "Unknown Rep", branch: "",
-    filed: v.filed, won: v.won, revenue: v.revenue,
+    lead: v.lead, filed: v.filed, won: v.won, revenue: v.revenue,
   }));
-  const sumsById = (rows: any[]) => new Map<string, any>(rows.map((r) => [r.id, { filed: r.filed, won: r.won, revenue: r.revenue }]));
+  const sumsById = (rows: any[]) => new Map<string, any>(rows.map((r) => [r.id, { lead: r.lead, filed: r.filed, won: r.won, revenue: r.revenue }]));
   const wtById = sumsById(mergeLeaderboard(acxForRegion("West Texas"), rc));
   const dfwById = sumsById(mergeLeaderboard(acxForRegion("DFW"), rc));
   const commById = sumsById(mergeLeaderboard(acxForRegion("Commercial"), rc));
@@ -287,12 +289,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       || (isBranchless(rcu?.name || m.name) ? "" : officeToBranch(rcu?.office));
     // Per-branch split: DFW-filed sales -> the rep's home branch; West Texas / Commercial
     // sales -> their own branch. Knocks live only under the home branch.
-    const zero = { filed: 0, won: 0, revenue: 0 };
+    const zero = { lead: 0, filed: 0, won: 0, revenue: 0 };
     const byBranch: Record<string, any> = {};
     const addBranch = (br: string, s: any, knocks: number) => {
       if (!br) return;
-      const b = byBranch[br] || { verifiedKnocks: 0, filed: 0, won: 0, revenue: 0 };
-      b.filed += s.filed; b.won += s.won; b.revenue += s.revenue; b.verifiedKnocks += knocks;
+      const b = byBranch[br] || { verifiedKnocks: 0, leadsCreated: 0, filed: 0, won: 0, revenue: 0 };
+      b.leadsCreated += s.lead; b.filed += s.filed; b.won += s.won; b.revenue += s.revenue; b.verifiedKnocks += knocks;
       byBranch[br] = b;
     };
     addBranch(branch, zero, m.verifiedKnocks);            // home branch carries the knocks
@@ -301,7 +303,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     addBranch("Commercial", commById.get(m.id) || zero, 0);
     return {
       rank: i + 1, id: m.id, name: m.name, branch,
-      verifiedKnocks: m.verifiedKnocks, filed: m.filed, won: m.won, revenue: m.revenue,
+      verifiedKnocks: m.verifiedKnocks, leadsCreated: m.lead, filed: m.filed, won: m.won, revenue: m.revenue,
       repUserId: u ? (u as any).id : null, headshotUrl: u ? (u as any).headshotUrl || "" : "",
       team,
       isTeamLead: isTeamLead(rcu?.name || m.name, team),
