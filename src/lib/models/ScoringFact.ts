@@ -7,7 +7,7 @@ const scoringFactSchema = new Schema(
   {
     factKey: { type: String, required: true, unique: true }, // `${jobId}:${metric}`
     jobId: { type: String, required: true, index: true },
-    metric: { type: String, enum: ["filed", "won", "revenue"], required: true },
+    metric: { type: String, enum: ["lead", "filed", "won", "revenue"], required: true },
     repExternalId: { type: String, index: true }, // AccuLynx SalesOwner user id
     repUserId: { type: String, default: null },    // linked Miller Storm user id (nullable)
     repNameSnapshot: { type: String, default: "" }, // name shown even when unmatched
