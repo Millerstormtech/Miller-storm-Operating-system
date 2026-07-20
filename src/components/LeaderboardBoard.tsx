@@ -18,13 +18,14 @@ const ALL = "";
 const NONE = "__none__";
 
 // Column definitions drive both the header row and the click-to-sort behavior.
-type SortKey = "name" | "branch" | "team" | "verifiedKnocks" | "filed" | "won" | "revenue";
+type SortKey = "name" | "branch" | "team" | "verifiedKnocks" | "leadsCreated" | "filed" | "won" | "revenue";
 type ColType = "text" | "num" | "money";
 const COLUMNS: { key: SortKey; label: string; type: ColType }[] = [
   { key: "name", label: "Rep", type: "text" },
   { key: "branch", label: "Branch", type: "text" },
   { key: "team", label: "Team", type: "text" },
   { key: "verifiedKnocks", label: "Verified Door Knocks", type: "num" },
+  { key: "leadsCreated", label: "Leads Created", type: "num" },
   { key: "filed", label: "Claims Filed", type: "num" },
   { key: "won", label: "Contracts", type: "num" },
   { key: "revenue", label: "Contract Amount", type: "money" },
@@ -89,7 +90,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         if (branchActive) {
           const b = r.byBranch?.[branchFilter];
           if (!b) return null;
-          return { ...r, verifiedKnocks: b.verifiedKnocks, filed: b.filed, won: b.won, revenue: b.revenue };
+          return { ...r, verifiedKnocks: b.verifiedKnocks, leadsCreated: b.leadsCreated, filed: b.filed, won: b.won, revenue: b.revenue };
         }
         return r;
       })
@@ -145,12 +146,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const totals = visible.reduce(
     (a, r) => {
       a.verifiedKnocks += r.verifiedKnocks ?? 0;
+      a.leadsCreated += r.leadsCreated ?? 0;
       a.filed += r.filed ?? 0;
       a.won += r.won ?? 0;
       a.revenue += r.revenue ?? 0;
       return a;
     },
-    { verifiedKnocks: 0, filed: 0, won: 0, revenue: 0 }
+    { verifiedKnocks: 0, leadsCreated: 0, filed: 0, won: 0, revenue: 0 }
   );
 
   return (
@@ -326,6 +328,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                       </>
                     ) : null}
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
+                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.leadsCreated ?? 0}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center" }}>{r.filed}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.won}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#16a34a" }}>{fmtMoney(r.revenue)}</td>
@@ -340,6 +343,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     Sum ({visible.length} rep{visible.length === 1 ? "" : "s"})
                   </td>
                   <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.verifiedKnocks}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.leadsCreated}</td>
                   <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.filed}</td>
                   <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.won}</td>
                   <td style={{ padding: "10px 14px", textAlign: "center", color: "#16a34a" }}>{fmtMoney(totals.revenue)}</td>
