@@ -5,6 +5,7 @@ import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { LessonWatchNote } from "../../components/LessonWatchNote";
+import { LessonTick } from "../../components/LessonTick";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
@@ -1676,9 +1677,7 @@ export function ManagerOnlineTrainingPage(props: {
                   opacity: unlocked ? 1 : 0.6
                 }}
               >
-                <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                  {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
-                </div>
+                <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
                 <span style={{ fontSize: 14, color: '#111827' }}>
                   {!unlocked && "🔒 "}{page.title}
                 </span>
@@ -1716,9 +1715,7 @@ export function ManagerOnlineTrainingPage(props: {
                         opacity: unlocked ? 1 : 0.6
                       }}
                     >
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                        {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
-                      </div>
+                      <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
                       <span style={{ fontSize: 14, color: '#111827' }}>
                         {!unlocked && "🔒 "}{page.title}
                       </span>
@@ -1799,7 +1796,8 @@ export function ManagerOnlineTrainingPage(props: {
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '12px 16px', fontSize: 14, color: '#374151', fontWeight: 500 }}
             >← Course Content</button>
             <div className="course-page-main">
-              <div className="course-page-main-header">
+              <div className="course-page-main-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <LessonTick page={activePage} completedPages={completedPages} quizResults={savedQuizResults} size={22} />
                 <h2 className="course-page-title-input" style={{ border: 'none', background: 'none', padding: 0 }}>{activePage.title}</h2>
               </div>
               {/* Leadership has every step unlocked, so the "watch to the last
@@ -1986,9 +1984,9 @@ export function ManagerOnlineTrainingPage(props: {
                       onClick={() => { if (unlocked) { setActivePageId(page.id); setIsMobileSidebarOpen(false); } }}
                       style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                     >
-                      <span className="course-pages-item-title">
-                        {!unlocked && "🔒 "}{page.title}
-                        {folderName ? <span style={{ color: "#9ca3af", fontWeight: 400 }}> · {folderName}</span> : null}
+                      <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{folderName ? <span style={{ color: "#9ca3af", fontWeight: 400 }}> · {folderName}</span> : null}</span>
                       </span>
                     </div>
                   );
@@ -2008,8 +2006,9 @@ export function ManagerOnlineTrainingPage(props: {
                     }}
                     style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                   >
-                    <span className="course-pages-item-title">
-                      {!unlocked && "🔒 "}{page.title}
+                    <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
                     </span>
                   </div>
                 );
@@ -2051,8 +2050,9 @@ export function ManagerOnlineTrainingPage(props: {
                           }}
                           style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                         >
-                          <span className="course-pages-item-title">
-                            {!unlocked && "🔒 "}{page.title}
+                          <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
                           </span>
                         </div>
                       );
@@ -2100,7 +2100,8 @@ export function ManagerOnlineTrainingPage(props: {
           <div className="course-page-main">
             {activePage && (
               <>
-                <div className="course-page-main-header">
+                <div className="course-page-main-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <LessonTick page={activePage} completedPages={completedPages} quizResults={savedQuizResults} size={22} />
                   <h2 className="course-page-title-input" style={{ border: "none", background: "none", padding: 0 }}>{activePage.title}</h2>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', marginTop: '-8px' }}>

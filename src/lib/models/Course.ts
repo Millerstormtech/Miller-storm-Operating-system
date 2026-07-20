@@ -31,6 +31,11 @@ const coursePageSchema = new Schema(
     resourceLinks: [lessonLinkSchema],
     fileUrls: [lessonLinkSchema],
     isQuiz: Boolean,
+    // Marks the course's cumulative Final Test (exactly one per course).
+    // Set by scripts/backfill-final-test.js and by the Course Builder — never
+    // inferred from the title at runtime, because renaming the page would
+    // silently break the Quiz Ace badge.
+    isFinalTest: Boolean,
     quizQuestions: [quizQuestionSchema],
     questionsToShow: Number
   },

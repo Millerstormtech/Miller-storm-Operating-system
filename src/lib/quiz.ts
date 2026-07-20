@@ -10,9 +10,15 @@ export const QUIZ_MAX_ATTEMPTS = 2;
 
 export type QuizScore = { correct: number; total: number };
 
-// Fraction correct (0..1) for a score, safe against missing/zero values.
+// Fraction correct (0..1) for a score, safe against missing/zero/non-numeric
+// values. A malformed saved result (e.g. `{ total: 10 }` with no `correct`,
+// which the schema permits since neither field is required) must never
+// produce NaN here: NaN poisons Math.max folds in bestQuizScores() and
+// silently denies reps quiz credit they already earned on a later attempt.
 export function quizPct(score?: QuizScore | null): number {
-  if (!score || !score.total) return 0;
+  if (!score || !score.total || typeof score.correct !== "number" || Number.isNaN(score.correct)) {
+    return 0;
+  }
   return score.correct / score.total;
 }
 

@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { LessonWatchNote } from "../../components/LessonWatchNote";
+import { LessonTick } from "../../components/LessonTick";
 import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
@@ -1113,9 +1114,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
-                  </div>
+                  <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
                   <span style={{ fontSize: 14, color: '#111827' }}>
                     {!unlocked && "🔒 "}{page.title}
                   </span>
@@ -1162,9 +1161,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
-                        </div>
+                        <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
                         <span style={{ fontSize: 14, color: '#111827' }}>
                           {!unlocked && "🔒 "}{page.title}
                         </span>
@@ -1386,7 +1383,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               ← Course Content
             </button>
             <div className="course-page-main">
-              <div className="course-page-main-header">
+              <div className="course-page-main-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <LessonTick page={activePage} completedPages={completedPages} quizResults={savedQuizResults} size={22} />
                 <h2 className="course-page-title-input" style={{ border: 'none', background: 'none', padding: 0 }}>{activePage.title}</h2>
               </div>
               <LessonWatchNote />
@@ -1716,8 +1714,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     }}
                     style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                   >
-                    <span className="course-pages-item-title">
-                      {!unlocked && "🔒 "}{page.title}
+                    <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
                     </span>
                   </div>
                 );
@@ -1759,8 +1758,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           }}
                           style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                         >
-                          <span className="course-pages-item-title">
-                            {!unlocked && "🔒 "}{page.title}
+                          <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
                           </span>
                         </div>
                       );
@@ -1807,7 +1807,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           <div className="course-page-main">
             {activePage && (
               <>
-                <div className="course-page-main-header">
+                <div className="course-page-main-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <LessonTick page={activePage} completedPages={completedPages} quizResults={savedQuizResults} size={22} />
                   <h2 className="course-page-title-input" style={{ border: "none", background: "none", padding: 0 }}>{activePage.title}</h2>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', marginTop: '-8px' }}>

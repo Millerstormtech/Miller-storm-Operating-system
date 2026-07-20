@@ -15,6 +15,7 @@ import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "../../src/lib/leaderboard/identity";
 import { officeToBranch, saleRegion } from "../../src/lib/repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch, isBranchless } from "../../src/lib/repcard/org-chart";
+import { courseStats, isRankedUser, RANKED_ROLES } from "../../src/lib/training/scoring";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -38,13 +39,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Course not found" });
     }
 
-    // Fetch users
+    // Ranked = PRIMARY role only. The old query also matched `roles[]`, which
+    // put branch managers and admins on the board as salespeople: `roles[]`
+    // marks leadership who also run a sales team. Leadership does not compete.
     let usersQuery: any = {
-      $or: [
-        { role: "sales-team-lead" },
-        { role: "sales" },
-        { roles: { $in: ["sales-team-lead", "sales"] } }
-      ],
+      role: { $in: [...RANKED_ROLES] },
       deleted: { $ne: true },
       suspended: { $ne: true }
     };
@@ -59,13 +58,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select("id name email role roles headshotUrl")
       .lean();
 
-    // Fetch all progress for these users and this course. Only completedPages is
-    // needed to score — skip quizResults/answers so the payload stays small.
+    // Fetch all progress for these users and this course. Both completedPages
+    // and quizResults are needed — courseStats() uses quizResults to gate
+    // completion on passed quizzes, not just watched videos.
     const userIds = users.map(u => u.id);
     const progressRecords = await UserProgressModel.find({
       userId: { $in: userIds },
       courseId: courseId
-    }).select("userId completedPages").lean();
+    }).select("userId completedPages quizResults").lean();
 
     // Create progress map
     const progressMap = new Map();
@@ -73,37 +73,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       progressMap.set(progress.userId, progress);
     });
 
-    // Filter published lessons
-    const publishedFolderIds = new Set(
-      (course.folders || [])
-        .filter((f: any) => f.status === "published")
-        .map((f: any) => f.id)
-    );
-    const lessonPages = (course.pages || []).filter(
-      (p: any) =>
-        p.status === "published" &&
-        !p.isQuiz &&
-        (!p.folderId || publishedFolderIds.has(p.folderId))
-    );
-    const lessonIds = new Set(lessonPages.map((p: any) => p.id));
-    const total = lessonPages.length;
+    // Scrub non-sales accounts holding a sales role (Jay, dev/test accounts,
+    // shared mailboxes). Branch managers/admins are already gone via the query.
+    const rankedUsers = users.filter((u) => isRankedUser({ role: u.role, email: u.email }));
 
-    // Build leaderboard rows
-      const rows = users.map(u => {
-        const progress = progressMap.get(u.id);
-        const done = (progress?.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
-        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-        return {
-          id: u.id,
-          name: u.name || u.email,
-          email: u.email,
-          role: u.role || (u.roles || [])[0] || "",
-          headshotUrl: u.headshotUrl || "",
-          done,
-          total,
-          pct
-        };
-      });
+    const rows = rankedUsers.map((u) => {
+      const stats = courseStats(course as any, progressMap.get(u.id));
+      return {
+        id: u.id,
+        name: u.name || u.email,
+        email: u.email,
+        role: u.role || "",
+        headshotUrl: u.headshotUrl || "",
+        // `done`/`total` now count videos + quizzes, matching the course viewer
+        // and the web board. Shape is unchanged, so mobile needs no release.
+        done: stats.itemsCompleted,
+        total: stats.itemsTotal,
+        pct: stats.pct
+      };
+    });
+    // Independent of `rows` on purpose: an empty or fully-scrubbed roster
+    // (empty team, all reports removed by isRankedUser) must still report the
+    // course's real item count, not 0. courseStats() with no progress reduces
+    // to the course's own itemsTotal.
+    const total = courseStats(course as any, undefined).itemsTotal;
 
     // Sort rows
     rows.sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
