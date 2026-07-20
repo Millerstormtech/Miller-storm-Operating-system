@@ -20,3 +20,6 @@ docs/
 
 # Local-only AI assistant guidance (kept off GitHub on purpose)
 CLAUDE.md
+
+# Brainstorming visual-companion scratch files
+.superpowers/
