@@ -1,21 +1,32 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 /**
- * The ⓘ primitive: hover on desktop, tap-to-toggle on touch. Content is plain
- * text so it can never grow into a second UI.
+ * The ⓘ primitive: hover on desktop, tap-to-toggle on touch, focusable and
+ * announced for keyboard/screen-reader users. Content is plain text so it can
+ * never grow into a second UI.
  */
 export function Tooltip({ text, children }: { text: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const id = useId();
   return (
     <span
       style={{ position: "relative", display: "inline-flex", cursor: "help" }}
+      tabIndex={0}
+      aria-describedby={open ? id : undefined}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
       onClick={() => setOpen((p) => !p)}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setOpen(false);
+      }}
     >
       {children}
       {open && (
         <span
+          id={id}
+          role="tooltip"
           style={{
             position: "absolute",
             bottom: "calc(100% + 6px)",

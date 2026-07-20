@@ -27,6 +27,7 @@ export function Legend({ totalCourses, isNarrow }: { totalCourses: number; isNar
       {isNarrow && (
         <button
           onClick={() => setOpen((p) => !p)}
+          aria-expanded={open}
           style={{
             width: "100%",
             display: "flex",
