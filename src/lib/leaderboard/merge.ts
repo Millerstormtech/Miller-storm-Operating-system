@@ -7,13 +7,13 @@
 // RepCard match are dropped entirely (not door-knocking reps). Inputs are already
 // normalized by the caller.
 
-export interface AcxAgg { repExternalId: string; email: string; phone: string; nameKey: string; name: string; branch: string; filed: number; won: number; revenue: number; }
+export interface AcxAgg { repExternalId: string; email: string; phone: string; nameKey: string; name: string; branch: string; lead: number; filed: number; won: number; revenue: number; }
 export interface RcAgg { repcardUserId: string; email: string; phone: string; nameKey: string; name: string; branch: string; verifiedKnocks: number; }
 // source: "both" = RepCard rep with matched AccuLynx sales; "repcard" = RepCard rep with
 // no matching AccuLynx sales (door-knocks only). There is no AccuLynx-only row anymore.
-export interface MergedRow { id: string; name: string; branch: string; email: string; verifiedKnocks: number; filed: number; won: number; revenue: number; source: "both" | "repcard"; }
+export interface MergedRow { id: string; name: string; branch: string; email: string; verifiedKnocks: number; lead: number; filed: number; won: number; revenue: number; source: "both" | "repcard"; }
 
-interface Bucket { id: string; name: string; branch: string; email: string; phone: string; nameKey: string; verifiedKnocks: number; filed: number; won: number; revenue: number; matched: boolean; }
+interface Bucket { id: string; name: string; branch: string; email: string; phone: string; nameKey: string; verifiedKnocks: number; lead: number; filed: number; won: number; revenue: number; matched: boolean; }
 
 // key -> the single bucket that owns it (only if exactly one bucket has that key).
 function uniqueIndex(buckets: Bucket[], pick: (b: Bucket) => string): Map<string, Bucket> {
@@ -28,7 +28,7 @@ export function mergeLeaderboard(acx: AcxAgg[], rc: RcAgg[]): MergedRow[] {
   const buckets: Bucket[] = rc.map((r) => ({
     id: `rc:${r.repcardUserId}`, name: r.name, branch: r.branch,
     email: r.email, phone: r.phone, nameKey: r.nameKey,
-    verifiedKnocks: r.verifiedKnocks, filed: 0, won: 0, revenue: 0, matched: false,
+    verifiedKnocks: r.verifiedKnocks, lead: 0, filed: 0, won: 0, revenue: 0, matched: false,
   }));
 
   const byEmail = uniqueIndex(buckets, (b) => b.email);
@@ -42,7 +42,7 @@ export function mergeLeaderboard(acx: AcxAgg[], rc: RcAgg[]): MergedRow[] {
       (a.nameKey && byName.get(a.nameKey)) ||
       null;
     if (target) {
-      target.filed += a.filed; target.won += a.won; target.revenue += a.revenue; target.matched = true;
+      target.lead += a.lead; target.filed += a.filed; target.won += a.won; target.revenue += a.revenue; target.matched = true;
       // RepCard doesn't carry a branch/office, so its spine rows are branchless.
       // Adopt the AccuLynx branch for any matched rep that has one — this is what
       // fills the Branch column for everyone with AccuLynx sales.
@@ -56,7 +56,7 @@ export function mergeLeaderboard(acx: AcxAgg[], rc: RcAgg[]): MergedRow[] {
   return buckets
     .map((b) => ({
       id: b.id, name: b.name, branch: b.branch, email: b.email,
-      verifiedKnocks: b.verifiedKnocks, filed: b.filed, won: b.won, revenue: b.revenue,
+      verifiedKnocks: b.verifiedKnocks, lead: b.lead, filed: b.filed, won: b.won, revenue: b.revenue,
       source: b.matched ? "both" : "repcard",
     }));
 }

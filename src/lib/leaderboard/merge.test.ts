@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mergeLeaderboard } from "./merge.ts";
 
 const rc = (o: any) => ({ repcardUserId: "", email: "", phone: "", nameKey: "", name: "", branch: "", verifiedKnocks: 0, ...o });
-const ax = (o: any) => ({ repExternalId: "", email: "", phone: "", nameKey: "", name: "", branch: "", filed: 0, won: 0, revenue: 0, ...o });
+const ax = (o: any) => ({ repExternalId: "", email: "", phone: "", nameKey: "", name: "", branch: "", lead: 0, filed: 0, won: 0, revenue: 0, ...o });
 
 test("email match merges knocks + deals into one 'both' row", () => {
   const out = mergeLeaderboard(
@@ -15,6 +15,16 @@ test("email match merges knocks + deals into one 'both' row", () => {
   assert.equal(out[0].source, "both");
   assert.equal(out[0].verifiedKnocks, 300);
   assert.equal(out[0].revenue, 50000);
+});
+
+test("lead count merges onto the matched row like filed", () => {
+  const out = mergeLeaderboard(
+    [ax({ repExternalId: "a1", email: "alan@ms.com", name: "Alan", lead: 7, filed: 3 })],
+    [rc({ repcardUserId: "r1", email: "alan@ms.com", name: "Alan", verifiedKnocks: 10 })],
+  );
+  assert.equal(out.length, 1);
+  assert.equal(out[0].lead, 7);
+  assert.equal(out[0].filed, 3);
 });
 
 test("RepCard rep with no matching deals is a knock-only 'repcard' row", () => {
