@@ -334,7 +334,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       {loading ? (
         <p style={{ color: "#6b7280" }}>Loading leaderboard…</p>
       ) : (
-        <div style={{ overflowX: "auto" }}>
+        <>
+        <div className="leaderboard-table-wrap" style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
@@ -406,6 +407,47 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             ) : null}
           </table>
         </div>
+
+        {/* Mobile: app-style leaderboard cards (matches the Flutter app). */}
+        <div className="leaderboard-cards">
+          {visible.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No reps match these filters.</div>
+          ) : visible.map((r, i) => {
+            const isYou = currentUserId && r.repUserId === currentUserId;
+            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+            const subtitle = [r.branch, TEAM_LEADS[r.team] || r.team].filter(Boolean).join(" · ");
+            return (
+              <div key={r.id} style={{ marginBottom: 10, background: isYou ? "#FFF1F1" : "#fff", borderRadius: 14, border: `1px solid ${isYou ? "rgba(203,0,2,0.4)" : "#EEF0F3"}`, boxShadow: "0 3px 10px rgba(0,0,0,0.04)", padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 34, textAlign: "center", fontSize: medal ? 24 : 16, fontWeight: 800, color: "#6b7280", flexShrink: 0 }}>
+                    {medal || i + 1}
+                  </div>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#374151", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 18, fontWeight: 700 }}>
+                    {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (r.name?.[0]?.toUpperCase() || "?")}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+                      {r.source === "repcard" ? <span title="No AccuLynx account" style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }} /> : null}
+                      {r.name}{isYou ? " (You)" : ""}
+                    </div>
+                    {subtitle ? <div style={{ fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div> : null}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "#16a34a", flexShrink: 0 }}>{fmtMoney(r.revenue)}</div>
+                </div>
+                <div style={{ height: 1, background: "#f3f4f6", margin: "10px 0 8px" }} />
+                <div style={{ display: "flex", justifyContent: "space-around" }}>
+                  {([["🚪 Knocks", r.verifiedKnocks ?? 0], ["Claims Filed", r.filed ?? 0], ["Contracts", r.won ?? 0]] as [string, number][]).map(([label, value], k) => (
+                    <div key={k} style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "#111827" }}>{value}</div>
+                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        </>
       )}
     </div>
   );

@@ -4185,6 +4185,9 @@ body {
 }
 
 /* Mobile Styles */
+/* Leaderboard app-style cards are hidden on desktop (table shows instead). */
+.leaderboard-cards { display: none; }
+
 @media (max-width: 767px) {
   .mobile-menu-button {
     display: flex !important;
@@ -4289,9 +4292,52 @@ body {
     display: none !important;
   }
 
+  /* Inside a lesson on mobile, hide the Courses / My Playlists / Assigned tabs so
+     the lesson is a clean, focused, app-like page — and you can't accidentally
+     tap "Courses" and get bounced back to the course list. */
+  .training-center.mobile-lesson-active > div:first-child {
+    display: none !important;
+  }
+
+  /* Leaderboard: swap the wide table for app-style cards on phones. */
+  .leaderboard-table-wrap {
+    display: none !important;
+  }
+  .leaderboard-cards {
+    display: block !important;
+  }
+
   /* AI chat goes edge-to-edge on phones (no wasted side padding). */
   .ai-chat-page-wrap {
     padding: 0 !important;
+  }
+
+  /* StormChat room fills the whole phone screen (WhatsApp-style) so there's no
+     gray gap under the composer and 100dvh keeps the input above the browser UI. */
+  .storm-chat-room {
+    position: fixed !important;
+    inset: 0 !important;
+    height: 100dvh !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+    z-index: 500 !important;
+  }
+  /* Give the message input room so its placeholder stops wrapping: shrink the
+     emoji / GIF / attach / send buttons and tighten the gap. */
+  .storm-composer {
+    gap: 6px !important;
+  }
+  .storm-composer > button {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    font-size: 15px !important;
+    flex-shrink: 0 !important;
+  }
+  .storm-composer textarea {
+    min-height: 40px !important;
   }
 }
 

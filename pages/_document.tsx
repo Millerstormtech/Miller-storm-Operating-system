@@ -14,7 +14,7 @@ export default function Document() {
         {/* iOS: enables "Add to Home Screen" as a standalone app + icon.
             (iOS 16.4+ also needs this standalone install for web push.) */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Miller Storm" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 

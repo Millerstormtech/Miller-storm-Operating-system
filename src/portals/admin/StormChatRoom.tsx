@@ -1108,9 +1108,9 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   }
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
+    <div className="storm-chat-room" style={{
+      display: 'flex',
+      flexDirection: 'column',
       height: 'calc(100vh - 200px)',
       backgroundColor: '#fff',
       borderRadius: 12,
@@ -1347,7 +1347,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 </div>
               );
             })()}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
+            <div className="storm-composer" style={{ display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
             {/* Emoji picker */}
             {showEmoji && (
               <div style={{ position: 'absolute', bottom: 56, left: 0, width: 296, maxHeight: 220, overflowY: 'auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, zIndex: 30 }}>
