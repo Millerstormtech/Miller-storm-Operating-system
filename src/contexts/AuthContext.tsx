@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/router";
 import { setToken, clearToken, installAuthFetch } from "../lib/authToken";
+import { enableWebPush } from "../lib/webPush";
 
 // Install the global Authorization-header fetch wrapper as early as possible,
 // before any component fires off API requests.
@@ -34,7 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedUser = localStorage.getItem("user");
     if (storedUser && storedUser !== "undefined") {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        // Re-register the web-push token on return visits (no prompt if the
+        // user already granted permission).
+        if (parsed?.id) enableWebPush(parsed.id);
       } catch (error) {
         localStorage.removeItem("user");
       }
@@ -72,6 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(user);
     localStorage.setItem("user", JSON.stringify(user));
+
+    // Enable web push now — login is a user gesture, which iOS/Safari require
+    // before showing the notification-permission prompt.
+    enableWebPush(user.id);
 
     if (user.role === "admin") {
       router.push("/admin/user-management");
