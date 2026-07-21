@@ -96,7 +96,7 @@ export function FiltersBar({
         <input
           value={filters.search}
           onChange={(e) => onFilters({ ...filters, search: e.target.value })}
-          placeholder="🔍 Search reps..."
+          placeholder="🔍 Search reps…"
           style={{
             flex: 1,
             minWidth: 120,

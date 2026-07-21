@@ -41,14 +41,25 @@ export function CourseView({
   const [rows, setRows] = useState<CourseRow[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Guarded against races: if courseId changes again before this resolves,
+  // the stale response is dropped instead of overwriting the newer course's rows.
   useEffect(() => {
     if (!courseId) return;
+    let cancelled = false;
     setLoading(true);
     fetch(`/api/leaderboard?courseId=${courseId}`)
       .then((r) => (r.ok ? r.json() : { rows: [] }))
-      .then((data) => setRows(data.rows || []))
+      .then((data) => {
+        if (cancelled) return;
+        setRows(data.rows || []);
+      })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [courseId]);
 
   const enriched = rows
@@ -104,7 +115,7 @@ export function CourseView({
       </select>
 
       {loading ? (
-        <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>Loading...</div>
+        <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>Loading…</div>
       ) : (
         <>
           {started.map((e, i) => (
