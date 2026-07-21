@@ -134,18 +134,19 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         'VideoEndChannel',
         onMessageReceived: (JavaScriptMessage message) {
           if (!mounted) return;
-          // No auto-advance (matches web): 'unlock' (last second) and 'ended'
-          // (fully finished) BOTH just unlock the Next button. Nothing jumps on
-          // its own — the user must tap Next to move to the next lesson/quiz.
-          // On full completion we also mark the lesson done so the NEXT lesson
-          // unlocks while the user stays on this screen.
+          // No auto-advance (matches web): both 'unlock' (video near its end) and
+          // 'ended' (fully finished) mark the lesson watched + enable Next, but
+          // never jump on their own — the user taps Next to move on. We mark the
+          // lesson complete on EITHER signal, not only 'ended': streaming players
+          // don't always fire 'ended' reliably, and relying on it alone left
+          // fully-watched videos unmarked and therefore locked (this is the
+          // "videos locked after watching" bug). The seek-lock still stops
+          // skipping ahead, so the user has watched right up to this point.
           setState(() => _canGoNext = true);
-          if (message.message == 'ended') {
-            print('🎬 Video fully complete - Next unlocked (no auto-advance)');
-            _markLessonComplete();
-          } else {
-            print('🎬 Video near end - Next button enabled');
-          }
+          _markLessonComplete();
+          print(message.message == 'ended'
+              ? '🎬 Video fully complete - marked + Next unlocked'
+              : '🎬 Video near end - marked + Next unlocked');
         },
       )
       ..addJavaScriptChannel(
@@ -375,9 +376,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
   var unlockSent = false, endedSent = false;
   function post(msg) { if (window.VideoEndChannel) { window.VideoEndChannel.postMessage(msg); } }
-  // 'unlock' = last 5s reached → only enable Next (no redirect).
+  // 'unlock' = last 3s reached → mark watched + enable Next (no redirect).
   function sendUnlock() { if (unlockSent) return; unlockSent = true; post('unlock'); }
-  // 'ended' = video fully finished → enable Next + auto-advance.
+  // 'ended' = video fully finished → mark watched + enable Next (no auto-advance).
   function sendEnded() { if (endedSent) return; endedSent = true; post('ended'); }
   video.ontimeupdate = function() {
     if (!isCompleted && !isSeeking) {
@@ -388,8 +389,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         maxTimeWatched = Math.max(maxTimeWatched, video.currentTime);
       }
     }
-    // Unlock (enable Next) once within the last 5 seconds — no auto-advance.
-    if (video.duration && video.currentTime >= video.duration - 5) {
+    // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
+    if (video.duration && video.currentTime >= video.duration - 3) {
       sendUnlock();
     }
   };
@@ -454,9 +455,9 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
   }
   var unlockSent = false, endedSent = false;
   function post(msg) { if (window.VideoEndChannel) { window.VideoEndChannel.postMessage(msg); } }
-  // 'unlock' = last 5s reached → only enable Next (no redirect).
+  // 'unlock' = last 3s reached → mark watched + enable Next (no redirect).
   function sendUnlock() { if (unlockSent) return; unlockSent = true; post('unlock'); }
-  // 'ended' = video fully finished → enable Next + auto-advance.
+  // 'ended' = video fully finished → mark watched + enable Next (no auto-advance).
   function sendEnded() { if (endedSent) return; endedSent = true; post('ended'); }
 
   function initVimeo() {
@@ -472,8 +473,8 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
           }
         }
-        // Unlock (enable Next) once within the last 5 seconds — no auto-advance.
-        if (data.duration && data.seconds >= data.duration - 5) {
+        // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
+        if (data.duration && data.seconds >= data.duration - 3) {
           sendUnlock();
         }
       });
@@ -510,9 +511,9 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             maxTimeWatched = Math.max(maxTimeWatched, currentTime);
           }
         }
-        // Unlock (enable Next) once within the last 5 seconds — no auto-advance.
+        // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
         var dur = player.getDuration ? player.getDuration() : 0;
-        if (dur && currentTime >= dur - 5) {
+        if (dur && currentTime >= dur - 3) {
           sendUnlock();
         }
       }, 500);

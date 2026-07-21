@@ -421,14 +421,20 @@ export async function initVideoSequence(
     }
   }
 
-  // Within the last moment of the LAST video we only UNLOCK the next step
-  // (enable the Next button) — we do NOT auto-advance. Auto-advance / navigation
-  // happens only when a video truly ends. Kept at 1s (not 5s) so a lesson is
-  // considered "watched" essentially at 100%, not 5 seconds early — the video
-  // must play to the very end before it completes / unlocks / (autoplay) jumps.
-  // The `ended` event is the primary trigger; this 1s window is just a safety
-  // net in case a player doesn't fire `ended` exactly at duration.
-  const UNLOCK_BEFORE_END = 1; // seconds before the end
+  // Within the last moments of the LAST video we only UNLOCK the next step (mark
+  // it watched + enable the Next button) — we do NOT auto-advance. Auto-advance /
+  // navigation happens only when a video truly ends (the `ended` event).
+  //
+  // This window is the SAFETY NET for marking a lesson watched: streaming
+  // players (Vimeo/YouTube) don't always fire `ended` reliably, and a video's
+  // real end can fall a second or two short of its reported `duration`. At 1s
+  // the net was too tight — timeupdate never reached `duration - 1`, `ended`
+  // didn't fire, and the lesson was never marked complete, so it (and everything
+  // after it) stayed locked even though the user watched the whole thing. 3s is
+  // wide enough to reliably catch the end. It does NOT cause an early jump —
+  // navigation still waits for the true `ended` — and the seek-lock still stops
+  // anyone skipping ahead, so the user has watched right up to this point.
+  const UNLOCK_BEFORE_END = 3; // seconds before the end
   let unlockedNextStep = false;
   const advanced = new Set<number>();
   function unlockNextStep(seqIdx: number) {
