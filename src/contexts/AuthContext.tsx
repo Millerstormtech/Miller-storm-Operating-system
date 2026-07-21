@@ -155,8 +155,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={async () => {
-                  await enableBiometric();
+                  const ok = await enableBiometric();
                   setBioPrompt(false);
+                  if (!ok) {
+                    alert(
+                      "Couldn't turn on " + biometricLabel() +
+                      ". Make sure it's set up on your device, then try again."
+                    );
+                  }
                 }}
                 style={{ flex: 1, padding: "12px", borderRadius: 999, border: "none", background: "#CB0002", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
               >

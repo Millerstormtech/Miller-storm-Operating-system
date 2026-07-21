@@ -72,7 +72,9 @@ type SessionUser = { id: string; email?: string; name?: string; [k: string]: any
 export async function enableBiometric(user: SessionUser, token: string): Promise<boolean> {
   try {
     if (!token || !user?.id) return false;
-    if (!(await isBiometricSupported())) return false;
+    // NOTE: do NOT `await` anything before create() — iOS Safari requires the
+    // WebAuthn call to run within the button's user activation, and an
+    // intervening await drops it (create() then throws NotAllowedError).
     const cred = (await navigator.credentials.create({
       publicKey: {
         challenge: randomBytes(),
@@ -101,7 +103,8 @@ export async function enableBiometric(user: SessionUser, token: string): Promise
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     localStorage.setItem(TOKEN_KEY, token);
     return true;
-  } catch {
+  } catch (e) {
+    console.warn("[biometric] enable failed:", e);
     return false;
   }
 }
