@@ -37,6 +37,12 @@ function isPageUnlockedFor(
   savedQuizResults: any[]
 ): boolean {
   if (unlockedPages.has(pageId)) return true;
+  // Once completed, a lesson/quiz NEVER re-locks — even if a new item is
+  // inserted before it or a preceding item now looks incomplete.
+  const self = orderedPages.find((p) => p.id === pageId);
+  if (self && (self.isQuiz
+    ? isQuizResultPassing(savedQuizResults.find((r) => r.pageId === pageId))
+    : completedPages.has(pageId))) return true;
   const idx = orderedPages.findIndex((p) => p.id === pageId);
   if (idx <= 0) return true;
   for (let i = 0; i < idx; i++) {
@@ -1445,6 +1451,11 @@ export function ManagerOnlineTrainingPage(props: {
       // A manager/admin can manually unlock this specific page — it then opens
       // without the preceding items done (only THIS page is unlocked).
       if (unlockedPages.has(pageId)) return true;
+      // Once completed, a lesson/quiz NEVER re-locks.
+      const self = pages.find(p => p.id === pageId);
+      if (self && (self.isQuiz
+        ? isQuizResultPassing(savedQuizResults.find(r => r.pageId === pageId))
+        : completedPages.has(pageId))) return true;
       const currentIndex = pages.findIndex(p => p.id === pageId);
       if (currentIndex <= 0) return true;
       // Strict sequential: EVERY preceding item must be complete (lesson watched

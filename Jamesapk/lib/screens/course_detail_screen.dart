@@ -499,6 +499,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       // opens without needing the preceding items done (only THIS page, nothing
       // after it, is unlocked).
       if (_unlockedPageIds.contains(pageId)) return true;
+      // Once completed, a lesson/quiz NEVER re-locks — even if a new item is
+      // inserted before it or a preceding item now looks incomplete.
+      if (_completedPageIds.contains(pageId) || _isQuizPassed(pageId)) return true;
       final index = allPublishedPages.indexWhere((p) => p['id'] == pageId);
       if (index <= 0) return true; // First page is always unlocked
       for (var i = 0; i < index; i++) {
