@@ -3,16 +3,59 @@ import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useAuth } from "../src/contexts/AuthContext";
+import { isBiometricEnabled, isBiometricSupported, loginWithBiometric, biometricLabel } from "../src/lib/biometricAuth";
 import logoImage from "../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
 
 const LoginPage: NextPage = () => {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, resumeSession, user, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [bioLabel, setBioLabel] = useState("Face ID");
+
+  // The PWA always launches at /login (its start_url). If a session is already
+  // saved (localStorage), the user is NOT logged out — send them straight to
+  // their dashboard instead of showing the login form. This fixes "the PWA logs
+  // me out every time I reopen it".
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const routes: Record<string, string> = {
+      admin: "/admin/user-management",
+      "c-level": "/c-level/dashboard",
+      "branch-manager": "/branch-manager/dashboard",
+      "sales-team-lead": "/manager/dashboard",
+      sales: "/sales/dashboard",
+      marketing: "/marketing/dashboard",
+    };
+    router.replace((router.query.redirect_to as string) || routes[user.role] || "/sales/dashboard");
+  }, [authLoading, user]);
+
+  // Show the "Login with Face ID" button only when this device has biometrics
+  // enrolled AND the user turned it on here previously.
+  useEffect(() => {
+    (async () => {
+      if (isBiometricEnabled() && (await isBiometricSupported())) {
+        setBioLabel(biometricLabel());
+        setBioAvailable(true);
+      }
+    })();
+  }, []);
+
+  async function handleBiometricLogin() {
+    setError("");
+    const result = await loginWithBiometric();
+    if (!result) {
+      setError("Biometric sign-in was cancelled. Please use your email and password.");
+      return;
+    }
+    resumeSession(result.user as any, result.token);
+    const redirectTo = router.query.redirect_to as string;
+    if (redirectTo) router.push(redirectTo);
+  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -108,6 +151,16 @@ const LoginPage: NextPage = () => {
           <button className="btn-primary" type="submit" disabled={isLoading}>
             {isLoading ? "Signing In..." : "Sign In"}
           </button>
+          {bioAvailable && (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleBiometricLogin}
+              style={{ marginTop: 10, background: "#111827", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              🔒 Login with {bioLabel}
+            </button>
+          )}
           <div className="login-links" style={{marginTop: '12px'}}>
             <a href="/register" className="login-link">Register</a>
           </div>
