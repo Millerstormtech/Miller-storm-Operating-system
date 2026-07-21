@@ -356,12 +356,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           // Find first incomplete item (lesson not watched, or quiz not passed).
           bool isItemComplete(dynamic item) {
             if (item['isQuiz'] == true) {
-              final m = quizResults.where((r) => r['pageId']?.toString() == item['id']?.toString());
-              if (m.isEmpty) return false;
-              final score = m.first['score'];
-              final total = (score?['total'] ?? 0) as num;
-              if (total <= 0) return false;
-              return ((score?['correct'] ?? 0) as num) / total >= 0.8;
+              // A saved quiz result = passed (the app only ever saves a passing
+              // attempt). Don't re-derive from the score — see _isQuizPassed.
+              return quizResults.any((r) =>
+                  r['pageId']?.toString() == item['id']?.toString() &&
+                  r['passed'] != false);
             }
             return completedLessonIds.contains(item['id']?.toString());
           }
@@ -414,16 +413,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // A quiz counts as complete only if a saved result scored >= 80% (same
-  // threshold as the web). Quizzes are tracked in quizResults, not completedPages.
+  // A saved quiz result = passed (the app only ever saves a passing attempt),
+  // so treat any saved result as complete. Do NOT re-derive pass from the stored
+  // score: subset quizzes / edited question counts / legacy data can leave a
+  // genuinely-passed quiz with a saved score below 80%, which wrongly re-locked
+  // every lesson after it. Mirrors web isQuizResultPassing. Quizzes are tracked
+  // in quizResults, not completedPages.
   bool _isQuizPassed(String pageId) {
-    final matches = _quizResults.where((r) => r['pageId']?.toString() == pageId);
-    if (matches.isEmpty) return false;
-    final score = matches.first['score'];
-    final total = (score?['total'] ?? 0) as num;
-    if (total <= 0) return false;
-    final correct = (score?['correct'] ?? 0) as num;
-    return correct / total >= 0.8;
+    return _quizResults.any((r) =>
+        r['pageId']?.toString() == pageId && r['passed'] != false);
   }
 
   Widget _buildLoadError() {

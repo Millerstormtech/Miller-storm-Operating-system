@@ -168,13 +168,11 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
     if (prog == null) return false;
     final id = (page['id'] ?? '').toString();
     if (page['isQuiz'] == true) {
+      // A saved quiz result = passed (only passing attempts are ever saved).
+      // Don't re-derive from the score — see isQuizResultPassing on the web.
       final results = prog['quizResults'] as List;
-      final match = results.where((r) => r['pageId']?.toString() == id);
-      if (match.isEmpty) return false;
-      final score = match.first['score'];
-      final total = (score?['total'] ?? 0) as num;
-      if (total <= 0) return false;
-      return (score?['correct'] ?? 0) / total >= 0.8;
+      return results.any((r) =>
+          r['pageId']?.toString() == id && r['passed'] != false);
     }
     return (prog['completed'] as Set).contains(id);
   }

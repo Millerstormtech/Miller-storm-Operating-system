@@ -27,11 +27,28 @@ export function quizPercent(score?: QuizScore | null): number {
   return Math.round(quizPct(score) * 100);
 }
 
-// Did this saved quiz result meet the passing threshold?
+// Did the learner pass this quiz?
+//
+// A quiz result is ONLY ever written when the learner passed: both the web
+// portals (Sales TrainingCenter, Manager OnlineTraining) and the mobile app
+// gate the save behind the 80% check and NEVER persist a failed attempt. So the
+// mere PRESENCE of a saved result means the quiz was passed.
+//
+// We must NOT re-derive pass/fail from the stored score here. A quiz's saved
+// score can legitimately sit below 80% for a quiz the learner genuinely
+// passed — subset quizzes (only N of the pool shown), later edits to a quiz's
+// question count, and legacy records all produce this. Re-checking the score
+// wrongly marked those quizzes incomplete, which re-locked every lesson after
+// them (the reported "quiz complete but showing not done / videos locked" bug).
+//
+// Honour an explicit `passed: false` if one is ever written; otherwise any
+// saved result counts as a pass.
 export function isQuizResultPassing(
-  result?: { score?: QuizScore | null } | null
+  result?: { score?: QuizScore | null; passed?: boolean } | null
 ): boolean {
-  return quizPct(result?.score) >= QUIZ_PASS_THRESHOLD;
+  if (!result) return false;
+  if (result.passed === false) return false;
+  return true;
 }
 
 // Fisher–Yates shuffle returning a NEW array. Called fresh per user and per

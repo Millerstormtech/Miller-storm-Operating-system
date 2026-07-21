@@ -5,6 +5,9 @@ const quizResultSchema = new Schema(
     pageId: String,
     answers: Schema.Types.Mixed,
     score: { correct: Number, total: Number },
+    // Only passing attempts are ever saved, so this is always true; stored
+    // explicitly so the pass gate can trust it directly (see isQuizResultPassing).
+    passed: Boolean,
     submittedAt: Date
   },
   { _id: false }
