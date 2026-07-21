@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect } from "react";
+import { useRouter } from "next/router";
 
 type LayoutProps = {
   sidebar: ReactNode;
@@ -10,6 +11,16 @@ type LayoutProps = {
 export function Layout(props: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const router = useRouter();
+
+  // Close the mobile menu the instant a navigation starts, so tapping a menu
+  // item snaps straight to the page instead of leaving the menu open on top of
+  // it (which made pages look like they didn't open).
+  useEffect(() => {
+    const close = () => setIsMobileMenuOpen(false);
+    router.events.on("routeChangeStart", close);
+    return () => router.events.off("routeChangeStart", close);
+  }, [router.events]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -55,7 +66,16 @@ export function Layout(props: LayoutProps) {
         />
       )}
 
-      <aside className={`app-sidebar ${isMobile && isMobileMenuOpen ? 'mobile-open' : ''}`}>
+      <aside
+        className={`app-sidebar ${isMobile && isMobileMenuOpen ? 'mobile-open' : ''}`}
+        onClick={(e) => {
+          // Tapping any nav item/link/logout inside the drawer closes it — even
+          // for same-route actions that don't trigger a route change.
+          if (isMobile && (e.target as HTMLElement).closest('button, a')) {
+            setIsMobileMenuOpen(false);
+          }
+        }}
+      >
         {props.sidebar}
       </aside>
       

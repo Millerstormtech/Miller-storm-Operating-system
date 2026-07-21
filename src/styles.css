@@ -4307,6 +4307,14 @@ body {
     display: block !important;
   }
 
+  /* Rankings page goes near edge-to-edge on phones (cancel the app-content 16px
+     padding, keep a small 8px inset) so the cards use the full screen width. */
+  .rankings-page {
+    padding: 12px 8px 24px !important;
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+  }
+
   /* AI chat goes edge-to-edge on phones (no wasted side padding). */
   .ai-chat-page-wrap {
     padding: 0 !important;
