@@ -883,12 +883,20 @@ body {
   }
 
   /* Responsive Playlist Cards - Horizontal Layout for Mobile */
+  /* Flex column guarantees each card takes its own content height and never
+     overlaps the next one (the reported "playlist names overlapping" bug). */
   .playlist-grid {
+    display: flex !important;
+    flex-direction: column !important;
     gap: 12px !important;
   }
 
   .playlist-card {
     padding: 12px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    position: relative !important;
   }
 
   .playlist-card-content {
@@ -4258,6 +4266,32 @@ body {
   .header-logout {
     font-size: 12px;
     padding: 6px 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Keep everything on the right (bell + logout) on-screen: tighten the gap and
+     collapse the wide "Raise a Ticket" button down to just its 🎫 icon. */
+  .header-profile {
+    gap: 8px;
+  }
+  .ticket-btn {
+    padding: 8px 10px !important;
+    margin-right: 0 !important;
+    font-size: 16px !important;
+  }
+  .ticket-btn-text {
+    display: none;
+  }
+
+  /* Training Timer is hidden on phones/PWA (kept on desktop). */
+  .training-timer-wrap {
+    display: none !important;
+  }
+
+  /* AI chat goes edge-to-edge on phones (no wasted side padding). */
+  .ai-chat-page-wrap {
+    padding: 0 !important;
   }
 }
 

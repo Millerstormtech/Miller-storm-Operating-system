@@ -30,7 +30,7 @@ const AiChat: NextPage = () => {
           ))}
         </div>
       </div>
-      <div style={{ padding: "0 24px 24px" }}>
+      <div className="ai-chat-page-wrap" style={{ padding: "0 24px 24px" }}>
         <BotChatWidget role="sales" onBotsLoaded={(bl, sel, fn) => { setBots(bl); setSelectedBot(sel); setSelectFn(() => (b: any) => { fn(b); setSelectedBot(b); }); }} />
       </div>
     </SalesLayout>

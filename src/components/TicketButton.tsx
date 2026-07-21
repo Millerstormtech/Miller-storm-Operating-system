@@ -119,6 +119,7 @@ export function TicketButton() {
         <style>{`@keyframes ticketShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}`}</style>
         <button
           type="button"
+          className="ticket-btn"
           onClick={() => router.push("/admin/tickets")}
           title="View tickets"
           style={{
@@ -140,7 +141,7 @@ export function TicketButton() {
             animation: openCount > 0 ? "ticketShake 0.6s ease-in-out infinite" : "none",
           }}
         >
-          🎫 Tickets
+          🎫 <span className="ticket-btn-text">Tickets</span>
           {openCount > 0 && (
             <span style={{
               position: "absolute", top: -6, right: -6, background: "#111827", color: "#fff",
@@ -158,6 +159,7 @@ export function TicketButton() {
     <>
       <button
         type="button"
+        className="ticket-btn"
         onClick={() => setOpen(true)}
         title="Raise a support ticket"
         style={{
@@ -167,7 +169,7 @@ export function TicketButton() {
           cursor: "pointer", marginRight: 8,
         }}
       >
-        🎫 Raise a Ticket
+        🎫 <span className="ticket-btn-text">Raise a Ticket</span>
       </button>
 
       {open && (

@@ -676,7 +676,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   }
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 120px)", background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", overflow: "hidden", position: "relative" }}>
+    <div className="bot-chat-widget" style={{ display: "flex", height: "calc(100vh - 120px)", background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", overflow: "hidden", position: "relative" }}>
 
       {/* Mobile backdrop */}
       {!sidebarCollapsed && (
@@ -863,6 +863,10 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
           .chat-sidebar-hidden { transform:translateX(-100%)!important; width:260px!important; min-width:260px!important; }
           .chat-messages-inner { padding:0 12px!important; }
           .chat-input-inner { padding:0!important; }
+          /* Full-screen, edge-to-edge chat on phones (app-like). 100dvh follows
+             the real visible height so the input never hides behind the browser
+             UI (the 100vh cut-off). */
+          .bot-chat-widget { height: calc(100dvh - 130px)!important; border-radius:0!important; border-left:0!important; border-right:0!important; }
         }
         @media (min-width: 769px) {
           .chat-sidebar { position:relative!important; transform:none!important; }

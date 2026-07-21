@@ -1345,6 +1345,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           }
         `}</style>
         {user && (
+          <div className="training-timer-wrap">
           <PlaybookTimer
             userId={user.id}
             courseId={selectedCourse.id}
@@ -1356,6 +1357,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               return { pct, done, total };
             }}
           />
+          </div>
         )}
 
         {/* Quiz top-up modal — shown when a quiz is failed (< 80%) */}

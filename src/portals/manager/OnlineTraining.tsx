@@ -1763,6 +1763,7 @@ export function ManagerOnlineTrainingPage(props: {
             .course-header-mobile-actions { display: none !important; }
           }
         `}</style>
+        <div className="training-timer-wrap">
         <PlaybookTimer
           userId={props.currentUser.id}
           courseId={selectedCourse.id}
@@ -1774,6 +1775,7 @@ export function ManagerOnlineTrainingPage(props: {
             return { pct, done, total };
           }}
         />
+        </div>
 
         {/* Quiz top-up modal — shown when a quiz is failed (< 80%) */}
         {quizModal && (
