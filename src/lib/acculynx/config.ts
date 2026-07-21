@@ -4,11 +4,12 @@
 
 export const ACCULYNX_BASE = "https://api.acculynx.com/api/v2";
 
-export type Metric = "filed" | "won" | "revenue";
-export const METRICS: Metric[] = ["filed", "won", "revenue"];
+export type Metric = "lead" | "filed" | "won" | "revenue";
+export const METRICS: Metric[] = ["lead", "filed", "won", "revenue"];
 
 // UI labels for each metric column.
 export const METRIC_LABELS: Record<Metric, string> = {
+  lead: "Leads Created",
   filed: "Claims Filed",
   won: "Contracts",
   revenue: "Contract Amount",
@@ -22,8 +23,10 @@ export const METRIC_LABELS: Record<Metric, string> = {
 // (Verified against live AccuLynx data via read-only probe, 2026-07-02.)
 export const REP_TYPES = ["CompanyRepresentative", "SalesOwner"];
 
-// Map an AccuLynx milestone (stage) name -> count metric.
+// Map an AccuLynx milestone (stage) name -> count metric. Every job passes through
+// Lead (verified 2026-07-20: dated in 25/25 sampled jobs), so `lead` = "leads created".
 export const STAGE_TO_METRIC: Record<string, Exclude<Metric, "revenue">> = {
+  Lead: "lead",
   Prospect: "filed",
   Approved: "won",
 };
