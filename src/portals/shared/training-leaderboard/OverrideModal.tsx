@@ -22,12 +22,14 @@ export function OverrideModal({
 }) {
   const [courseId, setCourseId] = useState<string>(courses[0]?.id || "");
   const [users, setUsers] = useState<UserOption[]>([]);
+  const [allCoursesRaw, setAllCoursesRaw] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [lessons, setLessons] = useState<LessonPage[]>([]);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [userSearch, setUserSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Eligible override targets: ranked reps only (primary role + scrub list).
   useEffect(() => {
@@ -46,55 +48,67 @@ export function OverrideModal({
       .finally(() => setLoading(false));
   }, []);
 
-  // Published, non-quiz lessons of the selected course (quizzes are not overridable).
+  // Fetch the full course list ONCE. Per-courseId lookups below are then
+  // synchronous over this cache, so a slow response for a previously
+  // selected course can never resolve late and overwrite lessons with stale data.
   useEffect(() => {
-    if (!courseId) return;
-    setLessons([]);
-    setChecked(new Set());
     fetch("/api/courses?list=1")
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) => {
-        const raw = (Array.isArray(data) ? data : []).find((c) => c.id === courseId);
-        const publishedFolderIds = new Set(
-          (raw?.folders || []).filter((f: any) => f.status === "published").map((f: any) => f.id)
-        );
-        const pages: LessonPage[] = raw
-          ? (raw.pages || [])
-              .filter(
-                (p: any) =>
-                  p.status === "published" &&
-                  !p.isQuiz &&
-                  (!p.folderId || publishedFolderIds.has(p.folderId))
-              )
-              .map((p: any) => ({ id: p.id, title: p.title || "Untitled lesson" }))
-          : [];
-        setLessons(pages);
-        if (selectedUser) loadProgress(selectedUser, courseId);
-      })
+      .then((data: any[]) => setAllCoursesRaw(Array.isArray(data) ? data : []))
       .catch(console.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId]);
+  }, []);
 
-  async function loadProgress(user: UserOption, cId: string) {
-    try {
-      const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${cId}`);
-      const data = res.ok ? await res.json() : {};
-      setChecked(new Set(data[cId]?.completedPages || []));
-    } catch {
-      setChecked(new Set());
-    }
-  }
+  // Published, non-quiz lessons of the selected course (quizzes are not overridable).
+  useEffect(() => {
+    setLessons([]);
+    setChecked(new Set());
+    const raw = allCoursesRaw.find((c) => c.id === courseId);
+    const publishedFolderIds = new Set(
+      (raw?.folders || []).filter((f: any) => f.status === "published").map((f: any) => f.id)
+    );
+    const pages: LessonPage[] = raw
+      ? (raw.pages || [])
+          .filter(
+            (p: any) =>
+              p.status === "published" &&
+              !p.isQuiz &&
+              (!p.folderId || publishedFolderIds.has(p.folderId))
+          )
+          .map((p: any) => ({ id: p.id, title: p.title || "Untitled lesson" }))
+      : [];
+    setLessons(pages);
+  }, [courseId, allCoursesRaw]);
+
+  // Selected user's progress for the selected course. Guarded against races:
+  // if courseId/selectedUser change again before this resolves, the stale
+  // response is dropped instead of overwriting `checked`.
+  useEffect(() => {
+    if (!courseId || !selectedUser) return;
+    let cancelled = false;
+    fetch(`/api/course-progress?userId=${selectedUser.id}&courseIds=${courseId}`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data: any) => {
+        if (cancelled) return;
+        setChecked(new Set(data[courseId]?.completedPages || []));
+      })
+      .catch(() => {
+        if (!cancelled) setChecked(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, selectedUser]);
 
   function selectUser(user: UserOption) {
     setSelectedUser(user);
-    loadProgress(user, courseId);
   }
 
   async function save() {
     if (!selectedUser || !courseId) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch("/api/progress", {
+      const res = await fetch("/api/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -103,10 +117,15 @@ export function OverrideModal({
           completedPages: Array.from(checked),
         }),
       });
+      if (!res.ok) {
+        setSaveError("Couldn't save. Try again.");
+        return;
+      }
       onSaved();
       onClose();
     } catch (e) {
       console.error(e);
+      setSaveError("Couldn't save. Try again.");
     } finally {
       setSaving(false);
     }
@@ -283,6 +302,11 @@ export function OverrideModal({
         </div>
 
         <div style={{ padding: "14px 24px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "flex-end", gap: 10, background: "#f8fafc" }}>
+          {saveError && (
+            <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 600, marginRight: "auto" }}>
+              {saveError}
+            </span>
+          )}
           <button
             onClick={onClose}
             style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}
