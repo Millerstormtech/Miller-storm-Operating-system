@@ -61,7 +61,6 @@ export function OverrideModal({
   // Published, non-quiz lessons of the selected course (quizzes are not overridable).
   useEffect(() => {
     setLessons([]);
-    setChecked(new Set());
     const raw = allCoursesRaw.find((c) => c.id === courseId);
     const publishedFolderIds = new Set(
       (raw?.folders || []).filter((f: any) => f.status === "published").map((f: any) => f.id)
@@ -84,6 +83,7 @@ export function OverrideModal({
   // response is dropped instead of overwriting `checked`.
   useEffect(() => {
     if (!courseId || !selectedUser) return;
+    setChecked(new Set());
     let cancelled = false;
     fetch(`/api/course-progress?userId=${selectedUser.id}&courseIds=${courseId}`)
       .then((r) => (r.ok ? r.json() : {}))
