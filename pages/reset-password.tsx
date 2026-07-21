@@ -20,10 +20,16 @@ const ResetPasswordPage: NextPage = () => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    // Wait until Next.js has populated the query, then either verify the token
+    // or stop the spinner and show a clear error (no token = bad link).
+    if (!router.isReady) return;
     if (token) {
       verifyToken();
+    } else {
+      setError("No reset token provided. Please use the link from your email.");
+      setVerifying(false);
     }
-  }, [token]);
+  }, [router.isReady, token]);
 
   async function verifyToken() {
     try {
