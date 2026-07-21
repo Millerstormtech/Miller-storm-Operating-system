@@ -35,6 +35,18 @@ export const STAGE_TO_METRIC: Record<string, Exclude<Metric, "revenue">> = {
 export const REVENUE_FIELD = "approvedJobValue";
 export const REVENUE_STAGE = "Approved";
 
+// ---- Backfill (recompute) version ----
+// Bump this ONLY when the MEANING of a stored fact changes and history must be
+// recomputed: a new milestone->metric mapping, a changed stage, a revenue-field
+// switch. Each AccuLynx location records the version it was last fully backfilled
+// under (SyncState.backfillVersion); when this number is higher, the next sync
+// auto-runs a ONE-TIME backfill for that location, then stamps the new version.
+// A routine deploy that does NOT change fact computation must leave this UNCHANGED,
+// so ordinary deploys never trigger a costly backfill. See sync-policy.ts.
+// History:
+//   v1 = adds the Lead ("Leads Created") metric (STAGE_TO_METRIC.Lead).
+export const BACKFILL_VERSION = 1;
+
 // ---- Multi-location support ----
 // Miller Storm runs a SEPARATE AccuLynx account per location, each with its OWN API
 // key. There is no single "all locations" key (AccuLynx docs + verified 2026-07-03:

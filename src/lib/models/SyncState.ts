@@ -10,6 +10,7 @@ const syncStateSchema = new Schema(
     branch: { type: String, default: "" },         // human branch label for this location
     lastSyncAt: { type: Date, default: null },     // incremental watermark
     lastFullSyncAt: { type: Date, default: null },
+    backfillVersion: { type: Number, default: 0 }, // BACKFILL_VERSION this location was last fully backfilled under (0 = never)
     lastStatus: { type: String, enum: ["ok", "partial", "failed", "never"], default: "never" },
     lastError: { type: String, default: "" },
     jobsProcessed: { type: Number, default: 0 },
