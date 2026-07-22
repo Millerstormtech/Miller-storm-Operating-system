@@ -10,6 +10,13 @@ final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 const String _apiBase = 'https://millerstorm.tech';
 
+/// Outcome of a token-refresh attempt. We distinguish a genuine rejection
+/// (server said our token is invalid) from a transient failure (network
+/// error / timeout / 5xx). Only a genuine rejection should ever log the user
+/// out — a transient failure must keep the session so a flaky connection never
+/// signs anyone out.
+enum _RefreshResult { ok, rejected, transient }
+
 // Refresh the token once it has less than this long left before expiry, so the
 // user never actually hits an expired-token 401 during normal use. Kept wide (7
 // days) relative to the 30-day server token so any user who opens the app even
@@ -34,7 +41,7 @@ class AuthClient extends http.BaseClient {
   // One-shot guard so a burst of parallel 401s triggers a single redirect.
   bool _handlingUnauthorized = false;
   // De-dupes concurrent refreshes: parallel requests share one in-flight call.
-  Future<bool>? _refreshInFlight;
+  Future<_RefreshResult>? _refreshInFlight;
 
   Future<String?> _getToken() async {
     if (_loaded) return _cachedToken;
@@ -91,18 +98,30 @@ class AuthClient extends http.BaseClient {
     // We attached a token but the server rejected it (401 = expired/invalid;
     // 403 = wrong role, which we deliberately ignore).
     if (response.statusCode == 401 && sentToken) {
-      final refreshed = await _refreshToken();
-      if (refreshed && retryTemplate != null) {
-        // Replay the original request once with the fresh token.
-        retryTemplate.headers['Authorization'] = 'Bearer $_cachedToken';
-        final retryResponse = await _inner.send(retryTemplate);
-        if (retryResponse.statusCode == 401) {
-          _handleUnauthorized();
+      final result = await _refreshToken();
+      if (result == _RefreshResult.ok) {
+        if (retryTemplate != null) {
+          // Replay the original request once with the fresh token.
+          retryTemplate.headers['Authorization'] = 'Bearer $_cachedToken';
+          final retryResponse = await _inner.send(retryTemplate);
+          if (retryResponse.statusCode == 401) {
+            // Even a brand-new token is rejected — the session is truly invalid.
+            _handleUnauthorized();
+          }
+          return retryResponse;
         }
-        return retryResponse;
+        // Refreshed OK but this request type can't be replayed (streamed/
+        // multipart). The token is now valid, so keep the session — the next
+        // request will succeed. Do NOT log out.
+        return response;
       }
-      // Couldn't refresh (or can't replay this request type) — force re-login.
-      _handleUnauthorized();
+      if (result == _RefreshResult.rejected) {
+        // Server explicitly rejected our token (expired/invalid) — real logout.
+        _handleUnauthorized();
+      }
+      // _RefreshResult.transient (network error / timeout / 5xx): keep the
+      // session so a flaky connection never signs the user out. The caller just
+      // sees this one 401; a later request refreshes and recovers.
     }
     return response;
   }
@@ -153,17 +172,17 @@ class AuthClient extends http.BaseClient {
   }
 
   /// Requests a fresh token from the server using the current token. Concurrent
-  /// callers share a single in-flight refresh. Returns true if the stored token
-  /// was updated.
-  Future<bool> _refreshToken() {
+  /// callers share a single in-flight refresh. Returns whether the token was
+  /// updated, genuinely rejected, or transiently unreachable.
+  Future<_RefreshResult> _refreshToken() {
     return _refreshInFlight ??= _doRefresh().whenComplete(() {
       _refreshInFlight = null;
     });
   }
 
-  Future<bool> _doRefresh() async {
+  Future<_RefreshResult> _doRefresh() async {
     final current = _cachedToken;
-    if (current == null || current.isEmpty) return false;
+    if (current == null || current.isEmpty) return _RefreshResult.rejected;
     try {
       final resp = await _inner
           .post(
@@ -171,19 +190,29 @@ class AuthClient extends http.BaseClient {
             headers: {'Authorization': 'Bearer $current'},
           )
           .timeout(const Duration(seconds: 10));
-      if (resp.statusCode != 200) return false;
-      final data = jsonDecode(resp.body);
-      final newToken = data['token'];
-      if (newToken is String && newToken.isNotEmpty) {
-        _cachedToken = newToken;
-        _loaded = true;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', newToken);
-        return true;
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        final newToken = data['token'];
+        if (newToken is String && newToken.isNotEmpty) {
+          _cachedToken = newToken;
+          _loaded = true;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', newToken);
+          return _RefreshResult.ok;
+        }
+        // 200 but no token in the body — treat as transient, not a rejection.
+        return _RefreshResult.transient;
       }
-      return false;
+      // The server actively rejected the token (expired/invalid). Anything else
+      // (5xx, 502 from a proxy, etc.) is a transient server problem, not a
+      // reason to sign the user out.
+      if (resp.statusCode == 401 || resp.statusCode == 403) {
+        return _RefreshResult.rejected;
+      }
+      return _RefreshResult.transient;
     } catch (_) {
-      return false;
+      // Network error / timeout — keep the session.
+      return _RefreshResult.transient;
     }
   }
 
