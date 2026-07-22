@@ -213,11 +213,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
               _courses = courses;
               _filteredCourses = _searchQuery.isEmpty
                   ? courses
-                  : courses.where((c) {
-                      final t = (c['title'] ?? '').toLowerCase();
-                      final d = (c['description'] ?? '').toLowerCase();
-                      return t.contains(_searchQuery) || d.contains(_searchQuery);
-                    }).toList();
+                  : courses.where((c) => _courseMatchesQuery(c, _searchQuery)).toList();
               _isLoading = false;
               _loadError = false;
             });
@@ -254,13 +250,23 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
       if (_searchQuery.isEmpty) {
         _filteredCourses = _courses;
       } else {
-        _filteredCourses = _courses.where((course) {
-          final title = (course['title'] ?? '').toLowerCase();
-          final description = (course['description'] ?? '').toLowerCase();
-          return title.contains(_searchQuery) || description.contains(_searchQuery);
-        }).toList();
+        _filteredCourses =
+            _courses.where((course) => _courseMatchesQuery(course, _searchQuery)).toList();
       }
     });
+  }
+
+  // Matches a course by its title/description OR by any individual video/lesson
+  // title inside it (course['pages']). Quizzes are ignored so only real
+  // videos/lessons count. `query` is expected already lower-cased.
+  bool _courseMatchesQuery(dynamic course, String query) {
+    final title = (course['title'] ?? '').toString().toLowerCase();
+    final description = (course['description'] ?? '').toString().toLowerCase();
+    if (title.contains(query) || description.contains(query)) return true;
+    final pages = (course['pages'] as List<dynamic>? ?? []);
+    return pages.any((p) =>
+        p['isQuiz'] != true &&
+        (p['title'] ?? '').toString().toLowerCase().contains(query));
   }
 
   Future<void> _fetchMyPlaylists() async {

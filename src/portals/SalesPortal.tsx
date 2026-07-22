@@ -810,7 +810,11 @@ function TrainingCenter(props: { courses: Course[] }) {
       const inAssets = course.assetFiles.some((file) =>
         file.toLowerCase().includes(term)
       );
-      return inTitle || inLessons || inAssets;
+      // Also match individual videos/lessons inside the course.
+      const inVideos = (course.pages || []).some((p) =>
+        p.status === "published" && !p.isQuiz && (p.title || "").toLowerCase().includes(term)
+      );
+      return inTitle || inLessons || inAssets || inVideos;
     });
   }, [courses, search]);
 
@@ -821,7 +825,7 @@ function TrainingCenter(props: { courses: Course[] }) {
         <div className="training-center-search">
           <input
             className="field-input"
-            placeholder="Search trainings"
+            placeholder="Search trainings or videos"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

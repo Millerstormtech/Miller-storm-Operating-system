@@ -20,6 +20,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [progressData, setProgressData] = useState<any[]>([]);
   const [progressUsers, setProgressUsers] = useState<any[]>([]);
   const [progressSearch, setProgressSearch] = useState('');
+  const [courseSearch, setCourseSearch] = useState(''); // filter the course grid by course OR video/lesson title
   const [progressRoleFilter, setProgressRoleFilter] = useState('all');
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
   const [page, setPage] = useState(1);
@@ -242,7 +243,17 @@ export function CourseManagement(props: CourseEditorProps) {
     document.head.appendChild(styleElement);
   }
 
-  const visibleCourses = props.courses;
+  // Match a course by its title OR by any of its videos/lessons (course.pages).
+  // Quizzes are excluded so only real videos/lessons count.
+  const courseSearchTerm = courseSearch.trim().toLowerCase();
+  const visibleCourses = courseSearchTerm === ''
+    ? props.courses
+    : props.courses.filter((course) =>
+        (course.title || '').toLowerCase().includes(courseSearchTerm) ||
+        (course.pages || []).some((p) =>
+          !p.isQuiz && (p.title || '').toLowerCase().includes(courseSearchTerm)
+        )
+      );
 
   const selectedCourse = isCreatingNewCourse ? newCourseData : props.courses.find((course) => course.id === selectedCourseId);
 
@@ -1356,8 +1367,19 @@ export function CourseManagement(props: CourseEditorProps) {
     return (
       <div className="admin-course-grid-page">
         <div className="panel-header">
-          <div className="panel-header-row">
+          <div className="panel-header-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span>Courses</span>
+            {props.courses.length > 0 && (
+              <input
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                placeholder="Search courses or videos…"
+                style={{
+                  marginLeft: 'auto', padding: '8px 12px', border: '1px solid #d1d5db',
+                  borderRadius: 8, fontSize: 14, minWidth: 240, background: '#fff',
+                }}
+              />
+            )}
           </div>
         </div>
         <div className="panel-body">
@@ -1369,6 +1391,8 @@ export function CourseManagement(props: CourseEditorProps) {
                 <div>New course</div>
               </button>
             </div>
+          ) : visibleCourses.length === 0 ? (
+            <div className="panel-empty">No courses or videos match &ldquo;{courseSearch}&rdquo;.</div>
           ) : (
             <>
               <div className="training-card-grid">

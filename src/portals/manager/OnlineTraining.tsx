@@ -1405,7 +1405,7 @@ export function ManagerOnlineTrainingPage(props: {
             <input
               value={courseSearch}
               onChange={(e) => setCourseSearch(e.target.value)}
-              placeholder="Search courses by title…"
+              placeholder="Search courses or videos…"
               style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
             />
           )}
@@ -2413,7 +2413,7 @@ export function ManagerOnlineTrainingPage(props: {
             <input
               value={courseSearch}
               onChange={(e) => setCourseSearch(e.target.value)}
-              placeholder="Search courses by title…"
+              placeholder="Search courses or videos…"
               style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
             />
           )}
@@ -2430,9 +2430,18 @@ export function ManagerOnlineTrainingPage(props: {
 
   function TabContent() {
     if (activeTab === 'courses') {
-      const shownCourses = publishedCourses.filter(c =>
-        (c.title || '').toLowerCase().includes(courseSearch.trim().toLowerCase())
-      );
+      // Search matches a course by its title OR by any of its videos/lessons.
+      // When only a video matched (not the course title), remember that page so
+      // clicking the card opens straight to that video.
+      const q = courseSearch.trim().toLowerCase();
+      const shownCourses = publishedCourses
+        .map(c => {
+          const pages = (c.pages || []).filter(p => p.status === 'published' && !p.isQuiz);
+          const titleMatch = q === '' || (c.title || '').toLowerCase().includes(q);
+          const matchedPage = q === '' ? undefined : pages.find(p => (p.title || '').toLowerCase().includes(q));
+          return { course: c, show: titleMatch || !!matchedPage, matchPageId: !titleMatch && matchedPage ? matchedPage.id : null };
+        })
+        .filter(x => x.show);
       return (
         <>
           <div className="grid grid-3" style={{ marginBottom: 16 }}>
@@ -2470,7 +2479,7 @@ export function ManagerOnlineTrainingPage(props: {
             </div>
           ) : (
             <div className="training-card-grid">
-              {shownCourses.map((course, index) => {
+              {shownCourses.map(({ course, matchPageId }, index) => {
                 const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
                 return (
                   <button
@@ -2479,7 +2488,7 @@ export function ManagerOnlineTrainingPage(props: {
                     className="training-card"
                     onClick={() => {
                       const firstPage = (course.pages ?? []).filter(p => p.status === 'published')[0];
-                      openCourse(course, firstPage?.id ?? null);
+                      openCourse(course, matchPageId ?? firstPage?.id ?? null);
                     }}
                     style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
                   >
