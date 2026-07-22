@@ -565,16 +565,17 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       return courses;
     }
     return courses.filter((course: Course) => {
-      const inTitle = course.title.toLowerCase().includes(term);
-      const inLessons = course.lessonNames.some((name) =>
-        name.toLowerCase().includes(term)
+      const inTitle = (course.title || "").toLowerCase().includes(term);
+      // lessonNames/assetFiles are absent in the list-mode API payload, so guard them.
+      const inLessons = (course.lessonNames || []).some((name) =>
+        (name || "").toLowerCase().includes(term)
       );
-      const inAssets = course.assetFiles.some((file) =>
-        file.toLowerCase().includes(term)
+      const inAssets = (course.assetFiles || []).some((file) =>
+        (file || "").toLowerCase().includes(term)
       );
       // Also match individual videos/lessons inside the course.
       const inVideos = (course.pages || []).some((p) =>
-        p.status === "published" && !p.isQuiz && (p.title || "").toLowerCase().includes(term)
+        p && p.status === "published" && !p.isQuiz && (p.title || "").toLowerCase().includes(term)
       );
       return inTitle || inLessons || inAssets || inVideos;
     });
