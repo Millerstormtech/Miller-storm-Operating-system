@@ -38,6 +38,24 @@ function randomBytes(len = 32): ArrayBuffer {
   return a.buffer;
 }
 
+/** True only when running as an installed PWA / native-style app (home-screen
+ *  or standalone window) — NOT in a normal desktop/mobile browser tab. Biometric
+ *  login is gated on this so Face ID / fingerprint never appears on the web. */
+export function isRunningAsApp(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const mm = window.matchMedia;
+    const standalone =
+      (!!mm && (mm("(display-mode: standalone)").matches ||
+                mm("(display-mode: fullscreen)").matches ||
+                mm("(display-mode: minimal-ui)").matches)) ||
+      (navigator as any).standalone === true; // iOS Safari home-screen app
+    return !!standalone;
+  } catch {
+    return false;
+  }
+}
+
 /** True when the device has a usable platform authenticator (Face ID / Touch ID
  *  / fingerprint) reachable through WebAuthn. */
 export async function isBiometricSupported(): Promise<boolean> {

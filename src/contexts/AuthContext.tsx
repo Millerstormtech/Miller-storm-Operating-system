@@ -8,6 +8,7 @@ import {
   isBiometricSupported,
   syncBiometricSession,
   biometricLabel,
+  isRunningAsApp,
 } from "../lib/biometricAuth";
 
 // Install the global Authorization-header fetch wrapper as early as possible,
@@ -100,10 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     applySession(user, userData.token || null);
 
-    // Offer Face ID / fingerprint for next time — but only if the device
-    // supports it and it isn't already on. The prompt's Enable button is a fresh
-    // user gesture, which WebAuthn enrolment requires.
-    if (!isBiometricEnabled() && (await isBiometricSupported())) {
+    // Offer Face ID / fingerprint for next time — but only inside the installed
+    // app/PWA (never on the plain web), if the device supports it and it isn't
+    // already on. The prompt's Enable button is a fresh user gesture, which
+    // WebAuthn enrolment requires.
+    if (isRunningAsApp() && !isBiometricEnabled() && (await isBiometricSupported())) {
       setBioPrompt(true);
     }
   }

@@ -3,7 +3,7 @@ import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useAuth } from "../src/contexts/AuthContext";
-import { isBiometricEnabled, isBiometricSupported, loginWithBiometric, biometricLabel } from "../src/lib/biometricAuth";
+import { isBiometricEnabled, isBiometricSupported, loginWithBiometric, biometricLabel, isRunningAsApp } from "../src/lib/biometricAuth";
 import logoImage from "../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
 
 const LoginPage: NextPage = () => {
@@ -34,11 +34,11 @@ const LoginPage: NextPage = () => {
     router.replace((router.query.redirect_to as string) || routes[user.role] || "/sales/dashboard");
   }, [authLoading, user]);
 
-  // Show the "Login with Face ID" button only when this device has biometrics
-  // enrolled AND the user turned it on here previously.
+  // Show the "Login with Face ID" button only inside the installed app/PWA (never
+  // in a plain web browser), and only when biometrics are enrolled on this device.
   useEffect(() => {
     (async () => {
-      if (isBiometricEnabled() && (await isBiometricSupported())) {
+      if (isRunningAsApp() && isBiometricEnabled() && (await isBiometricSupported())) {
         setBioLabel(biometricLabel());
         setBioAvailable(true);
       }
