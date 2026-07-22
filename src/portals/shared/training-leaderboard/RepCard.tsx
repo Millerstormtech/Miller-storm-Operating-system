@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import type { BadgeId, RankTitle } from "../../../lib/training/scoring";
 import {
@@ -67,11 +68,13 @@ export function ProgressRing({ pct, size = 52, holeBg = "#fff" }: { pct: number;
 }
 
 function Avatar({ name, headshotUrl, size }: { name: string; headshotUrl: string; size: number }) {
-  if (headshotUrl) {
+  const [errored, setErrored] = useState(false);
+  if (headshotUrl && !errored) {
     return (
       <img
         src={headshotUrl}
         alt={name}
+        onError={() => setErrored(true)}
         style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
       />
     );

@@ -6,12 +6,12 @@ import { BADGE_META, PODIUM, TIER_COLORS } from "./constants";
 
 /**
  * The always-available key: what every icon means (Label: meaning) and how
- * each rank is reached, computed from the live course count. Always open on
- * desktop; a tap-to-open bar on narrow screens.
+ * each rank is reached, computed from the live course count. Collapsed by
+ * default on every screen size (same interaction as the Sales Leaderboard's
+ * "How to read this board" panel); the header toggles it.
  */
-export function Legend({ totalCourses, isNarrow }: { totalCourses: number; isNarrow: boolean }) {
+export function Legend({ totalCourses }: { totalCourses: number }) {
   const [open, setOpen] = useState(false);
-  const shown = !isNarrow || open;
   const rankLabels = rankRequirementLabels(totalCourses);
   return (
     <div
@@ -19,40 +19,33 @@ export function Legend({ totalCourses, isNarrow }: { totalCourses: number; isNar
         background: "#fffbeb",
         border: "1px solid #fde68a",
         borderRadius: 12,
-        padding: shown ? "12px 13px" : 0,
+        padding: open ? "12px 13px" : 0,
         marginBottom: 14,
         overflow: "hidden",
       }}
     >
-      {isNarrow && (
-        <button
-          onClick={() => setOpen((p) => !p)}
-          aria-expanded={open}
-          style={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            border: "none",
-            background: "transparent",
-            padding: shown ? "0 0 8px" : "9px 11px",
-            cursor: "pointer",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#92400e",
-          }}
-        >
-          <span>ⓘ What the icons and ranks mean</span>
-          <span>{open ? "▴" : "▸"}</span>
-        </button>
-      )}
-      {shown && (
+      <button
+        onClick={() => setOpen((p) => !p)}
+        aria-expanded={open}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          border: "none",
+          background: "transparent",
+          padding: open ? "0 0 8px" : "9px 11px",
+          cursor: "pointer",
+          fontSize: 12,
+          fontWeight: 600,
+          color: "#92400e",
+        }}
+      >
+        <span>ⓘ What the icons and ranks mean</span>
+        <span>{open ? "▴" : "▸"}</span>
+      </button>
+      {open && (
         <>
-          {!isNarrow && (
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-              ⓘ What the icons mean
-            </div>
-          )}
           <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16, rowGap: 6, fontSize: 12, color: "#374151" }}>
             {Object.values(BADGE_META).map((m) => (
               <span key={m.label}>

@@ -154,7 +154,7 @@ export function TrainingLeaderboard() {
       )}
 
       {/* Only with data: rankRequirementLabels(0) would flash "all 0" during load. */}
-      {data && <Legend totalCourses={data.totalCourses} isNarrow={isNarrow} />}
+      {data && <Legend totalCourses={data.totalCourses} />}
 
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
