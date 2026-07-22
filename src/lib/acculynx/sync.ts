@@ -4,11 +4,12 @@ import { ScoringFactModel } from "../models/ScoringFact";
 import { SyncStateModel } from "../models/SyncState";
 import { UserModel } from "../models/User";
 import { AcculynxUserModel } from "../models/AcculynxUser";
-import { STAGE_TO_METRIC, REVENUE_STAGE, REP_TYPES, getLocationKeys, cleanBranchName } from "./config";
+import { STAGE_TO_METRIC, REVENUE_STAGE, REP_TYPES, getLocationKeys, cleanBranchName, BACKFILL_VERSION } from "./config";
 import { createClient } from "./client";
 import type { AcculynxClient } from "./client";
 import { mapJobToFacts, isJobDead } from "./mapping";
 import type { MappingConfig } from "./mapping";
+import { resolveSyncMode } from "./sync-policy";
 import { getWindowRange } from "./windows";
 import { normEmail, normName, normPhone } from "../leaderboard/identity";
 
@@ -25,6 +26,7 @@ export interface LocationSyncResult {
   branch: string;
   companyId: string;
   status: "ok" | "failed" | "skipped";
+  mode?: "incremental" | "backfill"; // what this run actually did (a version gap upgrades incremental -> backfill)
   jobsProcessed: number;
   factsWritten: number;
   deadContractsRemoved?: number; // won/revenue facts deleted because the deal is now Cancelled
@@ -127,6 +129,22 @@ async function syncOneLocation(
     return result; // another run is actively syncing this location
   }
 
+  // Decide whether this run recomputes history. An explicit backfill wins; otherwise a
+  // location whose stored backfillVersion is behind the code's BACKFILL_VERSION (including
+  // a never-backfilled location, stored 0) auto-upgrades to a ONE-TIME backfill. The new
+  // version is stamped ONLY on success below, so a skipped/failed run stays behind and is
+  // retried next cycle — a backfill can't be silently lost.
+  const effectiveMode = resolveSyncMode({
+    requestedMode: mode,
+    storedVersion: state.backfillVersion,
+    codeVersion: BACKFILL_VERSION,
+    dryRun,
+  });
+  result.mode = effectiveMode;
+  if (mode !== "backfill" && effectiveMode === "backfill") {
+    console.log(`[acculynx/sync] ${branch}: backfill-migration v${state.backfillVersion ?? 0} -> v${BACKFILL_VERSION}`);
+  }
+
   const runStartedAt = new Date();
   if (!dryRun) {
     state.running = true; state.runStartedAt = runStartedAt; state.branch = branch;
@@ -138,7 +156,7 @@ async function syncOneLocation(
     // incremental = last watermark minus a 1-day re-fetch buffer.
     const yearStart = getWindowRange("year").start;
     let since: Date;
-    if (mode === "backfill" || !state.lastSyncAt) since = yearStart;
+    if (effectiveMode === "backfill" || !state.lastSyncAt) since = yearStart;
     else since = new Date(state.lastSyncAt.getTime() - 86400000);
 
     const userMap = await client.fetchUserMap();
@@ -224,7 +242,10 @@ async function syncOneLocation(
       // Watermark = run START time (not end), so jobs modified mid-run are re-pulled
       // next time rather than skipped.
       state.lastSyncAt = runStartedAt;
-      if (mode === "backfill") state.lastFullSyncAt = runStartedAt;
+      if (effectiveMode === "backfill") {
+        state.lastFullSyncAt = runStartedAt;
+        state.backfillVersion = BACKFILL_VERSION; // this location is now current for the code's fact computation
+      }
       state.lastStatus = "ok"; state.lastError = "";
       state.jobsProcessed = result.jobsProcessed; state.factsWritten = result.factsWritten;
       state.unmatchedCount = result.unmatched.length;

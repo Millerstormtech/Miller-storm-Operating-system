@@ -30,6 +30,8 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
     .map((s: any) => ({
       branch: s.branch || s.key,
       lastSyncAt: s.lastSyncAt ?? null,
+      lastFullSyncAt: s.lastFullSyncAt ?? null,   // last COMPLETED backfill for this location
+      backfillVersion: s.backfillVersion ?? 0,     // fact-computation version this location is current for
       lastStatus: s.lastStatus ?? "never",
       jobsProcessed: s.jobsProcessed ?? 0,
       factsWritten: s.factsWritten ?? 0,
