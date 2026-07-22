@@ -40,6 +40,8 @@ export function CourseView({
   const [courseId, setCourseId] = useState(courses[0]?.id || "");
   const [rows, setRows] = useState<CourseRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   // Guarded against races: if courseId changes again before this resolves,
   // the stale response is dropped instead of overwriting the newer course's rows.
@@ -47,20 +49,27 @@ export function CourseView({
     if (!courseId) return;
     let cancelled = false;
     setLoading(true);
+    setLoadError(false);
     fetch(`/api/leaderboard?courseId=${courseId}`)
-      .then((r) => (r.ok ? r.json() : { rows: [] }))
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((data) => {
         if (cancelled) return;
         setRows(data.rows || []);
       })
-      .catch(console.error)
+      .catch((e) => {
+        console.error(e);
+        if (!cancelled) setLoadError(true);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [courseId]);
+  }, [courseId, retryNonce]);
 
   const enriched = rows
     .filter((r) => !hiddenIds.has(r.id))
@@ -116,6 +125,16 @@ export function CourseView({
 
       {loading ? (
         <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>Loading…</div>
+      ) : loadError ? (
+        <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+          Couldn't load this course.{" "}
+          <button
+            onClick={() => setRetryNonce((n) => n + 1)}
+            style={{ border: "none", background: "none", color: "#2563eb", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+          >
+            Try again
+          </button>
+        </div>
       ) : (
         <>
           {started.map((e, i) => (

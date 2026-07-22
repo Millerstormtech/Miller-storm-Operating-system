@@ -37,7 +37,7 @@ export function RosterGrid({
   if (visible.length === 0 && visibleNotStarted.length === 0) {
     return (
       <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
-        No reps match these filters.
+        {active ? "No reps match these filters." : "No reps on the board yet."}
       </div>
     );
   }
