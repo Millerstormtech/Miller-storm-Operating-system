@@ -46,18 +46,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     installAuthFetch();
-    const storedUser = localStorage.getItem("user");
-    if (storedUser && storedUser !== "undefined") {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-        if (parsed?.id) enableWebPush(parsed.id);
-      } catch (error) {
-        localStorage.removeItem("user");
-      }
+    // Web: the session is intentionally NOT restored from storage. Every fresh
+    // page load — new tab, reopen, or refresh — must go through the login form:
+    // the user has to type their email + password and click Login to enter any
+    // panel. (The mobile app keeps its own persistent session separately.)
+    // Clear any leftover from an older build/session so nothing lingers.
+    try {
+      localStorage.removeItem("user");
+    } catch {
+      /* ignore storage errors */
     }
+    clearToken();
     setIsLoading(false);
   }, []);
+
+  // Web guard: with no restored session, any protected page must bounce to the
+  // login form so the user is forced to type email + password. Public auth pages
+  // are exempt. `redirect_to` preserves where they were headed after login.
+  useEffect(() => {
+    if (isLoading || user) return;
+    const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password", "/"];
+    if (!publicRoutes.includes(router.pathname)) {
+      const target =
+        router.asPath && !router.asPath.startsWith("/login")
+          ? `/login?redirect_to=${encodeURIComponent(router.asPath)}`
+          : "/login";
+      router.replace(target);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, user, router.pathname]);
 
   function goToDashboard(u: User) {
     if (u.role === "admin") router.push("/admin/user-management");

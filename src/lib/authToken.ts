@@ -8,33 +8,24 @@
 // the header is sent consistently and that existing call sites keep working.
 // ---------------------------------------------------------------------------
 
-const TOKEN_KEY = "token";
+// The auth token lives in memory only (module-scoped). It is deliberately NOT
+// persisted to localStorage/sessionStorage, so a full page reload — a new tab,
+// reopening the site, or refresh — starts with no token and forces a fresh
+// login. It survives client-side (SPA) navigation because the module stays
+// loaded for the lifetime of the tab.
+let tokenInMemory: string | null = null;
 
 export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
+  return tokenInMemory;
 }
 
 export function setToken(token: string): void {
-  if (typeof window === "undefined" || !token) return;
-  try {
-    window.localStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    /* ignore storage errors */
-  }
+  if (!token) return;
+  tokenInMemory = token;
 }
 
 export function clearToken(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    /* ignore storage errors */
-  }
+  tokenInMemory = null;
 }
 
 // Is this request URL one of our own API routes (same-origin /api/...)?
