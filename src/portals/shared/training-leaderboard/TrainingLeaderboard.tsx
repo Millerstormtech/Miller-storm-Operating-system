@@ -37,6 +37,7 @@ export function TrainingLeaderboard() {
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [showOverride, setShowOverride] = useState(false);
   const [showHide, setShowHide] = useState(false);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin";
 
@@ -69,12 +70,21 @@ export function TrainingLeaderboard() {
   }, [isAdmin]);
 
   async function saveHidden(newSet: Set<string>) {
+    const previous = hiddenIds;
     setHiddenIds(newSet);
-    await fetch("/api/admin/ui-prefs?key=hiddenLeaderboardUsers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hiddenIds: [...newSet] }),
-    }).catch(() => {});
+    setPrefsError(null);
+    try {
+      const res = await fetch("/api/admin/ui-prefs?key=hiddenLeaderboardUsers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hiddenIds: [...newSet] }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch {
+      // Roll back so the screen never shows a state that did not persist.
+      setHiddenIds(previous);
+      setPrefsError("Couldn't save hidden users. Try again.");
+    }
   }
 
   // Branch managers open on their own branch (they can widen). Resolved by
@@ -136,6 +146,12 @@ export function TrainingLeaderboard() {
           isAdmin ? <AdminMenu onOverride={() => setShowOverride(true)} onHide={() => setShowHide(true)} /> : undefined
         }
       />
+
+      {prefsError && (
+        <div style={{ fontSize: 12, color: "#dc2626", fontWeight: 600, margin: "0 0 10px 2px" }}>
+          {prefsError}
+        </div>
+      )}
 
       {/* Only with data: rankRequirementLabels(0) would flash "all 0" during load. */}
       {data && <Legend totalCourses={data.totalCourses} isNarrow={isNarrow} />}
