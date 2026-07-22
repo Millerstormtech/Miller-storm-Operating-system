@@ -131,13 +131,13 @@ class _LoginScreenState extends State<LoginScreen> {
     final role = user['role'] as String?;
     FirebaseMessagingService.saveTokenAfterLogin();
     if (role == 'sales') {
-      Navigator.pushReplacementNamed(context, '/courses');
+      Navigator.pushReplacementNamed(context, '/rankings');
     } else if (role == 'sales-team-lead') {
-      Navigator.pushReplacementNamed(context, '/manager-training');
+      Navigator.pushReplacementNamed(context, '/manager-rankings');
     } else if (role == 'c-level') {
-      Navigator.pushReplacementNamed(context, '/clevel-training');
+      Navigator.pushReplacementNamed(context, '/clevel-rankings');
     } else if (role == 'branch-manager') {
-      Navigator.pushReplacementNamed(context, '/bm-training');
+      Navigator.pushReplacementNamed(context, '/bm-rankings');
     } else {
       setState(() {
         _error = 'Access denied. This app is only available for Sales, Sales Team Lead, C-Level and Branch Manager roles.';

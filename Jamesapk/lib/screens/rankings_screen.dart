@@ -488,10 +488,10 @@ class _RankingsScreenState extends State<RankingsScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
+              _navItemActive(Icons.leaderboard_outlined, 'Leaderboard'),
               _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/stormchat'),
               _navItem(context, Icons.apps_outlined, 'Tools', false, '/apps-tools-items'),
-              _navItemActive(Icons.leaderboard_outlined, 'Leaderboard'),
+              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
               _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
             ],
           ),

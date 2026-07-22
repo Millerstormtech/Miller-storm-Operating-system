@@ -722,7 +722,7 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.school_outlined, 'Training', false, '/manager-training'),
+              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/manager-rankings'),
               const SizedBox(width: 2),
               _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
               const SizedBox(width: 2),
@@ -730,7 +730,7 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
               const SizedBox(width: 2),
               _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
               const SizedBox(width: 2),
-              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/manager-rankings'),
+              _navItem(context, Icons.school_outlined, 'Training', false, '/manager-training'),
             ],
           ),
         ),

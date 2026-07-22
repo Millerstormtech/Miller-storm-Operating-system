@@ -213,7 +213,7 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/courses'),
+                  onTap: () => Navigator.pushReplacementNamed(context, '/rankings'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
@@ -223,9 +223,9 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.school_outlined, color: Color(0xFF9CA3AF), size: 24),
+                        Icon(Icons.leaderboard_outlined, color: Color(0xFF9CA3AF), size: 24),
                         SizedBox(height: 4),
-                        Text('Training', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center),
+                        Text('Leaderboard', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -273,7 +273,7 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
               const SizedBox(width: 2),
               Expanded(
                 child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/rankings'),
+                  onTap: () => Navigator.pushReplacementNamed(context, '/courses'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
@@ -283,9 +283,9 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.leaderboard_outlined, color: Color(0xFF9CA3AF), size: 24),
+                        Icon(Icons.school_outlined, color: Color(0xFF9CA3AF), size: 24),
                         SizedBox(height: 4),
-                        Text('Leaderboard', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text('Training', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center),
                       ],
                     ),
                   ),

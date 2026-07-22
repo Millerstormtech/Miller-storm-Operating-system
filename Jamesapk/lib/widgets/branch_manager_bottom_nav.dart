@@ -34,7 +34,7 @@ class BranchManagerBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _item(context, Icons.school_outlined, 'Training', 'training', '/bm-training'),
+              _item(context, Icons.leaderboard_outlined, 'Sales', 'leaderboard', '/bm-rankings'),
               const SizedBox(width: 2),
               _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/bm-stormchat'),
               const SizedBox(width: 2),
@@ -42,7 +42,7 @@ class BranchManagerBottomNav extends StatelessWidget {
               const SizedBox(width: 2),
               _item(context, Icons.manage_accounts_outlined, 'Users', 'users', '/bm-user-management'),
               const SizedBox(width: 2),
-              _item(context, Icons.leaderboard_outlined, 'Sales', 'leaderboard', '/bm-rankings'),
+              _item(context, Icons.school_outlined, 'Training', 'training', '/bm-training'),
             ],
           ),
         ),

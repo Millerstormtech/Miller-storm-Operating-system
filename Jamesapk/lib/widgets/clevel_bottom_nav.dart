@@ -34,7 +34,7 @@ class CLevelBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _item(context, Icons.school_outlined, 'Training', 'training', '/clevel-training'),
+              _item(context, Icons.leaderboard_outlined, 'Sales', 'leaderboard', '/clevel-rankings'),
               const SizedBox(width: 2),
               _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/clevel-stormchat'),
               const SizedBox(width: 2),
@@ -42,7 +42,7 @@ class CLevelBottomNav extends StatelessWidget {
               const SizedBox(width: 2),
               _item(context, Icons.manage_accounts_outlined, 'Users', 'users', '/clevel-user-management'),
               const SizedBox(width: 2),
-              _item(context, Icons.leaderboard_outlined, 'Sales', 'leaderboard', '/clevel-rankings'),
+              _item(context, Icons.school_outlined, 'Training', 'training', '/clevel-training'),
             ],
           ),
         ),

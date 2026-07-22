@@ -928,13 +928,13 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItemActive(Icons.school, 'Training'),
+              _navItem(Icons.leaderboard_outlined, 'Leaderboard', '/rankings'),
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble, 'StormChat', '/stormchat'),
               const SizedBox(width: 2),
               _navItem(Icons.apps, 'Tools', '/apps-tools-items'),
               const SizedBox(width: 2),
-              _navItem(Icons.leaderboard_outlined, 'Leaderboard', '/rankings'),
+              _navItemActive(Icons.school, 'Training'),
               const SizedBox(width: 2),
               _navItem(Icons.person, 'Profile', '/profile'),
             ],

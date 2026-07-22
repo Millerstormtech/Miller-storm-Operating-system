@@ -212,7 +212,7 @@ class _SalesTeamLeadAppsToolsItemsScreenState extends State<SalesTeamLeadAppsToo
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.school_outlined, 'Training', false, '/manager-training', context),
+              _navItem(Icons.leaderboard_outlined, 'Leaderboard', false, '/manager-rankings', context),
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat', context),
               const SizedBox(width: 2),
@@ -220,7 +220,7 @@ class _SalesTeamLeadAppsToolsItemsScreenState extends State<SalesTeamLeadAppsToo
               const SizedBox(width: 2),
               _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
               const SizedBox(width: 2),
-              _navItem(Icons.leaderboard_outlined, 'Leaderboard', false, '/manager-rankings', context),
+              _navItem(Icons.school_outlined, 'Training', false, '/manager-training', context),
             ],
           ),
         ),

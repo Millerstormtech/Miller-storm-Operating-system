@@ -488,11 +488,11 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.school_outlined, 'Training', false, '/manager-training'),
+              _navItemActive(Icons.leaderboard_outlined, 'Leaderboard'),
               _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
               _navItem(context, Icons.apps_outlined, 'Tools', false, '/manager-apps-tools-items'),
               _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
-              _navItemActive(Icons.leaderboard_outlined, 'Leaderboard'),
+              _navItem(context, Icons.school_outlined, 'Training', false, '/manager-training'),
             ],
           ),
         ),

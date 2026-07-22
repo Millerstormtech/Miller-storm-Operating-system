@@ -753,13 +753,13 @@ class _StormChatScreenState extends State<StormChatScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
+              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/rankings'),
               const SizedBox(width: 2),
               _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
               const SizedBox(width: 2),
               _navItem(context, Icons.apps_outlined, 'Tools', false, '/apps-tools-items'),
               const SizedBox(width: 2),
-              _navItem(context, Icons.leaderboard_outlined, 'Leaderboard', false, '/rankings'),
+              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
               const SizedBox(width: 2),
               _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
             ],
