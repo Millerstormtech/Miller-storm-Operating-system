@@ -7,6 +7,7 @@ import {
   isBiometricEnabled,
   isBiometricSupported,
   syncBiometricSession,
+  disableBiometric,
   biometricLabel,
   isRunningAsApp,
 } from "../lib/biometricAuth";
@@ -125,8 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem("user");
     clearToken();
-    // Note: biometric enrolment is intentionally kept so the user can still
-    // sign back in with Face ID from the login screen (matches the mobile app).
+    // Fully clear the session: also drop the stored biometric credential + JWT,
+    // otherwise the leftover bio_token/bio_user let the app re-establish the
+    // session (auto-login) without the user re-entering email/password.
+    disableBiometric();
     router.push("/login");
   }
 

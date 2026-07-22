@@ -785,8 +785,15 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     type="button"
                     className="training-card"
                     onClick={() => {
-                      const firstPage = (course.pages ?? []).filter(p => p.status === 'published')[0];
-                      enterCourse(course, firstPage?.id ?? null);
+                      const published = (course.pages ?? []).filter(p => p.status === 'published');
+                      // If the search matched a specific video/lesson (and not the
+                      // course title itself), open the course straight to that lesson.
+                      const term = search.trim().toLowerCase();
+                      const titleMatch = term !== '' && (course.title || '').toLowerCase().includes(term);
+                      const matchedPage = term === '' || titleMatch
+                        ? undefined
+                        : published.find(p => !p.isQuiz && (p.title || '').toLowerCase().includes(term));
+                      enterCourse(course, matchedPage?.id ?? published[0]?.id ?? null);
                     }}
                     style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
                   >

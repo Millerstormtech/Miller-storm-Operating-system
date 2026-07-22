@@ -6,6 +6,7 @@ import { SalesPortal } from "./portals/SalesPortal";
 import { MarketingPortal } from "./portals/MarketingPortal";
 import { AuthenticatedUser, Course, UserProfile } from "./types";
 import { setToken, clearToken, installAuthFetch } from "./lib/authToken";
+import { disableBiometric } from "./lib/biometricAuth";
 import logoImage from "../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
 
 installAuthFetch();
@@ -125,6 +126,10 @@ export function App() {
     setLoginState({ email: "", password: "" });
     setLoginError("");
     clearToken();
+    // Fully clear the persisted session so the next visit requires a real login
+    // (the stored "user" + biometric JWT would otherwise auto-restore it).
+    try { localStorage.removeItem("user"); } catch {}
+    disableBiometric();
   }
 
   async function updateUsers(next: UserProfile[]) {
