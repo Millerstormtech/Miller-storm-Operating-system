@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
-import { CourseLeaderboard } from "../../src/portals/admin/CourseLeaderboard";
+import { TrainingLeaderboard } from "../../src/portals/shared/training-leaderboard/TrainingLeaderboard";
 import { useAuth } from "../../src/contexts/AuthContext";
 
 const SalesCourseLeaderboardPage: NextPage = () => {
@@ -8,9 +8,9 @@ const SalesCourseLeaderboardPage: NextPage = () => {
   if (!user) return <div>Loading...</div>;
   return (
     <SalesLayout currentView="course-leaderboard" userName={user.name} userId={user.id}>
-      {/* readOnly → sales reps see the rankings but none of the admin
-          "hide users" controls. */}
-      <CourseLeaderboard readOnly />
+      {/* Role behavior (your-rank strip, no admin tools) comes from AuthContext
+          inside the component; no readOnly prop anymore. */}
+      <TrainingLeaderboard />
     </SalesLayout>
   );
 };
