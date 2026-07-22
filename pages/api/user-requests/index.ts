@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
-import { sendRegistrationConfirmationEmail } from "../../../src/lib/email";
+import { sendRegistrationConfirmationEmail, sendNewRegistrationAdminEmail } from "../../../src/lib/email";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
@@ -76,6 +76,31 @@ export default async function handler(
         console.log("Confirmation email sent to:", email.trim().toLowerCase());
       } catch (emailError: any) {
         console.error("Failed to send confirmation email:", emailError.message || emailError);
+      }
+
+      // Email every admin so they can review the request. Content + on/off is
+      // controlled by the "New Registration (Admin)" template in Email Config.
+      try {
+        const admins = await UserModel.find(
+          { role: "admin", deleted: { $ne: true } },
+          { name: 1, email: 1 }
+        ).lean();
+
+        await Promise.all(
+          (admins as any[])
+            .filter((admin) => admin.email)
+            .map((admin) =>
+              sendNewRegistrationAdminEmail({
+                adminName: admin.name || "Admin",
+                adminEmail: admin.email,
+                name: name.trim(),
+                email: email.trim().toLowerCase(),
+                role,
+              }).catch((e: any) => console.error("[user-request] admin email failed:", e?.message || e))
+            )
+        );
+      } catch (notifyError: any) {
+        console.error("Failed to email admins of new registration:", notifyError.message || notifyError);
       }
 
       res.status(201).json({ 

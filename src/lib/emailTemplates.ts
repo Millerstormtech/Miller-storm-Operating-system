@@ -167,6 +167,23 @@ This is an automated confirmation of the changes you made.
 © 2026-2027 Miller Storm. All Rights Reserved.`,
     variables: ["{{adminName}}", "{{userName}}", "{{userEmail}}", "{{role}}", "{{managerName}}", "{{passwordChanged}}", "{{updatedAt}}"],
   },
+  newRegistrationAdmin: {
+    subject: "New registration request awaiting your review",
+    body: `Hi {{adminName}},
+
+A new registration request has been submitted to the Miller Storm Operating System and is waiting for your review.
+
+Registration Details:
+- Name: {{name}}
+- Email: {{email}}
+- Requested Role: {{role}}
+
+Review and approve or reject this request here:
+{{reviewUrl}}
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{adminName}}", "{{name}}", "{{email}}", "{{role}}", "{{reviewUrl}}"],
+  },
   supportTicketCreated: {
     subject: "New Support Ticket — {{type}}",
     body: `Hi {{adminName}},

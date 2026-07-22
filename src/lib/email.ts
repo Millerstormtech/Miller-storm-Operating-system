@@ -57,6 +57,26 @@ export async function sendRegistrationConfirmationEmail(name: string, email: str
   return sendEmail({ to: email, subject, html, text });
 }
 
+export async function sendNewRegistrationAdminEmail(params: {
+  adminName: string;
+  adminEmail: string;
+  name: string;
+  email: string;
+  role: string;
+}) {
+  const tmpl = await getEmailTemplate("newRegistrationAdmin");
+  if (tmpl.status === "draft") { console.log("[Email] newRegistrationAdmin is draft — skipping"); return; }
+  const base = (process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com").replace(/\/$/, "");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{adminName}}": params.adminName,
+    "{{name}}": params.name,
+    "{{email}}": params.email,
+    "{{role}}": roleDisplayName(params.role),
+    "{{reviewUrl}}": `${base}/admin/user-management`,
+  });
+  return sendEmail({ to: params.adminEmail, subject, html, text });
+}
+
 export async function sendAccountApprovedEmail(name: string, email: string, role: string, loginUrl: string) {
   const tmpl = await getEmailTemplate("accountApproved");
   if (tmpl.status === "draft") { console.log("[Email] accountApproved is draft — skipping"); return; }
