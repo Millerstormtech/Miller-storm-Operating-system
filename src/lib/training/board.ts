@@ -167,3 +167,43 @@ export function teamSummaryFor(
   const mine = standings.find((s) => s.team === team);
   return mine ? { ...mine, teamCount: standings.length } : null;
 }
+
+/** UTC midnight of the Monday of the given date's week. Weeks start Monday
+ * (decided 2026-07-23; matches the weekly digest). */
+export function weekStartMonday(d: Date): Date {
+  const daysSinceMonday = (d.getUTCDay() + 6) % 7; // Sun=0 -> 6, Mon=1 -> 0
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - daysSinceMonday));
+}
+
+/**
+ * Company-rank movement per rep vs the previous week's snapshot.
+ * Positive = moved up. null = unranked now, or no previous rank (new rep,
+ * launch week). 0 = unchanged. The UI renders NOTHING for null AND 0
+ * (decided 2026-07-23: no dash placeholders).
+ */
+export function computeRankDeltas(
+  rows: Array<{ id: string; rank: number | null }>,
+  prev: Array<{ userId: string; rank: number }>
+): Map<string, number | null> {
+  const prevRank = new Map(prev.map((p) => [p.userId, p.rank]));
+  const deltas = new Map<string, number | null>();
+  for (const r of rows) {
+    const was = r.rank !== null ? prevRank.get(r.id) : undefined;
+    deltas.set(r.id, typeof was === "number" && r.rank !== null ? was - r.rank : null);
+  }
+  return deltas;
+}
+
+export type CourseHeaderStats = { started: number; total: number; avgPct: number };
+
+/**
+ * By Course header numbers. The average counts EVERY ranked rep, zeros
+ * included (decided 2026-07-23, same spirit as the team score). It reads low
+ * for most courses and that is honest.
+ */
+export function courseHeaderStats(rows: Array<{ done: number; pct: number }>): CourseHeaderStats {
+  const started = rows.filter((r) => r.done > 0).length;
+  const avgPct =
+    rows.length > 0 ? Math.round(rows.reduce((sum, r) => sum + r.pct, 0) / rows.length) : 0;
+  return { started, total: rows.length, avgPct };
+}
