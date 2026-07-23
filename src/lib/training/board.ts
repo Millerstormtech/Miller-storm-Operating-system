@@ -99,13 +99,16 @@ export type OverallRow = {
   rank: number | null;
   /** True for the company-wide top 3. Derived, never persisted. */
   isPodium: boolean;
+  /** Company-rank movement vs last week's snapshot. Positive = up. null = no
+   * history (launch week, new rep) or unranked. UI renders nothing for null or 0. */
+  rankDelta: number | null;
   notStarted: boolean;
 };
 
 export type OverallResponse = {
   totalCourses: number;
   totalItems: number;
-  courses: Array<{ id: string; title: string }>;
+  courses: Array<{ id: string; title: string; videos: number; quizzes: number }>;
   rows: OverallRow[];
 };
 

@@ -98,6 +98,7 @@ export async function loadBoardData(): Promise<BoardData> {
       }),
       rank: null,
       isPodium: false,
+      rankDelta: null,
       notStarted: !agg.started,
     };
   });
