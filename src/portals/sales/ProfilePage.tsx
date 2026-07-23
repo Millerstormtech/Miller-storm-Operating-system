@@ -71,11 +71,11 @@ export function ProfilePage(props: {
       });
   }
 
+  // Real branches (same list the admin User Management "Branch" field uses).
   const territoryOptions = [
-    "DFW, Texas",
-    "Lubbock, Texas",
-    "Round Rock, Texas",
-    "Other"
+    "Dallas",
+    "West Texas",
+    "Fort Worth"
   ];
 
   const selectedTerritories =
@@ -251,7 +251,7 @@ export function ProfilePage(props: {
               setIsTerritoryOpen(false);
             }}
           >
-            <span className="field-label">Territory</span>
+            <span className="field-label">Branch</span>
             <button
               type="button"
               className={
@@ -272,7 +272,7 @@ export function ProfilePage(props: {
               >
                 {selectedTerritories.length > 0
                   ? selectedTerritories.join(", ")
-                  : "Select territories"}
+                  : "Select branch"}
               </span>
               <span className="territory-trigger-icon">▾</span>
             </button>
@@ -302,7 +302,7 @@ export function ProfilePage(props: {
                             : selectedTerritories.filter(
                                 (item) => item !== option
                               );
-                          update({ territory: next.join(" · ") });
+                          update({ territory: next.join(" · "), branches: next });
                         }}
                       />
                       <span>{option}</span>

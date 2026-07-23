@@ -186,7 +186,7 @@ export function TeamMemberDetail(props: {
                     />
                   </label>
                   <label className="field">
-                    <span className="field-label">Territory</span>
+                    <span className="field-label">Branch</span>
                     <input
                       className="field-input"
                       value={props.member.territory ?? ""}

@@ -295,7 +295,7 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
           const Divider(height: 24),
           _buildInfoRow(Icons.phone_outlined, 'Phone', widget.member['phone'] ?? 'No phone'),
           const Divider(height: 24),
-          _buildInfoRow(Icons.location_on_outlined, 'Territory', widget.member['territory'] ?? 'Not assigned'),
+          _buildInfoRow(Icons.location_on_outlined, 'Branch', widget.member['territory'] ?? 'Not assigned'),
         ],
       ),
     );
