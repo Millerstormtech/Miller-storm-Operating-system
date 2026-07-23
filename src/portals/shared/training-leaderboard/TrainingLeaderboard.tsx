@@ -16,6 +16,7 @@ import { TeamStandings } from "./TeamStandings";
 import { AdminMenu } from "./AdminMenu";
 import { OverrideModal } from "./OverrideModal";
 import { HideModal } from "./HideModal";
+import { RepDetailModal } from "./RepDetailModal";
 
 /**
  * The Course Leaderboard (Overall board + minimal By Course view). Mounted by
@@ -38,6 +39,7 @@ export function TrainingLeaderboard() {
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [showOverride, setShowOverride] = useState(false);
   const [showHide, setShowHide] = useState(false);
+  const [detailRepId, setDetailRepId] = useState<string | null>(null);
   const [prefsError, setPrefsError] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin";
@@ -192,7 +194,7 @@ export function TrainingLeaderboard() {
                   <TeamStandings standings={visibleStandings} activeTeam={filters.team} isNarrow />
                 )}
                 {youRow && (
-                  <YourRankStrip row={youRow} totalCourses={data.totalCourses} isNarrow={isNarrow} />
+                  <YourRankStrip row={youRow} totalCourses={data.totalCourses} isNarrow={isNarrow} onClick={() => setDetailRepId(user.id)} />
                 )}
                 {myTeam && <MyTeamSummary summary={myTeam} isNarrow={isNarrow} />}
                 <RosterGrid
@@ -201,6 +203,7 @@ export function TrainingLeaderboard() {
                   filters={filters}
                   isNarrow={isNarrow}
                   youId={user.id}
+                  onOpenRep={setDetailRepId}
                 />
               </div>
               {!isNarrow && visibleStandings.length > 0 && (
@@ -217,11 +220,13 @@ export function TrainingLeaderboard() {
               isNarrow={isNarrow}
               youId={user.id}
               hiddenIds={hiddenIds}
+              onOpenRep={setDetailRepId}
             />
           )}
         </>
       )}
 
+      {detailRepId && <RepDetailModal repId={detailRepId} onClose={() => setDetailRepId(null)} />}
       {showOverride && data && (
         <OverrideModal courses={data.courses} onClose={() => setShowOverride(false)} onSaved={loadBoard} />
       )}

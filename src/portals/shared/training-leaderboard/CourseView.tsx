@@ -29,6 +29,7 @@ export function CourseView({
   isNarrow,
   youId,
   hiddenIds,
+  onOpenRep,
 }: {
   courses: Array<{ id: string; title: string }>;
   overallById: Map<string, OverallRow>;
@@ -36,6 +37,7 @@ export function CourseView({
   isNarrow: boolean;
   youId: string | null;
   hiddenIds: Set<string>;
+  onOpenRep: (id: string) => void;
 }) {
   const [courseId, setCourseId] = useState(courses[0]?.id || "");
   const [rows, setRows] = useState<CourseRow[]>([]);
@@ -85,6 +87,7 @@ export function CourseView({
         rankTitle: overall?.rankTitle || "Rookie",
         badges: overall?.badges || [],
         isPodium: overall?.isPodium || false,
+        rankDelta: overall?.rankDelta ?? null,
         videosWatched: overall?.videosWatched,
         quizzesPassed: overall?.quizzesPassed,
         done: r.done,
@@ -145,6 +148,7 @@ export function CourseView({
               coRank={e.coRank}
               isNarrow={isNarrow}
               youTag={e.card.id === youId}
+              onClick={() => onOpenRep(e.card.id)}
             />
           ))}
           {started.length === 0 && (
@@ -152,7 +156,7 @@ export function CourseView({
               Nobody has started this course yet.
             </div>
           )}
-          <NotStartedGroup rows={notStarted} isNarrow={isNarrow} />
+          <NotStartedGroup rows={notStarted} isNarrow={isNarrow} onOpenRep={onOpenRep} />
         </>
       )}
     </div>
