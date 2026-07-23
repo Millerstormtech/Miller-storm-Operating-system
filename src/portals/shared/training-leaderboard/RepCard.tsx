@@ -70,7 +70,7 @@ export function ProgressRing({ pct, size = 52, holeBg = "#fff" }: { pct: number;
   );
 }
 
-function Avatar({ name, headshotUrl, size }: { name: string; headshotUrl: string; size: number }) {
+export function Avatar({ name, headshotUrl, size }: { name: string; headshotUrl: string; size: number }) {
   const [errored, setErrored] = useState(false);
   if (headshotUrl && !errored) {
     return (
