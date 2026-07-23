@@ -261,34 +261,6 @@ function TeamPage(props: {
             <div className="panel-header">Rep Profile</div>
             <div className="form-grid">
               <label className="field">
-                <span className="field-label">Strengths / Superpowers</span>
-                <textarea
-                  className="field-input"
-                  rows={3}
-                  value={selected.strengths}
-                  onChange={(e) =>
-                    updateProfile({
-                      ...selected,
-                      strengths: e.target.value
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span className="field-label">Weaknesses / Insecurities</span>
-                <textarea
-                  className="field-input"
-                  rows={3}
-                  value={selected.weaknesses}
-                  onChange={(e) =>
-                    updateProfile({
-                      ...selected,
-                      weaknesses: e.target.value
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
                 <span className="field-label">Web Page Mission Title</span>
                 <input
                   className="field-input"

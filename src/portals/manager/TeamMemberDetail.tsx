@@ -196,39 +196,6 @@ export function TeamMemberDetail(props: {
                   </label>
                 </div>
               </div>
-              <div className="panel-section">
-                <div className="panel-section-title">Strengths & Weaknesses</div>
-                <div className="form-grid">
-                  <label className="field">
-                    <span className="field-label">Strengths / Superpowers</span>
-                    <textarea
-                      className="field-input"
-                      rows={4}
-                      value={props.member.strengths}
-                      onChange={(e) =>
-                        props.onMemberChange({
-                          ...props.member,
-                          strengths: e.target.value
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="field-label">Weaknesses / Insecurities</span>
-                    <textarea
-                      className="field-input"
-                      rows={4}
-                      value={props.member.weaknesses}
-                      onChange={(e) =>
-                        props.onMemberChange({
-                          ...props.member,
-                          weaknesses: e.target.value
-                        })
-                      }
-                    />
-                  </label>
-                </div>
-              </div>
             </div>
           ) : (
             <div className="panel-body" style={{ padding: '24px' }}>

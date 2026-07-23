@@ -316,26 +316,6 @@ export function SalesTeamLeadProfilePage(props: {
           </div>
         </div>
       </div>
-      <div className="form-grid plan-form-grid">
-        <label className="field">
-          <span className="field-label">Strengths / Superpowers</span>
-          <textarea
-            className="field-input"
-            rows={4}
-            value={profile.strengths}
-            onChange={(e) => update({ strengths: e.target.value })}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">Weaknesses / Insecurities</span>
-          <textarea
-            className="field-input"
-            rows={4}
-            value={profile.weaknesses}
-            onChange={(e) => update({ weaknesses: e.target.value })}
-          />
-        </label>
-      </div>
       <div className="profile-save-row">
         <button
           type="button"

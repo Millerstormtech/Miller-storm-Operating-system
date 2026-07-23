@@ -940,30 +940,6 @@ function UserManagement(props: UserEditorProps) {
                 </label>
               )}
             </div>
-            <div className="form-grid">
-              <label className="field">
-                <span className="field-label">Strengths / Superpowers</span>
-                <textarea
-                  className="field-input"
-                  rows={3}
-                  value={selectedUser.strengths}
-                  onChange={(e) =>
-                    updateUser({ ...selectedUser, strengths: e.target.value })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span className="field-label">Weaknesses / Insecurities</span>
-                <textarea
-                  className="field-input"
-                  rows={3}
-                  value={selectedUser.weaknesses}
-                  onChange={(e) =>
-                    updateUser({ ...selectedUser, weaknesses: e.target.value })
-                  }
-                />
-              </label>
-            </div>
             <div className="panel-section">
               <div className="panel-section-title">Rep Web Page Status</div>
               <div className="status-row">
