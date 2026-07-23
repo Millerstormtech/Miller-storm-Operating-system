@@ -4,6 +4,7 @@ import type { RankTitle, BadgeId } from "../../../lib/training/scoring";
 
 export const GREEN = "#10b981"; // same green as the lesson ticks
 export const RING_TRACK = "#e5e7eb";
+export const DELTA_DOWN = "#dc2626"; // ▼ moved down; ▲ up reuses GREEN
 
 export const TIER_COLORS: Record<RankTitle, { bg: string; fg: string }> = {
   Rookie: { bg: "#f3f4f6", fg: "#6b7280" },

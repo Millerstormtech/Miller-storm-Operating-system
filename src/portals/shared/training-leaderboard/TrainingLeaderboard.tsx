@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isRankedRole } from "../../../lib/training/scoring";
 import type { BoardFilters, OverallResponse, OverallRow } from "../../../lib/training/board";
-import { teamSummaryFor } from "../../../lib/training/board";
+import { teamSummaryFor, teamStandings } from "../../../lib/training/board";
 import { resolveTeam, TEAM_BRANCH, resolveNameBranch } from "../../../lib/repcard/org-chart";
 import { useIsNarrow } from "./useIsNarrow";
 import { WelcomeBanner } from "./WelcomeBanner";
@@ -12,9 +12,11 @@ import { RosterGrid } from "./RosterGrid";
 import { CourseView } from "./CourseView";
 import { YourRankStrip } from "./YourRankStrip";
 import { MyTeamSummary } from "./MyTeamSummary";
+import { TeamStandings } from "./TeamStandings";
 import { AdminMenu } from "./AdminMenu";
 import { OverrideModal } from "./OverrideModal";
 import { HideModal } from "./HideModal";
+import { RepDetailModal } from "./RepDetailModal";
 
 /**
  * The Course Leaderboard (Overall board + minimal By Course view). Mounted by
@@ -37,6 +39,7 @@ export function TrainingLeaderboard() {
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [showOverride, setShowOverride] = useState(false);
   const [showHide, setShowHide] = useState(false);
+  const [detailRepId, setDetailRepId] = useState<string | null>(null);
   const [prefsError, setPrefsError] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin";
@@ -119,6 +122,15 @@ export function TrainingLeaderboard() {
     [allRows]
   );
 
+  // Company-wide team standings; a branch filter HIDES other branches' teams
+  // but never renumbers ranks (same principle as rep medals).
+  const standings = useMemo(() => teamStandings(allRows), [allRows]);
+  const visibleStandings = useMemo(
+    () =>
+      filters.branch ? standings.filter((s) => TEAM_BRANCH[s.team] === filters.branch) : standings,
+    [standings, filters.branch]
+  );
+
   if (!user) return null;
 
   return (
@@ -175,19 +187,31 @@ export function TrainingLeaderboard() {
         </div>
       ) : (
         <>
-          {view === "overall" && youRow && (
-            <YourRankStrip row={youRow} totalCourses={data.totalCourses} isNarrow={isNarrow} />
-          )}
-          {view === "overall" && myTeam && <MyTeamSummary summary={myTeam} isNarrow={isNarrow} />}
-
           {view === "overall" ? (
-            <RosterGrid
-              rows={startedRows}
-              notStartedRows={notStartedRows}
-              filters={filters}
-              isNarrow={isNarrow}
-              youId={user.id}
-            />
+            <div style={{ display: isNarrow ? "block" : "flex", gap: 16, alignItems: "flex-start" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {isNarrow && (
+                  <TeamStandings standings={visibleStandings} activeTeam={filters.team} isNarrow />
+                )}
+                {youRow && (
+                  <YourRankStrip row={youRow} totalCourses={data.totalCourses} isNarrow={isNarrow} onClick={() => setDetailRepId(user.id)} />
+                )}
+                {myTeam && <MyTeamSummary summary={myTeam} isNarrow={isNarrow} />}
+                <RosterGrid
+                  rows={startedRows}
+                  notStartedRows={notStartedRows}
+                  filters={filters}
+                  isNarrow={isNarrow}
+                  youId={user.id}
+                  onOpenRep={setDetailRepId}
+                />
+              </div>
+              {!isNarrow && visibleStandings.length > 0 && (
+                <div style={{ width: 250, flexShrink: 0, position: "sticky", top: 12 }}>
+                  <TeamStandings standings={visibleStandings} activeTeam={filters.team} isNarrow={false} />
+                </div>
+              )}
+            </div>
           ) : (
             <CourseView
               courses={data.courses}
@@ -196,11 +220,13 @@ export function TrainingLeaderboard() {
               isNarrow={isNarrow}
               youId={user.id}
               hiddenIds={hiddenIds}
+              onOpenRep={setDetailRepId}
             />
           )}
         </>
       )}
 
+      {detailRepId && <RepDetailModal repId={detailRepId} onClose={() => setDetailRepId(null)} />}
       {showOverride && data && (
         <OverrideModal courses={data.courses} onClose={() => setShowOverride(false)} onSaved={loadBoard} />
       )}

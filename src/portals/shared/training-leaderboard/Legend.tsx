@@ -55,6 +55,7 @@ export function Legend({ totalCourses }: { totalCourses: number }) {
             <span>
               {PODIUM.emoji} {PODIUM.label}: {PODIUM.meaning}
             </span>
+            <span>▲▼ Rank change: since last week</span>
           </div>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: 0.5, margin: "12px 0 8px" }}>
             Ranks (by courses finished)

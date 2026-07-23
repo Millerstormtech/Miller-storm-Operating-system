@@ -8,9 +8,11 @@ import { useState } from "react";
 export function NotStartedGroup({
   rows,
   isNarrow,
+  onOpenRep,
 }: {
   rows: Array<{ id: string; name: string; branch: string; team: string }>;
   isNarrow: boolean;
+  onOpenRep?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   if (rows.length === 0) return null;
@@ -39,7 +41,30 @@ export function NotStartedGroup({
       {open && (
         <div style={{ border: "1px dashed #d1d5db", borderTop: "none", borderRadius: "0 0 12px 12px", padding: "8px 14px", background: "#fafafa" }}>
           {rows.map((r) => (
-            <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, color: "#374151" }}>
+            <div
+              key={r.id}
+              onClick={onOpenRep ? () => onOpenRep(r.id) : undefined}
+              role={onOpenRep ? "button" : undefined}
+              tabIndex={onOpenRep ? 0 : undefined}
+              onKeyDown={
+                onOpenRep
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onOpenRep(r.id);
+                      }
+                    }
+                  : undefined
+              }
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: "5px 0",
+                fontSize: 13,
+                color: "#374151",
+                cursor: onOpenRep ? "pointer" : "default",
+              }}
+            >
               <span>{r.name}</span>
               {!isNarrow && (
                 <span style={{ color: "#9ca3af", fontSize: 12 }}>
