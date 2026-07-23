@@ -97,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     .toString()
                     .split('·')
                     .map((t) => t.trim())
-                    .where((t) => t.isNotEmpty)
+                    .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                     .toList();
               } else {
                 _userTerritories = [];
@@ -137,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 .toString()
                 .split('·')
                 .map((t) => t.trim())
-                .where((t) => t.isNotEmpty)
+                .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                 .toList();
           } else {
             _userTerritories = [];
@@ -313,7 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 .toString()
                 .split('·')
                 .map((t) => t.trim())
-                .where((t) => t.isNotEmpty)
+                .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                 .toList();
           } else {
             _userTerritories = [];

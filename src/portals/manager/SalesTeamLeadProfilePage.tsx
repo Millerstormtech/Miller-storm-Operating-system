@@ -86,6 +86,8 @@ export function SalesTeamLeadProfilePage(props: {
           .split("·")
           .map((t) => t.trim())
           .filter((t) => t.length > 0)
+          // Drop stale/legacy values (old territories) so only real branches show.
+          .filter((t) => territoryOptions.includes(t))
       : [];
 
   useEffect(() => {
