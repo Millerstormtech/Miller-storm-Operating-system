@@ -196,10 +196,14 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>
-                    {[data.branch, data.team && `Team ${data.team}`].filter(Boolean).join(" · ")}
-                    {data.rank !== null
-                      ? ` · ${data.rank <= 3 ? MEDALS[data.rank - 1] + " " : ""}Rank #${data.rank}`
-                      : " · Not started"}
+                    {[
+                      [data.branch, data.team && `Team ${data.team}`].filter(Boolean).join(" · "),
+                      data.rank !== null
+                        ? `${data.rank <= 3 ? MEDALS[data.rank - 1] + " " : ""}Rank #${data.rank}`
+                        : "Not started",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </div>
                   <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
                     {data.itemsCompleted} of {data.totalItems} items · {data.coursesCompleted} of{" "}

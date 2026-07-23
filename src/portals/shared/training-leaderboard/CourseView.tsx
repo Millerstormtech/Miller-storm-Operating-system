@@ -77,8 +77,15 @@ export function CourseView({
   // Header numbers reflect the WHOLE course roster (hidden users excluded),
   // never the search/branch/team filters.
   const header = courseHeaderStats(withoutHidden.map((r) => ({ done: r.done, pct: r.pct })));
-  const finishers = withoutHidden.filter((r) => r.total > 0 && r.done === r.total);
   const course = courses.find((c) => c.id === courseId);
+  // done === total stands in for the strict complete flag (the frozen legacy
+  // endpoint has no complete field). The two agree for every course with at
+  // least one video; the videos guard keeps a quiz-only course from minting
+  // finishers the strict rule (which requires a video) would deny.
+  const finishers =
+    course && course.videos > 0
+      ? withoutHidden.filter((r) => r.total > 0 && r.done === r.total)
+      : [];
 
   const enriched = withoutHidden.map((r) => {
     const overall = overallById.get(r.id);
