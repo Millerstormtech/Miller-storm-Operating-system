@@ -1,11 +1,11 @@
 import type { NextPage } from "next";
 import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
-import { CourseLeaderboard } from "../../src/portals/admin/CourseLeaderboard";
+import { TrainingLeaderboard } from "../../src/portals/shared/training-leaderboard/TrainingLeaderboard";
 
 const TrainingExecutivePage: NextPage = () => {
   return (
     <AdminPageWrapper currentView="trainingExecutive">
-      <CourseLeaderboard />
+      <TrainingLeaderboard />
     </AdminPageWrapper>
   );
 };

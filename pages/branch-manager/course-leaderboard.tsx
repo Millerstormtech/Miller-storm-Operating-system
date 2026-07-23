@@ -1,11 +1,11 @@
 import type { NextPage } from "next";
 import { BranchManagerLayout } from "../../src/portals/branch-manager/BranchManagerLayout";
-import { CourseLeaderboard } from "../../src/portals/admin/CourseLeaderboard";
+import { TrainingLeaderboard } from "../../src/portals/shared/training-leaderboard/TrainingLeaderboard";
 
 const BranchManagerCourseLeaderboardPage: NextPage = () => {
   return (
     <BranchManagerLayout currentView="course-leaderboard">
-      <CourseLeaderboard />
+      <TrainingLeaderboard />
     </BranchManagerLayout>
   );
 };

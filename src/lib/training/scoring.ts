@@ -51,9 +51,13 @@ export function publishedItems(course: CourseLike): CourseItems {
   };
 }
 
-import { QUIZ_PASS_THRESHOLD, quizPct, isQuizResultPassing } from "../quiz";
+import { quizPct, isQuizResultPassing } from "../quiz";
 
-export type QuizResultLike = { pageId: string; score?: { correct?: number; total?: number } | null };
+export type QuizResultLike = {
+  pageId: string;
+  score?: { correct?: number; total?: number } | null;
+  passed?: boolean;
+};
 
 export type ProgressLike = {
   completedPages?: string[];
@@ -76,6 +80,11 @@ export type CourseStats = {
 /**
  * Best fraction (0..1) achieved per quiz page. A rep may retry a quiz, which
  * appends another result — the best attempt is the one that counts.
+ *
+ * Used ONLY for finalTestPerfect (Test Ace), which is genuinely score-based:
+ * it asks whether the best attempt hit 100% of the questions shown, not
+ * whether the quiz was passed. Do NOT use this to decide quizzesPassed — see
+ * passedQuizIds below.
  */
 function bestQuizScores(progress: ProgressLike, quizIds: string[]): Map<string, number> {
   const wanted = new Set(quizIds);
@@ -89,18 +98,41 @@ function bestQuizScores(progress: ProgressLike, quizIds: string[]): Map<string, 
 }
 
 /**
+ * Which of these quiz pages the rep has passed. Pass = a saved result exists
+ * (results are only ever persisted on a pass; an explicit passed:false is
+ * honoured) — see isQuizResultPassing in ../quiz. The stored score must NOT be
+ * re-checked here: subset quizzes and question-count edits legitimately leave
+ * passed quizzes with stored scores below the threshold.
+ */
+function passedQuizIds(progress: ProgressLike, quizIds: string[]): Set<string> {
+  const wanted = new Set(quizIds);
+  const passed = new Set<string>();
+  for (const r of progress?.quizResults || []) {
+    if (!wanted.has(r.pageId)) continue;
+    if (isQuizResultPassing(r as { score?: { correct: number; total: number } | null; passed?: boolean })) {
+      passed.add(r.pageId);
+    }
+  }
+  return passed;
+}
+
+/**
  * One rep's standing in one course.
  *
- * COMPLETE = every published video watched AND every published quiz passed
- * (>=80%), including the Final Test. Watching alone is never enough.
+ * COMPLETE = every published video watched AND every published quiz has a
+ * saved (passing) result, including the Final Test. Watching alone is never
+ * enough. A quiz's PRESENCE in quizResults means it was passed — results are
+ * only ever persisted on a pass, so the stored score is not re-checked here
+ * (see isQuizResultPassing in ../quiz for why: subset quizzes and edited
+ * question counts can leave a genuinely-passed quiz with a low stored score).
  */
 export function courseStats(course: CourseLike, progress: ProgressLike): CourseStats {
   const { videoIds, quizIds, finalTestId } = publishedItems(course);
   const watched = new Set(progress?.completedPages || []);
   const videosWatched = videoIds.filter((id) => watched.has(id)).length;
 
+  const quizzesPassed = passedQuizIds(progress, quizIds).size;
   const best = bestQuizScores(progress, quizIds);
-  const quizzesPassed = [...best.values()].filter((v) => v >= QUIZ_PASS_THRESHOLD).length;
 
   const itemsCompleted = videosWatched + quizzesPassed;
   const itemsTotal = videoIds.length + quizIds.length;
@@ -139,28 +171,30 @@ export function rankTitleFor(coursesCompleted: number, totalCourses: number): Ra
   return "Rookie";
 }
 
-export type BadgeId = "first-steps" | "halfway" | "finisher" | "graduate" | "quiz-ace";
+export type BadgeId = "halfway" | "finisher" | "graduate" | "test-ace";
 
 export type BadgeInput = {
-  videosWatched: number;
   itemsCompleted: number;
   itemsTotal: number;
   coursesCompleted: number;
   totalCourses: number;
-  hasQuizAce: boolean;
+  hasTestAce: boolean;
 };
 
 /**
  * Permanent badges only. 🏆 Podium is deliberately absent: it is derived live
  * from the current standings, so persisting it would let it drift out of sync.
+ *
+ * 🌱 First Steps was removed on purpose (2026-07-20): a badge nearly everyone
+ * earns carries no signal. 🎯 was renamed quiz-ace -> test-ace because it is
+ * earned on the Final TEST.
  */
 export function badgesFor(input: BadgeInput): BadgeId[] {
   const badges: BadgeId[] = [];
-  if (input.videosWatched >= 1) badges.push("first-steps");
   if (input.itemsTotal > 0 && input.itemsCompleted / input.itemsTotal >= 0.5) badges.push("halfway");
   if (input.coursesCompleted >= 1) badges.push("finisher");
   if (input.totalCourses > 0 && input.coursesCompleted >= input.totalCourses) badges.push("graduate");
-  if (input.hasQuizAce) badges.push("quiz-ace");
+  if (input.hasTestAce) badges.push("test-ace");
   return badges;
 }
 
@@ -205,7 +239,9 @@ export function isRankedUser(user: { role?: string | null; email?: string | null
  * false and a quiz tick could never turn green.
  *
  *   video -> watched (id present in completedPages)
- *   quiz  -> passed  (a saved result scoring >= 80%; best attempt wins)
+ *   quiz  -> passed  (ANY saved result counts — results are only ever
+ *                     persisted on a pass, so presence alone is the signal;
+ *                     see isQuizResultPassing in ../quiz)
  */
 export function isPageComplete(
   page: CoursePage,

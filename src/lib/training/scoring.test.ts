@@ -103,13 +103,34 @@ describe("courseStats", () => {
     expect(s.pct).toBe(100);
   });
 
-  it("treats a quiz below 80% as unpassed", () => {
+  it("counts a saved low-score result as passed (subset quiz / edited question count)", () => {
+    // A quiz result is only ever saved when the learner passed at submit time
+    // (the 80% check already happened then). A LOW stored score here means a
+    // subset quiz (fewer questions shown) or a later edit to the question
+    // count, not a failure. Presence, not the number, decides the pass — see
+    // isQuizResultPassing in ../quiz.
     const p: ProgressLike = { completedPages: ["v1", "v2"], quizResults: [{ pageId: "q1", score: fail }, { pageId: "qf", score: pass }] };
-    expect(courseStats(c, p).quizzesPassed).toBe(1);
-    expect(courseStats(c, p).complete).toBe(false);
+    expect(courseStats(c, p).quizzesPassed).toBe(2);
+    expect(courseStats(c, p).complete).toBe(true);
   });
 
-  it("keeps the BEST attempt when a quiz was retried", () => {
+  it("does not count a result explicitly marked passed: false, even though it was saved", () => {
+    const p: ProgressLike = {
+      completedPages: ["v1", "v2"],
+      quizResults: [
+        { pageId: "q1", score: pass, passed: false },
+        { pageId: "qf", score: pass },
+      ],
+    };
+    const s = courseStats(c, p);
+    expect(s.quizzesPassed).toBe(1);
+    expect(s.complete).toBe(false);
+  });
+
+  it("keeps a quiz passed across a retry, whatever the later attempt's score", () => {
+    // There is no more "best attempt" for pass/fail: ANY saved result for a
+    // quiz id counts it as passed. (bestQuizScores still exists, but only
+    // feeds finalTestPerfect now.)
     const p: ProgressLike = {
       completedPages: ["v1", "v2"],
       quizResults: [
@@ -128,6 +149,26 @@ describe("courseStats", () => {
     expect(courseStats(c, good).finalTestPerfect).toBe(false);
   });
 
+  it("counts a below-100% final test result as passed, without granting finalTestPerfect", () => {
+    // Test Ace stays score-based (100% of the shown questions), but the
+    // Final Test still counts toward quizzesPassed like any other quiz once
+    // a result for it is saved.
+    const good: ProgressLike = { quizResults: [{ pageId: "qf", score: { correct: 9, total: 10 } }] };
+    const s = courseStats(c, good);
+    expect(s.quizzesPassed).toBe(1);
+    expect(s.finalTestPerfect).toBe(false);
+  });
+
+  it("does not let a malformed final-test attempt poison a later perfect retry (finalTestPerfect NaN safety)", () => {
+    const p: ProgressLike = {
+      quizResults: [
+        { pageId: "qf", score: { total: 10 } as any }, // malformed: no `correct`
+        { pageId: "qf", score: { correct: 10, total: 10 } },
+      ],
+    };
+    expect(courseStats(c, p).finalTestPerfect).toBe(true);
+  });
+
   it("treats missing progress as zero, not a crash", () => {
     const s = courseStats(c, null);
     expect(s.itemsCompleted).toBe(0);
@@ -140,7 +181,7 @@ describe("courseStats", () => {
     expect(courseStats({ id: "empty" }, { completedPages: [] }).complete).toBe(false);
   });
 
-  it("does not let a malformed attempt poison a later passing retry", () => {
+  it("does not crash on a malformed saved score (presence still counts it passed)", () => {
     const p: ProgressLike = {
       completedPages: ["v1", "v2"],
       quizResults: [
@@ -153,7 +194,9 @@ describe("courseStats", () => {
     expect(courseStats(c, p).complete).toBe(true);
   });
 
-  it("keeps credit when a passing attempt is followed by a failing one", () => {
+  it("does not revoke credit when a later saved result for the same quiz has a low score", () => {
+    // Presence-based, not best-score-based: nothing here re-checks the score
+    // of a later attempt, so it cannot revoke a quiz already counted passed.
     const p: ProgressLike = {
       completedPages: ["v1", "v2"],
       quizResults: [
@@ -191,39 +234,46 @@ describe("rankTitleFor (10-course library)", () => {
 });
 
 describe("badgesFor", () => {
-  const base = { videosWatched: 0, itemsCompleted: 0, itemsTotal: 100, coursesCompleted: 0, totalCourses: 10, hasQuizAce: false };
+  const base = {
+    itemsCompleted: 0,
+    itemsTotal: 293,
+    coursesCompleted: 0,
+    totalCourses: 10,
+    hasTestAce: false,
+  };
 
-  it("gives no badges to a rep who has done nothing", () => {
+  it("earns nothing with no progress", () => {
     expect(badgesFor(base)).toEqual([]);
   });
 
-  it("awards first-steps on the first VIDEO, not the first quiz", () => {
-    expect(badgesFor({ ...base, videosWatched: 1, itemsCompleted: 1 })).toContain("first-steps");
-    expect(badgesFor({ ...base, videosWatched: 0, itemsCompleted: 1 })).not.toContain("first-steps");
+  it("does NOT award anything for merely watching videos (First Steps was removed)", () => {
+    expect(badgesFor({ ...base, itemsCompleted: 1 })).toEqual([]);
   });
 
-  it("awards halfway at exactly 50% of all items", () => {
-    expect(badgesFor({ ...base, itemsCompleted: 49 })).not.toContain("halfway");
-    expect(badgesFor({ ...base, itemsCompleted: 50 })).toContain("halfway");
+  it("awards halfway at 50% of the library", () => {
+    expect(badgesFor({ ...base, itemsCompleted: 147 })).toEqual(["halfway"]);
   });
 
-  it("awards finisher on one completed course", () => {
-    expect(badgesFor({ ...base, coursesCompleted: 1 })).toContain("finisher");
+  it("does not award halfway just below 50%", () => {
+    expect(badgesFor({ ...base, itemsCompleted: 146 })).toEqual([]);
   });
 
-  it("awards graduate only when every course is complete", () => {
-    expect(badgesFor({ ...base, coursesCompleted: 9 })).not.toContain("graduate");
-    expect(badgesFor({ ...base, coursesCompleted: 10 })).toContain("graduate");
+  it("awards finisher on the first completed course", () => {
+    expect(badgesFor({ ...base, coursesCompleted: 1 })).toEqual(["finisher"]);
   });
 
-  it("awards quiz-ace from the flag", () => {
-    expect(badgesFor({ ...base, hasQuizAce: true })).toContain("quiz-ace");
+  it("awards graduate (with halfway + finisher) when every course is complete", () => {
+    expect(
+      badgesFor({ ...base, itemsCompleted: 293, coursesCompleted: 10 })
+    ).toEqual(["halfway", "finisher", "graduate"]);
   });
 
-  it("never awards podium — it is live state, not a badge", () => {
-    const all = badgesFor({ videosWatched: 139, itemsCompleted: 293, itemsTotal: 293, coursesCompleted: 10, totalCourses: 10, hasQuizAce: true });
-    expect(all).not.toContain("podium");
-    expect(all).toEqual(["first-steps", "halfway", "finisher", "graduate", "quiz-ace"]);
+  it("awards test-ace on a perfect Final Test", () => {
+    expect(badgesFor({ ...base, hasTestAce: true })).toEqual(["test-ace"]);
+  });
+
+  it("awards no graduate when totalCourses is 0", () => {
+    expect(badgesFor({ ...base, itemsTotal: 0, totalCourses: 0 })).toEqual([]);
   });
 });
 
@@ -302,8 +352,9 @@ describe("isRankedUser", () => {
 describe("isPageComplete", () => {
   const video = { id: "v1", status: "published", isQuiz: false };
   const quiz = { id: "q1", status: "published", isQuiz: true };
-  const pass = { pageId: "q1", score: { correct: 8, total: 10 } };   // 80% — exactly the bar
-  const fail = { pageId: "q1", score: { correct: 7, total: 10 } };   // 70%
+  const pass = { pageId: "q1", score: { correct: 8, total: 10 } };          // 80% — a normal pass
+  const lowButSaved = { pageId: "q1", score: { correct: 3, total: 10 } };   // 30% stored, but SAVED — subset-quiz case
+  const explicitFail = { pageId: "q1", score: { correct: 7, total: 10 }, passed: false }; // explicitly marked failed
 
   it("greens a video once it is watched", () => {
     expect(isPageComplete(video, new Set(["v1"]), [])).toBe(true);
@@ -317,21 +368,30 @@ describe("isPageComplete", () => {
     expect(isPageComplete(quiz, new Set(), [pass])).toBe(true);
   });
 
-  it("leaves a failed quiz grey", () => {
-    expect(isPageComplete(quiz, new Set(), [fail])).toBe(false);
-  });
-
-  it("leaves an unattempted quiz grey", () => {
+  it("leaves a quiz grey when no result was ever saved", () => {
     expect(isPageComplete(quiz, new Set(), [])).toBe(false);
   });
 
+  it("leaves a quiz grey when the saved result explicitly marks passed: false", () => {
+    expect(isPageComplete(quiz, new Set(), [explicitFail])).toBe(false);
+  });
+
+  it("counts a saved low-score result as passed (subset quiz)", () => {
+    // The stored score can legitimately sit below 80% for a quiz the learner
+    // genuinely passed (a subset quiz shows only N of the question pool, or
+    // the quiz's question count was edited after the fact). The result was
+    // only ever saved because the 80% check passed at submit time, so its
+    // mere presence is the signal — the stored score is not re-checked here.
+    expect(isPageComplete(quiz, new Set(), [lowButSaved])).toBe(true);
+  });
+
   it("does NOT green a quiz just because its id is in completedPages", () => {
-    // The bug this fixes in reverse: a quiz is only ever green by PASSING.
+    // The bug this fixes in reverse: a quiz is only ever green by a saved result.
     expect(isPageComplete(quiz, new Set(["q1"]), [])).toBe(false);
   });
 
-  it("greens a retried quiz when any attempt passed", () => {
-    expect(isPageComplete(quiz, new Set(), [fail, pass])).toBe(true);
+  it("greens a retried quiz once any attempt was actually saved as a pass", () => {
+    expect(isPageComplete(quiz, new Set(), [explicitFail, pass])).toBe(true);
   });
 
   it("accepts completedPages as an array as well as a Set", () => {
