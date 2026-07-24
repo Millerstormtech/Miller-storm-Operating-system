@@ -7,7 +7,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 
-type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "ai-bot-builder" | "rankings";
+type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "rankings";
 
 type MarketingLayoutProps = {
   children: React.ReactNode;
@@ -29,7 +29,6 @@ export function MarketingLayout({ children, currentView, pageTitle, pageSubtitle
     socialMetrics: "socialMetrics",
     "apps-tools": "appsTools",
     "ai-chat": "aiAssistant",
-    "ai-bot-builder": "aiBots",
   };
 
   useEffect(() => {
