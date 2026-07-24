@@ -16,31 +16,6 @@ export function ProfilePage(props: {
   const [isTerritoryOpen, setIsTerritoryOpen] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const saveNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [activeTab, setActiveTab] = useState<'profile' | 'training'>('profile');
-  const [trainingData, setTrainingData] = useState<{ course: any; completed: number; total: number; isCompleted: boolean }[]>([]);
-  const [isLoadingTraining, setIsLoadingTraining] = useState(false);
-
-  useEffect(() => {
-    if (activeTab !== 'training' || !profile.id) return;
-    setIsLoadingTraining(true);
-    fetch('/api/courses').then(r => r.json()).then(async (courses) => {
-      const published = (courses || []).filter((c: any) => c.status === 'published');
-      if (!published.length) { setTrainingData([]); setIsLoadingTraining(false); return; }
-      const courseIds = published.map((c: any) => c.id).join(',');
-      const progRes = await fetch(`/api/course-progress?userId=${profile.id}&courseIds=${courseIds}`);
-      const progData = progRes.ok ? await progRes.json() : {};
-      const rows = published.map((course: any) => {
-        const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
-        const total = lessonPages.length;
-        const lessonIds = new Set(lessonPages.map((p: any) => p.id));
-        const rec = progData[course.id] || {};
-        const completed = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
-        return { course, completed, total, isCompleted: rec.courseCompleted || false };
-      }).filter((r: any) => r.total > 0);
-      setTrainingData(rows);
-    }).catch(console.error).finally(() => setIsLoadingTraining(false));
-  }, [activeTab, profile.id]);
-
   function update(next: Partial<UserProfile>) {
     props.onProfileChange({ ...profile, ...next });
   }
@@ -115,67 +90,6 @@ export function ProfilePage(props: {
 
   return (
     <div className="profile-page">
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
-        {(['profile', 'training'] as const).map(tab => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '12px 28px', background: 'none', border: 'none',
-              borderBottom: activeTab === tab ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === tab ? '#2563eb' : '#6b7280',
-              fontWeight: activeTab === tab ? 600 : 400,
-              cursor: 'pointer', marginBottom: '-2px', fontSize: 16
-            }}
-          >
-            {tab === 'profile' ? 'Profile' : 'Training Progress'}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'training' ? (
-        <div>
-          {isLoadingTraining ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
-          ) : trainingData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No courses available.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {trainingData.map(({ course, completed, total, isCompleted }) => {
-                const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-                return (
-                  <div key={course.id} style={{
-                    background: '#fff', border: '1px solid #e5e7eb',
-                    borderRadius: 12, padding: '20px 24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                  }}>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: '#111827', marginBottom: 4 }}>
-                      {course.title}
-                    </div>
-                    <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>Training Center Progress</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>
-                      <span style={{ color: '#374151' }}>Lessons Completed: <strong>{completed} / {total}</strong></span>
-                      <span style={{ fontWeight: 700, color: isCompleted ? '#10b981' : '#2563eb' }}>
-                        {isCompleted ? '✓ Completed' : `Course Completion: ${pct}%`}
-                      </span>
-                    </div>
-                    <div style={{ height: 10, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 999,
-                        background: isCompleted ? '#10b981' : '#22c55e',
-                        width: `${pct}%`, transition: 'width 0.4s'
-                      }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-      <>
       <div className="profile-card">
         <div className="profile-header-row">
           <div>
@@ -407,8 +321,6 @@ export function ProfilePage(props: {
           </span>
         )}
       </div>
-      </>
-      )}
     </div>
   );
 }
