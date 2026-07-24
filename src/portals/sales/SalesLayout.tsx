@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Layout } from "../../components/Layout";
-import { SalesSidebar } from "../../components/SalesSidebar";
+import { SalesSidebar, salesSidebarItems } from "../../components/SalesSidebar";
 import { Header } from "../../components/Header";
+import { PageHeader } from "../../components/PageHeader";
+import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
@@ -12,9 +14,11 @@ type SalesLayoutProps = {
   currentView: SalesViewId;
   userName?: string;
   userId?: string;
+  pageTitle?: string;
+  pageSubtitle?: string;
 };
 
-export function SalesLayout({ children, currentView, userName, userId }: SalesLayoutProps) {
+export function SalesLayout({ children, currentView, userName, userId, pageTitle, pageSubtitle }: SalesLayoutProps) {
   const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -34,6 +38,7 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
   };
 
   const allowed = useFeatureGate(user?.id, currentView, viewToToggleKey, "/sales/dashboard");
+  const resolvedTitle = resolvePageTitle(salesSidebarItems, currentView, pageTitle);
 
   return (
     <Layout
@@ -57,7 +62,12 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
         />
       }
     >
-      {allowed ? children : null}
+      {allowed ? (
+        <>
+          {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} /> : null}
+          {children}
+        </>
+      ) : null}
     </Layout>
   );
 }

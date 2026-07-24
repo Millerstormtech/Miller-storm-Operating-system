@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "../../components/Layout";
-import { MarketingSidebar } from "../../components/MarketingSidebar";
+import { MarketingSidebar, marketingSidebarItems } from "../../components/MarketingSidebar";
 import { Header } from "../../components/Header";
+import { PageHeader } from "../../components/PageHeader";
+import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 
 type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "ai-bot-builder" | "rankings";
@@ -10,9 +12,11 @@ type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | 
 type MarketingLayoutProps = {
   children: React.ReactNode;
   currentView: MarketingViewId;
+  pageTitle?: string;
+  pageSubtitle?: string;
 };
 
-export function MarketingLayout({ children, currentView }: MarketingLayoutProps) {
+export function MarketingLayout({ children, currentView, pageTitle, pageSubtitle }: MarketingLayoutProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -42,6 +46,8 @@ export function MarketingLayout({ children, currentView }: MarketingLayoutProps)
       }).catch(() => {});
   }, [user?.id, currentView]);
 
+  const resolvedTitle = resolvePageTitle(marketingSidebarItems, currentView, pageTitle);
+
   return (
     <Layout
       isSidebarCollapsed={isSidebarCollapsed}
@@ -62,7 +68,12 @@ export function MarketingLayout({ children, currentView }: MarketingLayoutProps)
         />
       }
     >
-      {allowed ? children : null}
+      {allowed ? (
+        <>
+          {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} /> : null}
+          {children}
+        </>
+      ) : null}
     </Layout>
   );
 }

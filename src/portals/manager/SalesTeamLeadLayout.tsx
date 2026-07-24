@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Layout } from "../../components/Layout";
-import { SalesTeamLeadSidebar } from "../../components/SalesTeamLeadSidebar";
+import { SalesTeamLeadSidebar, salesTeamLeadSidebarItems } from "../../components/SalesTeamLeadSidebar";
 import { Header } from "../../components/Header";
+import { PageHeader } from "../../components/PageHeader";
+import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
@@ -10,9 +12,11 @@ type SalesTeamLeadViewId = "dashboard" | "team" | "plans" | "training" | "online
 type SalesTeamLeadLayoutProps = {
   children: React.ReactNode;
   currentView: SalesTeamLeadViewId;
+  pageTitle?: string;
+  pageSubtitle?: string;
 };
 
-export function SalesTeamLeadLayout({ children, currentView }: SalesTeamLeadLayoutProps) {
+export function SalesTeamLeadLayout({ children, currentView, pageTitle, pageSubtitle }: SalesTeamLeadLayoutProps) {
   const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -31,6 +35,7 @@ export function SalesTeamLeadLayout({ children, currentView }: SalesTeamLeadLayo
   };
 
   const allowed = useFeatureGate(user?.id, currentView, viewToToggleKey, "/manager/dashboard");
+  const resolvedTitle = resolvePageTitle(salesTeamLeadSidebarItems, currentView, pageTitle);
 
   return (
     <Layout
@@ -53,7 +58,12 @@ export function SalesTeamLeadLayout({ children, currentView }: SalesTeamLeadLayo
         />
       }
     >
-      {allowed ? children : null}
+      {allowed ? (
+        <>
+          {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} /> : null}
+          {children}
+        </>
+      ) : null}
     </Layout>
   );
 }
