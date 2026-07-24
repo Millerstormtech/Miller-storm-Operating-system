@@ -1,7 +1,6 @@
 export function BusinessCardsRequest() {
   return (
     <div className="business-cards">
-      <div className="panel-header">Tools/ Apps</div>
       <div className="form-grid">
         <label className="field">
           <span className="field-label">Quantity</span>

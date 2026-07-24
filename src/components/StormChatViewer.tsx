@@ -251,7 +251,6 @@ export function StormChatViewer() {
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h1 className="page-title" style={{ margin: 0 }}>StormChat</h1>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
           style={{ flex: 1, minWidth: 160, padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 14, outline: "none" }} />
         <button onClick={openPicker}
