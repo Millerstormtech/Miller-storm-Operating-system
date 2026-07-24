@@ -51,8 +51,17 @@ export async function celebrateIfCourseCompleted(params: {
       .lean();
     if (!user || !isRankedUser({ role: user.role, email: user.email })) return;
 
-    // Once ever: insert the ledger row FIRST. A duplicate-key error means a
-    // racing save already celebrated; stop silently.
+    // Resolve the group BEFORE burning the once-ever ledger row: if the id is
+    // misconfigured, the celebration must stay unconsumed so it can still fire
+    // after the config is fixed.
+    const group: any = await ChatGroup.findById(CELEBRATION_GROUP_ID).lean();
+    if (!group) {
+      await logToDb("error", "CELEBRATION", `Celebration group ${CELEBRATION_GROUP_ID} not found; skipping`);
+      return;
+    }
+
+    // Once ever: insert the ledger row before posting. A duplicate-key error
+    // means a racing save already celebrated; stop silently.
     try {
       await CourseCelebrationModel.create({
         userId,
@@ -77,12 +86,6 @@ export async function celebrateIfCourseCompleted(params: {
     const done = courses.filter((c: any) => courseStats(c, byCourse.get(c.id)).complete).length;
 
     const text = celebrationMessage(user.name || user.email || "", course.title || "", done, courses.length);
-
-    const group: any = await ChatGroup.findById(CELEBRATION_GROUP_ID).lean();
-    if (!group) {
-      await logToDb("error", "CELEBRATION", `Celebration group ${CELEBRATION_GROUP_ID} not found; skipping`);
-      return;
-    }
 
     const msg: any = await ChatMessage.create({
       groupId: CELEBRATION_GROUP_ID,
