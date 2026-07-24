@@ -4,10 +4,7 @@ import { Messaging } from "../../src/portals/admin/Messaging";
 
 const MessagingPage: NextPage = () => {
   return (
-    <AdminLayout currentView="messaging">
-      <div className="page-header">
-        <h1 className="page-title">SMS Configuration</h1>
-      </div>
+    <AdminLayout currentView="messaging" pageTitle="SMS Configuration">
       <Messaging />
     </AdminLayout>
   );

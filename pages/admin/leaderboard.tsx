@@ -8,9 +8,8 @@ import { useAuth } from "../../src/contexts/AuthContext";
 const LeaderboardPage: NextPage = () => {
   const { user } = useAuth();
   return (
-    <AdminPageWrapper currentView="leaderboard">
+    <AdminPageWrapper currentView="leaderboard" pageSubtitle="Refreshed every 30 minutes">
       <div style={{ padding: 24 }}>
-        <h1 style={{ margin: "0 0 16px", fontSize: 24, fontWeight: 700 }}>Sales Leaderboard</h1>
         <LeaderboardBoard currentUserId={user?.id} />
         <AcculynxSyncPanel adminUserId={user?.id ?? ""} />
       </div>

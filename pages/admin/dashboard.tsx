@@ -28,7 +28,7 @@ const DashboardPage: NextPage = () => {
   }, []);
 
   return (
-    <AdminPageWrapper currentView="dashboard">
+    <AdminPageWrapper currentView="dashboard" pageTitle="My Dashboard">
       <AdminDashboard users={users} courses={courses} businessPlans={businessPlans} />
     </AdminPageWrapper>
   );
