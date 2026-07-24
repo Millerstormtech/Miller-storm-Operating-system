@@ -6,8 +6,8 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // Branch Manager (executive) panel navigation. Company-wide view — every item shows the
 // whole organization, not a single team. Each item carries a feature-toggle key so
 // an admin can hide any page for this user from User Management.
-const baseItems = [
-  { id: "dashboard", label: "Branch Manager Dashboard", toggleKey: "dashboard" },
+export const branchManagerSidebarItems = [
+  { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "user-management", label: "User Management", toggleKey: "userManagement" },
@@ -17,6 +17,8 @@ const baseItems = [
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
+
+const baseItems = branchManagerSidebarItems;
 
 type BranchManagerSidebarProps = {
   activeId: string;

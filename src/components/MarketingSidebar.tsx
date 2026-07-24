@@ -2,15 +2,16 @@ import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
 import { useAuth } from "../contexts/AuthContext";
 import { useFeatureToggles } from "../hooks/useFeatureToggles";
-import { useBotAccess } from "../hooks/useBotAccess";
 
-const baseItems = [
-  { id: "dashboard", label: "Dashboard", toggleKey: "dashboard" },
+export const marketingSidebarItems = [
+  { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "assets", label: "Marketing Assets", toggleKey: "assets" },
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
-  { id: "ai-chat", label: "AI Assistant", toggleKey: "aiAssistant" },
+  { id: "ai-chat", label: "Jay's AI Clone", toggleKey: "aiAssistant" },
 ];
+
+const baseItems = marketingSidebarItems;
 
 type MarketingSidebarProps = {
   activeId: string;
@@ -21,16 +22,11 @@ type MarketingSidebarProps = {
 export function MarketingSidebar({ activeId, isCollapsed, onToggleCollapse }: MarketingSidebarProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const hasBotAccess = useBotAccess(user?.id);
   const featureToggles = useFeatureToggles(user?.id);
 
-  const allItems = hasBotAccess
-    ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder", toggleKey: "aiBots" }]
-    : baseItems;
-
   const sidebarItems = featureToggles
-    ? allItems.filter(item => featureToggles[item.toggleKey] !== false)
-    : allItems;
+    ? baseItems.filter(item => featureToggles[item.toggleKey] !== false)
+    : baseItems;
 
   function handleNavigation(id: string) {
     router.push(`/marketing/${id}`);

@@ -7,8 +7,8 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // the portal spec). Team Structure, Team Business Planners, Team Tasks and the
 // Master Bot Builder are intentionally NOT here. (Raise a Ticket lives in the
 // top bar, not the sidebar.)
-const baseItems = [
-  { id: "dashboard", label: "Sales Team Dashboard", toggleKey: "dashboard" },
+export const salesTeamLeadSidebarItems = [
+  { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
@@ -17,6 +17,8 @@ const baseItems = [
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
+
+const baseItems = salesTeamLeadSidebarItems;
 
 type SalesTeamLeadSidebarProps = {
   activeId: string;
