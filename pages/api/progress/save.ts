@@ -88,13 +88,15 @@ export default async function handler(
       await progress.save();
       console.log('💾 Progress saved successfully');
 
-      // Storm Bot celebration: never throws, never blocks the save result.
-      await celebrateIfCourseCompleted({
+      // Storm Bot celebration: fire-and-forget so the completing save stays
+      // fast (the helper fans out 70+ notifications). It is failure-isolated
+      // and never rejects; the catch is belt-and-braces.
+      celebrateIfCourseCompleted({
         userId,
         courseId,
         progressBefore,
         progressAfter: progress.toObject(),
-      });
+      }).catch(() => {});
 
       res.status(200).json({
         success: true,
