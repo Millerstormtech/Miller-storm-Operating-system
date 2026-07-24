@@ -5,6 +5,7 @@ import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { resolveIncomingQuizResults } from "../../../src/lib/training/quiz-intake";
 import { loadGradableQuizPages } from "../../../src/lib/training/quiz-pages";
 import { logToDb } from "../../../src/lib/models/SystemLog";
+import { celebrateIfCourseCompleted } from "../../../src/lib/training/celebration";
 
 export default async function handler(
   req: NextApiRequest,
@@ -42,7 +43,11 @@ export default async function handler(
     try {
       // Find existing progress or create new
       let progress = await UserProgressModel.findOne({ userId, courseId });
-      
+
+      // Pre-save snapshot for the celebration transition check (complete
+      // false -> true). toObject() detaches it from the doc mutated below.
+      const progressBefore = progress ? progress.toObject() : null;
+
       if (!progress) {
         // Create new progress record
         progress = new UserProgressModel({
@@ -98,6 +103,14 @@ export default async function handler(
       // Save to database
       await progress.save();
       console.log('💾 Progress saved successfully');
+
+      // Storm Bot celebration: never throws, never blocks the save result.
+      await celebrateIfCourseCompleted({
+        userId,
+        courseId,
+        progressBefore,
+        progressAfter: progress.toObject(),
+      });
 
       res.status(200).json({
         success: true,
