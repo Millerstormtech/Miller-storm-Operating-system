@@ -78,18 +78,22 @@ export function OverrideModal({
     setLessons(pages);
   }, [courseId, allCoursesRaw]);
 
-  // Selected user's progress for the selected course. Guarded against races:
-  // if courseId/selectedUser change again before this resolves, the stale
+  // Selected user's progress for the selected course, via the BULK mode
+  // (userIds=), which is the endpoint's only role-gated path for reading
+  // another user's progress. The singular userId param is silently locked to
+  // the caller since the security cleanup, so it would show the ADMIN'S own
+  // ticks here, not the selected rep's. Guarded against races: if
+  // courseId/selectedUser change again before this resolves, the stale
   // response is dropped instead of overwriting `checked`.
   useEffect(() => {
     if (!courseId || !selectedUser) return;
     setChecked(new Set());
     let cancelled = false;
-    fetch(`/api/course-progress?userId=${selectedUser.id}&courseIds=${courseId}`)
+    fetch(`/api/course-progress?userIds=${selectedUser.id}&courseIds=${courseId}`)
       .then((r) => (r.ok ? r.json() : {}))
       .then((data: any) => {
         if (cancelled) return;
-        setChecked(new Set(data[courseId]?.completedPages || []));
+        setChecked(new Set(data[selectedUser.id]?.[courseId]?.completedPages || []));
       })
       .catch(() => {
         if (!cancelled) setChecked(new Set());
