@@ -25,6 +25,19 @@ describe("conversions", () => {
     expect(c.knockToClaim).toEqual({ rate: 0, hidden: true });
     expect(c.claimToContract).toEqual({ rate: 0, hidden: true });
   });
+  it("opts override changes hidden state for knocks", () => {
+    const c = conversions(t({ knocks: 5, claims: 1 }), { minKnocks: 5 });
+    expect(c.knockToClaim.hidden).toBe(false);
+  });
+  it("opts override changes hidden state for claims", () => {
+    const c = conversions(t({ knocks: 200, claims: 2, contracts: 1 }), { minClaims: 2 });
+    expect(c.claimToContract.hidden).toBe(false);
+  });
+  it("exactly at floor is not hidden", () => {
+    const c = conversions(t({ knocks: 10, claims: 3, contracts: 1 }));
+    expect(c.knockToClaim.hidden).toBe(false);
+    expect(c.claimToContract.hidden).toBe(false);
+  });
 });
 
 describe("trend", () => {
@@ -39,6 +52,9 @@ describe("trend", () => {
   });
   it("flat", () => {
     expect(trend(100, 100)).toEqual({ pct: 0, dir: "flat" });
+  });
+  it("negative previous returns null", () => {
+    expect(trend(50, -10)).toEqual({ pct: null, dir: null });
   });
 });
 
