@@ -5,6 +5,7 @@ import { UserModel } from "../../../src/lib/models/User";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 import { isQuizResultPassing } from "../../../src/lib/quiz";
+import { stripAnswerKeyFromCourses } from "../../../src/lib/training/answer-key";
 
 export default async function handler(
   req: NextApiRequest,
@@ -76,7 +77,9 @@ export default async function handler(
       console.log('📚 Admin/no-context request — returning all courses (incl. drafts)');
       // ⏱️ PERF: response serialization (admin / no-context early return)
       console.time("📤 Response Time");
-      res.status(200).json(courses);
+      // Only `admin` keeps the answer key: c-level and branch-manager reach
+      // this early return too, and they are learners (spec 2026-07-26 §6).
+      res.status(200).json(userRole === 'admin' ? courses : stripAnswerKeyFromCourses(courses));
       console.timeEnd("📤 Response Time");
       console.timeEnd("🚀 COURSES API TOTAL");
       return;
@@ -201,7 +204,7 @@ export default async function handler(
     console.log('✅ Returning courses with progress data');
     // ⏱️ PERF: response serialization
     console.time("📤 Response Time");
-    res.status(200).json(coursesWithProgress);
+    res.status(200).json(stripAnswerKeyFromCourses(coursesWithProgress));
     console.timeEnd("📤 Response Time");
     console.timeEnd("🚀 COURSES API TOTAL");
     return;

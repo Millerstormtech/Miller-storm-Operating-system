@@ -4,6 +4,7 @@ import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { isQuizResultPassing } from "../../../src/lib/quiz";
+import { stripAnswerKeyFromPages } from "../../../src/lib/training/answer-key";
 
 export default async function handler(
   req: NextApiRequest,
@@ -125,6 +126,14 @@ export default async function handler(
                 questionsToShow: p.questionsToShow,
               }
         );
+      }
+
+      // The answer key never leaves the server for learners. Admins keep it
+      // (the course builder writes quizzes). The mobile lesson player's
+      // ?pageId= shape keeps it until the Flutter app switches to
+      // POST /api/training/quiz (spec 2026-07-26 §6 and §9).
+      if (auth.role !== "admin" && !pageId) {
+        pagesOut = stripAnswerKeyFromPages(pagesOut);
       }
 
       const response = {
