@@ -10,7 +10,8 @@ import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
-import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
+import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
+import { submitQuizAttempt, reviewToCorrectMap } from "../../lib/training/quiz-client";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -138,6 +139,11 @@ export function ManagerOnlineTrainingPage(props: {
   const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
+  // questionId -> correctIndex, returned by the server after grading (the page
+  // payload no longer carries the answer key).
+  const [quizReview, setQuizReview] = useState<Record<string, number>>({});
+  const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const [quizError, setQuizError] = useState<string | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
   // Quiz gating (mirrors the Sales TrainingCenter): failed-attempt counter,
   // shuffled question order per quiz, and the pass/fail top-up modal.
@@ -480,10 +486,12 @@ export function ManagerOnlineTrainingPage(props: {
     if (savedResult) {
       setSelectedAnswers(savedResult.answers);
       setQuizScore(savedResult.score);
+      setQuizReview({});
       setQuizSubmitted(true);
     } else {
       setQuizSubmitted(false);
       setQuizScore(null);
+      setQuizReview({});
       setSelectedAnswers({});
     }
 
@@ -1503,51 +1511,55 @@ export function ManagerOnlineTrainingPage(props: {
       }
     };
 
-    const handleSubmitQuiz = () => {
-      if (!activePage?.quizQuestions || !props.currentUser || !selectedCourse) return;
-      // Score only against the questions actually shown this attempt (a random
-      // subset when the quiz limits how many questions are presented).
-      const shownQuestions = quizQuestionOrder[activePage.id] || activePage.quizQuestions;
-      let correct = 0;
-      shownQuestions.forEach(q => {
-        if (selectedAnswers[q.id] === q.correctIndex) correct++;
-      });
-      const score = { correct, total: shownQuestions.length };
-      const passed = quizPct(score) >= QUIZ_PASS_THRESHOLD;
-      const pct = quizPercent(score);
-      setQuizScore(score);
-      setQuizSubmitted(true);
+    // The SERVER grades the attempt: we send the answers and it returns the
+    // score, the verdict and a per-question review (spec 2026-07-26). The
+    // answer key is no longer in the page payload, so nothing is graded here.
+    const handleSubmitQuiz = async () => {
+      if (!activePage?.quizQuestions || !props.currentUser || !selectedCourse || quizSubmitting) return;
+      setQuizSubmitting(true);
+      setQuizError(null);
+      try {
+        const result = await submitQuizAttempt({
+          courseId: selectedCourse.id,
+          pageId: activePage.id,
+          answers: selectedAnswers,
+        });
+        const pct = Math.round(result.pct * 100);
+        setQuizScore(result.score);
+        setQuizReview(reviewToCorrectMap(result.review));
+        setQuizSubmitted(true);
 
-      if (passed) {
-        // Passed: persist the result and let the user advance.
-        const newResult = { pageId: activePage.id, answers: selectedAnswers, score, passed: true, submittedAt: new Date() };
-        const updatedResults = [...savedQuizResults.filter(r => r.pageId !== activePage.id), newResult];
-        setSavedQuizResults(updatedResults);
-        setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
-        fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: props.currentUser.id, courseId: selectedCourse.id, quizResults: updatedResults })
-        }).catch(err => console.error("Failed to save quiz:", err));
-
-        const currentIndex = pages.findIndex(p => p.id === activePage.id);
-        if (currentIndex < pages.length - 1) {
-          setTimeout(() => { handleNextPage(); }, 1500);
+        if (result.passed) {
+          // The server already stored the pass; mirror it locally so the lesson
+          // tick turns green without refetching the course.
+          const newResult = { pageId: activePage.id, answers: selectedAnswers, score: result.score, passed: true, submittedAt: new Date() };
+          setSavedQuizResults(prev => [...prev.filter(r => r.pageId !== activePage.id), newResult]);
+          setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
+          const currentIndex = pages.findIndex(p => p.id === activePage.id);
+          if (currentIndex < pages.length - 1) {
+            setTimeout(() => { handleNextPage(); }, 1500);
+          }
+          return;
         }
-        return;
-      }
 
-      // Failed (< 80%): do NOT persist a pass and do NOT advance. Show top-up.
-      const attempts = (quizAttempts[activePage.id] || 0) + 1;
-      setQuizAttempts(prev => ({ ...prev, [activePage.id]: attempts }));
-      if (attempts >= QUIZ_MAX_ATTEMPTS) {
-        const idx = pages.findIndex(p => p.id === activePage.id);
-        let prevLessonId: string | null = null;
-        for (let i = idx - 1; i >= 0; i--) { if (!pages[i].isQuiz) { prevLessonId = pages[i].id; break; } }
-        setQuizModal({ mode: 'relearn', pageId: activePage.id, pct, prevLessonId });
-        setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
-      } else {
-        setQuizModal({ mode: 'retry', pageId: activePage.id, pct, prevLessonId: null });
+        // Failed: do NOT advance. Show top-up.
+        const attempts = (quizAttempts[activePage.id] || 0) + 1;
+        setQuizAttempts(prev => ({ ...prev, [activePage.id]: attempts }));
+        if (attempts >= QUIZ_MAX_ATTEMPTS) {
+          // Second fail -> send back to the lesson immediately before this quiz.
+          const idx = pages.findIndex(p => p.id === activePage.id);
+          let prevLessonId: string | null = null;
+          for (let i = idx - 1; i >= 0; i--) { if (!pages[i].isQuiz) { prevLessonId = pages[i].id; break; } }
+          setQuizModal({ mode: 'relearn', pageId: activePage.id, pct, prevLessonId });
+          setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
+        } else {
+          setQuizModal({ mode: 'retry', pageId: activePage.id, pct, prevLessonId: null });
+        }
+      } catch (e) {
+        console.error(e);
+        setQuizError("Couldn't submit your quiz. Try again.");
+      } finally {
+        setQuizSubmitting(false);
       }
     };
 
@@ -1556,6 +1568,8 @@ export function ManagerOnlineTrainingPage(props: {
       setQuizModal(null);
       setQuizSubmitted(false);
       setQuizScore(null);
+      setQuizReview({});
+      setQuizError(null);
       setSelectedAnswers({});
       const page = pages.find(p => p.id === pageId);
       if (page?.quizQuestions?.length) {
@@ -1568,6 +1582,8 @@ export function ManagerOnlineTrainingPage(props: {
       setQuizModal(null);
       setQuizSubmitted(false);
       setQuizScore(null);
+      setQuizReview({});
+      setQuizError(null);
       setSelectedAnswers({});
       if (prevLessonId) {
         setActivePageId(prevLessonId);
@@ -1830,7 +1846,7 @@ export function ManagerOnlineTrainingPage(props: {
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
                         {q.options.map((option: string, optIdx: number) => {
                           const isSelected = selectedAnswers[q.id] === optIdx;
-                          const isCorrect = q.correctIndex === optIdx;
+                          const isCorrect = (quizReview[q.id] ?? q.correctIndex) === optIdx;
                           return (
                             <div key={optIdx} onClick={() => !quizSubmitted && setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
                               style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (isCorrect ? '#10b981' : isSelected ? '#ef4444' : '#e5e7eb') : (isSelected ? '#3b82f6' : '#e5e7eb'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (isCorrect ? '#d1fae5' : isSelected ? '#fee2e2' : '#fff') : (isSelected ? '#eff6ff' : '#fff') }}
@@ -1864,7 +1880,10 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {activePage.isQuiz && !quizSubmitted && (
-                  <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0)}>Submit Quiz</button>
+                  <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0) || quizSubmitting}>Submit Quiz</button>
+                )}
+                {activePage.isQuiz && !quizSubmitted && quizError && (
+                  <div style={{ alignSelf: 'center', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>{quizError}</div>
                 )}
                 {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !progress.isCompleted && (
                    <button 
@@ -2151,7 +2170,7 @@ export function ManagerOnlineTrainingPage(props: {
                           <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
                           {q.options.map((option: string, optIdx: number) => {
                             const isSelected = selectedAnswers[q.id] === optIdx;
-                            const isCorrect = q.correctIndex === optIdx;
+                            const isCorrect = (quizReview[q.id] ?? q.correctIndex) === optIdx;
                             const showResult = quizSubmitted;
                             return (
                               <div
@@ -2287,10 +2306,13 @@ export function ManagerOnlineTrainingPage(props: {
                         type="button" 
                         className="btn-primary" 
                         onClick={handleSubmitQuiz}
-                        disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0)}
+                        disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0) || quizSubmitting}
                       >
                         Submit Quiz
                       </button>
+                    )}
+                    {activePage.isQuiz && !quizSubmitted && quizError && (
+                      <div style={{ alignSelf: 'center', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>{quizError}</div>
                     )}
                     {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !progress.isCompleted && (
                       <button 
