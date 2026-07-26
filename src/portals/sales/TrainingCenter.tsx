@@ -743,9 +743,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       {/* Exactly one tour is mounted per visible view, so there is never more
           than one "?" or auto-start candidate, and the header's "?" always
           restarts whichever view is on screen. */}
+      {/* `key` forces a fresh instance when the view swaps, so no tour state
+          (open step, measured rect) leaks from the library tour into the
+          course tour. Without it React reuses the same instance. */}
       {selectedCourse
-        ? <GuidedTour tour={TRAINING_COURSE_TOUR} ready={!isCourseLoading} />
-        : <GuidedTour tour={TRAINING_CENTER_TOUR} ready={!isLoading} />}
+        ? <GuidedTour key="training-course" tour={TRAINING_COURSE_TOUR} ready={!isCourseLoading} />
+        : <GuidedTour key="training-center" tour={TRAINING_CENTER_TOUR} ready={!isLoading} />}
 
       {isCourseLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>

@@ -47,7 +47,12 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [cardSize, setCardSize] = useState({ width: CARD_WIDTH, height: 160 });
-  const autoStarted = useRef(false);
+  // Which tour id we have already auto-started for. Keyed by id, not a plain
+  // boolean: a screen can swap one tour for another at the same position in the
+  // tree (the Training Center swaps its library tour for its course tour), and
+  // React reuses the component instance rather than remounting it. A boolean
+  // would survive that swap and silently suppress the second tour.
+  const autoStartedFor = useRef<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -78,15 +83,16 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
 
   // Auto-start once per user per version, and only once data has landed.
   useEffect(() => {
-    if (!mounted || !ready || !userId || autoStarted.current) return;
+    if (!mounted || !ready || !userId) return;
+    if (autoStartedFor.current === tour.id) return;
     if (!shouldAutoStart(getSeenVersion(tour.id, userId), tour.version)) return;
-    autoStarted.current = true;
+    autoStartedFor.current = tour.id;
     start();
   }, [mounted, ready, userId, tour.id, tour.version, start]);
 
   // The "?" replays from step 1 regardless of seen state. subscribeToRestart
   // also returns its own unsubscribe, so it is returned directly.
-  useEffect(() => subscribeToRestart(() => { autoStarted.current = true; start(); }), [start]);
+  useEffect(() => subscribeToRestart(() => { autoStartedFor.current = tour.id; start(); }), [start, tour.id]);
 
   // Measure the active step: scroll it to the middle, then settle before placing
   // the card, so a smooth scroll does not leave the card behind.
@@ -123,6 +129,25 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
+  }, [open, index, tour.steps, finish]);
+
+  // Watchdog: a target can disappear without any scroll or resize (a filter
+  // empties a table, a panel closes, a role-gated control unmounts). Without
+  // this, the card would keep pointing at a stale rectangle, so re-check the
+  // current target on a slow tick and let the measure effect move on.
+  useEffect(() => {
+    if (!open || index === null) return;
+    const step = tour.steps[index];
+    if (!step) return;
+    const id = setInterval(() => {
+      const rect = measure(step.target);
+      if (rect) return;
+      const candidates = visibleStepIndexes(tour.steps, measure);
+      const nxt = nextIndex(index, candidates);
+      if (nxt === null) finish();
+      else setIndex(nxt);
+    }, 500);
+    return () => clearInterval(id);
   }, [open, index, tour.steps, finish]);
 
   // Keep the spotlight glued to the target through resize and scroll.
