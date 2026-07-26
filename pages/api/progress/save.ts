@@ -2,6 +2,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
+import { resolveIncomingQuizResults } from "../../../src/lib/training/quiz-intake";
+import { loadGradableQuizPages } from "../../../src/lib/training/quiz-pages";
+import { logToDb } from "../../../src/lib/models/SystemLog";
 
 export default async function handler(
   req: NextApiRequest,
@@ -58,19 +61,32 @@ export default async function handler(
         console.log('✅ Added page to completed:', pageId);
       }
 
-      // Update quiz results
+      // The server re-grades the incoming quiz result from its own answer key;
+      // the caller's claimed score and passed flag are ignored entirely (spec
+      // 2026-07-26 §5). This is what protects the current mobile build, which
+      // grades locally: it already sends the raw answers, so no app change is
+      // needed. Stored results with unchanged answers are preserved exactly,
+      // and an earned pass is never downgraded.
       if (quizResult) {
-        const existingQuizIndex = progress.quizResults.findIndex(
-          (q: any) => q.pageId === quizResult.pageId
+        const quizPages = await loadGradableQuizPages(courseId);
+        const storedResults = (progress.quizResults || []).map((r: any) =>
+          typeof r?.toObject === "function" ? r.toObject() : r
         );
-        
-        if (existingQuizIndex >= 0) {
-          progress.quizResults[existingQuizIndex] = quizResult;
-          console.log('📝 Updated quiz result for:', quizResult.pageId);
-        } else {
-          progress.quizResults.push(quizResult);
-          console.log('✅ Added new quiz result for:', quizResult.pageId);
+        const outcome = resolveIncomingQuizResults({
+          quizPages,
+          stored: storedResults,
+          incoming: [quizResult],
+        });
+        progress.quizResults = outcome.results;
+        for (const r of outcome.rejected) {
+          await logToDb(
+            "warn",
+            "QUIZ-INTAKE",
+            `Rejected quiz claim: user ${userId}, course ${courseId}, page ${r.pageId}`,
+            { claimed: r.claimed, server: r.server }
+          );
         }
+        console.log('📝 Quiz result re-graded server-side for:', quizResult.pageId);
       }
 
       // Update course completion
