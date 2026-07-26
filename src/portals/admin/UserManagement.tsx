@@ -38,12 +38,29 @@ export function UserManagement(props: UserEditorProps) {
   const [showWebPreview, setShowWebPreview] = useState(false);
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
   const [showTerritoryDropdown, setShowTerritoryDropdown] = useState(false);
+  const rolesTriggerRef = useRef<HTMLButtonElement>(null);
+  const rolesDropdownRef = useRef<HTMLDivElement>(null);
+  const [rolesDropdownPos, setRolesDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Close role dropdown when clicking outside (but NOT inside the dropdown itself)
+  useEffect(() => {
+    if (!showRolesDropdown) return;
+    function handleClick(e: MouseEvent) {
+      if (rolesTriggerRef.current && rolesTriggerRef.current.contains(e.target as Node)) return;
+      if (rolesDropdownRef.current && rolesDropdownRef.current.contains(e.target as Node)) return;
+      setShowRolesDropdown(false);
+      setRolesDropdownPos(null);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showRolesDropdown]);
   // Branch options (stored on the existing `territory` field). Fixed list keeps
   // every account consistent — no typos/duplicates from free text.
   const TERRITORY_OPTIONS = ["Dallas", "West Texas", "Fort Worth"];
   const [managerDraftId, setManagerDraftId] = useState<string>(props.users.find((u) => u.id === selectedUserId)?.managerId ?? "");
   const [emailError, setEmailError] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [roleError, setRoleError] = useState("");
   const [managerError, setManagerError] = useState("");
   const emailInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -239,6 +256,7 @@ export function UserManagement(props: UserEditorProps) {
 
   useEffect(() => {
     setShowWebPreview(false);
+    setRoleError("");
   }, [selectedUserId]);
 
   useEffect(() => {
@@ -1010,7 +1028,7 @@ export function UserManagement(props: UserEditorProps) {
                       Notify user by email
                     </label>
                   </div>
-                  <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || isSaving} onClick={async () => {
+                  <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || !!roleError || isSaving} onClick={async () => {
                     if (emailError) {
                       emailInputRef.current?.focus();
                       emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1025,10 +1043,15 @@ export function UserManagement(props: UserEditorProps) {
                     // "user-" id prefix — saved users can have that prefix too,
                     // which made editing them wrongly demand a password + POST.)
                     const isNewUser = !props.users.some((u) => u.id === selectedUser.id);
-                    if (isNewUser && !selectedUser.role) {
-                      alert("Please select a Role before saving.");
+                    if (!selectedUser.role) {
+                      setRoleError("Role is required. Please select a role before saving.");
                       return;
                     }
+                    if (isNewUser && !selectedUser.role) {
+                      setRoleError("Role is required. Please select a role before saving.");
+                      return;
+                    }
+                    setRoleError("");
                     const isSales = selectedUser.role === "sales";
                     if (isSales && !selectedUser.managerId) {
                       setManagerError("Please assign a Sales Team Lead to this sales user before saving.");
@@ -1261,8 +1284,20 @@ export function UserManagement(props: UserEditorProps) {
               </label>
               <label className="field">
                 <span className="field-label">Role</span>
-                <div className="territory-field">
-                  <button type="button" className={showRolesDropdown ? "territory-trigger territory-trigger-open" : "territory-trigger"} onClick={() => setShowRolesDropdown(!showRolesDropdown)}>
+                <div className="territory-field" style={{ position: "relative" }}>
+                  <button
+                    ref={rolesTriggerRef}
+                    type="button"
+                    className={showRolesDropdown ? "territory-trigger territory-trigger-open" : "territory-trigger"}
+                    style={roleError ? { borderColor: "#dc2626" } : {}}
+                    onClick={() => {
+                      if (!showRolesDropdown && rolesTriggerRef.current) {
+                        const rect = rolesTriggerRef.current.getBoundingClientRect();
+                        setRolesDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+                      }
+                      setShowRolesDropdown(!showRolesDropdown);
+                    }}
+                  >
                     <span className="territory-trigger-value" style={{ color: (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 ? '#9ca3af' : undefined }}>
                       {(selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0
                         ? "-- Select a role (required) --"
@@ -1270,24 +1305,53 @@ export function UserManagement(props: UserEditorProps) {
                     </span>
                     <span className="territory-trigger-icon">{showRolesDropdown ? "▲" : "▼"}</span>
                   </button>
-                  {showRolesDropdown && (
-                    <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }}>
+                  {showRolesDropdown && rolesDropdownPos && (
+                    <div
+                      ref={rolesDropdownRef}
+                      style={{
+                        position: "fixed",
+                        top: rolesDropdownPos.top,
+                        left: rolesDropdownPos.left,
+                        width: rolesDropdownPos.width,
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #d4d4d8",
+                        borderRadius: 8,
+                        boxShadow: "0 18px 40px rgba(15, 23, 42, 0.18)",
+                        padding: 8,
+                        zIndex: 99999,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                      }}
+                    >
                       {(["admin", "c-level", "branch-manager", "sales-team-lead", "sales", "marketing"] as UserRole[]).map((role) => (
-                        <div key={role} className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"} onClick={() => {
-                          const newRoles = [role];
-                          const newManagerId = role === "sales" ? selectedUser.managerId : undefined;
-                          if (role !== "sales") setManagerDraftId("");
-                          updateUser({ ...selectedUser, role: role, roles: newRoles, managerId: newManagerId });
-                          setShowRolesDropdown(false);
-                        }}>
+                        <div
+                          key={role}
+                          className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => {
+                            const newRoles = [role];
+                            const newManagerId = role === "sales" ? selectedUser.managerId : undefined;
+                            if (role !== "sales") setManagerDraftId("");
+                            updateUser({ ...selectedUser, role: role, roles: newRoles, managerId: newManagerId });
+                            setRoleError("");
+                            setShowRolesDropdown(false);
+                            setRolesDropdownPos(null);
+                          }}
+                        >
                           <input type="radio" checked={selectedUser.role === role} readOnly />
-                          <span style={{ textTransform: "capitalize" }}>{role}</span>
+                          <span>{roleDisplayName(role)}</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-                {!props.users.some((u) => u.id === selectedUser.id) && !selectedUser.role && (
+                {roleError && (
+                  <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500, animation: "fadeIn 0.2s" }}>
+                    ⚠ {roleError}
+                  </div>
+                )}
+                {!roleError && !props.users.some((u) => u.id === selectedUser.id) && !selectedUser.role && (
                   <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>Role is required</div>
                 )}
               </label>
