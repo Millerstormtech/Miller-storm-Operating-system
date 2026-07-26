@@ -66,7 +66,15 @@ function grade(page, answers) {
   const users = await db.collection("users").find({}).project({ id: 1, name: 1, email: 1 }).toArray();
   const nameById = new Map(users.map((u) => [u.id, u.name || u.email || u.id]));
 
-  const counts = { holdsUp: 0, failsRemark: 0, noAnswers: 0, pageGone: 0, total: 0 };
+  const counts = {
+    holdsUp: 0,
+    failsRemark: 0,
+    failsAndJudgeable: 0,
+    quizRewritten: 0,
+    noAnswers: 0,
+    pageGone: 0,
+    total: 0,
+  };
   const failures = [];
 
   const progressDocs = await db.collection("userprogresses").find({}).toArray();
@@ -89,32 +97,56 @@ function grade(page, answers) {
         continue;
       }
       counts.failsRemark++;
+      // A result whose answered question ids are ALL gone from the pool cannot
+      // be judged: the quiz was rewritten after the attempt (question ids are
+      // regenerated), so re-marking scores it 0 for an innocent reason. Only a
+      // result whose questions still exist is evidence of anything.
+      const answeredCount = Object.keys(answers).length;
+      const judgeable = g.answeredStillInPool > 0;
+      if (judgeable) counts.failsAndJudgeable++;
+      else counts.quizRewritten++;
       failures.push({
+        judgeable,
         rep: nameById.get(doc.userId) || doc.userId,
         course: found.courseTitle,
         quiz: found.page.title || result.pageId,
         claimed: result.score ? `${result.score.correct}/${result.score.total}` : "none",
         remarked: `${g.correct}/${g.total}`,
-        answeredStillInPool: `${g.answeredStillInPool}/${Object.keys(answers).length}`,
+        answeredStillInPool: `${g.answeredStillInPool}/${answeredCount}`,
       });
     }
   }
 
   console.log("\n=== Quiz grade audit (read-only) ===");
-  console.log(`Stored quiz results:        ${counts.total}`);
-  console.log(`Hold up when re-marked:     ${counts.holdsUp}`);
-  console.log(`Fail re-marking:            ${counts.failsRemark}`);
-  console.log(`Cannot judge (no answers):  ${counts.noAnswers}`);
-  console.log(`Cannot judge (quiz gone):   ${counts.pageGone}`);
+  console.log(`Stored quiz results:           ${counts.total}`);
+  console.log(`Hold up when re-marked:        ${counts.holdsUp}`);
+  console.log(`Fail re-marking:               ${counts.failsRemark}`);
+  console.log(`  of which quiz was rewritten: ${counts.quizRewritten}  (not judgeable, innocent)`);
+  console.log(`  of which JUDGEABLE:          ${counts.failsAndJudgeable}  <-- the only rows that mean anything`);
+  console.log(`Cannot judge (no answers):     ${counts.noAnswers}`);
+  console.log(`Cannot judge (quiz gone):      ${counts.pageGone}`);
 
-  if (failures.length) {
-    console.log("\n--- Results that fail re-marking ---");
-    console.log("A low 'answered still in pool' count means the quiz was edited after the attempt,");
-    console.log("which is an innocent explanation. Only a full count with a low re-marked score is suspicious.\n");
-    for (const f of failures) {
+  const judgeable = failures.filter((f) => f.judgeable);
+  if (judgeable.length) {
+    console.log("\n--- JUDGEABLE failures: the questions still exist, so these are real ---");
+    for (const f of judgeable) {
       console.log(
         `${f.rep} | ${f.course} | ${f.quiz} | claimed ${f.claimed} | re-marked ${f.remarked} | answered still in pool ${f.answeredStillInPool}`
       );
+    }
+  } else if (failures.length) {
+    console.log("\nNo judgeable failures: every failing row is a rewritten quiz.");
+  }
+
+  const rewritten = failures.filter((f) => !f.judgeable);
+  if (rewritten.length) {
+    console.log(`\n--- Not judgeable: ${rewritten.length} results whose quiz was rewritten after the attempt ---`);
+    console.log("None of the answered question ids still exist, so re-marking scores them 0 for an");
+    console.log("innocent reason. Listed by rep so the spread is visible, not as evidence.\n");
+    const byRep = new Map();
+    for (const f of rewritten) byRep.set(f.rep, (byRep.get(f.rep) || 0) + 1);
+    for (const [rep, n] of [...byRep.entries()].sort((a, b) => b[1] - a[1])) {
+      console.log(`${rep}: ${n}`);
     }
   }
 
