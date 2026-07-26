@@ -13,6 +13,15 @@ describe("previousSlice (month)", () => {
     const elapsed = jul24.getTime() - julStart.getTime();
     expect(end.getTime()).toBe(new Date("2026-06-01T05:00:00.000Z").getTime() + elapsed);
   });
+
+  it("caps the previous slice at the previous period's end (shorter month, no spill)", () => {
+    const marStart = new Date("2026-03-01T06:00:00.000Z"); // Central midnight, CST
+    const mar31 = new Date("2026-03-31T17:00:00.000Z");    // partway through the 31st
+    const { start, end } = previousSlice("month", marStart, mar31);
+    expect(start.toISOString()).toBe("2026-02-01T06:00:00.000Z");
+    // Uncapped this would be 2026-03-03T17:00Z, spilling 3 days into March.
+    expect(end.toISOString()).toBe("2026-03-01T06:00:00.000Z");
+  });
 });
 
 describe("previousSlice (week / day / year)", () => {

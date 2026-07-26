@@ -75,6 +75,15 @@ describe("rankFor", () => {
     // The departed rep themself gets no rank.
     expect(rankFor(withFormer, { level: "self", userId: "ex" })).toBeNull();
   });
+  it("self -> sums a rep's rows when they appear more than once", () => {
+    const dup = [
+      row({ repUserId: "u1", name: "A", revenue: 100 }),
+      row({ repUserId: "u1", name: "A again", revenue: 250 }), // same rep, second row
+      row({ repUserId: "u2", name: "B", revenue: 300 }),
+    ];
+    // u1 totals 350 > u2's 300, so u1 ranks #1 among the 2 distinct reps.
+    expect(rankFor(dup, { level: "self", userId: "u1" })).toEqual({ rank: 1, of: 2 });
+  });
   it("team -> a departed member's revenue still counts toward the team's rank (dollars kept)", () => {
     const withFormer = [
       ...rows,

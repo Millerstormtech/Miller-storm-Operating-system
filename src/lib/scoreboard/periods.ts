@@ -21,7 +21,12 @@ function shiftBackOnePeriod(window: Window, start: Date): Date {
 export function previousSlice(window: Window, start: Date, now: Date): { start: Date; end: Date } {
   const prevStart = shiftBackOnePeriod(window, start);
   const elapsed = now.getTime() - start.getTime();
-  return { start: prevStart, end: new Date(prevStart.getTime() + elapsed) };
+  // A shorter previous period must never spill into the current one: viewing Mar 31,
+  // the February slice ends at Mar 1 (February's end), not Mar 3. Without this cap the
+  // overlap days land in BOTH totals and previous, inflating the trend.
+  const cap = periodEndFor(window, prevStart);
+  const end = new Date(Math.min(prevStart.getTime() + elapsed, cap.getTime()));
+  return { start: prevStart, end };
 }
 
 export function periodEndFor(window: Window, start: Date): Date {

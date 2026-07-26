@@ -5,23 +5,12 @@ import { UserModel } from "../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, type Window } from "../../src/lib/acculynx/windows";
 import { computeSalesRows } from "../../src/lib/leaderboard/compute";
-import type { SalesRow, Totals } from "../../src/lib/scoreboard/types";
+import type { Totals } from "../../src/lib/scoreboard/types";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
 import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
 import { conversions, trend, rateDir } from "../../src/lib/scoreboard/metrics";
 import { previousSlice, periodEndFor, paceFraction } from "../../src/lib/scoreboard/periods";
-
-const toSalesRow = (r: Awaited<ReturnType<typeof computeSalesRows>>[number]): SalesRow => ({
-  repUserId: r.repUserId,
-  name: r.name,
-  team: r.team,
-  branch: r.branch,
-  revenue: r.revenue,
-  knocks: r.verifiedKnocks,
-  claims: r.filed,
-  contracts: r.won,
-  active: r.active,
-});
+import { toSalesRow } from "../../src/lib/scoreboard/rows";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -67,7 +56,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const pace = paceFraction(cur.start, periodEndFor(w, cur.start), now);
 
-    const revenueGoal = (user as any).businessPlan?.revenueGoal ?? null;
+    // businessPlan.revenueGoal is a YEARLY figure (Business Planner's "Yearly Goals");
+    // name it accordingly so it can never be confused with the month-to-date totals above.
+    const revenueAnnualGoal = (user as any).businessPlan?.revenueGoal ?? null;
 
     return res.status(200).json({
       window: w,
@@ -80,13 +71,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         claims: trend(totals.claims, previous.claims),
       },
       conversions: {
-        knockToClaim: { ...conv.knockToClaim, dir: rateDir(conv.knockToClaim.rate, convPrev.knockToClaim.rate, conv.knockToClaim.hidden) },
-        claimToContract: { ...conv.claimToContract, dir: rateDir(conv.claimToContract.rate, convPrev.claimToContract.rate, conv.claimToContract.hidden) },
+        knockToClaim: {
+          ...conv.knockToClaim,
+          dir: convPrev.knockToClaim.hidden ? null : rateDir(conv.knockToClaim.rate, convPrev.knockToClaim.rate, conv.knockToClaim.hidden),
+        },
+        claimToContract: {
+          ...conv.claimToContract,
+          dir: convPrev.claimToContract.hidden ? null : rateDir(conv.claimToContract.rate, convPrev.claimToContract.rate, conv.claimToContract.hidden),
+        },
       },
       contracts: totals.contracts,
       rank: rankFor(curRows, scope),
       pace,
-      goals: { revenue: revenueGoal, knocks: null, claims: null },
+      goals: { revenueAnnual: revenueAnnualGoal, knocks: null, claims: null },
       personal,
     });
   } catch (error) {

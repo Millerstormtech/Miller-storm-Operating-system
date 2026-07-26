@@ -20,6 +20,9 @@ describe("resolveScope", () => {
     expect(s.level).toBe("branch");
     expect(s.branch).toBe("Fort Worth"); // TEAM_BRANCH["Gunner"]
   });
+  it("unknown role -> falls back to self, never company (fail closed)", () => {
+    expect(resolveScope({ id: "u9", role: "some-new-role", name: "Someone" })).toEqual({ level: "self", userId: "u9" });
+  });
   it("team lead not on the org chart -> team null (honest, no silent wrong team)", () => {
     // Documents real behaviour: a lead whose app account name doesn't match the org
     // chart resolves to null rather than guessing. The endpoint/UI must treat a null

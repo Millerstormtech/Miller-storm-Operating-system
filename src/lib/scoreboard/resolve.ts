@@ -13,7 +13,10 @@ export function resolveScope(user: { id: string; role: string; name: string }): 
       return { level: "branch", branch };
     }
     case "c-level":
-    default:
       return { level: "company" };
+    default:
+      // Fail CLOSED: an unrecognized role (typo, stale value, future role) must never be
+      // handed company-wide revenue. Least privilege = their own numbers only.
+      return { level: "self", userId: user.id };
   }
 }
