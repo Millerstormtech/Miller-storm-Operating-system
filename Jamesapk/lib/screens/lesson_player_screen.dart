@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
 
 /// Order pages to match the folder-grouped module list, exactly like the web:
@@ -71,6 +72,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   int _progressPercent = 0;
   bool _isLoading = true;
   bool _isFullscreen = false;
+
+  // Guided tour (inside a lesson): the video area, the AI helper, and a "?"
+  // replay button. Auto-starts once per user/device.
+  final GlobalKey _kVideo = GlobalKey();
+  final GlobalKey _kAi = GlobalKey();
+  final GlobalKey _kReplay = GlobalKey();
+  bool _tourChecked = false;
+  static const _tourSeenKey = 'tour_seen_lesson_player_v1';
   bool _videoError = false;
   bool _videoLoading = true;
   bool _isLessonCompleted = false;
@@ -961,6 +970,32 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     );
   }
 
+  // Walk the tour: video -> AI helper -> replay. Steps that aren't on this
+  // lesson (a quiz has no video; not every lesson has an AI bot) are skipped.
+  void _startTour(BuildContext context) {
+    final keys = <GlobalKey>[];
+    final hasVideo = _lesson?['isQuiz'] != true &&
+        (_lesson?['videoUrl']?.toString().trim().isNotEmpty ?? false);
+    if (hasVideo) keys.add(_kVideo);
+    final hasAi = _courseBot != null &&
+        _lesson != null &&
+        ((_courseBot!['selectedPages'] as List<dynamic>?)?.contains(_lesson!['id']) == true);
+    if (hasAi) keys.add(_kAi);
+    keys.add(_kReplay);
+    ShowCaseWidget.of(context).startShowCase(keys);
+  }
+
+  // First visit only: run the tour once, then remember it per user/device.
+  Future<void> _maybeAutoStartTour(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_tourSeenKey) == true) return;
+      await prefs.setBool(_tourSeenKey, true);
+      if (!mounted) return;
+      _startTour(context);
+    } catch (_) {}
+  }
+
   Widget _buildVideoPlayer() {
     final hasVideoUrl = _lesson?['videoUrl'] != null && _lesson!['videoUrl'].toString().trim().isNotEmpty;
     
@@ -1572,11 +1607,25 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
 
   @override
   Widget build(BuildContext context) {
+    // Wrap in ShowCaseWidget so the in-lesson tour can spotlight elements.
+    return ShowCaseWidget(
+      blurValue: 0.4,
+      builder: (context) => _buildInner(context),
+    );
+  }
+
+  Widget _buildInner(BuildContext context) {
     if (_isFullscreen) {
       return Scaffold(
         backgroundColor: Colors.black,
         body: _buildVideoPlayer(),
       );
+    }
+
+    // Auto-start the in-lesson tour once per user, after the lesson loads.
+    if (!_isLoading && !_tourChecked) {
+      _tourChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
 
     return Scaffold(
@@ -1612,6 +1661,18 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             ),
           ],
         ),
+        actions: [
+          Showcase(
+            key: _kReplay,
+            title: 'Replay anytime',
+            description: 'Tap here to replay this quick tour whenever you want a refresher.',
+            child: IconButton(
+              icon: const Icon(Icons.help_outline, color: _textDark, size: 24),
+              tooltip: 'Guided tour',
+              onPressed: () => _startTour(context),
+            ),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
@@ -1621,7 +1682,12 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                   children: [
                     // Video Player (only if not quiz and has video)
                     if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null && _lesson!['videoUrl'].toString().trim().isNotEmpty)
-                      _buildVideoPlayer(),
+                      Showcase(
+                        key: _kVideo,
+                        title: 'Watch to complete',
+                        description: 'Watch the video to the end to mark the lesson complete. Skipping ahead is limited.',
+                        child: _buildVideoPlayer(),
+                      ),
 
                     // Content below video
                     Expanded(
@@ -1810,7 +1876,11 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                   Positioned(
                     right: 16,
                     bottom: 100 + MediaQuery.of(context).padding.bottom,
-                    child: GestureDetector(
+                    child: Showcase(
+                      key: _kAi,
+                      title: 'Ask the AI helper',
+                      description: 'Stuck on something? Ask questions about this course here.',
+                      child: GestureDetector(
                       onTap: _showAIChatDialog,
                       child: Container(
                         width: 56,
@@ -1833,6 +1903,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                           ),
                         ),
                       ),
+                    ),
                     ),
                   ),
               ],
