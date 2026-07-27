@@ -18,6 +18,10 @@ tsconfig.tsbuildinfo
 # Local-only product/planning docs (kept off GitHub on purpose)
 docs/
 
+# Quiz answer-balancing tooling. Kept local because its input is docs/quizzes/,
+# which is already gitignored — the scripts are useless without it.
+scripts/quiz-balance/
+
 # Local-only AI assistant guidance (kept off GitHub on purpose)
 CLAUDE.md
 

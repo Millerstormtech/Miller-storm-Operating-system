@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { BRANCHES } from "../lib/repcard/branches";
 import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
+import { compareStanding } from "../lib/leaderboard/ranking";
 
 type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
@@ -46,6 +47,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // "Hide former reps" — off by default so everyone shows. Filters out reps flagged
+  // `former` by the API (RepCard status !== ACTIVE). Just hides rows; rank is unaffected.
+  const [hideFormer, setHideFormer] = useState(false);
   // Rep filter (multi-select, deferred apply): `draftReps` = in-panel checkboxes;
   // `appliedReps` = what the table filters by (only updated on "Show Selected").
   const [appliedReps, setAppliedReps] = useState<Set<string>>(new Set());
@@ -116,6 +120,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       })
       .filter((r: any) => r !== null)
       .filter((r: any) => {
+        if (hideFormer && r.former) return false; // "Hide former reps" toggle
         if (appliedReps.size > 0 && !appliedReps.has(r.id)) return false; // Rep multi-select
         if (branchFilter === NONE && r.branch) return false; // "(No branch)" bucket only
         // Team filter
@@ -127,13 +132,15 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     const col = COLUMNS.find((c) => c.key === sortKey);
     const dir = sortDir === "asc" ? 1 : -1;
     const sorted = [...filtered].sort((a, b) => {
-      if (col?.type === "text") {
-        return String(a[sortKey] ?? "").localeCompare(String(b[sortKey] ?? "")) * dir;
-      }
-      return ((a[sortKey] ?? 0) - (b[sortKey] ?? 0)) * dir;
+      const primary = col?.type === "text"
+        ? String(a[sortKey] ?? "").localeCompare(String(b[sortKey] ?? "")) * dir
+        : ((a[sortKey] ?? 0) - (b[sortKey] ?? 0)) * dir;
+      // On any tie in the clicked column, fall back to overall standing (Contract
+      // Amount -> Contracts -> Claims Filed -> Leads Created -> Verified Door Knocks).
+      return primary || compareStanding(a, b);
     });
     return sorted;
-  }, [rows, branchFilter, teamFilter, appliedReps, sortKey, sortDir]);
+  }, [rows, branchFilter, teamFilter, appliedReps, sortKey, sortDir, hideFormer]);
 
   // The logged-in user's own row — drives the "your rank" pop-out banner.
   // `rank` is the overall revenue rank for the selected window (from the API).
@@ -253,6 +260,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             {teamOptions.hasNone ? <option value={NONE}>(No team)</option> : null}
           </select>
         </label>
+        <label
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", fontWeight: 600, cursor: "pointer" }}
+          title="Hide reps who are no longer active in RepCard"
+        >
+          <input type="checkbox" checked={hideFormer} onChange={(e) => setHideFormer(e.target.checked)} />
+          Hide former reps
+        </label>
         <div style={{ position: "relative", display: "inline-block" }}>
           <button onClick={() => (repOpen ? setRepOpen(false) : openRepPanel())} style={selectStyle}>
             Rep: {appliedReps.size ? `${appliedReps.size} selected` : "All reps"} ▾
@@ -286,9 +300,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             </>
           ) : null}
         </div>
-        {(branchFilter || teamFilter || appliedReps.size) ? (
+        {(branchFilter || teamFilter || appliedReps.size || hideFormer) ? (
           <button
-            onClick={() => { setBranchFilter(ALL); setTeamFilter(ALL); setAppliedReps(new Set()); }}
+            onClick={() => { setBranchFilter(ALL); setTeamFilter(ALL); setAppliedReps(new Set()); setHideFormer(false); }}
             style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", cursor: "pointer", fontWeight: 600 }}
           >
             Clear filters
