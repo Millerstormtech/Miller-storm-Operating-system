@@ -2,6 +2,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../src/lib/auth";
+import { resolveIncomingQuizResults } from "../../src/lib/training/quiz-intake";
+import { loadGradableQuizPages } from "../../src/lib/training/quiz-pages";
+import { logToDb } from "../../src/lib/models/SystemLog";
 
 export default async function handler(
   req: NextApiRequest,
@@ -114,14 +117,40 @@ export default async function handler(
     try {
       // Find existing progress or create new
       let progress = await UserProgressModel.findOne({ userId, courseId });
-      
+
+      // The server re-grades every incoming quiz result from its own answer
+      // key; the caller's claimed score and passed flag are ignored entirely
+      // (spec 2026-07-26 §5). Stored results with unchanged answers are
+      // preserved exactly, and an earned pass is never downgraded.
+      let quizResultsToStore = quizResults;
+      if (quizResults !== undefined) {
+        const quizPages = await loadGradableQuizPages(courseId);
+        const storedResults = (progress?.quizResults || []).map((r: any) =>
+          typeof r?.toObject === "function" ? r.toObject() : r
+        );
+        const outcome = resolveIncomingQuizResults({
+          quizPages,
+          stored: storedResults,
+          incoming: Array.isArray(quizResults) ? quizResults : [],
+        });
+        quizResultsToStore = outcome.results;
+        for (const r of outcome.rejected) {
+          await logToDb(
+            "warn",
+            "QUIZ-INTAKE",
+            `Rejected quiz claim: user ${userId}, course ${courseId}, page ${r.pageId}`,
+            { claimed: r.claimed, server: r.server }
+          );
+        }
+      }
+
       if (!progress) {
         // Create new progress record
         progress = new UserProgressModel({
           userId,
           courseId,
           completedPages: completedPages || [],
-          quizResults: quizResults || [],
+          quizResults: quizResultsToStore || [],
           courseCompleted: courseCompleted || false
         });
         console.log('📝 Creating new progress record');
@@ -131,7 +160,7 @@ export default async function handler(
           progress.completedPages = completedPages;
         }
         if (quizResults !== undefined) {
-          progress.quizResults = quizResults;
+          progress.quizResults = quizResultsToStore;
         }
         if (courseCompleted !== undefined) {
           progress.courseCompleted = courseCompleted;

@@ -4,13 +4,13 @@ import { useRouter } from "next/router";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
-import { LessonWatchNote } from "../../components/LessonWatchNote";
 import { LessonTick } from "../../components/LessonTick";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
-import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
+import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
+import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -138,6 +138,15 @@ export function ManagerOnlineTrainingPage(props: {
   const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
+  // questionId -> was the rep's OWN answer correct, from the server's grading
+  // reply. It deliberately does not say what the right answer was.
+  const [quizReview, setQuizReview] = useState<Record<string, boolean>>({});
+  const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const [quizError, setQuizError] = useState<string | null>(null);
+  // Set when the rep dismisses the fail dialog to read their answers. It keeps
+  // the pending action (retry, or go relearn the lesson) available on the review
+  // screen, so dismissing the dialog is never a dead end.
+  const [quizFailAction, setQuizFailAction] = useState<{ mode: 'retry' | 'relearn'; pageId: string; prevLessonId: string | null } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
   // Quiz gating (mirrors the Sales TrainingCenter): failed-attempt counter,
   // shuffled question order per quiz, and the pass/fail top-up modal.
@@ -480,10 +489,15 @@ export function ManagerOnlineTrainingPage(props: {
     if (savedResult) {
       setSelectedAnswers(savedResult.answers);
       setQuizScore(savedResult.score);
+      // Results saved before server-side grading carry no review; an empty map
+      // means "no marking available", never "every answer was wrong".
+      setQuizReview(reviewToCorrectnessMap(savedResult.review || []));
       setQuizSubmitted(true);
     } else {
       setQuizSubmitted(false);
       setQuizScore(null);
+      setQuizReview({});
+      setQuizFailAction(null);
       setSelectedAnswers({});
     }
 
@@ -1503,51 +1517,55 @@ export function ManagerOnlineTrainingPage(props: {
       }
     };
 
-    const handleSubmitQuiz = () => {
-      if (!activePage?.quizQuestions || !props.currentUser || !selectedCourse) return;
-      // Score only against the questions actually shown this attempt (a random
-      // subset when the quiz limits how many questions are presented).
-      const shownQuestions = quizQuestionOrder[activePage.id] || activePage.quizQuestions;
-      let correct = 0;
-      shownQuestions.forEach(q => {
-        if (selectedAnswers[q.id] === q.correctIndex) correct++;
-      });
-      const score = { correct, total: shownQuestions.length };
-      const passed = quizPct(score) >= QUIZ_PASS_THRESHOLD;
-      const pct = quizPercent(score);
-      setQuizScore(score);
-      setQuizSubmitted(true);
+    // The SERVER grades the attempt: we send the answers and it returns the
+    // score, the verdict and a per-question review (spec 2026-07-26). The
+    // answer key is no longer in the page payload, so nothing is graded here.
+    const handleSubmitQuiz = async () => {
+      if (!activePage?.quizQuestions || !props.currentUser || !selectedCourse || quizSubmitting) return;
+      setQuizSubmitting(true);
+      setQuizError(null);
+      try {
+        const result = await submitQuizAttempt({
+          courseId: selectedCourse.id,
+          pageId: activePage.id,
+          answers: selectedAnswers,
+        });
+        const pct = Math.round(result.pct * 100);
+        setQuizScore(result.score);
+        setQuizReview(reviewToCorrectnessMap(result.review));
+        setQuizSubmitted(true);
 
-      if (passed) {
-        // Passed: persist the result and let the user advance.
-        const newResult = { pageId: activePage.id, answers: selectedAnswers, score, passed: true, submittedAt: new Date() };
-        const updatedResults = [...savedQuizResults.filter(r => r.pageId !== activePage.id), newResult];
-        setSavedQuizResults(updatedResults);
-        setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
-        fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: props.currentUser.id, courseId: selectedCourse.id, quizResults: updatedResults })
-        }).catch(err => console.error("Failed to save quiz:", err));
-
-        const currentIndex = pages.findIndex(p => p.id === activePage.id);
-        if (currentIndex < pages.length - 1) {
-          setTimeout(() => { handleNextPage(); }, 1500);
+        if (result.passed) {
+          // The server already stored the pass; mirror it locally so the lesson
+          // tick turns green without refetching the course.
+          const newResult = { pageId: activePage.id, answers: selectedAnswers, score: result.score, passed: true, submittedAt: new Date() };
+          setSavedQuizResults(prev => [...prev.filter(r => r.pageId !== activePage.id), newResult]);
+          setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
+          const currentIndex = pages.findIndex(p => p.id === activePage.id);
+          if (currentIndex < pages.length - 1) {
+            setTimeout(() => { handleNextPage(); }, 1500);
+          }
+          return;
         }
-        return;
-      }
 
-      // Failed (< 80%): do NOT persist a pass and do NOT advance. Show top-up.
-      const attempts = (quizAttempts[activePage.id] || 0) + 1;
-      setQuizAttempts(prev => ({ ...prev, [activePage.id]: attempts }));
-      if (attempts >= QUIZ_MAX_ATTEMPTS) {
-        const idx = pages.findIndex(p => p.id === activePage.id);
-        let prevLessonId: string | null = null;
-        for (let i = idx - 1; i >= 0; i--) { if (!pages[i].isQuiz) { prevLessonId = pages[i].id; break; } }
-        setQuizModal({ mode: 'relearn', pageId: activePage.id, pct, prevLessonId });
-        setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
-      } else {
-        setQuizModal({ mode: 'retry', pageId: activePage.id, pct, prevLessonId: null });
+        // Failed: do NOT advance. Show top-up.
+        const attempts = (quizAttempts[activePage.id] || 0) + 1;
+        setQuizAttempts(prev => ({ ...prev, [activePage.id]: attempts }));
+        if (attempts >= QUIZ_MAX_ATTEMPTS) {
+          // Second fail -> send back to the lesson immediately before this quiz.
+          const idx = pages.findIndex(p => p.id === activePage.id);
+          let prevLessonId: string | null = null;
+          for (let i = idx - 1; i >= 0; i--) { if (!pages[i].isQuiz) { prevLessonId = pages[i].id; break; } }
+          setQuizModal({ mode: 'relearn', pageId: activePage.id, pct, prevLessonId });
+          setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
+        } else {
+          setQuizModal({ mode: 'retry', pageId: activePage.id, pct, prevLessonId: null });
+        }
+      } catch (e) {
+        console.error(e);
+        setQuizError("Couldn't submit your quiz. Try again.");
+      } finally {
+        setQuizSubmitting(false);
       }
     };
 
@@ -1556,6 +1574,9 @@ export function ManagerOnlineTrainingPage(props: {
       setQuizModal(null);
       setQuizSubmitted(false);
       setQuizScore(null);
+      setQuizReview({});
+      setQuizError(null);
+      setQuizFailAction(null);
       setSelectedAnswers({});
       const page = pages.find(p => p.id === pageId);
       if (page?.quizQuestions?.length) {
@@ -1568,6 +1589,9 @@ export function ManagerOnlineTrainingPage(props: {
       setQuizModal(null);
       setQuizSubmitted(false);
       setQuizScore(null);
+      setQuizReview({});
+      setQuizError(null);
+      setQuizFailAction(null);
       setSelectedAnswers({});
       if (prevLessonId) {
         setActivePageId(prevLessonId);
@@ -1787,7 +1811,7 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
               <div style={{ fontSize: 14, color: '#5b6670', lineHeight: 1.55, marginBottom: 22 }}>
                 {quizModal.mode === 'retry'
-                  ? <>You scored <b>{quizModal.pct}%</b>. You need <b>{Math.round(QUIZ_PASS_THRESHOLD * 100)}%</b> to move on. Give it another try — score above {Math.round(QUIZ_PASS_THRESHOLD * 100)}% and you'll advance to the next step.</>
+                  ? <>You scored <b>{quizModal.pct}%</b>. You need <b>{Math.round(QUIZ_PASS_THRESHOLD * 100)}%</b> to move on. Give it another try: score above {Math.round(QUIZ_PASS_THRESHOLD * 100)}% and you'll advance to the next step.</>
                   : <>You scored <b>{quizModal.pct}%</b> again. Your performance isn't there yet, so please go through the lesson once more, then retake the quiz.</>}
               </div>
               {quizModal.mode === 'retry' ? (
@@ -1795,6 +1819,15 @@ export function ManagerOnlineTrainingPage(props: {
               ) : (
                 <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={() => handleQuizRelearn(quizModal.prevLessonId)}>Review Lesson</button>
               )}
+              {/* Dismissing to read the answers must not be a dead end: the
+                  pending action is kept and re-offered on the review screen. */}
+              <button
+                type="button"
+                onClick={() => { setQuizFailAction({ mode: quizModal.mode, pageId: quizModal.pageId, prevLessonId: quizModal.prevLessonId }); setQuizModal(null); }}
+                style={{ width: '100%', marginTop: 10, background: 'none', border: 'none', color: '#5b6670', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                See which answers I got wrong
+              </button>
             </div>
           </div>
         )}
@@ -1815,7 +1848,6 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
               {/* Leadership has every step unlocked, so the "watch to the last
                   second to unlock the next step" reminder doesn't apply to them. */}
-              {!isPrivileged && <LessonWatchNote />}
               {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                 <div className="course-page-editor-body">
                   {quizSubmitted && quizScore && (
@@ -1830,17 +1862,22 @@ export function ManagerOnlineTrainingPage(props: {
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
                         {q.options.map((option: string, optIdx: number) => {
                           const isSelected = selectedAnswers[q.id] === optIdx;
-                          const isCorrect = q.correctIndex === optIdx;
+                          // Only the rep's OWN answer is ever marked. A question they got
+                          // wrong is marked wrong and the right option stays unmarked:
+                          // the client is never told the answer.
+                          const showCorrect = quizSubmitted && isSelected && quizReview[q.id] === true;
+                          const showWrong = quizSubmitted && isSelected && quizReview[q.id] === false;
                           return (
                             <div key={optIdx} onClick={() => !quizSubmitted && setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
-                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (isCorrect ? '#10b981' : isSelected ? '#ef4444' : '#e5e7eb') : (isSelected ? '#3b82f6' : '#e5e7eb'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (isCorrect ? '#d1fae5' : isSelected ? '#fee2e2' : '#fff') : (isSelected ? '#eff6ff' : '#fff') }}
+                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#e5e7eb') : (isSelected ? '#3b82f6' : '#e5e7eb'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (showCorrect ? '#d1fae5' : showWrong ? '#fee2e2' : '#fff') : (isSelected ? '#eff6ff' : '#fff') }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (isCorrect ? '#10b981' : isSelected ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (isCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (showCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />}
                                 </div>
                                 <span style={{ fontSize: 14 }}>{option}</span>
-                                {quizSubmitted && isCorrect && <span style={{ marginLeft: 'auto', color: '#10b981' }}>✓</span>}
+                                {showCorrect && <span style={{ marginLeft: 'auto', color: '#10b981', fontWeight: 700 }}>✓ Correct</span>}
+                                  {showWrong && <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 700 }}>✗ Incorrect</span>}
                               </div>
                             </div>
                           );
@@ -1864,7 +1901,15 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {activePage.isQuiz && !quizSubmitted && (
-                  <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0)}>Submit Quiz</button>
+                  <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0) || quizSubmitting}>Submit Quiz</button>
+                )}
+                {activePage.isQuiz && quizSubmitted && quizFailAction && (
+                  quizFailAction.mode === 'retry'
+                    ? <button type="button" className="btn-primary" onClick={() => handleQuizRetry(quizFailAction.pageId)}>Try Again</button>
+                    : <button type="button" className="btn-primary" onClick={() => handleQuizRelearn(quizFailAction.prevLessonId)}>Review Lesson</button>
+                )}
+                {activePage.isQuiz && !quizSubmitted && quizError && (
+                  <div style={{ alignSelf: 'center', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>{quizError}</div>
                 )}
                 {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !progress.isCompleted && (
                    <button 
@@ -2132,7 +2177,6 @@ export function ManagerOnlineTrainingPage(props: {
                     Share
                   </button>
                 </div>
-                {!isPrivileged && <LessonWatchNote />}
                 {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                   <div className="course-page-editor-body">
                     {quizSubmitted && quizScore && (
@@ -2151,7 +2195,11 @@ export function ManagerOnlineTrainingPage(props: {
                           <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
                           {q.options.map((option: string, optIdx: number) => {
                             const isSelected = selectedAnswers[q.id] === optIdx;
-                            const isCorrect = q.correctIndex === optIdx;
+                            // Only the rep's OWN answer is ever marked. A question they got
+                            // wrong is marked wrong and the right option stays unmarked:
+                            // the client is never told the answer.
+                            const showCorrect = quizSubmitted && isSelected && quizReview[q.id] === true;
+                            const showWrong = quizSubmitted && isSelected && quizReview[q.id] === false;
                             const showResult = quizSubmitted;
                             return (
                               <div
@@ -2161,10 +2209,10 @@ export function ManagerOnlineTrainingPage(props: {
                                   padding: "12px 16px",
                                   marginBottom: 12,
                                   border: "2px solid",
-                                  borderColor: showResult ? (isCorrect ? "#10b981" : isSelected ? "#ef4444" : "#e5e7eb") : (isSelected ? "#3b82f6" : "#e5e7eb"),
+                                  borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#e5e7eb") : (isSelected ? "#3b82f6" : "#e5e7eb"),
                                   borderRadius: 8,
                                   cursor: quizSubmitted ? "default" : "pointer",
-                                  backgroundColor: showResult ? (isCorrect ? "#d1fae5" : isSelected ? "#fee2e2" : "#fff") : (isSelected ? "#eff6ff" : "#fff")
+                                  backgroundColor: showResult ? (showCorrect ? "#d1fae5" : showWrong ? "#fee2e2" : "#fff") : (isSelected ? "#eff6ff" : "#fff")
                                 }}
                               >
                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -2174,8 +2222,8 @@ export function ManagerOnlineTrainingPage(props: {
                                       height: 20,
                                       borderRadius: "50%",
                                       border: "2px solid",
-                                      borderColor: showResult ? (isCorrect ? "#10b981" : isSelected ? "#ef4444" : "#d1d5db") : (isSelected ? "#3b82f6" : "#d1d5db"),
-                                      backgroundColor: isSelected ? (showResult ? (isCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "#fff",
+                                      borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#d1d5db") : (isSelected ? "#3b82f6" : "#d1d5db"),
+                                      backgroundColor: isSelected ? (showResult ? (showCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "#fff",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center"
@@ -2184,7 +2232,8 @@ export function ManagerOnlineTrainingPage(props: {
                                     {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#fff" }} />}
                                   </div>
                                   <span style={{ fontSize: 14 }}>{option}</span>
-                                  {showResult && isCorrect && <span style={{ marginLeft: "auto", color: "#10b981" }}>✓</span>}
+                                  {showCorrect && <span style={{ marginLeft: "auto", color: "#10b981", fontWeight: 700 }}>✓ Correct</span>}
+                                  {showWrong && <span style={{ marginLeft: "auto", color: "#ef4444", fontWeight: 700 }}>✗ Incorrect</span>}
                                 </div>
                               </div>
                             );
@@ -2287,10 +2336,18 @@ export function ManagerOnlineTrainingPage(props: {
                         type="button" 
                         className="btn-primary" 
                         onClick={handleSubmitQuiz}
-                        disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0)}
+                        disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0) || quizSubmitting}
                       >
                         Submit Quiz
                       </button>
+                    )}
+                    {activePage.isQuiz && quizSubmitted && quizFailAction && (
+                      quizFailAction.mode === 'retry'
+                        ? <button type="button" className="btn-primary" onClick={() => handleQuizRetry(quizFailAction.pageId)}>Try Again</button>
+                        : <button type="button" className="btn-primary" onClick={() => handleQuizRelearn(quizFailAction.prevLessonId)}>Review Lesson</button>
+                    )}
+                    {activePage.isQuiz && !quizSubmitted && quizError && (
+                      <div style={{ alignSelf: 'center', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>{quizError}</div>
                     )}
                     {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !progress.isCompleted && (
                       <button 

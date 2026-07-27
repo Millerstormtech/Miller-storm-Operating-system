@@ -1,5 +1,15 @@
 import { Schema, model, models } from "mongoose";
 
+// Which of the learner's own answers were right. Deliberately does NOT record
+// the correct option: nothing that reaches a learner may carry the answer key
+// (see toLearnerReview in src/lib/training/quiz-grading.ts). Stored so that
+// reopening a passed quiz can still mark the attempt, instead of showing the
+// answers with no marking at all.
+const quizReviewEntrySchema = new Schema(
+  { questionId: String, chosenIndex: Number, correct: Boolean },
+  { _id: false }
+);
+
 const quizResultSchema = new Schema(
   {
     pageId: String,
@@ -8,6 +18,9 @@ const quizResultSchema = new Schema(
     // Only passing attempts are ever saved, so this is always true; stored
     // explicitly so the pass gate can trust it directly (see isQuizResultPassing).
     passed: Boolean,
+    // Absent on results saved before server-side grading shipped, so readers
+    // must treat an empty review as "no marking available", never as "all wrong".
+    review: [quizReviewEntrySchema],
     submittedAt: Date
   },
   { _id: false }
