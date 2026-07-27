@@ -36,8 +36,7 @@ class LessonPlayerScreen extends StatefulWidget {
   final String lessonTitle;
   final List<String>? playlistModules;
   // Leadership roles (c-level / branch-manager / sales-team-lead) get every
-  // lesson unlocked, so the "watch to the very last second" note is hidden for
-  // them — same as the web's `!isPrivileged` rule.
+  // lesson unlocked — same as the web's `!isPrivileged` rule.
   final bool isPrivileged;
 
   const LessonPlayerScreen({
@@ -87,7 +86,15 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   // failed-attempt counter (1st fail -> try again, 2nd fail -> relearn).
   List<dynamic> _shuffledQuestions = [];
   int _quizAttempts = 0;
-  
+  // Server-graded marking: questionId -> was the rep's OWN answer correct?
+  // Built from the server's `review` (which carries no correctIndex). Empty or
+  // absent means "no marking available" (never "every answer was wrong").
+  Map<String, bool> _quizReview = {};
+  // The last submission failed — keep a retry affordance on the review screen so
+  // the rep can read what they got wrong and still try again.
+  bool _quizFailed = false;
+  bool _quizFailRelearn = false; // the failure was the 2nd attempt (relearn)
+
   // AI Chat state
   Map<String, dynamic>? _courseBot;
   bool _showAIChat = false;
@@ -286,6 +293,10 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               print('✅ Found saved quiz result');
               _selectedAnswers = Map<String, int>.from(savedResult['answers'] ?? {});
               _quizScore = savedResult['score'];
+              // A stored result is always a pass; rebuild the per-question
+              // marking from its saved review (older results have none).
+              _quizReview = _reviewMap(savedResult['review']);
+              _quizFailed = false;
               _quizSubmitted = true;
             }
           }
@@ -617,77 +628,82 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
 
   Future<void> _submitQuiz() async {
     if (_lesson == null || _lesson!['quizQuestions'] == null) return;
-    
-    final questions = _lesson!['quizQuestions'] as List<dynamic>? ?? [];
-    int correct = 0;
-    
-    for (var q in questions) {
-      final questionId = q['id'];
-      final correctIndex = q['correctIndex'];
-      if (_selectedAnswers[questionId] == correctIndex) {
-        correct++;
+
+    // The server grades the attempt against its own answer key and is the ONLY
+    // writer of the result. We send just the picked answers — no score, no
+    // verdict, no correctIndex. Do NOT recompute pass/total on the client.
+    Map<String, dynamic> data;
+    try {
+      final res = await api.post(
+        Uri.parse('https://millerstorm.tech/api/training/quiz'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'courseId': widget.courseId,
+          'pageId': _lesson!['id'],
+          'answers': _selectedAnswers,
+        }),
+      );
+      if (res.statusCode != 200) {
+        _showQuizSubmitError();
+        return;
       }
+      data = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (e) {
+      // Network failure: do NOT mark the quiz submitted; let the rep retry.
+      _showQuizSubmitError();
+      return;
     }
-    
-    final total = questions.length;
-    final score = {
-      'correct': correct,
-      'total': total,
-    };
-    final pct = total > 0 ? correct / total : 0.0;
-    final passed = pct >= 0.8; // 80% to pass
+
+    final passed = data['passed'] == true;
+    final score = (data['score'] is Map) ? Map<String, dynamic>.from(data['score']) : null;
+    final pct = (data['pct'] is num) ? (data['pct'] as num).toDouble() : 0.0;
+    final review = _reviewMap(data['review']);
 
     setState(() {
       _quizSubmitted = true;
       _quizScore = score;
+      _quizReview = review;
     });
 
     if (!passed) {
-      // Failed (< 80%): do NOT save a pass and do NOT advance. Show top-up.
+      // Failed: the server stored nothing. Show the top-up / relearn dialog and
+      // leave the marked review on screen so the rep can retry from there.
       _quizAttempts++;
-      if (_quizAttempts >= 2) {
-        _quizAttempts = 0; // reset for after the relearn
-        _showQuizFailDialog(pct, relearn: true);
-      } else {
-        _showQuizFailDialog(pct, relearn: false);
-      }
+      final relearn = _quizAttempts >= 2;
+      if (relearn) _quizAttempts = 0; // reset for after the relearn
+      setState(() {
+        _quizFailed = true;
+        _quizFailRelearn = relearn;
+      });
+      _showQuizFailDialog(pct, relearn: relearn);
       return;
     }
 
-    // Passed: save the result and advance.
-    try {
-      final user = await AuthService.getStoredUser();
-      final userId = user?['id'] ?? '';
+    // Passed: the server has ALREADY stored the result (no /api/progress/save
+    // for quizzes any more). Just unlock the Next button.
+    if (mounted) setState(() { _quizFailed = false; _canGoNext = true; });
+  }
 
-      if (userId.isNotEmpty) {
-        final quizResult = {
-          'pageId': _lesson!['id'],
-          'answers': _selectedAnswers,
-          'score': score,
-          'passed': true,
-          'submittedAt': DateTime.now().toIso8601String(),
-        };
-
-        await api.post(
-          Uri.parse('https://millerstorm.tech/api/progress/save'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'userId': userId,
-            'courseId': widget.courseId,
-            'quizResult': quizResult,
-          }),
-        );
-
-        print('💾 Quiz result saved to database');
+  // Build questionId -> (rep's answer correct?) from the server's `review`
+  // array. The review never contains correctIndex. Absent/empty is treated as
+  // "no marking available" — never "every answer was wrong".
+  Map<String, bool> _reviewMap(dynamic review) {
+    final map = <String, bool>{};
+    if (review is List) {
+      for (final r in review) {
+        if (r is Map && r['questionId'] != null) {
+          map[r['questionId'].toString()] = r['correct'] == true;
+        }
       }
-    } catch (e) {
-      print('❌ Error saving quiz result: $e');
     }
+    return map;
+  }
 
-    // No auto-advance (matches web): the quiz pass is saved above, so just
-    // unlock the Next button. The user taps Next to move on to the next
-    // lesson/quiz — nothing jumps on its own.
-    if (mounted) setState(() => _canGoNext = true);
+  void _showQuizSubmitError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Couldn't submit your quiz. Try again.")),
+    );
   }
 
   // Top-up dialog shown when a quiz is failed (< 80%).
@@ -737,6 +753,15 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
               child: Text(relearn ? 'Review Lesson' : 'Try Again'),
             ),
           ),
+          // Let the rep dismiss and read what they got wrong first — the retry /
+          // relearn action then stays available on the review screen.
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'See which answers I got wrong',
+              style: TextStyle(color: _textLight, fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );
@@ -747,6 +772,8 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     setState(() {
       _quizSubmitted = false;
       _quizScore = null;
+      _quizReview = {};
+      _quizFailed = false;
       _selectedAnswers = {};
       _shuffledQuestions = List<dynamic>.from(_lesson!['quizQuestions'] ?? [])..shuffle();
     });
@@ -1085,8 +1112,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             final q = entry.value;
             final questionId = q['id'];
             final options = q['options'] as List<dynamic>? ?? [];
-            final correctIndex = q['correctIndex'];
-            
+
             return Container(
               margin: const EdgeInsets.only(bottom: 32),
               child: Column(
@@ -1107,17 +1133,21 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                     final optIdx = optEntry.key;
                     final option = optEntry.value;
                     final isSelected = _selectedAnswers[questionId] == optIdx;
-                    final isCorrect = correctIndex == optIdx;
                     final showResult = _quizSubmitted;
-                    
+                    // Only the rep's OWN answer is ever marked; the right answer
+                    // is never revealed. `null` = no marking available.
+                    final bool? mine = isSelected ? _quizReview[questionId] : null;
+                    final bool markCorrect = showResult && isSelected && mine == true;
+                    final bool markWrong = showResult && isSelected && mine == false;
+
                     Color borderColor;
                     Color bgColor;
-                    
+
                     if (showResult) {
-                      if (isCorrect) {
+                      if (markCorrect) {
                         borderColor = const Color(0xFF10B981);
                         bgColor = const Color(0xFFD1FAEC);
-                      } else if (isSelected) {
+                      } else if (markWrong) {
                         borderColor = const Color(0xFFEF4444);
                         bgColor = const Color(0xFFFEE2E2);
                       } else {
@@ -1152,13 +1182,13 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: showResult
-                                      ? (isCorrect ? const Color(0xFF10B981) : isSelected ? const Color(0xFFEF4444) : _border)
+                                      ? (markCorrect ? const Color(0xFF10B981) : markWrong ? const Color(0xFFEF4444) : _border)
                                       : (isSelected ? _primary : _border),
                                   width: 2,
                                 ),
                                 color: isSelected
                                     ? (showResult
-                                        ? (isCorrect ? const Color(0xFF10B981) : const Color(0xFFEF4444))
+                                        ? (markCorrect ? const Color(0xFF10B981) : markWrong ? const Color(0xFFEF4444) : _primary)
                                         : _primary)
                                     : _white,
                               ),
@@ -1182,11 +1212,25 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                 ),
                               ),
                             ),
-                            if (showResult && isCorrect)
-                              const Icon(
-                                Icons.check,
-                                color: Color(0xFF10B981),
-                                size: 20,
+                            // Only the rep's own choice is labelled — right or
+                            // wrong. The correct answer is never revealed.
+                            if (markCorrect)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.check, color: Color(0xFF10B981), size: 18),
+                                  SizedBox(width: 4),
+                                  Text('Correct', style: TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            if (markWrong)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.close, color: Color(0xFFEF4444), size: 18),
+                                  SizedBox(width: 4),
+                                  Text('Incorrect', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.w600)),
+                                ],
                               ),
                           ],
                         ),
@@ -1579,32 +1623,6 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                     if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null && _lesson!['videoUrl'].toString().trim().isNotEmpty)
                       _buildVideoPlayer(),
 
-                    // Watch-to-unlock reminder — hidden for leadership roles
-                    // (they get every lesson unlocked), matching the web.
-                    if (!widget.isPrivileged)
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFBEB),
-                          border: Border.all(color: const Color(0xFFFDE68A)),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: const [
-                            Text('⚠️', style: TextStyle(fontSize: 15)),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'You need to complete the video/quiz till the very last second in order to unlock the next step.',
-                                style: TextStyle(fontSize: 12.5, color: Color(0xFF92400E), fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
                     // Content below video
                     Expanded(
                       child: SingleChildScrollView(
@@ -1724,6 +1742,23 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
+                                ),
+                              ),
+                            )
+                          else if (_lesson?['isQuiz'] == true && _quizSubmitted && _quizFailed)
+                            // Failed quiz: let the rep read their marked answers
+                            // and retry / relearn straight from the review screen.
+                            GestureDetector(
+                              onTap: () => _quizFailRelearn ? _relearnPreviousLesson() : _retryQuiz(),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: _primary,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  _quizFailRelearn ? 'Review Lesson' : 'Try Again',
+                                  style: const TextStyle(color: _white, fontSize: 14, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             )
