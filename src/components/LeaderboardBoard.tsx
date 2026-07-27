@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { BRANCHES } from "../lib/repcard/branches";
 import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
+import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
+import { SALES_LEADERBOARD_TOUR } from "../portals/shared/guided-tour/definitions/salesLeaderboard";
 
 type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
@@ -178,10 +180,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   return (
     <div>
+      <GuidedTour tour={SALES_LEADERBOARD_TOUR} ready={!loading} />
+
       {/* "Your rank" pop-out — shown to any user who is on the board (sales rep,
           sales team lead, branch manager, etc.) with their own standing. */}
       {me && (
         <div
+          data-tour="your-rank"
           style={{
             display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
             background: "linear-gradient(135deg,#1e3a8a,#2563eb)", color: "#fff",
@@ -217,7 +222,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       )}
 
       {/* Filters — Period, Branch, Team all as matching dropdowns. */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+      <div data-tour="filters" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
           Period
           <select
@@ -308,7 +313,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       ) : null}
 
       {/* Collapsible "how to read this board" guide — collapsed by default so it never clutters. */}
-      <details style={{ marginBottom: 12, background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px" }}>
+      <details data-tour="board-guide" style={{ marginBottom: 12, background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px" }}>
         <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#374151" }}>
           ℹ️ How to read this board
         </summary>
@@ -337,7 +342,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         <>
         <div className="leaderboard-table-wrap" style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
-            <thead>
+            <thead data-tour="columns">
               <tr style={{ background: "#f1f5f9" }}>
                 <th style={{ padding: "10px 14px", textAlign: "center", fontSize: 13, fontWeight: 600 }}>#</th>
                 {visibleColumns.map((c) => (
