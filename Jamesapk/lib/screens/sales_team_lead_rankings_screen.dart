@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
@@ -43,6 +44,17 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
   List<dynamic> _rows = [];
   bool _loading = true;
   String? _userId;
+
+  // Rep multi-select filter (deferred apply, like web): the committed set that
+  // filters the table. The in-panel draft + search live inside the sheet.
+  Set<String> _appliedReps = {};
+
+  // Guided tour (Sales Leaderboard). Spotlight targets + one-per-user auto-start.
+  final GlobalKey _kFilters = GlobalKey();
+  final GlobalKey _kBoard = GlobalKey();
+  final GlobalKey _kReplay = GlobalKey();
+  bool _tourChecked = false;
+  static const _tourSeenKey = 'tour_seen_sales_leaderboard_v1';
 
   @override
   void initState() {
@@ -100,12 +112,27 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
     return l;
   }
 
+  // Every rep on the board (id -> name), de-duped and sorted by name, for the
+  // rep multi-select. Stable across filters since it reads the raw rows.
+  List<MapEntry<String, String>> get _repList {
+    final seen = <String, String>{};
+    for (final r in _rows) {
+      final id = (r['id'] ?? '').toString();
+      if (id.isEmpty) continue;
+      seen.putIfAbsent(id, () => (r['name'] ?? 'Unknown Rep').toString());
+    }
+    final list = seen.entries.toList()
+      ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+    return list;
+  }
+
   List<Map<String, dynamic>> get _visibleRows {
     final branchActive = _branch.isNotEmpty;
     final list = <Map<String, dynamic>>[];
     for (final raw in _rows) {
       final r = Map<String, dynamic>.from(raw as Map);
       if (_hideFormer && r['former'] == true) continue;
+      if (_appliedReps.isNotEmpty && !_appliedReps.contains((r['id'] ?? '').toString())) continue;
       if (branchActive) {
         final bb = r['byBranch'];
         final b = (bb is Map) ? bb[_branch] : null;
@@ -173,6 +200,20 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
 
   @override
   Widget build(BuildContext context) {
+    // Wrap in ShowCaseWidget so the guided tour can spotlight elements. The
+    // builder's context sits UNDER ShowCaseWidget, so ShowCaseWidget.of() works.
+    return ShowCaseWidget(
+      blurValue: 0.4,
+      builder: (context) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
+    // Auto-start the tour once per user, after the board has loaded.
+    if (!_loading && !_tourChecked) {
+      _tourChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
+    }
     final visible = _visibleRows;
     return Scaffold(
       backgroundColor: _bg,
@@ -186,23 +227,61 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Sales Leaderboard',
-                      style: TextStyle(color: _textDark, fontSize: 22, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 3),
-                  const Text('Live from AccuLynx + RepCard · refreshed hourly',
-                      style: TextStyle(color: _textLight, fontSize: 12.5)),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _filterChip(Icons.date_range, _periodLabel, true, _openPeriodSelector),
-                      _filterChip(Icons.apartment_outlined,
-                          _branch.isEmpty ? 'All Branches' : _branch, _branch.isNotEmpty, _openBranchSelector),
-                      _filterChip(Icons.groups_outlined,
-                          _team.isEmpty ? 'All Teams' : _team, _team.isNotEmpty, _openTeamSelector),
-                      _hideFormerChip(),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Sales Leaderboard',
+                                style: TextStyle(color: _textDark, fontSize: 22, fontWeight: FontWeight.w800)),
+                            SizedBox(height: 3),
+                            Text('Live from AccuLynx + RepCard · refreshed hourly',
+                                style: TextStyle(color: _textLight, fontSize: 12.5)),
+                          ],
+                        ),
+                      ),
+                      Showcase(
+                        key: _kReplay,
+                        title: 'Replay anytime',
+                        description: 'Tap here to replay this quick tour whenever you want a refresher.',
+                        child: GestureDetector(
+                          onTap: () => _startTour(context),
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: _bg,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _border),
+                            ),
+                            child: const Icon(Icons.question_mark, size: 18, color: _textLight),
+                          ),
+                        ),
+                      ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+                  Showcase(
+                    key: _kFilters,
+                    title: 'Filter the board',
+                    description: 'Pick a time period or a custom date range, or narrow the board to one branch, one team, or hide former reps.',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _filterChip(Icons.date_range, _periodLabel, true, _openPeriodSelector),
+                        _filterChip(Icons.apartment_outlined,
+                            _branch.isEmpty ? 'All Branches' : _branch, _branch.isNotEmpty, _openBranchSelector),
+                        _filterChip(Icons.groups_outlined,
+                            _team.isEmpty ? 'All Teams' : _team, _team.isNotEmpty, _openTeamSelector),
+                        _hideFormerChip(),
+                        _filterChip(Icons.person_outline,
+                            _appliedReps.isEmpty ? 'All Reps' : '${_appliedReps.length} Reps',
+                            _appliedReps.isNotEmpty, _openRepSelector),
+                      ],
+                    ),
                   ),
                   if (_period == 'custom') ...[
                     const SizedBox(height: 10),
@@ -230,7 +309,19 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                           child: ListView.builder(
                             padding: const EdgeInsets.all(14),
                             itemCount: visible.length,
-                            itemBuilder: (context, i) => _row(visible[i], i),
+                            itemBuilder: (context, i) {
+                              final row = _row(visible[i], i);
+                              // Spotlight the top row to explain the ranking.
+                              if (i == 0) {
+                                return Showcase(
+                                  key: _kBoard,
+                                  title: 'The live ranking',
+                                  description: 'Reps are ranked by contract amount for the selected period. Pull down to refresh.',
+                                  child: row,
+                                );
+                              }
+                              return row;
+                            },
                           ),
                         ),
             ),
@@ -239,6 +330,25 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
         ),
       ),
     );
+  }
+
+  // Walk the tour down the screen: filters -> the board -> the replay button.
+  void _startTour(BuildContext context) {
+    final keys = <GlobalKey>[_kFilters];
+    if (_visibleRows.isNotEmpty) keys.add(_kBoard);
+    keys.add(_kReplay);
+    ShowCaseWidget.of(context).startShowCase(keys);
+  }
+
+  // First visit only: run the tour once, then remember it per user/device.
+  Future<void> _maybeAutoStartTour(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_tourSeenKey) == true) return;
+      await prefs.setBool(_tourSeenKey, true);
+      if (!mounted) return;
+      _startTour(context);
+    } catch (_) {}
   }
 
   Widget _hideFormerChip() {
@@ -320,6 +430,124 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
         options: [const MapEntry('', 'All Teams'), for (final t in _teamOptions) MapEntry(t, t)],
         onSelect: (v) => setState(() => _team = v),
       );
+
+  // Rep multi-select sheet (mirrors the web panel): search + checkboxes with a
+  // deferred apply — the table only changes on "Show Selected".
+  void _openRepSelector() {
+    final draft = Set<String>.from(_appliedReps);
+    String search = '';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: StatefulBuilder(
+              builder: (ctx, setSheet) {
+                final reps = _repList
+                    .where((rp) => rp.value.toLowerCase().contains(search.toLowerCase()))
+                    .toList();
+                void toggle(String id) => setSheet(() {
+                      if (draft.contains(id)) {
+                        draft.remove(id);
+                      } else {
+                        draft.add(id);
+                      }
+                    });
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Filter by rep', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: TextField(
+                        onChanged: (v) => setSheet(() => search = v),
+                        decoration: InputDecoration(
+                          hintText: 'Search reps…',
+                          hintStyle: const TextStyle(color: _textPlaceholder, fontSize: 14),
+                          prefixIcon: const Icon(Icons.search, size: 20, color: _textLight),
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _border)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _border)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _primary)),
+                        ),
+                      ),
+                    ),
+                    Flexible(
+                      child: reps.isEmpty
+                          ? const Padding(padding: EdgeInsets.all(24), child: Text('No reps found', style: TextStyle(color: _textPlaceholder)))
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: reps.length,
+                              itemBuilder: (c, i) {
+                                final rp = reps[i];
+                                final checked = draft.contains(rp.key);
+                                return InkWell(
+                                  onTap: () => toggle(rp.key),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                    child: Row(
+                                      children: [
+                                        Checkbox(
+                                          value: checked,
+                                          activeColor: _primary,
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          onChanged: (_) => toggle(rp.key),
+                                        ),
+                                        Expanded(child: Text(rp.value, style: const TextStyle(fontSize: 15, color: _textDark))),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    const Divider(height: 1, color: _border),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                      child: Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => setSheet(() => draft.clear()),
+                            child: const Text('Clear', style: TextStyle(color: _textLight, fontWeight: FontWeight.w600)),
+                          ),
+                          const Spacer(),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primary,
+                              foregroundColor: _white,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () {
+                              setState(() => _appliedReps = Set<String>.from(draft));
+                              Navigator.pop(ctx);
+                            },
+                            child: Text('Show Selected (${draft.length})', style: const TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   void _openSelector({
     required String title,
@@ -528,7 +756,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItemActive(Icons.leaderboard_outlined, 'Leaderboard'),
+              _navItemActive(Icons.leaderboard_outlined, 'Sales'),
               _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
               _navItem(context, Icons.apps_outlined, 'Tools', false, '/manager-apps-tools-items'),
               _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
