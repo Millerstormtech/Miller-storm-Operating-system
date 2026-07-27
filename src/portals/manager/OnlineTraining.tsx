@@ -1802,7 +1802,7 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
               <div style={{ fontSize: 14, color: '#5b6670', lineHeight: 1.55, marginBottom: 22 }}>
                 {quizModal.mode === 'retry'
-                  ? <>You scored <b>{quizModal.pct}%</b>. You need <b>{Math.round(QUIZ_PASS_THRESHOLD * 100)}%</b> to move on. Give it another try — score above {Math.round(QUIZ_PASS_THRESHOLD * 100)}% and you'll advance to the next step.</>
+                  ? <>You scored <b>{quizModal.pct}%</b>. You need <b>{Math.round(QUIZ_PASS_THRESHOLD * 100)}%</b> to move on. Give it another try: score above {Math.round(QUIZ_PASS_THRESHOLD * 100)}% and you'll advance to the next step.</>
                   : <>You scored <b>{quizModal.pct}%</b> again. Your performance isn't there yet, so please go through the lesson once more, then retake the quiz.</>}
               </div>
               {quizModal.mode === 'retry' ? (
