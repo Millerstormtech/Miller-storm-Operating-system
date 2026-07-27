@@ -10,8 +10,11 @@ import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
-import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
+import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
+import { GuidedTour } from "../shared/guided-tour/GuidedTour";
+import { TRAINING_CENTER_TOUR } from "../shared/guided-tour/definitions/trainingCenter";
+import { TRAINING_COURSE_TOUR } from "../shared/guided-tour/definitions/trainingCourse";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -648,7 +651,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
       <div className={`training-center${selectedCourse ? (mobileCourseScreen === 'lesson' ? ' mobile-lesson-active' : ' mobile-overview-active') : ''}`}>
         {/* Always show tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+      <div data-tour="tabs" style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
         <button
           type="button"
           onClick={() => {
@@ -751,6 +754,16 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           )}
         </button>
       </div>
+      {/* Exactly one tour is mounted per visible view, so there is never more
+          than one "?" or auto-start candidate, and the header's "?" always
+          restarts whichever view is on screen. */}
+      {/* `key` forces a fresh instance when the view swaps, so no tour state
+          (open step, measured rect) leaks from the library tour into the
+          course tour. Without it React reuses the same instance. */}
+      {selectedCourse
+        ? <GuidedTour key="training-course" tour={TRAINING_COURSE_TOUR} ready={!isCourseLoading} />
+        : <GuidedTour key="training-center" tour={TRAINING_CENTER_TOUR} ready={!isLoading} />}
+
       {isCourseLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
           <div style={{ textAlign: 'center' }}>
@@ -772,8 +785,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       return (
         <>
           <div className="training-center-header">
-            <div className="panel-header">Training Center</div>
-            <div className="training-center-search">
+            {/* No title here: the unified PageHeader band supplies
+                "Training Center" from the sidebar label. */}
+            <div className="training-center-search" data-tour="search">
               <input
                 className="field-input"
                 placeholder="Search trainings or videos"
@@ -790,7 +804,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               </div>
             </div>
           ) : filteredCourses.length > 0 ? (
-            <div className="training-card-grid">
+            <div className="training-card-grid" data-tour="course-grid">
               {filteredCourses.map((course: Course) => {
                 const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
                 return (
@@ -1482,7 +1496,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   </div>
                 </div>
               ) : (
-                <div className="course-page-editor-body">
+                <div className="course-page-editor-body" data-tour="video-area">
                   <div className="course-page-body-input"
                     dangerouslySetInnerHTML={{ __html: (activePage.body || '').replace(/(<iframe[^>]*vimeo[^>]*)loading="lazy"/gi, '$1') }}
                     style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '4px', whiteSpace: 'pre-wrap', minHeight: 'auto', maxHeight: 'none', overflow: 'visible' }}
@@ -1741,7 +1755,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             />
           )}
           
-          <div className={`course-pages-left ${isMobileSidebarOpen ? 'mobile-open' : ''}`} style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '600px' }}>
+          <div data-tour="lesson-sidebar" className={`course-pages-left ${isMobileSidebarOpen ? 'mobile-open' : ''}`} style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '600px' }}>
             {/* Mobile Header */}
             <div className="course-modules-mobile-header">
               <h3>Course Modules</h3>
@@ -1961,7 +1975,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     </div>
                   </div>
                 ) : (
-                  <div className="course-page-editor-body">
+                  <div className="course-page-editor-body" data-tour="video-area">
                     <div
                       className="course-page-body-input"
                       dangerouslySetInnerHTML={{ __html: (activePage.body || "").replace(/(<iframe[^>]*vimeo[^>]*)loading="lazy"/gi, '$1') }}
@@ -2105,6 +2119,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           return shouldShow;
         })() && (
           <button
+            data-tour="course-ai"
             onClick={() => setShowAIChat(p => !p)}
             style={{
               position: "fixed", bottom: "24px", right: "24px", zIndex: 500,

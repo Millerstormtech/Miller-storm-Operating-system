@@ -7,8 +7,8 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // portal spec). Team Structure, Business Planner, Task Tracker and the Master
 // Bot Builder are intentionally NOT here. (Raise a Ticket lives in the top bar,
 // not the sidebar.)
-const baseItems = [
-  { id: "dashboard", label: "Dashboard", toggleKey: "dashboard" },
+export const salesSidebarItems = [
+  { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
@@ -17,6 +17,8 @@ const baseItems = [
   { id: "aiChat", label: "Jay's AI Clone", toggleKey: "aiChat" },
   { id: "profile", label: "Profile", toggleKey: "profile" },
 ];
+
+const baseItems = salesSidebarItems;
 
 type SalesSidebarProps = {
   activeId: string;
@@ -48,7 +50,11 @@ export function SalesSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesS
     <Sidebar
       header={
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%', marginTop: -30 }}>
-          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40 }} />
+          {/* Decorative only. The 160px box is mostly transparent padding and the
+              negative bottom margin pulls the menu up under it, so without
+              pointer-events:none the invisible overlap swallows clicks meant for
+              the first menu item. */}
+          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40, pointerEvents: 'none' }} />
         </div>
       }
       items={sidebarItems}

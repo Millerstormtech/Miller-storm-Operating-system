@@ -9,9 +9,11 @@ import { useAuth } from "../../contexts/AuthContext";
 type AdminPageWrapperProps = {
   children: ReactNode;
   currentView: AdminViewId;
+  pageTitle?: string;
+  pageSubtitle?: string;
 };
 
-export function AdminPageWrapper({ children, currentView }: AdminPageWrapperProps) {
+export function AdminPageWrapper({ children, currentView, pageTitle, pageSubtitle }: AdminPageWrapperProps) {
   const { user } = useAuth();
   const router = useRouter();
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -52,7 +54,7 @@ export function AdminPageWrapper({ children, currentView }: AdminPageWrapperProp
 
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
-      <AdminLayout currentView={currentView}>
+      <AdminLayout currentView={currentView} pageTitle={pageTitle} pageSubtitle={pageSubtitle}>
         {allowed === false ? null : children}
       </AdminLayout>
     </ProtectedRoute>

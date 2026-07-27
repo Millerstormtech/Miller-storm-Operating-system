@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Layout } from "../../components/Layout";
-import { CLevelSidebar } from "../../components/CLevelSidebar";
+import { CLevelSidebar, cLevelSidebarItems } from "../../components/CLevelSidebar";
 import { Header } from "../../components/Header";
+import { PageHeader } from "../../components/PageHeader";
+import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
@@ -35,13 +37,16 @@ type CLevelViewId =
 type CLevelLayoutProps = {
   children: React.ReactNode;
   currentView: CLevelViewId;
+  pageTitle?: string;
+  pageSubtitle?: string;
 };
 
-export function CLevelLayout({ children, currentView }: CLevelLayoutProps) {
+export function CLevelLayout({ children, currentView, pageTitle, pageSubtitle }: CLevelLayoutProps) {
   const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   // Redirect to the dashboard if this page's feature toggle is off for the user.
   useFeatureGate(user?.id, currentView, C_LEVEL_VIEW_TOGGLE, "/c-level/dashboard");
+  const resolvedTitle = resolvePageTitle(cLevelSidebarItems, currentView, pageTitle);
 
   return (
     <Layout
@@ -65,6 +70,7 @@ export function CLevelLayout({ children, currentView }: CLevelLayoutProps) {
         />
       }
     >
+      {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} /> : null}
       {children}
     </Layout>
   );

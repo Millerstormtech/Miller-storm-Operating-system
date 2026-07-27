@@ -83,10 +83,6 @@ export function BranchManagerDashboard() {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1 style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 800, color: "#111827" }}>Branch Manager Dashboard</h1>
-      <p style={{ margin: "0 0 24px", color: "#6b7280", fontSize: 14 }}>
-        Company-wide overview · this month · live from AccuLynx + RepCard
-      </p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 28 }}>
         <StatCard label="Revenue (MTD)" value={loading ? "…" : money(totalRevenue)} sub={`${activeReps} active reps`} />

@@ -5,9 +5,6 @@ import { AppsToolsViewer } from "../../src/components/AppsToolsViewer";
 const ManagerAppsToolsPage: NextPage = () => {
   return (
     <SalesTeamLeadLayout currentView="apps-tools">
-      <div className="page-header">
-        <h1 className="page-title">Tools & Products</h1>
-      </div>
       <AppsToolsViewer portal="manager" />
     </SalesTeamLeadLayout>
   );

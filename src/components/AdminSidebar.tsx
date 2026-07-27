@@ -5,7 +5,7 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 
 // `path` items navigate to that exact route (used for the per-role dashboards
 // which live outside /admin). Items without `path` navigate to /admin/<id>.
-const allSidebarItems: { id: string; label: string; toggleKey?: string; path?: string }[] = [
+export const adminSidebarItems: { id: string; label: string; toggleKey?: string; path?: string }[] = [
   { id: "cLevelDashboard", label: "C Level Dashboard" },
   { id: "branchManagerDashboard", label: "Branch Manager Dashboard" },
   { id: "salesTeamDashboard", label: "Sales Team Dashboard" },
@@ -13,15 +13,17 @@ const allSidebarItems: { id: string; label: string; toggleKey?: string; path?: s
   { id: "marketingDashboard", label: "Marketing Dashboard" },
   { id: "trainingExecutive", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "userManagement", label: "User Management", toggleKey: "userManagement" },
-  { id: "teamStructure", label: "Team Structure", toggleKey: "teamStructure" },
+  { id: "teamStructure", label: "Organization Chart", toggleKey: "teamStructure" },
   { id: "courseManagement", label: "Course Builder", toggleKey: "courseManagement" },
   { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
   { id: "appsTools", label: "Tools & Products", toggleKey: "appsTools" },
-  { id: "aiBots", label: "Master Bots Builder", toggleKey: "aiBots" },
+  { id: "aiBots", label: "Master Bot Builder", toggleKey: "aiBots" },
   { id: "leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
   { id: "stormChat", label: "StormChat", toggleKey: "stormChat" },
   { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig" },
 ];
+
+const allSidebarItems = adminSidebarItems;
 
 type AdminSidebarProps = {
   activeId: string;
@@ -52,7 +54,9 @@ export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse, onLogout
     <Sidebar
       header={
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%', paddingTop: 0, marginTop: -30 }}>
-          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40 }} />
+          {/* Decorative only: pointer-events:none keeps the transparent overlap
+              from swallowing clicks on the first menu item. */}
+          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40, pointerEvents: 'none' }} />
         </div>
       }
       items={sidebarItems}
