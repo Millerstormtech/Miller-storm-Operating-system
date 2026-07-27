@@ -38,6 +38,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
   DateTime? _to;
   String _branch = '';
   String _team = '';
+  bool _hideFormer = false;
 
   List<dynamic> _rows = [];
   bool _loading = true;
@@ -104,6 +105,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
     final list = <Map<String, dynamic>>[];
     for (final raw in _rows) {
       final r = Map<String, dynamic>.from(raw as Map);
+      if (_hideFormer && r['former'] == true) continue;
       if (branchActive) {
         final bb = r['byBranch'];
         final b = (bb is Map) ? bb[_branch] : null;
@@ -116,10 +118,18 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
       if (_team.isNotEmpty && (r['team'] ?? '').toString() != _team) continue;
       list.add(r);
     }
+    // Tie-break: Contract Amount → Contracts → Claims Filed → Leads Created → Verified Knocks
     list.sort((a, b) {
-      final ra = (a['revenue'] is num) ? a['revenue'] as num : 0;
-      final rb = (b['revenue'] is num) ? b['revenue'] as num : 0;
-      return rb.compareTo(ra);
+      num n(Map m, String k) => (m[k] is num) ? m[k] as num : 0;
+      return n(b, 'revenue').compareTo(n(a, 'revenue')) != 0
+          ? n(b, 'revenue').compareTo(n(a, 'revenue'))
+          : n(b, 'won').compareTo(n(a, 'won')) != 0
+              ? n(b, 'won').compareTo(n(a, 'won'))
+              : n(b, 'filed').compareTo(n(a, 'filed')) != 0
+                  ? n(b, 'filed').compareTo(n(a, 'filed'))
+                  : n(b, 'leadsCreated').compareTo(n(a, 'leadsCreated')) != 0
+                      ? n(b, 'leadsCreated').compareTo(n(a, 'leadsCreated'))
+                      : n(b, 'verifiedKnocks').compareTo(n(a, 'verifiedKnocks'));
     });
     return list;
   }
@@ -191,6 +201,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                           _branch.isEmpty ? 'All Branches' : _branch, _branch.isNotEmpty, _openBranchSelector),
                       _filterChip(Icons.groups_outlined,
                           _team.isEmpty ? 'All Teams' : _team, _team.isNotEmpty, _openTeamSelector),
+                      _hideFormerChip(),
                     ],
                   ),
                   if (_period == 'custom') ...[
@@ -224,6 +235,33 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                         ),
             ),
             _buildBottomNav(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _hideFormerChip() {
+    return GestureDetector(
+      onTap: () => setState(() => _hideFormer = !_hideFormer),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: _hideFormer ? _primary.withOpacity(0.08) : _bg,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: _hideFormer ? _primary.withOpacity(0.45) : _border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_hideFormer ? Icons.visibility_off : Icons.visibility_outlined,
+                size: 15, color: _hideFormer ? _primary : _textLight),
+            const SizedBox(width: 6),
+            Text('Hide former reps',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _hideFormer ? _primary : _textDark)),
           ],
         ),
       ),
@@ -381,6 +419,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
     final knocks = r['verifiedKnocks'] ?? 0;
     final filed = r['filed'] ?? 0;
     final won = r['won'] ?? 0;
+    final leads = r['leadsCreated'] ?? r['lead'] ?? 0;
     final subtitle = [branch, team].where((s) => s.isNotEmpty).join(' · ');
 
     final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : null;
@@ -449,6 +488,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _stat('🚪 Knocks', '$knocks'),
+                _stat('Leads Created', '$leads'),
                 _stat('Claims Filed', '$filed'),
                 _stat('Contracts', '$won'),
               ],
