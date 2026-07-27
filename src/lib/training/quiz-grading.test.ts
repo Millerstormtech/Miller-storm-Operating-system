@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { presentedCount, gradeQuizAttempt } from "./quiz-grading";
+import { presentedCount, gradeQuizAttempt, toLearnerReview } from "./quiz-grading";
 import type { QuizPageLike } from "./quiz-grading";
 
 /** A pool of n questions where question i has correctIndex 0. */
@@ -94,5 +94,30 @@ describe("gradeQuizAttempt", () => {
 
   it("treats a missing answers object as a zero-score attempt", () => {
     expect(gradeQuizAttempt(page(5), {} as any).correct).toBe(0);
+  });
+});
+
+describe("toLearnerReview", () => {
+  it("never reveals the correct answer, on right or wrong questions", () => {
+    const graded = gradeQuizAttempt(page(2), { q1: 0, q2: 2 });
+    const learner = toLearnerReview(graded.review);
+    expect(learner).toEqual([
+      { questionId: "q1", chosenIndex: 0, correct: true },
+      { questionId: "q2", chosenIndex: 2, correct: false },
+    ]);
+    // The whole point: no correctIndex on ANY entry, however serialized.
+    for (const entry of learner) expect("correctIndex" in entry).toBe(false);
+    expect(JSON.stringify(learner)).not.toContain("correctIndex");
+  });
+
+  it("still reports which of the learner's own answers were right", () => {
+    const graded = gradeQuizAttempt(page(5), { q1: 0, q2: 1, q3: 0, q4: 1, q5: 0 });
+    const learner = toLearnerReview(graded.review);
+    expect(learner.filter((r) => r.correct).map((r) => r.questionId)).toEqual(["q1", "q3", "q5"]);
+    expect(learner.filter((r) => !r.correct).map((r) => r.questionId)).toEqual(["q2", "q4"]);
+  });
+
+  it("handles an empty review", () => {
+    expect(toLearnerReview([])).toEqual([]);
   });
 });

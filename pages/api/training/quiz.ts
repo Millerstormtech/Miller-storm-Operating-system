@@ -7,7 +7,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
-import { gradeQuizAttempt } from "../../../src/lib/training/quiz-grading";
+import { gradeQuizAttempt, toLearnerReview } from "../../../src/lib/training/quiz-grading";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["POST"])) return;
@@ -77,6 +77,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     passed: grade.passed,
     score: { correct: grade.correct, total: grade.total },
     pct: grade.pct,
-    review: grade.review,
+    // The learner is told which of THEIR answers were right, never what the
+    // right answer was: otherwise one throwaway attempt would return the whole
+    // answer key and make the retake trivial.
+    review: toLearnerReview(grade.review),
   });
 }

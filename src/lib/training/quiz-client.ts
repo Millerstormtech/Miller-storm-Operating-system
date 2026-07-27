@@ -5,7 +5,9 @@ export type QuizGradeResponse = {
   passed: boolean;
   score: { correct: number; total: number };
   pct: number;
-  review: Array<{ questionId: string; chosenIndex: number; correctIndex: number; correct: boolean }>;
+  // No correctIndex, by design: the server never tells the client what the
+  // right answer was, only whether the rep's own answer was right.
+  review: Array<{ questionId: string; chosenIndex: number; correct: boolean }>;
 };
 
 export async function submitQuizAttempt(params: {
@@ -23,11 +25,13 @@ export async function submitQuizAttempt(params: {
 }
 
 /**
- * questionId -> correctIndex, for the post-submit review UI. The page payload
- * no longer carries correctIndex, so the review screen reads this instead.
+ * questionId -> was the rep's own answer correct, for the post-submit review
+ * UI. This is deliberately all the review screen gets: it can mark the rep's
+ * choice right or wrong, and it cannot point at the right answer, because it
+ * does not know it.
  */
-export function reviewToCorrectMap(review: QuizGradeResponse["review"]): Record<string, number> {
-  const map: Record<string, number> = {};
-  for (const entry of review) map[entry.questionId] = entry.correctIndex;
+export function reviewToCorrectnessMap(review: QuizGradeResponse["review"]): Record<string, boolean> {
+  const map: Record<string, boolean> = {};
+  for (const entry of review) map[entry.questionId] = entry.correct;
   return map;
 }

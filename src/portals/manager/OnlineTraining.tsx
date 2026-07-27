@@ -4,14 +4,13 @@ import { useRouter } from "next/router";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
-import { LessonWatchNote } from "../../components/LessonWatchNote";
 import { LessonTick } from "../../components/LessonTick";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
-import { submitQuizAttempt, reviewToCorrectMap } from "../../lib/training/quiz-client";
+import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -139,9 +138,9 @@ export function ManagerOnlineTrainingPage(props: {
   const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
-  // questionId -> correctIndex, returned by the server after grading (the page
-  // payload no longer carries the answer key).
-  const [quizReview, setQuizReview] = useState<Record<string, number>>({});
+  // questionId -> was the rep's OWN answer correct, from the server's grading
+  // reply. It deliberately does not say what the right answer was.
+  const [quizReview, setQuizReview] = useState<Record<string, boolean>>({});
   const [quizSubmitting, setQuizSubmitting] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
@@ -1526,7 +1525,7 @@ export function ManagerOnlineTrainingPage(props: {
         });
         const pct = Math.round(result.pct * 100);
         setQuizScore(result.score);
-        setQuizReview(reviewToCorrectMap(result.review));
+        setQuizReview(reviewToCorrectnessMap(result.review));
         setQuizSubmitted(true);
 
         if (result.passed) {
@@ -1831,7 +1830,6 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
               {/* Leadership has every step unlocked, so the "watch to the last
                   second to unlock the next step" reminder doesn't apply to them. */}
-              {!isPrivileged && <LessonWatchNote />}
               {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                 <div className="course-page-editor-body">
                   {quizSubmitted && quizScore && (
@@ -1846,17 +1844,22 @@ export function ManagerOnlineTrainingPage(props: {
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
                         {q.options.map((option: string, optIdx: number) => {
                           const isSelected = selectedAnswers[q.id] === optIdx;
-                          const isCorrect = (quizReview[q.id] ?? q.correctIndex) === optIdx;
+                          // Only the rep's OWN answer is ever marked. A question they got
+                          // wrong is marked wrong and the right option stays unmarked:
+                          // the client is never told the answer.
+                          const showCorrect = quizSubmitted && isSelected && quizReview[q.id] === true;
+                          const showWrong = quizSubmitted && isSelected && quizReview[q.id] === false;
                           return (
                             <div key={optIdx} onClick={() => !quizSubmitted && setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
-                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (isCorrect ? '#10b981' : isSelected ? '#ef4444' : '#e5e7eb') : (isSelected ? '#3b82f6' : '#e5e7eb'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (isCorrect ? '#d1fae5' : isSelected ? '#fee2e2' : '#fff') : (isSelected ? '#eff6ff' : '#fff') }}
+                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#e5e7eb') : (isSelected ? '#3b82f6' : '#e5e7eb'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (showCorrect ? '#d1fae5' : showWrong ? '#fee2e2' : '#fff') : (isSelected ? '#eff6ff' : '#fff') }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (isCorrect ? '#10b981' : isSelected ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (isCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (showCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />}
                                 </div>
                                 <span style={{ fontSize: 14 }}>{option}</span>
-                                {quizSubmitted && isCorrect && <span style={{ marginLeft: 'auto', color: '#10b981' }}>✓</span>}
+                                {showCorrect && <span style={{ marginLeft: 'auto', color: '#10b981', fontWeight: 700 }}>✓ Correct</span>}
+                                  {showWrong && <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 700 }}>✗ Incorrect</span>}
                               </div>
                             </div>
                           );
@@ -2151,7 +2154,6 @@ export function ManagerOnlineTrainingPage(props: {
                     Share
                   </button>
                 </div>
-                {!isPrivileged && <LessonWatchNote />}
                 {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                   <div className="course-page-editor-body">
                     {quizSubmitted && quizScore && (
@@ -2170,7 +2172,11 @@ export function ManagerOnlineTrainingPage(props: {
                           <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
                           {q.options.map((option: string, optIdx: number) => {
                             const isSelected = selectedAnswers[q.id] === optIdx;
-                            const isCorrect = (quizReview[q.id] ?? q.correctIndex) === optIdx;
+                            // Only the rep's OWN answer is ever marked. A question they got
+                            // wrong is marked wrong and the right option stays unmarked:
+                            // the client is never told the answer.
+                            const showCorrect = quizSubmitted && isSelected && quizReview[q.id] === true;
+                            const showWrong = quizSubmitted && isSelected && quizReview[q.id] === false;
                             const showResult = quizSubmitted;
                             return (
                               <div
@@ -2180,10 +2186,10 @@ export function ManagerOnlineTrainingPage(props: {
                                   padding: "12px 16px",
                                   marginBottom: 12,
                                   border: "2px solid",
-                                  borderColor: showResult ? (isCorrect ? "#10b981" : isSelected ? "#ef4444" : "#e5e7eb") : (isSelected ? "#3b82f6" : "#e5e7eb"),
+                                  borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#e5e7eb") : (isSelected ? "#3b82f6" : "#e5e7eb"),
                                   borderRadius: 8,
                                   cursor: quizSubmitted ? "default" : "pointer",
-                                  backgroundColor: showResult ? (isCorrect ? "#d1fae5" : isSelected ? "#fee2e2" : "#fff") : (isSelected ? "#eff6ff" : "#fff")
+                                  backgroundColor: showResult ? (showCorrect ? "#d1fae5" : showWrong ? "#fee2e2" : "#fff") : (isSelected ? "#eff6ff" : "#fff")
                                 }}
                               >
                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -2193,8 +2199,8 @@ export function ManagerOnlineTrainingPage(props: {
                                       height: 20,
                                       borderRadius: "50%",
                                       border: "2px solid",
-                                      borderColor: showResult ? (isCorrect ? "#10b981" : isSelected ? "#ef4444" : "#d1d5db") : (isSelected ? "#3b82f6" : "#d1d5db"),
-                                      backgroundColor: isSelected ? (showResult ? (isCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "#fff",
+                                      borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#d1d5db") : (isSelected ? "#3b82f6" : "#d1d5db"),
+                                      backgroundColor: isSelected ? (showResult ? (showCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "#fff",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center"
@@ -2203,7 +2209,8 @@ export function ManagerOnlineTrainingPage(props: {
                                     {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#fff" }} />}
                                   </div>
                                   <span style={{ fontSize: 14 }}>{option}</span>
-                                  {showResult && isCorrect && <span style={{ marginLeft: "auto", color: "#10b981" }}>✓</span>}
+                                  {showCorrect && <span style={{ marginLeft: "auto", color: "#10b981", fontWeight: 700 }}>✓ Correct</span>}
+                                  {showWrong && <span style={{ marginLeft: "auto", color: "#ef4444", fontWeight: 700 }}>✗ Incorrect</span>}
                                 </div>
                               </div>
                             );

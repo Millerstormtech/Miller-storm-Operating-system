@@ -38,6 +38,16 @@ export type GradeResult = {
 };
 
 /**
+ * A review entry as the LEARNER is allowed to see it: which answer they gave
+ * and whether it was right. NOT which answer was correct.
+ */
+export type LearnerReviewEntry = {
+  questionId: string;
+  chosenIndex: number;
+  correct: boolean;
+};
+
+/**
  * How many questions this quiz presents. THE SERVER DECIDES THE DENOMINATOR:
  * a submission that contains one answer must score 1 of 10, never 1 of 1.
  *
@@ -77,4 +87,26 @@ export function gradeQuizAttempt(page: QuizPageLike, answers: SubmittedAnswers):
   const correct = Math.min(review.filter((r) => r.correct).length, total);
   const pct = total > 0 ? correct / total : 0;
   return { correct, total, pct, passed: total > 0 && pct >= QUIZ_PASS_THRESHOLD, review };
+}
+
+/**
+ * Reduce a review to what a learner may receive: `correctIndex` is dropped, so
+ * a rep who got a question wrong is told ONLY that it was wrong, never what the
+ * right answer was.
+ *
+ * This is load-bearing for anti-cheat, not just pedagogy. If the grading reply
+ * carried the answer key, a rep could submit one throwaway attempt, read every
+ * answer out of the response, and retake with a perfect score. Stripping the
+ * key from the course payload would have been pointless while this response
+ * handed it straight back.
+ *
+ * Rebuilt from an explicit field list, so a future field on ReviewEntry cannot
+ * leak through by accident.
+ */
+export function toLearnerReview(review: ReviewEntry[]): LearnerReviewEntry[] {
+  return (review || []).map((r) => ({
+    questionId: r.questionId,
+    chosenIndex: r.chosenIndex,
+    correct: r.correct,
+  }));
 }
