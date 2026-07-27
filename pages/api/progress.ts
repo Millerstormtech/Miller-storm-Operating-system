@@ -26,7 +26,22 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    const userId = auth.sub;
+    // Whose progress? Self by default. A leader (the same role list the
+    // course-progress bulk mode trusts) may read a specific other user, which
+    // is what the manager Team Training Progress screen does. Anyone else
+    // asking about another user gets an explicit 403, never someone else's
+    // data and never silently their own (that silent fallback is the bug this
+    // fixes: leaders were shown THEIR OWN progress labeled as each member's).
+    const LEADER_ROLES = ['admin', 'c-level', 'branch-manager', 'sales-team-lead'];
+    const requestedUserId = typeof req.query.userId === 'string' ? req.query.userId : '';
+    let userId = auth.sub;
+    if (requestedUserId && requestedUserId !== auth.sub) {
+      if (!LEADER_ROLES.includes((auth.role || '').toString())) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+      userId = requestedUserId;
+    }
     const { courseId } = req.query;
 
     console.log('📊 Progress API GET called for userId:', userId, 'courseId:', courseId);
@@ -74,7 +89,19 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const userId = auth.sub;
+    // Writes are self-only, with ONE exception: an admin may write on behalf
+    // of another user (the leaderboard's Override tool). Before this fix the
+    // body's userId was ignored entirely, so an admin override silently wrote
+    // to the ADMIN'S OWN record and the target rep was never touched.
+    const requestedUserId = typeof req.body.userId === 'string' ? req.body.userId : '';
+    let userId = auth.sub;
+    if (requestedUserId && requestedUserId !== auth.sub) {
+      if ((auth.role || '').toString() !== 'admin') {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+      userId = requestedUserId;
+    }
     const { courseId, completedPages, quizResults, courseCompleted } = req.body;
 
     console.log('💾 Progress API POST called:', { userId, courseId, completedPages: completedPages?.length, courseCompleted });
