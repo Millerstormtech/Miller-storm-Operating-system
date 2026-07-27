@@ -22,11 +22,6 @@ export const SALES_LEADERBOARD_TOUR: TourDefinition = {
       body: "Open this guide anytime for the details, like how branch filtering changes the numbers.",
     },
     {
-      target: "legend",
-      title: "The flags",
-      body: "An orange dot means the rep has no AccuLynx account yet. An X marks a former rep.",
-    },
-    {
       target: "columns",
       title: "Sort any column",
       body: "Click a column name to sort by it, and click again to flip the order. The blue column is the current sort.",
