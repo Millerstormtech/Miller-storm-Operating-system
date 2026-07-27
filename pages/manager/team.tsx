@@ -36,7 +36,7 @@ const TeamPageRoute: NextPage = () => {
   }
 
   return (
-    <SalesTeamLeadLayout currentView="team">
+    <SalesTeamLeadLayout currentView="team" pageTitle="Team Members">
       <TeamPage teamMembers={teamMembers} onTeamMembersChange={handleTeamMembersChange} />
     </SalesTeamLeadLayout>
   );

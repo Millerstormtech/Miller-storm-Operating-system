@@ -8,9 +8,6 @@ const SalesAppsToolsPage: NextPage = () => {
 
   return (
     <SalesLayout currentView="apps-tools" userName={user?.name} userId={user?.id}>
-      <div className="page-header">
-        <h1 className="page-title">Tools & Products</h1>
-      </div>
       <AppsToolsViewer />
     </SalesLayout>
   );

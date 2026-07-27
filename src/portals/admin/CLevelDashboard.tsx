@@ -73,10 +73,6 @@ export function CLevelDashboard() {
   return (
     <div style={{ padding: 24 }}>
       <DevWarningBanner />
-      <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 700, color: "#111827" }}>C-Level Dashboard</h1>
-      <p style={{ margin: "0 0 20px", color: "#6b7280", fontSize: 14 }}>
-        Company-wide Top 10 performers ({salesWindow}) across all branch managers and sales reps, ranked by revenue.
-      </p>
 
       {/* Company totals */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>

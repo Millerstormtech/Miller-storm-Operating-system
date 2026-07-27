@@ -28,7 +28,7 @@ const TaskTrackerPage: NextPage = () => {
   }, []);
 
   return (
-    <SalesTeamLeadLayout currentView="taskTracker">
+    <SalesTeamLeadLayout currentView="taskTracker" pageTitle="Task Tracker">
       <TaskTracker teamMembers={teamMembers} courses={courses} />
     </SalesTeamLeadLayout>
   );

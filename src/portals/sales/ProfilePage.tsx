@@ -92,10 +92,6 @@ export function ProfilePage(props: {
     <div className="profile-page">
       <div className="profile-card">
         <div className="profile-header-row">
-          <div>
-            <div className="profile-title">Profile</div>
-            <div className="profile-subtitle">Your profile information</div>
-          </div>
         </div>
         <div className="profile-photo-row">
           <div className="profile-photo-wrapper">

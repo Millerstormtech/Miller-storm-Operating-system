@@ -124,7 +124,6 @@ export function TrainingLeaderboard() {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: isNarrow ? 16 : 19, fontWeight: 800, color: "#111827" }}>🏆 Course Leaderboard</div>
         {data && (
           <div style={{ fontSize: isNarrow ? 11 : 12, color: "#6b7280" }}>
             Ranked across all {data.totalCourses} courses · {data.totalItems} lessons &amp; quizzes

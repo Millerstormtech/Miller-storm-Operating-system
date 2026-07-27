@@ -572,14 +572,13 @@ const TaskManagerPage: NextPage = () => {
   };
 
   return (
-    <SalesTeamLeadLayout currentView="task-manager">
+    <SalesTeamLeadLayout currentView="task-manager" pageTitle="Team Tasks">
       <style jsx>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }
       `}</style>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0', paddingTop: '0' }}>
-        <h1 className="page-title" style={{ marginTop: '0', marginBottom: '0' }}>Team Tasks</h1>
         <button
           className="btn-primary btn-success"
           onClick={() => setShowCreateModal(true)}

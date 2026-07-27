@@ -42,7 +42,7 @@ const WebTemplatesRoute: NextPage = () => {
   }
 
   return (
-    <SalesTeamLeadLayout currentView="webTemplates">
+    <SalesTeamLeadLayout currentView="webTemplates" pageTitle="Team Web Page Approvals">
       <WebTemplatesPage 
         users={users} 
         managerId={user.id}

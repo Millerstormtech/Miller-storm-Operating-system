@@ -441,8 +441,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
   return (
     <div className="admin-dashboard">
       <div className="admin-dashboard-head">
-        <h1>Dashboard</h1>
-        <p>Live overview of your team, training, bots and social reach.</p>
       </div>
       {sections.map((section) => (
         <div
