@@ -60,6 +60,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       answers,
       score: { correct: grade.correct, total: grade.total },
       passed: true,
+      // Which of their own answers were right, so reopening this quiz later can
+      // still mark the attempt. Never carries the correct option.
+      review: toLearnerReview(grade.review),
       submittedAt: new Date(),
     };
     // Two atomic operations instead of read-modify-write (which loses

@@ -143,6 +143,10 @@ export function ManagerOnlineTrainingPage(props: {
   const [quizReview, setQuizReview] = useState<Record<string, boolean>>({});
   const [quizSubmitting, setQuizSubmitting] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
+  // Set when the rep dismisses the fail dialog to read their answers. It keeps
+  // the pending action (retry, or go relearn the lesson) available on the review
+  // screen, so dismissing the dialog is never a dead end.
+  const [quizFailAction, setQuizFailAction] = useState<{ mode: 'retry' | 'relearn'; pageId: string; prevLessonId: string | null } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
   // Quiz gating (mirrors the Sales TrainingCenter): failed-attempt counter,
   // shuffled question order per quiz, and the pass/fail top-up modal.
@@ -485,12 +489,15 @@ export function ManagerOnlineTrainingPage(props: {
     if (savedResult) {
       setSelectedAnswers(savedResult.answers);
       setQuizScore(savedResult.score);
-      setQuizReview({});
+      // Results saved before server-side grading carry no review; an empty map
+      // means "no marking available", never "every answer was wrong".
+      setQuizReview(reviewToCorrectnessMap(savedResult.review || []));
       setQuizSubmitted(true);
     } else {
       setQuizSubmitted(false);
       setQuizScore(null);
       setQuizReview({});
+      setQuizFailAction(null);
       setSelectedAnswers({});
     }
 
@@ -1569,6 +1576,7 @@ export function ManagerOnlineTrainingPage(props: {
       setQuizScore(null);
       setQuizReview({});
       setQuizError(null);
+      setQuizFailAction(null);
       setSelectedAnswers({});
       const page = pages.find(p => p.id === pageId);
       if (page?.quizQuestions?.length) {
@@ -1583,6 +1591,7 @@ export function ManagerOnlineTrainingPage(props: {
       setQuizScore(null);
       setQuizReview({});
       setQuizError(null);
+      setQuizFailAction(null);
       setSelectedAnswers({});
       if (prevLessonId) {
         setActivePageId(prevLessonId);
@@ -1810,6 +1819,15 @@ export function ManagerOnlineTrainingPage(props: {
               ) : (
                 <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={() => handleQuizRelearn(quizModal.prevLessonId)}>Review Lesson</button>
               )}
+              {/* Dismissing to read the answers must not be a dead end: the
+                  pending action is kept and re-offered on the review screen. */}
+              <button
+                type="button"
+                onClick={() => { setQuizFailAction({ mode: quizModal.mode, pageId: quizModal.pageId, prevLessonId: quizModal.prevLessonId }); setQuizModal(null); }}
+                style={{ width: '100%', marginTop: 10, background: 'none', border: 'none', color: '#5b6670', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                See which answers I got wrong
+              </button>
             </div>
           </div>
         )}
@@ -1884,6 +1902,11 @@ export function ManagerOnlineTrainingPage(props: {
               <div style={{ display: 'flex', gap: 8 }}>
                 {activePage.isQuiz && !quizSubmitted && (
                   <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0) || quizSubmitting}>Submit Quiz</button>
+                )}
+                {activePage.isQuiz && quizSubmitted && quizFailAction && (
+                  quizFailAction.mode === 'retry'
+                    ? <button type="button" className="btn-primary" onClick={() => handleQuizRetry(quizFailAction.pageId)}>Try Again</button>
+                    : <button type="button" className="btn-primary" onClick={() => handleQuizRelearn(quizFailAction.prevLessonId)}>Review Lesson</button>
                 )}
                 {activePage.isQuiz && !quizSubmitted && quizError && (
                   <div style={{ alignSelf: 'center', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>{quizError}</div>
@@ -2317,6 +2340,11 @@ export function ManagerOnlineTrainingPage(props: {
                       >
                         Submit Quiz
                       </button>
+                    )}
+                    {activePage.isQuiz && quizSubmitted && quizFailAction && (
+                      quizFailAction.mode === 'retry'
+                        ? <button type="button" className="btn-primary" onClick={() => handleQuizRetry(quizFailAction.pageId)}>Try Again</button>
+                        : <button type="button" className="btn-primary" onClick={() => handleQuizRelearn(quizFailAction.prevLessonId)}>Review Lesson</button>
                     )}
                     {activePage.isQuiz && !quizSubmitted && quizError && (
                       <div style={{ alignSelf: 'center', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>{quizError}</div>

@@ -10,13 +10,21 @@
 //   2. An earned pass is never downgraded. A failing submission for a page
 //      that already holds a pass leaves the stored pass alone.
 
-import { gradeQuizAttempt, type QuizPageLike, type SubmittedAnswers } from "./quiz-grading";
+import {
+  gradeQuizAttempt,
+  toLearnerReview,
+  type LearnerReviewEntry,
+  type QuizPageLike,
+  type SubmittedAnswers,
+} from "./quiz-grading";
 
 export type StoredQuizResult = {
   pageId: string;
   answers?: SubmittedAnswers | null;
   score?: { correct?: number; total?: number } | null;
   passed?: boolean;
+  /** Which of the learner's own answers were right. Never the answer key. */
+  review?: LearnerReviewEntry[];
   submittedAt?: Date | string;
 };
 
@@ -70,6 +78,7 @@ export function resolveIncomingQuizResults(params: {
         answers: entry.answers || {},
         score: { correct: grade.correct, total: grade.total },
         passed: true,
+        review: toLearnerReview(grade.review),
         submittedAt: new Date(),
       });
     } else {

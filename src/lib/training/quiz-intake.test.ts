@@ -104,6 +104,30 @@ describe("resolveIncomingQuizResults", () => {
     expect(out.results[0]).toEqual(stored[0]);
   });
 
+  it("stores which of the learner's own answers were right, without the answer key", () => {
+    const mostlyRight = { a1: 0, a2: 0, a3: 0, a4: 0, a5: 1 }; // 4 of 5
+    const out = resolveIncomingQuizResults({
+      quizPages,
+      stored: [],
+      incoming: [{ pageId: "quiz-a", answers: mostlyRight, passed: true }],
+    });
+    const review = out.results[0].review!;
+    expect(review).toHaveLength(5);
+    expect(review.filter((r) => r.correct).map((r) => r.questionId)).toEqual(["a1", "a2", "a3", "a4"]);
+    expect(review.find((r) => r.questionId === "a5")).toEqual({ questionId: "a5", chosenIndex: 1, correct: false });
+    // The stored review must never carry the correct option.
+    expect(JSON.stringify(review)).not.toContain("correctIndex");
+  });
+
+  it("leaves a preserved historical result's missing review alone rather than inventing one", () => {
+    // Results saved before server-side grading have no review. They must stay
+    // exactly as stored, so an absent review means "no marking available".
+    const legacy = [{ pageId: "quiz-a", answers: allRightA, score: { correct: 5, total: 5 }, passed: true }];
+    const out = resolveIncomingQuizResults({ quizPages, stored: legacy, incoming: [{ ...legacy[0] }] });
+    expect(out.results[0]).toEqual(legacy[0]);
+    expect(out.results[0].review).toBeUndefined();
+  });
+
   it("ignores an incoming result for a page that is not a gradable quiz", () => {
     const out = resolveIncomingQuizResults({
       quizPages,
