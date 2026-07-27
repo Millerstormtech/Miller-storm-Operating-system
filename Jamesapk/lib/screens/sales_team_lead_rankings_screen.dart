@@ -198,6 +198,159 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
 
   String get _periodLabel => _periods.firstWhere((p) => p['key'] == _period)['label']!;
 
+  // --- Compact filter bar: one "Filters" button + a bottom sheet ---------------
+
+  // How many narrowing filters are active (period is always applied, so it isn't
+  // counted here — it's shown in the summary text instead).
+  int get _activeFilterCount {
+    var n = 0;
+    if (_branch.isNotEmpty) n++;
+    if (_team.isNotEmpty) n++;
+    if (_appliedReps.isNotEmpty) n++;
+    if (_hideFormer) n++;
+    return n;
+  }
+
+  // A short, human summary of what's applied, shown next to the Filters button.
+  String get _filterSummary {
+    final parts = <String>[_periodLabel];
+    if (_branch.isNotEmpty) parts.add(_branch);
+    if (_team.isNotEmpty) parts.add(_team);
+    if (_appliedReps.isNotEmpty) parts.add('${_appliedReps.length} reps');
+    if (_hideFormer) parts.add('Active only');
+    return parts.join(' · ');
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _period = 'month';
+      _from = null;
+      _to = null;
+      _branch = '';
+      _team = '';
+      _appliedReps = {};
+      _hideFormer = false;
+    });
+    _fetch();
+  }
+
+  // The single compact bar that replaces the old chip grid: a "Filters" pill
+  // (with an active-count badge) + a one-line summary of the current filters.
+  Widget _filtersBar() {
+    final active = _activeFilterCount > 0;
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: _openFiltersSheet,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: active ? _primary : _bg,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: active ? _primary : _border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.tune, size: 16, color: active ? _white : _textDark),
+                const SizedBox(width: 6),
+                Text('Filters',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: active ? _white : _textDark)),
+                if (active) ...[
+                  const SizedBox(width: 7),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                    decoration: BoxDecoration(color: _white, borderRadius: BorderRadius.circular(10)),
+                    child: Text('$_activeFilterCount',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _primary)),
+                  ),
+                ],
+                const SizedBox(width: 4),
+                Icon(Icons.keyboard_arrow_down, size: 17, color: active ? _white : _textLight),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            _filterSummary,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12.5, color: _textLight, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // One row inside the Filters sheet: icon + label + current value + chevron.
+  Widget _filterSheetRow(IconData icon, String label, String value, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: _textLight, size: 22),
+      title: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(child: Text(value, style: const TextStyle(fontSize: 13, color: _textLight), overflow: TextOverflow.ellipsis)),
+          const Icon(Icons.chevron_right, color: _textPlaceholder, size: 20),
+        ],
+      ),
+      onTap: onTap,
+    );
+  }
+
+  void _openFiltersSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 12, 4),
+                    child: Row(
+                      children: [
+                        const Text('Filters', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+                        const Spacer(),
+                        if (_activeFilterCount > 0 || _period != 'month')
+                          TextButton(
+                            onPressed: () { _resetFilters(); setSheet(() {}); },
+                            child: const Text('Reset', style: TextStyle(color: _primary, fontWeight: FontWeight.w600)),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Tapping a value row closes this sheet and opens its own picker.
+                  _filterSheetRow(Icons.date_range, 'Period', _periodLabel, () { Navigator.pop(ctx); _openPeriodSelector(); }),
+                  _filterSheetRow(Icons.apartment_outlined, 'Branch', _branch.isEmpty ? 'All Branches' : _branch, () { Navigator.pop(ctx); _openBranchSelector(); }),
+                  _filterSheetRow(Icons.groups_outlined, 'Team', _team.isEmpty ? 'All Teams' : _team, () { Navigator.pop(ctx); _openTeamSelector(); }),
+                  _filterSheetRow(Icons.person_outline, 'Reps', _appliedReps.isEmpty ? 'All Reps' : '${_appliedReps.length} selected', () { Navigator.pop(ctx); _openRepSelector(); }),
+                  SwitchListTile(
+                    value: _hideFormer,
+                    activeColor: _primary,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    secondary: const Icon(Icons.visibility_off_outlined, color: _textLight, size: 22),
+                    title: const Text('Hide former reps', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
+                    onChanged: (v) { setState(() => _hideFormer = v); setSheet(() {}); },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Wrap in ShowCaseWidget so the guided tour can spotlight elements. The
@@ -267,21 +420,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                     key: _kFilters,
                     title: 'Filter the board',
                     description: 'Pick a time period or a custom date range, or narrow the board to one branch, one team, or hide former reps.',
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _filterChip(Icons.date_range, _periodLabel, true, _openPeriodSelector),
-                        _filterChip(Icons.apartment_outlined,
-                            _branch.isEmpty ? 'All Branches' : _branch, _branch.isNotEmpty, _openBranchSelector),
-                        _filterChip(Icons.groups_outlined,
-                            _team.isEmpty ? 'All Teams' : _team, _team.isNotEmpty, _openTeamSelector),
-                        _hideFormerChip(),
-                        _filterChip(Icons.person_outline,
-                            _appliedReps.isEmpty ? 'All Reps' : '${_appliedReps.length} Reps',
-                            _appliedReps.isNotEmpty, _openRepSelector),
-                      ],
-                    ),
+                    child: _filtersBar(),
                   ),
                   if (_period == 'custom') ...[
                     const SizedBox(height: 10),
@@ -349,58 +488,6 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
       if (!mounted) return;
       _startTour(context);
     } catch (_) {}
-  }
-
-  Widget _hideFormerChip() {
-    return GestureDetector(
-      onTap: () => setState(() => _hideFormer = !_hideFormer),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: _hideFormer ? _primary.withOpacity(0.08) : _bg,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _hideFormer ? _primary.withOpacity(0.45) : _border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_hideFormer ? Icons.visibility_off : Icons.visibility_outlined,
-                size: 15, color: _hideFormer ? _primary : _textLight),
-            const SizedBox(width: 6),
-            Text('Hide former reps',
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _hideFormer ? _primary : _textDark)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _filterChip(IconData icon, String label, bool active, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: active ? _primary.withOpacity(0.08) : _bg,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: active ? _primary.withOpacity(0.45) : _border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: active ? _primary : _textLight),
-            const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: active ? _primary : _textDark)),
-            const SizedBox(width: 2),
-            Icon(Icons.keyboard_arrow_down, size: 17, color: active ? _primary : _textLight),
-          ],
-        ),
-      ),
-    );
   }
 
   void _openPeriodSelector() => _openSelector(
