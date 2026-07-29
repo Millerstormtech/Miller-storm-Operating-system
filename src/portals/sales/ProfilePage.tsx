@@ -226,68 +226,6 @@ export function ProfilePage(props: {
           </div>
         </div>
       </div>
-      <div className="form-grid plan-form-grid">
-        <label className="field">
-          <span className="field-label">Web Page Bio</span>
-          <textarea
-            className="field-input"
-            rows={4}
-            value={profile.bio ?? ""}
-            onChange={(e) => update({ bio: e.target.value })}
-            placeholder="Short personal bio that appears on your public page"
-          />
-        </label>
-      </div>
-      <div className="panel-section">
-        <div className="profile-title">Public Web Page Fields</div>
-        <div className="toggle-grid">
-          <label className="toggle-item">
-            <input
-              type="checkbox"
-              checked={profile.publicProfile.showHeadshot}
-              onChange={(e) =>
-                update({
-                  publicProfile: {
-                    ...profile.publicProfile,
-                    showHeadshot: e.target.checked
-                  } as UserProfile["publicProfile"]
-                })
-              }
-            />
-            <span className="toggle-label">Show headshot</span>
-          </label>
-          <label className="toggle-item">
-            <input
-              type="checkbox"
-              checked={profile.publicProfile.showEmail}
-              onChange={(e) =>
-                update({
-                  publicProfile: {
-                    ...profile.publicProfile,
-                    showEmail: e.target.checked
-                  } as UserProfile["publicProfile"]
-                })
-              }
-            />
-            <span className="toggle-label">Show email</span>
-          </label>
-          <label className="toggle-item">
-            <input
-              type="checkbox"
-              checked={profile.publicProfile.showPhone}
-              onChange={(e) =>
-                update({
-                  publicProfile: {
-                    ...profile.publicProfile,
-                    showPhone: e.target.checked
-                  } as UserProfile["publicProfile"]
-                })
-              }
-            />
-            <span className="toggle-label">Show phone</span>
-          </label>
-        </div>
-      </div>
       <div className="profile-save-row">
         <button
           type="button"
