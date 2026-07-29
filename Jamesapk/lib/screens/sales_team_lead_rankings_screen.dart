@@ -34,6 +34,19 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
 
   static const List<String> _branches = ['Fort Worth', 'Dallas', 'West Texas', 'Commercial'];
 
+  // Team key → team-lead display name (from the web org chart). The board shows
+  // the lead's name instead of the raw team key.
+  static const Map<String, String> _teamLeads = {
+    'Gunner': 'Gunner McCullough',
+    'Luke': 'Luke Huber',
+    'Jonathan': 'Jonathan Chambers',
+    'Mike Muscari': 'Mike Muscari',
+    'Cooper': 'Cooper Bledsoe',
+    'Daniel Sabedra': 'Daniel Sabedra',
+  };
+  static const List<String> _teamNames = ['Gunner', 'Luke', 'Jonathan', 'Mike Muscari', 'Cooper', 'Daniel Sabedra'];
+  String _teamLabel(String team) => _teamLeads[team] ?? team;
+
   String _period = 'month';
   DateTime? _from;
   DateTime? _to;
@@ -283,7 +296,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
   String get _filterSummary {
     final parts = <String>[_periodLabel];
     if (_branch.isNotEmpty) parts.add(_branch);
-    if (_team.isNotEmpty) parts.add(_team);
+    if (_team.isNotEmpty) parts.add(_teamLabel(_team));
     if (_appliedReps.isNotEmpty) parts.add('${_appliedReps.length} reps');
     if (_hideFormer) parts.add('Active only');
     return parts.join(' · ');
@@ -399,7 +412,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                   // Tapping a value row closes this sheet and opens its own picker.
                   _filterSheetRow(Icons.date_range, 'Period', _periodLabel, () { Navigator.pop(ctx); _openPeriodSelector(); }),
                   _filterSheetRow(Icons.apartment_outlined, 'Branch', _branch.isEmpty ? 'All Branches' : _branch, () { Navigator.pop(ctx); _openBranchSelector(); }),
-                  _filterSheetRow(Icons.groups_outlined, 'Team', _team.isEmpty ? 'All Teams' : _team, () { Navigator.pop(ctx); _openTeamSelector(); }),
+                  _filterSheetRow(Icons.groups_outlined, 'Team', _team.isEmpty ? 'All Teams' : _teamLabel(_team), () { Navigator.pop(ctx); _openTeamSelector(); }),
                   _filterSheetRow(Icons.person_outline, 'Reps', _appliedReps.isEmpty ? 'All Reps' : '${_appliedReps.length} selected', () { Navigator.pop(ctx); _openRepSelector(); }),
                   _filterSheetRow(Icons.sort, 'Sort by', '$_sortLabel ${_sortDesc ? "↓" : "↑"}', () { Navigator.pop(ctx); _openSortSelector(); }),
                   SwitchListTile(
@@ -504,6 +517,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                 ],
               ),
             ),
+            _buildTotalsStats(),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator(color: _primary))
@@ -533,6 +547,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                           ),
                         ),
             ),
+            _buildTotalsSummary(),
             _buildBottomNav(context),
           ],
         ),
@@ -583,7 +598,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
   void _openTeamSelector() => _openSelector(
         title: 'Team',
         current: _team,
-        options: [const MapEntry('', 'All Teams'), for (final t in _teamOptions) MapEntry(t, t)],
+        options: [const MapEntry('', 'All Teams'), for (final t in _teamNames) MapEntry(t, _teamLabel(t))],
         onSelect: (v) => setState(() => _team = v),
       );
 
@@ -793,6 +808,56 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
     );
   }
 
+  num _sum(String k) => _visibleRows.fold<num>(0, (t, r) => t + ((r[k] is num) ? r[k] as num : 0));
+
+  // Totals stat strip (Knocks / Leads / Claims / Contracts) — shown just under
+  // the filters.
+  Widget _buildTotalsStats() {
+    if (_visibleRows.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      color: _white,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+      child: Row(
+        children: [
+          _totalStat('🚪 Knocks', _sum('verifiedKnocks')),
+          _totalStat('Leads', _sum('leadsCreated')),
+          _totalStat('Claims', _sum('filed')),
+          _totalStat('Contracts', _sum('won')),
+        ],
+      ),
+    );
+  }
+
+  // Rep count + total Contract Amount — pinned below the list (after all cards).
+  Widget _buildTotalsSummary() {
+    final rows = _visibleRows;
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: const BoxDecoration(color: _white, border: Border(top: BorderSide(color: _border))),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('${rows.length} rep${rows.length == 1 ? '' : 's'}',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textLight)),
+          Text('Total ${_money(_sum('revenue'))}',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _green)),
+        ],
+      ),
+    );
+  }
+
+  Widget _totalStat(String label, num value) => Expanded(
+        child: Column(
+          children: [
+            Text('${value.round()}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _textDark)),
+            Text(label, style: const TextStyle(fontSize: 10.5, color: _textLight), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      );
+
   Widget _row(Map<String, dynamic> r, int index) {
     final rank = index + 1;
     final name = (r['name'] ?? 'Unknown Rep').toString();
@@ -804,7 +869,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
     final filed = r['filed'] ?? 0;
     final won = r['won'] ?? 0;
     final leads = r['leadsCreated'] ?? r['lead'] ?? 0;
-    final subtitle = [branch, team].where((s) => s.isNotEmpty).join(' · ');
+    final subtitle = [branch, _teamLabel(team)].where((s) => s.isNotEmpty).join(' · ');
 
     final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : null;
 
