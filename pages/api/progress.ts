@@ -180,12 +180,19 @@ export default async function handler(
       // Storm Bot celebration: fire-and-forget so the completing save stays
       // fast (the helper fans out 70+ notifications). It is failure-isolated
       // and never rejects; the catch is belt-and-braces.
-      celebrateIfCourseCompleted({
-        userId,
-        courseId,
-        progressBefore,
-        progressAfter: progress.toObject(),
-      }).catch(() => {});
+      //
+      // SELF-EARNED ONLY. This endpoint lets an admin write on behalf of another
+      // user (the leaderboard Override tool), and an override must never post a
+      // public "just passed the course" announcement on that rep's behalf: the
+      // whole point of the celebration is that the finish was earned.
+      if (userId === auth.sub) {
+        celebrateIfCourseCompleted({
+          userId,
+          courseId,
+          progressBefore,
+          progressAfter: progress.toObject(),
+        }).catch(() => {});
+      }
 
       res.status(200).json({
         success: true,
