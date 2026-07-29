@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math' as math;
 import '../services/api_client.dart';
-import '../services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
+// Course Leaderboard — mirrors the web "Training Leaderboard": an Overall board
+// ranked across every course (rank tiers, badges, progress rings, Top 3 / Not
+// started sections) plus a By-Course view. Self-contained per panel.
 class CLevelTrainingLeaderboardScreen extends StatefulWidget {
   const CLevelTrainingLeaderboardScreen({super.key});
 
@@ -17,28 +20,59 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
   static const _textDark = Color(0xFF111827);
-  static const _textMedium = Color(0xFF374151);
   static const _textLight = Color(0xFF6B7280);
-  static const _border = Color(0xFFD1D5DB);
-  static const _gold = Color(0xFFFFD700);
-  static const _silver = Color(0xFFC0C0C0);
-  static const _bronze = Color(0xFFCD7F32);
+  static const _textPlaceholder = Color(0xFF9CA3AF);
+  static const _border = Color(0xFFE5E7EB);
+  static const _green = Color(0xFF10B981); // ring fill (same as lesson ticks)
+  static const _ringTrack = Color(0xFFE5E7EB);
+  static const _indigo = Color(0xFF4F46E5); // YOU pill
 
+  static const _medalEmoji = ['🥇', '🥈', '🥉'];
+  static const _medalEdge = [Color(0xFFF59E0B), Color(0xFF9CA3AF), Color(0xFFB45309)];
+
+  // Rank tiers → (bg, fg). Matches web constants.ts TIER_COLORS.
+  static const Map<String, List<Color>> _tierColors = {
+    'Rookie': [Color(0xFFF3F4F6), Color(0xFF6B7280)],
+    'Rising': [Color(0xFFDBEAFE), Color(0xFF1D4ED8)],
+    'Pro': [Color(0xFFDCFCE7), Color(0xFF15803D)],
+    'Ace': [Color(0xFFEDE9FE), Color(0xFF6D28D9)],
+    'Elite': [Color(0xFFFEF3C7), Color(0xFFB45309)],
+    'Legend': [Color(0xFFFDE68A), Color(0xFF7C2D12)],
+  };
+
+  static const Map<String, String> _badgeEmoji = {
+    'halfway': '🚀',
+    'finisher': '🏁',
+    'graduate': '🎓',
+    'test-ace': '🎯',
+  };
+
+  static const _avatarPalette = [
+    Color(0xFF4F46E5), Color(0xFFDB2777), Color(0xFF0891B2), Color(0xFF16A34A),
+    Color(0xFF7C3AED), Color(0xFFEA580C), Color(0xFF0D9488), Color(0xFFB91C1C),
+  ];
+
+  // View
+  String _view = 'overall'; // 'overall' | 'course'
+  bool _loading = true;
+  String? _userId;
+
+  // Overall data
+  List<Map<String, dynamic>> _rows = [];
+  int _totalCourses = 0;
+  int _totalItems = 0;
   List<dynamic> _courses = [];
-  List<dynamic> _playlists = [];
+
+  // By-course data
   dynamic _selectedCourse;
-  dynamic _selectedPlaylist;
-  String _viewType = 'courses'; // 'courses' or 'playlists'
-  List<Map<String, dynamic>> _leaderboardRows = [];
-  bool _isLoadingCourses = true;
-  bool _isLoadingLeaderboard = false;
-  String? _currentUserId;
-  String? _managerId;
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
-  
-  // New state for Team vs Company toggle
-  bool _showTeamOnly = false;
+  List<Map<String, dynamic>> _courseRows = [];
+
+  // Filters
+  String _search = '';
+  String _branch = '';
+  String _team = '';
+  bool _legendOpen = false;
+  bool _notStartedOpen = false;
 
   @override
   void initState() {
@@ -46,259 +80,113 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
     _init();
   }
 
-  // Per-course + team/company scoped cache key so switching the toggle shows the
-  // right cached board.
-  String _lbCacheKey(dynamic course) =>
-      'mgr_lb_${course?['id']}_${_showTeamOnly ? 'team' : 'company'}';
-
   Future<void> _init() async {
-    final user = await AuthService.getStoredUser();
-    if (mounted) {
-      setState(() {
-        _currentUserId = user?['id'] ?? user?['_id'] ?? '';
-        _managerId = _currentUserId; // Managers see their own team
-      });
-    }
-    // Cache-first: fill the picker + last-known board instantly from local
-    // storage, then refresh from the network so the page never hangs on a spinner.
-    final hadCache = await _loadCachedCourses();
-    await Future.wait([
-      _fetchCourses(triggerLeaderboard: !hadCache),
-      _fetchPlaylists(),
-    ]);
-  }
-
-  // Reuse the course list already cached by the Courses screen ('courses_cache').
-  Future<bool> _loadCachedCourses() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cachedJson = prefs.getString('courses_cache');
-      if (cachedJson == null) return false;
-      final data = jsonDecode(cachedJson);
-      final List<dynamic> all = data is List ? data : [];
-      final published = all.where((c) => c['status'] == 'published').toList();
-      if (published.isEmpty) return false;
-      if (mounted) {
-        setState(() {
-          _courses = published;
-          _selectedCourse ??= published[0];
-          _isLoadingCourses = false;
-        });
+      final userStr = prefs.getString('user');
+      if (userStr != null) {
+        final u = jsonDecode(userStr);
+        _userId = (u['id'] ?? u['_id'])?.toString();
       }
-      if (_viewType == 'courses' && _selectedCourse != null) {
-        await _loadCachedLeaderboard(_selectedCourse);
-        _fetchLeaderboard(course: _selectedCourse);
-      }
-      return true;
-    } catch (e) {
-      print('Error loading cached courses: $e');
-      return false;
-    }
+    } catch (_) {}
+    await _fetchOverall();
   }
 
-  Future<void> _loadCachedLeaderboard(dynamic course) async {
+  Future<void> _fetchOverall() async {
+    setState(() => _loading = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cachedJson = prefs.getString(_lbCacheKey(course));
-      if (cachedJson == null) return;
-      final List<dynamic> rows = jsonDecode(cachedJson);
-      if (mounted) {
+      final res = await api
+          .get(Uri.parse('https://millerstorm.tech/api/training/leaderboard?scope=overall'))
+          .timeout(const Duration(seconds: 20));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
         setState(() {
-          _leaderboardRows = rows.cast<Map<String, dynamic>>();
-          _isLoadingLeaderboard = false;
+          _rows = ((data['rows'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e)).toList();
+          _totalCourses = data['totalCourses'] ?? 0;
+          _totalItems = data['totalItems'] ?? 0;
+          _courses = (data['courses'] as List?) ?? [];
+          _loading = false;
         });
-      }
-    } catch (e) {
-      print('Error loading cached leaderboard: $e');
-    }
-  }
-
-  Future<void> _fetchPlaylists() async {
-    if (_managerId == null) return;
-    try {
-      final response = await api.get(Uri.parse('https://millerstorm.tech/api/playlists?managerId=$_managerId'));
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        setState(() {
-          _playlists = data;
-          if (_viewType == 'playlists' && data.isNotEmpty) {
-            _selectedPlaylist = data[0];
-          }
-        });
-      }
-    } catch (e) {
-      print('Error fetching playlists: $e');
-    }
-  }
-
-  Future<void> _fetchCourses({bool triggerLeaderboard = true}) async {
-    try {
-      // summary=true → only course id/title/status (no heavy page content); the
-      // leaderboard rows come from the optimized /api/leaderboard endpoint.
-      final response = await api
-          .get(Uri.parse('https://millerstorm.tech/api/courses?summary=true'))
-          .timeout(const Duration(seconds: 15));
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        final published = data.where((c) => c['status'] == 'published').toList();
-
-        setState(() {
-          _courses = published;
-          if (_selectedCourse == null && published.isNotEmpty) {
-            _selectedCourse = published[0];
-          }
-          _isLoadingCourses = false;
-        });
-
-        // Only fetch here when the cache path didn't already (no duplicate call).
-        if (triggerLeaderboard && _viewType == 'courses' && _selectedCourse != null) {
-          _fetchLeaderboard(course: _selectedCourse);
-        }
-      }
-    } catch (e) {
-      print('Error fetching courses: $e');
-      if (mounted) setState(() => _isLoadingCourses = false);
-    }
-  }
-
-  Future<void> _fetchLeaderboard({dynamic course, dynamic playlist}) async {
-    setState(() {
-      // Keep any cached rows visible for course mode; only spin when empty.
-      _isLoadingLeaderboard = _leaderboardRows.isEmpty;
-    });
-
-    try {
-      // If playlist mode, use the old approach for now (we can optimize playlists later)
-      if (_viewType == 'playlists' && playlist != null) {
-        // Original playlist logic here
-        final usersResponse = await api.get(Uri.parse('https://millerstorm.tech/api/users'));
-        if (usersResponse.statusCode != 200) throw Exception('Failed to fetch users');
-        
-        final List<dynamic> allUsers = jsonDecode(usersResponse.body);
-        
-        Set<String>? assignedUserIds;
-        try {
-          final playlistId = playlist['_id'] ?? playlist['id'];
-          final assignRes = await api.get(Uri.parse('https://millerstorm.tech/api/playlist-assignments?playlistId=$playlistId'));
-          if (assignRes.statusCode == 200) {
-            final List<dynamic> assignments = jsonDecode(assignRes.body);
-            assignedUserIds = Set.from(assignments.map((a) => a['assignedToUserId'].toString()));
-          }
-        } catch (e) {
-          print('Error fetching playlist assignments: $e');
-        }
-
-        final targetUsers = allUsers.where((u) {
-          final userId = (u['id'] ?? u['_id']).toString();
-          final isDeleted = u['deleted'] == true;
-          final isSuspended = u['suspended'] == true;
-          if (isDeleted || isSuspended) return false;
-
-          final roles = u['roles'] as List<dynamic>? ?? [];
-          final hasTargetRole = u['role'] == 'sales-team-lead' || u['role'] == 'sales' ||
-                               roles.contains('sales-team-lead') || roles.contains('sales');
-          if (!hasTargetRole) return false;
-
-          return assignedUserIds?.contains(userId) ?? false;
-        }).toList();
-
-        final targetCourseId = playlist['courseId'];
-        final selectedModules = playlist['selectedModules'] as List<dynamic>? ?? [];
-        final targetModuleIds = Set.from(selectedModules);
-        final totalModules = targetModuleIds.length;
-
-        final List<Map<String, dynamic>> builtRows = [];
-        final List<Future<void>> progressFutures = targetUsers.map((u) async {
-          try {
-            final userId = u['id'] ?? u['_id'];
-            final progRes = await api.get(
-              Uri.parse('https://millerstorm.tech/api/course-progress?userId=$userId&courseIds=$targetCourseId')
-            );
-            
-            if (progRes.statusCode == 200) {
-              final progData = jsonDecode(progRes.body);
-              final rec = progData[targetCourseId] ?? {};
-              final completedPages = (rec['completedPages'] as List<dynamic>? ?? []);
-              final doneCount = completedPages.where((id) => targetModuleIds.contains(id)).length;
-              final pct = totalModules > 0 ? ((doneCount / totalModules) * 100).round() : 0;
-              
-              builtRows.add({
-                'id': userId,
-                'name': u['name'] ?? u['email'] ?? 'Unknown',
-                'email': u['email'] ?? '',
-                'headshotUrl': u['headshotUrl'] ?? '',
-                'done': doneCount,
-                'total': totalModules,
-                'pct': pct,
-              });
-            }
-          } catch (e) {
-            print('Error fetching progress for user ${u['id']}: $e');
-          }
-        }).toList();
-
-        await Future.wait(progressFutures);
-        builtRows.sort((a, b) {
-          int cmp = b['pct'].compareTo(a['pct']);
-          if (cmp != 0) return cmp;
-          return (a['name'] as String).compareTo(b['name'] as String);
-        });
-
-        setState(() {
-          _leaderboardRows = builtRows;
-          _isLoadingLeaderboard = false;
-        });
-        return;
-      }
-
-      // For courses, use optimized leaderboard API
-      if (course == null) {
-        setState(() => _isLoadingLeaderboard = false);
-        return;
-      }
-
-      final String url = _showTeamOnly 
-        ? 'https://millerstorm.tech/api/leaderboard?courseId=${course['id']}&managerId=$_managerId'
-        : 'https://millerstorm.tech/api/leaderboard?courseId=${course['id']}';
-
-      final leaderboardResponse =
-          await api.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
-
-      if (leaderboardResponse.statusCode == 200) {
-        final data = jsonDecode(leaderboardResponse.body);
-        final List<dynamic> rows = data['rows'] ?? [];
-
-        final List<Map<String, dynamic>> builtRows = rows.map((row) {
-          return {
-            'id': row['id'],
-            'name': row['name'] ?? row['email'] ?? 'Unknown',
-            'email': row['email'] ?? '',
-            'headshotUrl': row['headshotUrl'] ?? '',
-            'done': row['done'],
-            'total': row['total'],
-            'pct': row['pct'],
-          };
-        }).toList();
-
-        // Persist so the next open shows this course's board instantly.
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_lbCacheKey(course), jsonEncode(builtRows));
-        } catch (_) {}
-
-        if (mounted) {
-          setState(() {
-            _leaderboardRows = builtRows;
-            _isLoadingLeaderboard = false;
-          });
-        }
       } else {
-        if (mounted) setState(() => _isLoadingLeaderboard = false);
+        setState(() => _loading = false);
       }
     } catch (e) {
-      print('Error building leaderboard: $e');
-      if (mounted) setState(() => _isLoadingLeaderboard = false);
+      setState(() => _loading = false);
     }
+  }
+
+  Future<void> _fetchCourse(dynamic course) async {
+    setState(() {
+      _loading = true;
+      _selectedCourse = course;
+    });
+    try {
+      final res = await api
+          .get(Uri.parse('https://millerstorm.tech/api/leaderboard?courseId=${course['id']}'))
+          .timeout(const Duration(seconds: 20));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final List<dynamic> rows = data['rows'] ?? [];
+        setState(() {
+          _courseRows = rows.map((e) => Map<String, dynamic>.from(e)).toList();
+          _loading = false;
+        });
+      } else {
+        setState(() => _loading = false);
+      }
+    } catch (e) {
+      setState(() => _loading = false);
+    }
+  }
+
+  // ---- helpers ----
+  Color _avatarColor(String name) {
+    var h = 0;
+    for (final ch in name.runes) {
+      h = (h * 31 + ch) & 0x7fffffff;
+    }
+    return _avatarPalette[h % _avatarPalette.length];
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    return parts.take(2).map((w) => w[0].toUpperCase()).join();
+  }
+
+  List<String> get _branchOptions {
+    final s = <String>{};
+    for (final r in _rows) {
+      final b = (r['branch'] ?? '').toString();
+      if (b.isNotEmpty) s.add(b);
+    }
+    final l = s.toList()..sort();
+    return l;
+  }
+
+  List<String> get _teamOptions {
+    final s = <String>{};
+    for (final r in _rows) {
+      final t = (r['team'] ?? '').toString();
+      if (t.isNotEmpty) s.add(t);
+    }
+    final l = s.toList()..sort();
+    return l;
+  }
+
+  bool get _filterActive => _search.isNotEmpty || _branch.isNotEmpty || _team.isNotEmpty;
+
+  List<Map<String, dynamic>> get _startedRows =>
+      _rows.where((r) => r['notStarted'] != true).toList();
+
+  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> rows) {
+    final q = _search.toLowerCase();
+    return rows.where((r) {
+      if (q.isNotEmpty && !(r['name'] ?? '').toString().toLowerCase().contains(q)) return false;
+      if (_branch.isNotEmpty && (r['branch'] ?? '').toString() != _branch) return false;
+      if (_team.isNotEmpty && (r['team'] ?? '').toString() != _team) return false;
+      return true;
+    }).toList();
   }
 
   @override
@@ -312,577 +200,594 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
           icon: const Icon(Icons.arrow_back, color: _textDark),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          _viewType == 'courses' ? '🏆 Course Leaderboard' : '📋 Playlist Leaderboard',
-          style: const TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
-        ),
+        title: const Text('🏆 Course Leaderboard',
+            style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700)),
       ),
-      body: _isLoadingCourses
+      body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : Column(
               children: [
-                _buildViewTypeSelector(),
-                _buildDataSelector(),
-                // C-Level is company-wide only — no Team/Company toggle, and no
-                // personal "your rank" pop-out (they aren't a course-taker).
-                _buildSearchBar(),
-                Expanded(
-                  child: _isLoadingLeaderboard
-                      ? const Center(child: CircularProgressIndicator(color: _primary))
-                      : _buildLeaderboardList(),
-                ),
+                _buildHeader(),
+                Expanded(child: _view == 'overall' ? _buildOverall() : _buildByCourse()),
               ],
             ),
     );
   }
 
-  Widget _buildViewTypeSelector() {
-    return Container(
-      color: _white,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: _bg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _toggleItem(
-                label: 'Courses',
-                isActive: _viewType == 'courses',
-                onTap: () {
-                  if (_viewType != 'courses') {
-                    setState(() {
-                      _viewType = 'courses';
-                      _showTeamOnly = false;
-                      _leaderboardRows = [];
-                    });
-                    if (_selectedCourse != null) {
-                      _loadCachedLeaderboard(_selectedCourse);
-                      _fetchLeaderboard(course: _selectedCourse);
-                    }
-                  }
-                },
-              ),
-            ),
-            Expanded(
-              child: _toggleItem(
-                label: 'Playlists',
-                isActive: _viewType == 'playlists',
-                onTap: () {
-                  if (_viewType != 'playlists') {
-                    setState(() {
-                      _viewType = 'playlists';
-                      _showTeamOnly = false;
-                      _leaderboardRows = [];
-                    });
-                    if (_selectedPlaylist != null) {
-                      _fetchLeaderboard(playlist: _selectedPlaylist);
-                    } else if (_playlists.isNotEmpty) {
-                      _selectedPlaylist = _playlists[0];
-                      _fetchLeaderboard(playlist: _selectedPlaylist);
-                    }
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDataSelector() {
-    if (_viewType == 'courses') {
-      return _buildCourseSelector();
-    } else {
-      return _buildPlaylistSelector();
-    }
-  }
-
-  Widget _buildPlaylistSelector() {
+  // Subtitle + Overall/By-Course toggle + (overall) search/branch/team.
+  Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: _white,
-        border: Border(bottom: BorderSide(color: _bg, width: 2)),
-      ),
+      color: _white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Select Playlist',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _textLight),
+          Text(
+            _view == 'overall'
+                ? 'Ranked across all $_totalCourses courses · $_totalItems lessons & quizzes'
+                : (_selectedCourse?['title'] ?? 'Select a course'),
+            style: const TextStyle(color: _textLight, fontSize: 12.5),
           ),
-          const SizedBox(height: 4),
-          GestureDetector(
-            onTap: _showPlaylistPicker,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                border: Border.all(color: _border),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _selectedPlaylist?['name'] ?? 'Select a playlist',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _textDark),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Icon(Icons.keyboard_arrow_down, color: _textLight),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPlaylistPicker() {
-    if (_playlists.isEmpty) return;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: _white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Select Playlist', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _playlists.length,
-                  itemBuilder: (context, index) {
-                    final playlist = _playlists[index];
-                    final playlistId = (playlist['_id'] ?? playlist['id']).toString();
-                    final selectedId = (_selectedPlaylist?['_id'] ?? _selectedPlaylist?['id']).toString();
-                    final isSelected = _selectedPlaylist != null && selectedId == playlistId;
-                    return ListTile(
-                      title: Text(playlist['name'], style: TextStyle(color: isSelected ? _primary : _textDark, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                      trailing: isSelected ? const Icon(Icons.check, color: _primary) : null,
-                      onTap: () {
-                        setState(() => _selectedPlaylist = playlist);
-                        Navigator.pop(context);
-                        _fetchLeaderboard(playlist: playlist);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCourseSelector() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: _white,
-        border: Border(bottom: BorderSide(color: _bg, width: 2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Select Course',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _textLight),
-          ),
-          const SizedBox(height: 4),
-          GestureDetector(
-            onTap: _showCoursePicker,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                border: Border.all(color: _border),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _selectedCourse?['title'] ?? 'Select a course',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _textDark),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Icon(Icons.keyboard_arrow_down, color: _textLight),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCoursePicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: _white,
-      elevation: 5,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: const BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Select Course',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark),
-              ),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _courses.length,
-                  itemBuilder: (context, index) {
-                    final course = _courses[index];
-                    final courseId = (course['id'] ?? course['_id']).toString();
-                    final selectedId = (_selectedCourse?['id'] ?? _selectedCourse?['_id']).toString();
-                    final isSelected = _selectedCourse != null && selectedId == courseId;
-                    return ListTile(
-                      title: Text(
-                        course['title'],
-                        style: TextStyle(
-                          color: isSelected ? _primary : _textDark,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                      trailing: isSelected ? const Icon(Icons.check, color: _primary) : null,
-                      onTap: () {
-                        setState(() {
-                          _selectedCourse = course;
-                          _leaderboardRows = []; // drop previous course's rows
-                        });
-                        Navigator.pop(context);
-                        _loadCachedLeaderboard(course); // instant cached board
-                        _fetchLeaderboard(course: course);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLeaderboardToggle() {
-    return Container(
-      color: _white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: _bg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _toggleItem(
-                label: 'Team Leaderboard',
-                isActive: _showTeamOnly,
-                onTap: () {
-                  if (!_showTeamOnly) {
-                    setState(() {
-                      _showTeamOnly = false;
-                      _leaderboardRows = [];
-                    });
-                    _loadCachedLeaderboard(_selectedCourse);
-                    _fetchLeaderboard(course: _selectedCourse);
-                  }
-                },
-              ),
-            ),
-            Expanded(
-              child: _toggleItem(
-                label: 'Company Leaderboard',
-                isActive: !_showTeamOnly,
-                onTap: () {
-                  if (_showTeamOnly) {
-                    setState(() {
-                      _showTeamOnly = false;
-                      _leaderboardRows = [];
-                    });
-                    _loadCachedLeaderboard(_selectedCourse);
-                    _fetchLeaderboard(course: _selectedCourse);
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _toggleItem({required String label, required bool isActive, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? _white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: isActive ? [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
-          ] : null,
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            color: isActive ? _primary : _textLight,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCurrentUserRank() {
-    if (_leaderboardRows.isEmpty || _currentUserId == null) return const SizedBox.shrink();
-
-    final myIndex = _leaderboardRows.indexWhere((r) => r['id'] == _currentUserId);
-    if (myIndex == -1) return const SizedBox.shrink();
-
-    final myRow = _leaderboardRows[myIndex];
-    final rank = myIndex + 1;
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_primary, _primary.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _primary.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _buildRankBadge(rank, large: true),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 10),
+          _segmentedToggle(),
+          if (_view == 'overall') ...[
+            const SizedBox(height: 10),
+            _searchField(),
+            const SizedBox(height: 8),
+            Row(
               children: [
-                const Text(
-                  'YOUR RANKING',
-                  style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
-                ),
-                Text(
-                  myRow['name'],
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Expanded(child: _dropdownChip('All Branches', _branch, _branchOptions, (v) => setState(() => _branch = v))),
+                const SizedBox(width: 8),
+                Expanded(child: _dropdownChip('All Teams', _team, _teamOptions, (v) => setState(() => _team = v))),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${myRow['pct']}%',
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
-              ),
-              Text(
-                '${myRow['done']}/${myRow['total']} Lessons',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ),
+          ] else ...[
+            const SizedBox(height: 10),
+            _coursePickerButton(),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
-        decoration: InputDecoration(
-          hintText: 'Search users...',
-          hintStyle: const TextStyle(color: _textLight, fontSize: 14),
-          prefixIcon: const Icon(Icons.search, color: _textLight),
-          filled: true,
-          fillColor: _white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLeaderboardList() {
-    final filteredRows = _leaderboardRows.where((r) {
-      final matchesSearch = r['name'].toLowerCase().contains(_searchQuery) || 
-                            r['email'].toLowerCase().contains(_searchQuery);
-      
-      // If in Team mode, exclude the current user (manager) from the list
-      if (_showTeamOnly && r['id'] == _currentUserId) return false;
-      
-      return matchesSearch;
-    }).toList();
-
-    if (filteredRows.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _viewType == 'playlists' ? Icons.group_off_outlined : Icons.emoji_events_outlined, 
-                size: 64, 
-                color: _textLight.withOpacity(0.3)
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _searchQuery.isEmpty 
-                    ? (_viewType == 'playlists' ? 'No users assigned to this playlist yet.' : 'No data for this course')
-                    : 'No users found',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _textDark),
-                textAlign: TextAlign.center,
-              ),
-            ],
+  Widget _segmentedToggle() {
+    Widget seg(String key, String label) {
+      final on = _view == key;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () {
+            if (on) return;
+            setState(() => _view = key);
+            if (key == 'course') {
+              if (_selectedCourse == null && _courses.isNotEmpty) {
+                _fetchCourse(_courses[0]);
+              } else if (_selectedCourse != null && _courseRows.isEmpty) {
+                _fetchCourse(_selectedCourse);
+              }
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? _primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: on ? _white : _textLight)),
           ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: filteredRows.length,
-      itemBuilder: (context, index) {
-        final row = filteredRows[index];
-        final rank = index + 1;
-        final isMe = row['id'] == _currentUserId;
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isMe ? const Color(0xFFFEF2F2) : _white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isMe ? _primary.withOpacity(0.3) : Colors.transparent),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 30,
-                child: Center(child: _buildRankBadge(rank)),
-              ),
-              const SizedBox(width: 12),
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: _bg,
-                backgroundImage: (row['headshotUrl'] as String).isNotEmpty
-                    ? NetworkImage('https://millerstorm.tech${row['headshotUrl']}')
-                    : null,
-                child: (row['headshotUrl'] as String).isEmpty
-                    ? const Icon(Icons.person, size: 20, color: _textLight)
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row['name'],
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isMe ? FontWeight.bold : FontWeight.w600,
-                        color: _textDark,
-                      ),
-                    ),
-                    Text(
-                      row['email'],
-                      style: const TextStyle(fontSize: 11, color: _textLight),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${row['pct']}%',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: row['pct'] == 100 ? Colors.green : _textDark,
-                    ),
-                  ),
-                  Text(
-                    '${row['done']}/${row['total']}',
-                    style: const TextStyle(fontSize: 10, color: _textLight),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10)),
+      child: Row(children: [seg('overall', 'Overall'), seg('course', 'By Course')]),
     );
   }
 
-  Widget _buildRankBadge(int rank, {bool large = false}) {
-    if (rank <= 3) {
-      String medal = '';
-      if (rank == 1) medal = '🥇';
-      if (rank == 2) medal = '🥈';
-      if (rank == 3) medal = '🥉';
-      
-      return Text(medal, style: TextStyle(fontSize: large ? 32 : 20));
-    }
-
-    return Text(
-      rank.toString(),
-      style: TextStyle(
-        fontSize: large ? 24 : 14,
-        fontWeight: FontWeight.bold,
-        color: large ? Colors.white : _textLight,
+  Widget _searchField() {
+    return TextField(
+      onChanged: (v) => setState(() => _search = v),
+      decoration: InputDecoration(
+        hintText: 'Search reps…',
+        hintStyle: const TextStyle(color: _textPlaceholder, fontSize: 14),
+        prefixIcon: const Icon(Icons.search, size: 20, color: _textLight),
+        isDense: true,
+        filled: true,
+        fillColor: _bg,
+        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
       ),
     );
   }
+
+  Widget _dropdownChip(String allLabel, String current, List<String> options, ValueChanged<String> onSelect) {
+    final label = current.isEmpty ? allLabel : current;
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: _white,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          builder: (ctx) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const SizedBox(height: 8),
+                ...[MapEntry('', allLabel), ...options.map((o) => MapEntry(o, o))].map((e) {
+                  final sel = e.key == current;
+                  return ListTile(
+                    title: Text(e.value, style: TextStyle(color: sel ? _primary : _textDark, fontWeight: sel ? FontWeight.w700 : FontWeight.w500)),
+                    trailing: sel ? const Icon(Icons.check, color: _primary, size: 20) : null,
+                    onTap: () { Navigator.pop(ctx); onSelect(e.key); },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: current.isEmpty ? _bg : _primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: current.isEmpty ? _border : _primary.withOpacity(0.4)),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: current.isEmpty ? _textDark : _primary))),
+            Icon(Icons.keyboard_arrow_down, size: 18, color: current.isEmpty ? _textLight : _primary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _coursePickerButton() {
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: _white,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          builder: (ctx) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const SizedBox(height: 8),
+                ..._courses.map((c) {
+                  final sel = _selectedCourse != null && _selectedCourse['id'] == c['id'];
+                  return ListTile(
+                    title: Text(c['title'] ?? 'Untitled', style: TextStyle(color: sel ? _primary : _textDark, fontWeight: sel ? FontWeight.w700 : FontWeight.w500)),
+                    trailing: sel ? const Icon(Icons.check, color: _primary, size: 20) : null,
+                    onTap: () { Navigator.pop(ctx); _fetchCourse(c); },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+        child: Row(
+          children: [
+            const Icon(Icons.menu_book_outlined, size: 18, color: _textLight),
+            const SizedBox(width: 8),
+            Expanded(child: Text(_selectedCourse?['title'] ?? 'Select a course', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark))),
+            const Icon(Icons.keyboard_arrow_down, size: 20, color: _textLight),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---- Overall view ----
+  Widget _buildOverall() {
+    if (_rows.isEmpty) return _empty('No training data yet');
+    final started = _applyFilters(_startedRows);
+    final notStarted = _rows.where((r) => r['notStarted'] == true).toList()
+      ..sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
+
+    final children = <Widget>[];
+
+    if (_filterActive) {
+      children.add(_sectionLabel('Results (${started.length})'));
+      for (final r in started) {
+        children.add(_repCard(r, showMedal: false));
+      }
+      if (started.isEmpty) children.add(_empty('No reps match'));
+    } else {
+      final top3 = started.take(3).toList();
+      final rest = started.skip(3).toList();
+      if (top3.isNotEmpty) {
+        children.add(_sectionLabel('Top 3'));
+        for (final r in top3) {
+          children.add(_repCard(r, showMedal: true));
+        }
+      }
+      if (rest.isNotEmpty) {
+        children.add(_sectionLabel('All reps'));
+        for (final r in rest) {
+          children.add(_repCard(r, showMedal: false));
+        }
+      }
+      if (notStarted.isNotEmpty) {
+        children.add(_notStartedGroup(notStarted));
+      }
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+      children: [
+        _legend(),
+        const SizedBox(height: 6),
+        ...children,
+      ],
+    );
+  }
+
+  // ---- By-course view ----
+  Widget _buildByCourse() {
+    if (_selectedCourse == null) return _empty('Pick a course to see its board');
+    if (_courseRows.isEmpty) return _empty('No data for this course');
+    final q = _search.toLowerCase();
+    final rows = _courseRows; // server already sorts by pct desc
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+      itemCount: rows.length,
+      itemBuilder: (c, i) => _courseCard(rows[i], i),
+    );
+  }
+
+  Widget _sectionLabel(String t) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
+        child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.3)),
+      );
+
+  Widget _empty(String msg) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('🏆', style: TextStyle(fontSize: 48)),
+              const SizedBox(height: 12),
+              Text(msg, style: const TextStyle(color: _textPlaceholder, fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+
+  // Card shell: a uniform rounded border + an optional clipped left accent
+  // strip. A non-uniform Border (thick left edge) combined with borderRadius
+  // crashes Flutter, so the medal / "me" edge is an inner clipped strip.
+  Widget _cardShell({required bool isMe, required Color accent, required bool showAccent, required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isMe ? _indigo.withOpacity(0.35) : _border),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(11),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showAccent) Container(width: 4, color: accent),
+              Expanded(
+                child: Container(
+                  color: isMe ? const Color(0xFFEEF2FF) : _white,
+                  padding: const EdgeInsets.all(12),
+                  child: child,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // The Overall row card (rank/medal, avatar, name+tier+badges, progress ring).
+  Widget _repCard(Map<String, dynamic> r, {required bool showMedal}) {
+    final rank = (r['rank'] is int) ? r['rank'] as int : int.tryParse('${r['rank']}');
+    final isMe = _userId != null && '${r['id']}' == _userId;
+    final medal = showMedal && rank != null && rank >= 1 && rank <= 3;
+    final pct = (r['pct'] is num) ? (r['pct'] as num).toDouble() : 0.0;
+    final name = (r['name'] ?? 'Unknown').toString();
+    final tier = (r['rankTitle'] ?? '').toString();
+    final branch = (r['branch'] ?? '').toString();
+    final team = (r['team'] ?? '').toString();
+    final badges = (r['badges'] as List?) ?? [];
+
+    return _cardShell(
+      isMe: isMe,
+      accent: medal ? _medalEdge[rank! - 1] : _indigo,
+      showAccent: medal || isMe,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 30,
+            child: Center(
+              child: medal
+                  ? Text(_medalEmoji[rank! - 1], style: const TextStyle(fontSize: 22))
+                  : Text(rank?.toString() ?? '·', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textLight)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _avatar(name, (r['headshotUrl'] ?? '').toString(), 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
+                    if (r['isPodium'] == true) const Padding(padding: EdgeInsets.only(left: 4), child: Text('🏆', style: TextStyle(fontSize: 13))),
+                    if (isMe) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(color: _indigo, borderRadius: BorderRadius.circular(6)),
+                        child: const Text('YOU', style: TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w800)),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    if (tier.isNotEmpty && _tierColors.containsKey(tier)) _tierPill(tier),
+                    if (tier.isNotEmpty) const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        [if (branch.isNotEmpty) branch, if (team.isNotEmpty) 'Team $team'].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11.5, color: _textLight),
+                      ),
+                    ),
+                  ],
+                ),
+                if (badges.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      badges.map((b) => _badgeEmoji[b.toString()] ?? '').join(' '),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _progressRing(pct),
+        ],
+      ),
+    );
+  }
+
+  // By-course row: rank/medal, avatar, name, ring(pct), done/total.
+  Widget _courseCard(Map<String, dynamic> r, int index) {
+    final rank = index + 1;
+    final medal = rank <= 3;
+    final isMe = _userId != null && '${r['id']}' == _userId;
+    final pct = (r['pct'] is num) ? (r['pct'] as num).toDouble() : 0.0;
+    final name = (r['name'] ?? 'Unknown').toString();
+    return _cardShell(
+      isMe: isMe,
+      accent: medal ? _medalEdge[rank - 1] : _indigo,
+      showAccent: medal || isMe,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 30,
+            child: Center(
+              child: medal
+                  ? Text(_medalEmoji[rank - 1], style: const TextStyle(fontSize: 22))
+                  : Text('$rank', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textLight)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _avatar(name, (r['headshotUrl'] ?? '').toString(), 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(children: [
+                  Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
+                  if (isMe) ...[
+                    const SizedBox(width: 6),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: _indigo, borderRadius: BorderRadius.circular(6)), child: const Text('YOU', style: TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w800))),
+                  ],
+                ]),
+                const SizedBox(height: 3),
+                Text('${r['done'] ?? 0}/${r['total'] ?? 0} lessons', style: const TextStyle(fontSize: 11.5, color: _textLight)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _progressRing(pct),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatar(String name, String headshotUrl, double radius) {
+    if (headshotUrl.isNotEmpty) {
+      final url = headshotUrl.startsWith('http') ? headshotUrl : 'https://millerstorm.tech$headshotUrl';
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: _border,
+        backgroundImage: CachedNetworkImageProvider(url),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: _avatarColor(name),
+      child: Text(_initials(name), style: TextStyle(color: _white, fontSize: radius * 0.7, fontWeight: FontWeight.w700)),
+    );
+  }
+
+  Widget _tierPill(String tier) {
+    final c = _tierColors[tier]!;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: c[0], borderRadius: BorderRadius.circular(20)),
+      child: Text(tier, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: c[1])),
+    );
+  }
+
+  Widget _progressRing(double pct) {
+    return SizedBox(
+      width: 46,
+      height: 46,
+      child: CustomPaint(
+        painter: _RingPainterCLevel(pct.clamp(0, 100) / 100.0),
+        child: Center(
+          child: Text('${pct.round()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _textDark)),
+        ),
+      ),
+    );
+  }
+
+  // Collapsible legend: what the badges + rank tiers mean.
+  Widget _legend() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _legendOpen = !_legendOpen),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Color(0xFF92400E)),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('What the icons and ranks mean', style: TextStyle(fontSize: 12.5, color: Color(0xFF92400E), fontWeight: FontWeight.w600))),
+                  Icon(_legendOpen ? Icons.expand_less : Icons.expand_more, size: 20, color: const Color(0xFF92400E)),
+                ],
+              ),
+            ),
+          ),
+          if (_legendOpen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Badges', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight)),
+                  const SizedBox(height: 4),
+                  _legendLine('🚀 Halfway: 50% of the library'),
+                  _legendLine('🏁 Finisher: a course fully done'),
+                  _legendLine('🎓 Graduate: every course done'),
+                  _legendLine('🎯 Test Ace: 100% on a Final Test'),
+                  _legendLine('🏆 Podium: currently top 3 (live)'),
+                  const SizedBox(height: 10),
+                  const Text('Ranks', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight)),
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 6, runSpacing: 6, children: _tierColors.keys.map(_tierPill).toList()),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendLine(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: Text(t, style: const TextStyle(fontSize: 12, color: _textMedium)),
+      );
+
+  static const _textMedium = Color(0xFF374151);
+
+  Widget _notStartedGroup(List<Map<String, dynamic>> rows) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _border, style: BorderStyle.solid),
+        ),
+        child: Column(
+          children: [
+            InkWell(
+              onTap: () => setState(() => _notStartedOpen = !_notStartedOpen),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('Not started: ${rows.length} reps', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textLight))),
+                    Icon(_notStartedOpen ? Icons.expand_less : Icons.expand_more, size: 20, color: _textLight),
+                  ],
+                ),
+              ),
+            ),
+            if (_notStartedOpen)
+              ...rows.map((r) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      children: [
+                        _avatar((r['name'] ?? '').toString(), (r['headshotUrl'] ?? '').toString(), 14),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text((r['name'] ?? 'Unknown').toString(), style: const TextStyle(fontSize: 13.5, color: _textDark))),
+                        Text([if ((r['branch'] ?? '').toString().isNotEmpty) r['branch']].join(), style: const TextStyle(fontSize: 11.5, color: _textPlaceholder)),
+                      ],
+                    ),
+                  )),
+            const SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Circular progress ring: grey track + green arc, matching the web ProgressRing.
+class _RingPainterCLevel extends CustomPainter {
+  final double t; // 0..1
+  _RingPainterCLevel(this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 5.0;
+    final rect = Offset(stroke / 2, stroke / 2) & Size(size.width - stroke, size.height - stroke);
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = const Color(0xFFE5E7EB);
+    final fill = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF10B981);
+    canvas.drawArc(rect, 0, 2 * math.pi, false, track);
+    if (t > 0) {
+      canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * t, false, fill);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RingPainterCLevel old) => old.t != t;
 }
