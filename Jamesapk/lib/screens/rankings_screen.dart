@@ -41,6 +41,18 @@ class _RankingsScreenState extends State<RankingsScreen> {
   String _team = '';
   bool _hideFormer = false;
 
+  // Column sort (the mobile equivalent of the web's click-to-sort columns).
+  String _sortKey = 'revenue';
+  bool _sortDesc = true;
+  static const _sortOptions = [
+    {'key': 'revenue', 'label': 'Contract Amount'},
+    {'key': 'won', 'label': 'Contracts'},
+    {'key': 'filed', 'label': 'Claims Filed'},
+    {'key': 'leadsCreated', 'label': 'Leads Created'},
+    {'key': 'verifiedKnocks', 'label': 'Verified Knocks'},
+    {'key': 'name', 'label': 'Rep (A–Z)'},
+  ];
+
   List<dynamic> _rows = [];
   bool _loading = true;
   String? _userId;
@@ -138,6 +150,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         final b = (bb is Map) ? bb[_branch] : null;
         if (b == null) continue;
         r['verifiedKnocks'] = b['verifiedKnocks'] ?? 0;
+        r['leadsCreated'] = b['leadsCreated'] ?? 0; // scope Leads Created to the branch too (was showing all-branch)
         r['filed'] = b['filed'] ?? 0;
         r['won'] = b['won'] ?? 0;
         r['revenue'] = b['revenue'] ?? 0;
@@ -145,18 +158,18 @@ class _RankingsScreenState extends State<RankingsScreen> {
       if (_team.isNotEmpty && (r['team'] ?? '').toString() != _team) continue;
       list.add(r);
     }
-    // Tie-break: Contract Amount → Contracts → Claims Filed → Leads Created → Verified Knocks
+    // Sort by the chosen column, then fall back to overall standing.
     list.sort((a, b) {
-      num n(Map m, String k) => (m[k] is num) ? m[k] as num : 0;
-      return n(b, 'revenue').compareTo(n(a, 'revenue')) != 0
-          ? n(b, 'revenue').compareTo(n(a, 'revenue'))
-          : n(b, 'won').compareTo(n(a, 'won')) != 0
-              ? n(b, 'won').compareTo(n(a, 'won'))
-              : n(b, 'filed').compareTo(n(a, 'filed')) != 0
-                  ? n(b, 'filed').compareTo(n(a, 'filed'))
-                  : n(b, 'leadsCreated').compareTo(n(a, 'leadsCreated')) != 0
-                      ? n(b, 'leadsCreated').compareTo(n(a, 'leadsCreated'))
-                      : n(b, 'verifiedKnocks').compareTo(n(a, 'verifiedKnocks'));
+      int cmp;
+      if (_sortKey == 'name') {
+        cmp = (a['name'] ?? '').toString().toLowerCase().compareTo((b['name'] ?? '').toString().toLowerCase());
+      } else {
+        num n(Map m, String k) => (m[k] is num) ? m[k] as num : 0;
+        cmp = n(a, _sortKey).compareTo(n(b, _sortKey));
+      }
+      cmp = _sortDesc ? -cmp : cmp;
+      if (cmp != 0) return cmp;
+      return _standingCompare(a, b);
     });
     return list;
   }
@@ -197,6 +210,61 @@ class _RankingsScreenState extends State<RankingsScreen> {
   }
 
   String get _periodLabel => _periods.firstWhere((p) => p['key'] == _period)['label']!;
+
+  String get _sortLabel => _sortOptions.firstWhere((o) => o['key'] == _sortKey)['label']!;
+
+  // Overall standing tie-break: Contract Amount → Contracts → Claims Filed →
+  // Leads Created → Verified Door Knocks (used to break ties after the chosen sort).
+  int _standingCompare(Map a, Map b) {
+    num n(Map m, String k) => (m[k] is num) ? m[k] as num : 0;
+    for (final k in const ['revenue', 'won', 'filed', 'leadsCreated', 'verifiedKnocks']) {
+      final c = n(b, k).compareTo(n(a, k));
+      if (c != 0) return c;
+    }
+    return 0;
+  }
+
+  void _openSortSelector() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 14, 20, 4),
+                child: Align(alignment: Alignment.centerLeft, child: Text('Sort by', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark))),
+              ),
+              ..._sortOptions.map((o) {
+                final sel = o['key'] == _sortKey;
+                return ListTile(
+                  title: Text(o['label']!, style: TextStyle(fontSize: 15, color: sel ? _primary : _textDark, fontWeight: sel ? FontWeight.w700 : FontWeight.w500)),
+                  trailing: sel ? Icon(_sortDesc ? Icons.arrow_downward : Icons.arrow_upward, size: 18, color: _primary) : null,
+                  onTap: () {
+                    setState(() {
+                      if (_sortKey == o['key']) {
+                        _sortDesc = !_sortDesc; // tap the active one again to flip direction
+                      } else {
+                        _sortKey = o['key']!;
+                        _sortDesc = o['key'] != 'name'; // numbers high→low, name A→Z
+                      }
+                    });
+                    Navigator.pop(ctx);
+                  },
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   // --- Compact filter bar: one "Filters" button + a bottom sheet ---------------
 
@@ -333,6 +401,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   _filterSheetRow(Icons.apartment_outlined, 'Branch', _branch.isEmpty ? 'All Branches' : _branch, () { Navigator.pop(ctx); _openBranchSelector(); }),
                   _filterSheetRow(Icons.groups_outlined, 'Team', _team.isEmpty ? 'All Teams' : _team, () { Navigator.pop(ctx); _openTeamSelector(); }),
                   _filterSheetRow(Icons.person_outline, 'Reps', _appliedReps.isEmpty ? 'All Reps' : '${_appliedReps.length} selected', () { Navigator.pop(ctx); _openRepSelector(); }),
+                  _filterSheetRow(Icons.sort, 'Sort by', '$_sortLabel ${_sortDesc ? "↓" : "↑"}', () { Navigator.pop(ctx); _openSortSelector(); }),
                   SwitchListTile(
                     value: _hideFormer,
                     activeColor: _primary,
