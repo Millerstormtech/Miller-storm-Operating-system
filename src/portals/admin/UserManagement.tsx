@@ -1452,7 +1452,7 @@ export function UserManagement(props: UserEditorProps) {
               </div>
               {showFeatureToggles && (
                 <>
-                  {togglesByRole.map(({ role, keys }) => (
+                  {togglesByRole.filter(({ keys }) => keys && keys.length > 0).map(({ role, keys }) => (
                     <div key={role} style={{ marginBottom: 24 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#666" }}>
                         {roleLabels[role]}
