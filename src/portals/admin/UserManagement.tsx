@@ -121,46 +121,41 @@ export function UserManagement(props: UserEditorProps) {
   }
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
-    admin: ["socialMediaMetrics", "businessUnits", "trainingCenter", "userManagement", "courseManagement", "appsTools", "aiBots", "courseAiBots", "messaging", "leaderboard"],
-    "sales-team-lead": ["dashboard", "plans", "onlineTraining", "aiChat", "appsTools", "profile", "taskTracker"],
-    sales: ["dashboard", "plan", "training", "aiChat", "appsTools", "profile"],
-    marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"],
-    // C-Level / Branch Manager: admin can hide any of these pages per user; an
-    // unchecked page disappears from that user's sidebar.
-    "c-level": ["dashboard", "trainingCenter", "teamStructure", "userManagement", "appsTools", "training", "leaderboard", "stormChat", "aiChat", "profile"],
-    "branch-manager": ["dashboard", "stormChat", "trainingCenter", "teamStructure", "userManagement", "appsTools", "leaderboard", "training", "aiChat", "profile"],
+    // Keys must match the exact toggleKey values in each role's Sidebar component
+    admin: ["cLevelDashboard", "branchManagerDashboard", "salesTeamDashboard", "salesRepDashboard", "marketingDashboard", "trainingCenter", "userManagement", "teamStructure", "courseManagement", "onlineTraining", "appsTools", "aiBots", "leaderboard", "stormChat", "emailConfig"],
+    "sales-team-lead": ["dashboard", "stormChat", "trainingCenter", "appsTools", "rankings", "onlineTraining", "aiChat", "profile"],
+    sales: ["dashboard", "stormChat", "trainingCenter", "appsTools", "rankings", "training", "aiChat", "profile"],
+    marketing: ["dashboard", "assets", "appsTools", "rankings", "aiAssistant"],
+    "c-level": ["dashboard", "trainingCenter", "userManagement", "appsTools", "training", "leaderboard", "stormChat", "aiChat", "profile"],
+    "branch-manager": ["dashboard", "stormChat", "trainingCenter", "userManagement", "appsTools", "leaderboard", "training", "aiChat", "profile"],
   };
 
   const featureToggleLabels: Record<string, string> = {
     // Admin
-    socialMediaMetrics: "Social Media Executive View",
-    businessUnits: "Business Planner Executive View",
+    cLevelDashboard: "C Level Dashboard",
+    branchManagerDashboard: "Branch Manager Dashboard",
+    salesTeamDashboard: "Sales Team Dashboard",
+    salesRepDashboard: "Sales Rep Dashboard",
+    marketingDashboard: "Marketing Dashboard",
     trainingCenter: "Course Leaderboard",
     userManagement: "User Management",
+    teamStructure: "Organization Chart",
     courseManagement: "Course Builder",
-    appsTools: "Tools & Products",
-    stormChat: "StormChat",
-    aiBots: "Master Bot Builder",
-    courseAiBots: "Course Bots Builder",
-    messaging: "SMS Config",
-    leaderboard: "Sales Leaderboard",
-    emailConfig: "Email Config",
-    teamStructure: "Team Structure",
-    // Manager
-    dashboard: "Dashboard",
-    plans: "Team Business Planners",
     onlineTraining: "Training Center",
+    appsTools: "Tools & Products",
+    aiBots: "Master Bot Builder",
+    leaderboard: "Sales Leaderboard",
+    stormChat: "StormChat",
+    emailConfig: "Email Config",
+    // Shared
+    dashboard: "My Dashboard",
+    rankings: "Sales Leaderboard",
     aiChat: "Jay's AI Clone",
     profile: "My Profile",
-    taskTracker: "Task Manager",
-    // Sales
-    plan: "Business Planner",
     training: "Training Center",
     // Marketing
     assets: "Marketing Assets",
-    approvals: "Approval Queue",
-    socialMetrics: "Social Metrics",
-    aiAssistant: "AI Assistant"
+    aiAssistant: "Jay's AI Clone",
   };
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
@@ -324,6 +319,11 @@ export function UserManagement(props: UserEditorProps) {
   function createUser() {
     const allToggles: FeatureToggles = {
       dashboard: true,
+      cLevelDashboard: true,
+      branchManagerDashboard: true,
+      salesTeamDashboard: true,
+      salesRepDashboard: true,
+      marketingDashboard: true,
       userManagement: true,
       roleHierarchy: true,
       businessUnits: true,
@@ -367,7 +367,9 @@ export function UserManagement(props: UserEditorProps) {
       messaging: true,
       leaderboard: true,
       teamStructure: true,
-      stormChat: true
+      stormChat: true,
+      emailConfig: true,
+      rankings: true
     };
     const newUser: UserProfile = {
       id: `user-${Date.now()}`,
@@ -1443,7 +1445,10 @@ export function UserManagement(props: UserEditorProps) {
                       </div>
                       <div className="toggle-grid">
                         {keys.map((key) => {
-                          const enabled = selectedUser.featureToggles[key];
+                          // Match the sidebar's visibility rule (`!== false`): a
+                          // feature is ON unless explicitly turned off, so a
+                          // missing/undefined key shows as checked by default.
+                          const enabled = selectedUser.featureToggles[key] !== false;
                           const label = featureToggleLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).replace(/ai/gi, "AI").trim();
                           return (
                             <label key={key} className="toggle-item">

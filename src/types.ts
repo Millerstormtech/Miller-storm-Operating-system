@@ -2,6 +2,11 @@ export type UserRole = "admin" | "sales-team-lead" | "sales" | "marketing" | "c-
 
 export type ModuleKey =
   | "dashboard"
+  | "cLevelDashboard"
+  | "branchManagerDashboard"
+  | "salesTeamDashboard"
+  | "salesRepDashboard"
+  | "marketingDashboard"
   | "userManagement"
   | "roleHierarchy"
   | "businessUnits"
@@ -45,7 +50,9 @@ export type ModuleKey =
   | "messaging"
   | "leaderboard"
   | "teamStructure"
-  | "stormChat";
+  | "stormChat"
+  | "emailConfig"
+  | "rankings";
 
 export type FeatureToggles = Record<ModuleKey, boolean>;
 
