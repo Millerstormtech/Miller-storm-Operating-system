@@ -1,0 +1,81 @@
+name: Stranded PR audit
+
+# Verifies that every merged PR's content actually reached the default branch.
+# See scripts/audit-stranded-prs.mjs for the background and the failure mode
+# this catches. Runs right after every merge to main (immediate detection) and weekly
+# as a backstop, so a stranded PR surfaces in minutes rather than never.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Mondays 07:00 UTC, before the working day in US Central.
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  audit:
+    name: Every merged PR reached main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the audit compares merge commits against main's ancestry.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Audit merged PRs
+        id: audit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          node scripts/audit-stranded-prs.mjs | tee audit.txt
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update an issue when something is stranded
+        if: steps.audit.outputs.status == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          TITLE="Stranded PR detected: merged work is missing from main"
+
+          BODY=$(printf '%s\n' \
+            "The stranded-PR audit found merged pull requests whose content is **not** present in \`main\`." \
+            "" \
+            "This is the stacked-PR failure mode: a PR merged into another PR's branch after that branch had already been merged away. GitHub shows such a PR as merged, but its commits never reached \`main\`." \
+            "" \
+            '```' \
+            "$(cat audit.txt)" \
+            '```' \
+            "" \
+            "**Act before any \`git gc\`.** If the branch was deleted, those commits may exist only as unreferenced objects in someone's local clone. The \`git branch recovered/...\` command above re-anchors them." \
+            "" \
+            "Audit run: $RUN_URL" \
+            "" \
+            "_Opened automatically by .github/workflows/stranded-pr-audit.yml_")
+
+          EXISTING=$(gh issue list --repo "$REPO" --state open --search "$TITLE in:title" \
+                       --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$REPO" --body "$BODY"
+            echo "Commented on existing issue #$EXISTING"
+          else
+            gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY"
+          fi
+
+      - name: Fail the run so the red X is visible
+        if: steps.audit.outputs.status == '1'
+        run: exit 1

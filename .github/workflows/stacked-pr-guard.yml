@@ -1,0 +1,69 @@
+name: Stacked PR guard
+
+# Why this exists
+# ---------------
+# On 2026-07-23, PR #19 was merged into PR #18's branch 18 seconds AFTER PR #18
+# had already merged that branch into main. Nothing carried #19's content
+# onward, so 13 commits (rep detail modal, Team vs Team rail, rank arrows) never
+# reached main. Both PRs showed a green "merged" badge, so nobody noticed for a
+# week, and a routine cleanup then deleted the only branch pointing at them.
+#
+# A merged badge only proves a PR merged into ITS OWN base, not into main.
+# This workflow makes that distinction visible instead of invisible.
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  base-branch-check:
+    name: PR targets the default branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Flag a stacked PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ "$BASE" = "$DEFAULT" ]; then
+            echo "PR #$PR targets '$DEFAULT'. Not stacked, nothing to warn about."
+            exit 0
+          fi
+
+          echo "::warning title=Stacked PR::This PR targets '$BASE', not '$DEFAULT'."
+
+          # Only comment once, so re-runs on every push do not spam the thread.
+          MARKER="<!-- stacked-pr-guard -->"
+          if gh pr view "$PR" --repo "$REPO" --json comments \
+               --jq '.comments[].body' | grep -qF "$MARKER"; then
+            echo "Already commented on PR #$PR. Skipping."
+            exit 1
+          fi
+
+          gh pr comment "$PR" --repo "$REPO" --body "$(cat <<EOF
+          $MARKER
+          ### Stacked PR: merge order matters here
+
+          This PR targets \`$BASE\` instead of \`$DEFAULT\`, so merging it does **not** put its code on \`$DEFAULT\`.
+
+          **Merge bottom-up: this PR first, then \`$BASE\`'s own PR.** If \`$BASE\` is merged into \`$DEFAULT\` before this one, this PR's commits land on a branch that has already been merged away, and they silently never reach \`$DEFAULT\` while GitHub still shows both PRs as merged.
+
+          Before merging, confirm \`$BASE\`'s PR is still open. If it is already merged, re-target this PR to \`$DEFAULT\` using **Edit** next to the title, and re-check for conflicts.
+
+          _This happened on 2026-07-23 and cost 13 commits (recovered a week later in #29). Guard added so it stays visible._
+          EOF
+          )"
+
+          # Non-blocking by design: no branch protection requires this check, so
+          # this is a visible red X plus one comment, not a merge block.
+          exit 1
