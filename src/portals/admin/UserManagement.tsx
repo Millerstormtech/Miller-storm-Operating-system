@@ -1046,15 +1046,6 @@ export function UserManagement(props: UserEditorProps) {
                       />
                       Notify user by email
                     </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none" }} title="Hide this account from the org chart, leaderboards and dashboards">
-                      <input
-                        type="checkbox"
-                        checked={!!selectedUser.testAccount}
-                        onChange={e => updateUser({ ...selectedUser, testAccount: e.target.checked })}
-                        style={{ width: 15, height: 15, cursor: "pointer" }}
-                      />
-                      Test Account?
-                    </label>
                   </div>
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || !!roleError || isSaving} onClick={async () => {
                     if (emailError) {
