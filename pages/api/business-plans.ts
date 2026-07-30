@@ -31,7 +31,7 @@ export default async function handler(
       // If still empty, check if data is in user collection
       if (businessPlans.length === 0) {
         const { UserModel } = await import("../../src/lib/models/User");
-        const usersWithPlans = await UserModel.find({ businessPlan: { $exists: true, $ne: null } }).lean();
+        const usersWithPlans = await UserModel.find({ businessPlan: { $exists: true, $ne: null }, testAccount: { $ne: true } }).lean();
         console.log('Users with business plans:', usersWithPlans.length);
         businessPlans = usersWithPlans.map(user => ({ ...user.businessPlan, userId: user.id }));
       }

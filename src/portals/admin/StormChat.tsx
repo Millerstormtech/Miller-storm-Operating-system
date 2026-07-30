@@ -261,7 +261,7 @@ export function StormChatManagement() {
       const response = await fetch('/api/users');
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        setUsers(Array.isArray(data) ? data.filter((u: any) => !u.testAccount) : data);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
