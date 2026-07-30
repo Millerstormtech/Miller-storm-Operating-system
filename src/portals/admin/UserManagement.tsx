@@ -121,7 +121,7 @@ export function UserManagement(props: UserEditorProps) {
     admin: ["cLevelDashboard", "branchManagerDashboard", "salesTeamDashboard", "salesRepDashboard", "marketingDashboard", "trainingCenter", "userManagement", "teamStructure", "courseManagement", "onlineTraining", "appsTools", "aiBots", "leaderboard", "stormChat", "emailConfig"],
     "sales-team-lead": ["dashboard", "stormChat", "trainingCenter", "appsTools", "rankings", "onlineTraining", "aiChat", "profile"],
     sales: ["dashboard", "stormChat", "trainingCenter", "appsTools", "rankings", "training", "aiChat", "profile"],
-    marketing: ["dashboard", "assets", "appsTools", "rankings", "aiAssistant"],
+    marketing: ["dashboard", "assets", "trainingCenter", "training", "appsTools", "rankings", "stormChat", "aiAssistant", "profile"],
     "c-level": ["dashboard", "trainingCenter", "userManagement", "appsTools", "training", "leaderboard", "stormChat", "aiChat", "profile"],
     "branch-manager": ["dashboard", "stormChat", "trainingCenter", "userManagement", "appsTools", "leaderboard", "training", "aiChat", "profile"],
   };
