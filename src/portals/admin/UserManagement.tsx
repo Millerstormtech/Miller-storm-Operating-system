@@ -79,12 +79,6 @@ export function UserManagement(props: UserEditorProps) {
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
   const [devSearch, setDevSearch] = useState("");
   const [developerModalTab, setDeveloperModalTab] = useState<"selection" | "selected">("selection");
-  const [developerUsers, setDeveloperUsers] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("developerUsers");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
   const [showFeatureToggles, setShowFeatureToggles] = useState(false);
   const [showTrainingProgress, setShowTrainingProgress] = useState(false);
   const [showAssignedSales, setShowAssignedSales] = useState(false);
@@ -220,15 +214,29 @@ export function UserManagement(props: UserEditorProps) {
     }
   };
 
-  function toggleDeveloperUser(userId: string) {
-    const newSet = new Set(developerUsers);
-    if (newSet.has(userId)) {
-      newSet.delete(userId);
-    } else {
-      newSet.add(userId);
+  // "Developer accounts" = accounts flagged testAccount (hidden everywhere).
+  // Derived from the users themselves so it always reflects the saved DB state.
+  const developerUsers = new Set(draftUsers.filter(u => u.testAccount).map(u => u.id));
+
+  // Toggle a user's testAccount flag from the Developer Accounts modal and
+  // persist it immediately (this is the ONLY way to un-hide a test account,
+  // since a flagged account no longer appears in the main list).
+  async function toggleDeveloperUser(userId: string) {
+    const target = draftUsers.find(u => u.id === userId);
+    if (!target) return;
+    const nextVal = !target.testAccount;
+    const next = draftUsers.map(u => (u.id === userId ? { ...u, testAccount: nextVal } : u));
+    setDraftUsers(next);
+    props.onUsersChange(next);
+    try {
+      await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testAccount: nextVal }),
+      });
+    } catch (e) {
+      console.error("Failed to update test account:", e);
     }
-    setDeveloperUsers(newSet);
-    localStorage.setItem("developerUsers", JSON.stringify([...newSet]));
   }
 
   function saveDeveloperAccounts() {
@@ -617,7 +625,7 @@ export function UserManagement(props: UserEditorProps) {
             <span>User Management</span>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               {(['admin', 'c-level', 'branch-manager', 'sales-team-lead', 'sales', 'marketing'] as UserRole[]).map(role => {
-                const count = draftUsers.filter(u => u.role === role).length;
+                const count = draftUsers.filter(u => u.role === role && !u.testAccount).length;
                 const colors: Record<UserRole, { bg: string; color: string }> = {
                   admin: { bg: '#fef3c7', color: '#92400e' },
                   "c-level": { bg: "#ede9fe", color: "#5b21b6" },
@@ -644,6 +652,9 @@ export function UserManagement(props: UserEditorProps) {
             <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportCSV} />
             <button type="button" className="btn-secondary btn-small" onClick={() => setShowUpdateConfirm(true)} disabled={notifyingUpdate}>
               {notifyingUpdate ? "Sending..." : "Notify App Update"}
+            </button>
+            <button type="button" className="btn-secondary btn-small" onClick={() => { setDeveloperModalTab("selection"); setDevSearch(""); setShowDeveloperModal(true); }}>
+              👨‍💻 Developer Accounts{developerUsers.size > 0 ? ` (${developerUsers.size})` : ""}
             </button>
             <button type="button" className="btn-primary btn-success" onClick={createUser}>+ Add User</button>
           </div>
