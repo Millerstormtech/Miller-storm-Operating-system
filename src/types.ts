@@ -117,6 +117,9 @@ export type UserProfile = {
     showTerritory: boolean;
   };
   featureToggles: FeatureToggles;
+  // When true, this is a test/demo account: hidden from every people-facing
+  // view (org chart, leaderboards, dashboards, directory).
+  testAccount?: boolean;
 };
 
 export type AuthenticatedUser = {

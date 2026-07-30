@@ -878,7 +878,12 @@ export function UserManagement(props: UserEditorProps) {
                     <button key={user.id} className={isActive ? "list-item active" : "list-item"} onClick={() => setSelectedUserId(user.id)}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <div>
-                          <div className="list-item-title">{user.name}</div>
+                          <div className="list-item-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {user.name}
+                            {user.testAccount && (
+                              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.3, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "1px 5px" }}>TEST</span>
+                            )}
+                          </div>
                           <div className="list-item-subtitle">
                             {user.role.toUpperCase()} • {user.email}
                           </div>
@@ -1028,6 +1033,15 @@ export function UserManagement(props: UserEditorProps) {
                         style={{ width: 15, height: 15, cursor: "pointer" }}
                       />
                       Notify user by email
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none" }} title="Hide this account from the org chart, leaderboards and dashboards">
+                      <input
+                        type="checkbox"
+                        checked={!!selectedUser.testAccount}
+                        onChange={e => updateUser({ ...selectedUser, testAccount: e.target.checked })}
+                        style={{ width: 15, height: 15, cursor: "pointer" }}
+                      />
+                      Test Account?
                     </label>
                   </div>
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || !!roleError || isSaving} onClick={async () => {

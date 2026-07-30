@@ -43,6 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     role: { $in: [...RANKED_ROLES] },
     deleted: { $ne: true },
     suspended: { $ne: true },
+    testAccount: { $ne: true },
   })
     .select("id name email role headshotUrl")
     .lean();
