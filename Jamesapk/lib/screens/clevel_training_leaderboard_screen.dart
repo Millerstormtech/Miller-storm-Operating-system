@@ -73,6 +73,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
   String _team = '';
   bool _legendOpen = false;
   bool _notStartedOpen = false;
+  bool _teamStandingsOpen = false;
 
   @override
   void initState() {
@@ -176,6 +177,31 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
 
   bool get _filterActive => _search.isNotEmpty || _branch.isNotEmpty || _team.isNotEmpty;
 
+  // Rep's company-wide rank from the Overall rows (for the By-Course "co.#X").
+  int? _overallRankFor(String id) {
+    for (final r in _rows) {
+      if ('${r['id']}' == id) {
+        final rk = r['rank'];
+        return rk is int ? rk : int.tryParse('$rk');
+      }
+    }
+    return null;
+  }
+
+  // Weekly rank-change arrow (▲/▼), from the API's rankDelta. Absent/0 → nothing.
+  Widget _rankDeltaWidget(Map<String, dynamic> r) {
+    final d = r['rankDelta'];
+    if (d is! num || d == 0) return const SizedBox.shrink();
+    final up = d > 0;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        up ? '▲${d.toInt()}' : '▼${(-d).toInt()}',
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: up ? _green : _primary),
+      ),
+    );
+  }
+
   List<Map<String, dynamic>> get _startedRows =>
       _rows.where((r) => r['notStarted'] != true).toList();
 
@@ -187,6 +213,17 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
       if (_team.isNotEmpty && (r['team'] ?? '').toString() != _team) return false;
       return true;
     }).toList();
+  }
+
+  // Tap a rep → a bottom sheet with their course-by-course video/quiz breakdown.
+  void _openRepDetail(String id) {
+    if (id.isEmpty || id == 'null') return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _RepDetailSheet(repId: id, tierColors: _tierColors),
+    );
   }
 
   @override
@@ -428,6 +465,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
       children: [
+        _teamStandingsCard(),
         _legend(),
         const SizedBox(height: 6),
         ...children,
@@ -435,16 +473,193 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
     );
   }
 
+  // Team vs Team (collapsible): teams ranked by average completion % across all
+  // their reps (zeros included). A branch filter hides other branches' teams but
+  // never renumbers ranks — same rule as the web.
+  Widget _teamStandingsCard() {
+    final byTeam = <String, List<double>>{};
+    final teamBranch = <String, String>{};
+    for (final r in _rows) {
+      final t = (r['team'] ?? '').toString();
+      if (t.isEmpty) continue;
+      final pct = (r['pct'] is num) ? (r['pct'] as num).toDouble() : 0.0;
+      (byTeam[t] ??= []).add(pct);
+      final b = (r['branch'] ?? '').toString();
+      if (b.isNotEmpty) teamBranch[t] = b;
+    }
+    if (byTeam.isEmpty) return const SizedBox.shrink();
+    final standings = byTeam.entries.map((e) {
+      final avg = (e.value.reduce((a, b) => a + b) / e.value.length).round();
+      return {'team': e.key, 'size': e.value.length, 'avgPct': avg, 'rank': 0};
+    }).toList();
+    standings.sort((a, b) {
+      final d = (b['avgPct'] as int).compareTo(a['avgPct'] as int);
+      return d != 0 ? d : (a['team'] as String).compareTo(b['team'] as String);
+    });
+    for (var i = 0; i < standings.length; i++) {
+      standings[i]['rank'] = i + 1;
+    }
+    final visible = _branch.isEmpty
+        ? standings
+        : standings.where((s) => teamBranch[s['team']] == _branch).toList();
+    if (visible.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(color: _white, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _teamStandingsOpen = !_teamStandingsOpen),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.groups_outlined, size: 16, color: _textMedium),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Team Standings', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _textDark))),
+                  Icon(_teamStandingsOpen ? Icons.expand_less : Icons.expand_more, size: 20, color: _textLight),
+                ],
+              ),
+            ),
+          ),
+          if (_teamStandingsOpen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+              child: Column(
+                children: visible.map((s) {
+                  final rank = s['rank'] as int;
+                  final avg = s['avgPct'] as int;
+                  final size = s['size'] as int;
+                  final highlight = _team.isNotEmpty && s['team'] == _team;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: highlight ? const Color(0xFFEEF2FF) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: highlight ? const Color(0xFFC7D2FE) : Colors.transparent),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 22,
+                          child: Center(
+                            child: rank <= 3
+                                ? Text(_medalEmoji[rank - 1], style: const TextStyle(fontSize: 14))
+                                : Text('$rank', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textPlaceholder)),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Team ${s['team']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textDark)),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(3),
+                                      child: LinearProgressIndicator(
+                                        value: (avg.clamp(0, 100)) / 100.0,
+                                        minHeight: 5,
+                                        backgroundColor: _ringTrack,
+                                        valueColor: const AlwaysStoppedAnimation(_green),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text('$avg%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _textDark)),
+                                ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text('$size rep${size == 1 ? '' : 's'}', style: const TextStyle(fontSize: 10, color: _textPlaceholder)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   // ---- By-course view ----
   Widget _buildByCourse() {
     if (_selectedCourse == null) return _empty('Pick a course to see its board');
     if (_courseRows.isEmpty) return _empty('No data for this course');
-    final q = _search.toLowerCase();
     final rows = _courseRows; // server already sorts by pct desc
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
-      itemCount: rows.length,
-      itemBuilder: (c, i) => _courseCard(rows[i], i),
+      children: [
+        _courseHeaderCard(),
+        for (var i = 0; i < rows.length; i++) _courseCard(rows[i], i),
+      ],
+    );
+  }
+
+  // By-course header: video/quiz counts, started + average, and a Finishers
+  // strip (only for courses that have videos, matching the web's guard).
+  Widget _courseHeaderCard() {
+    final c = _selectedCourse;
+    final videos = (c?['videos'] is num) ? (c['videos'] as num).toInt() : null;
+    final quizzes = (c?['quizzes'] is num) ? (c['quizzes'] as num).toInt() : null;
+    final total = _courseRows.length;
+    final started = _courseRows.where((r) => ((r['done'] ?? 0) as num) > 0).length;
+    final avg = total == 0
+        ? 0
+        : (_courseRows.fold<double>(0, (s, r) => s + ((r['pct'] is num) ? (r['pct'] as num).toDouble() : 0)) / total).round();
+    final finishers = (videos != null && videos > 0)
+        ? _courseRows.where((r) => ((r['total'] ?? 0) as num) > 0 && r['done'] == r['total']).toList()
+        : <Map<String, dynamic>>[];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+      decoration: BoxDecoration(color: _white, borderRadius: BorderRadius.circular(12), border: Border.all(color: _border)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(spacing: 14, runSpacing: 6, children: [
+            if (videos != null) Text('🎬 $videos videos', style: const TextStyle(fontSize: 12, color: _textMedium)),
+            if (quizzes != null) Text('✅ $quizzes quizzes', style: const TextStyle(fontSize: 12, color: _textMedium)),
+            Text('Started: $started of $total reps', style: const TextStyle(fontSize: 12, color: _textMedium)),
+            Text('Average: $avg% (all reps)', style: const TextStyle(fontSize: 12, color: _textMedium)),
+          ]),
+          const SizedBox(height: 10),
+          const Text('FINISHERS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.5)),
+          const SizedBox(height: 5),
+          if (finishers.isEmpty)
+            const Text('No finishers yet.', style: TextStyle(fontSize: 12, color: _textPlaceholder, fontStyle: FontStyle.italic))
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: finishers.map((f) {
+                return Container(
+                  padding: const EdgeInsets.fromLTRB(4, 3, 10, 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    _avatar((f['name'] ?? '').toString(), (f['headshotUrl'] ?? '').toString(), 10),
+                    const SizedBox(width: 6),
+                    Text((f['name'] ?? '').toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF166534))),
+                  ]),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
     );
   }
 
@@ -510,7 +725,9 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
     final team = (r['team'] ?? '').toString();
     final badges = (r['badges'] as List?) ?? [];
 
-    return _cardShell(
+    return GestureDetector(
+      onTap: () => _openRepDetail('${r['id']}'),
+      child: _cardShell(
       isMe: isMe,
       accent: medal ? _medalEdge[rank! - 1] : _indigo,
       showAccent: medal || isMe,
@@ -519,10 +736,15 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
         children: [
           SizedBox(
             width: 30,
-            child: Center(
-              child: medal
-                  ? Text(_medalEmoji[rank! - 1], style: const TextStyle(fontSize: 22))
-                  : Text(rank?.toString() ?? '·', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textLight)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                medal
+                    ? Text(_medalEmoji[rank! - 1], style: const TextStyle(fontSize: 22))
+                    : Text(rank?.toString() ?? '·', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textLight)),
+                _rankDeltaWidget(r),
+              ],
             ),
           ),
           const SizedBox(width: 8),
@@ -577,6 +799,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
           _progressRing(pct),
         ],
       ),
+    ),
     );
   }
 
@@ -587,7 +810,10 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
     final isMe = _userId != null && '${r['id']}' == _userId;
     final pct = (r['pct'] is num) ? (r['pct'] as num).toDouble() : 0.0;
     final name = (r['name'] ?? 'Unknown').toString();
-    return _cardShell(
+    final coRank = _overallRankFor('${r['id']}');
+    return GestureDetector(
+      onTap: () => _openRepDetail('${r['id']}'),
+      child: _cardShell(
       isMe: isMe,
       accent: medal ? _medalEdge[rank - 1] : _indigo,
       showAccent: medal || isMe,
@@ -617,7 +843,15 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
                   ],
                 ]),
                 const SizedBox(height: 3),
-                Text('${r['done'] ?? 0}/${r['total'] ?? 0} lessons', style: const TextStyle(fontSize: 11.5, color: _textLight)),
+                Row(
+                  children: [
+                    Text('${r['done'] ?? 0}/${r['total'] ?? 0} lessons', style: const TextStyle(fontSize: 11.5, color: _textLight)),
+                    if (coRank != null) ...[
+                      const SizedBox(width: 8),
+                      Text('co.#$coRank', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _textLight)),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -625,6 +859,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
           _progressRing(pct),
         ],
       ),
+    ),
     );
   }
 
@@ -658,7 +893,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
       width: 46,
       height: 46,
       child: CustomPaint(
-        painter: _RingPainterCLevel(pct.clamp(0, 100) / 100.0),
+        painter: _RingPainter(pct.clamp(0, 100) / 100.0),
         child: Center(
           child: Text('${pct.round()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _textDark)),
         ),
@@ -765,9 +1000,9 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
 }
 
 // Circular progress ring: grey track + green arc, matching the web ProgressRing.
-class _RingPainterCLevel extends CustomPainter {
+class _RingPainter extends CustomPainter {
   final double t; // 0..1
-  _RingPainterCLevel(this.t);
+  _RingPainter(this.t);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -789,5 +1024,228 @@ class _RingPainterCLevel extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _RingPainterCLevel old) => old.t != t;
+  bool shouldRepaint(covariant _RingPainter old) => old.t != t;
+}
+
+// Rep Detail sheet: per-rep, course-by-course video + quiz breakdown. Fetched
+// from /api/training/rep/:id (never returns email/role). Degrades to an error
+// state if the endpoint isn't deployed yet.
+class _RepDetailSheet extends StatefulWidget {
+  final String repId;
+  final Map<String, List<Color>> tierColors;
+  const _RepDetailSheet({required this.repId, required this.tierColors});
+
+  @override
+  State<_RepDetailSheet> createState() => _RepDetailSheetState();
+}
+
+class _RepDetailSheetState extends State<_RepDetailSheet> {
+  static const _white = Color(0xFFFFFFFF);
+  static const _primary = Color(0xFFCB0002);
+  static const _textDark = Color(0xFF111827);
+  static const _textLight = Color(0xFF6B7280);
+  static const _textPlaceholder = Color(0xFF9CA3AF);
+  static const _border = Color(0xFFE5E7EB);
+  static const _bg = Color(0xFFF3F4F6);
+  static const _green = Color(0xFF10B981);
+  static const _avatarPalette = [
+    Color(0xFF4F46E5), Color(0xFFDB2777), Color(0xFF0891B2), Color(0xFF16A34A),
+    Color(0xFF7C3AED), Color(0xFFEA580C), Color(0xFF0D9488), Color(0xFFB91C1C),
+  ];
+
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    try {
+      final res = await api
+          .get(Uri.parse('https://millerstorm.tech/api/training/rep/${widget.repId}'))
+          .timeout(const Duration(seconds: 20));
+      if (!mounted) return;
+      if (res.statusCode == 200) {
+        setState(() {
+          _data = Map<String, dynamic>.from(json.decode(res.body));
+          _loading = false;
+        });
+      } else {
+        setState(() { _error = true; _loading = false; });
+      }
+    } catch (_) {
+      if (mounted) setState(() { _error = true; _loading = false; });
+    }
+  }
+
+  Color _avatarColor(String name) {
+    var h = 0;
+    for (final ch in name.runes) {
+      h = (h * 31 + ch) & 0x7fffffff;
+    }
+    return _avatarPalette[h % _avatarPalette.length];
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    return parts.take(2).map((w) => w[0].toUpperCase()).join();
+  }
+
+  Widget _avatar(String name, String headshotUrl, double radius) {
+    if (headshotUrl.isNotEmpty) {
+      final url = headshotUrl.startsWith('http') ? headshotUrl : 'https://millerstorm.tech$headshotUrl';
+      return CircleAvatar(radius: radius, backgroundColor: _border, backgroundImage: CachedNetworkImageProvider(url));
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: _avatarColor(name),
+      child: Text(_initials(name), style: TextStyle(color: _white, fontSize: radius * 0.7, fontWeight: FontWeight.w700)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (ctx, scroll) => Container(
+        decoration: const BoxDecoration(color: _white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        child: _loading
+            ? const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator(color: _primary)))
+            : (_error || _data == null)
+                ? const Center(child: Padding(padding: EdgeInsets.all(48), child: Text("Couldn't load this rep.", style: TextStyle(color: _textPlaceholder, fontSize: 14))))
+                : _content(scroll),
+      ),
+    );
+  }
+
+  Widget _content(ScrollController scroll) {
+    final d = _data!;
+    final name = (d['name'] ?? 'Unknown').toString();
+    final tier = (d['rankTitle'] ?? '').toString();
+    final branch = (d['branch'] ?? '').toString();
+    final team = (d['team'] ?? '').toString();
+    final rank = d['rank'];
+    final pct = (d['pct'] is num) ? (d['pct'] as num).round() : 0;
+    final courses = (d['courses'] as List?) ?? [];
+    return ListView(
+      controller: scroll,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+      children: [
+        Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 14), decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2)))),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _avatar(name, (d['headshotUrl'] ?? '').toString(), 26),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _textDark)),
+                  const SizedBox(height: 5),
+                  Row(children: [
+                    if (tier.isNotEmpty && widget.tierColors.containsKey(tier)) ...[
+                      _tierPill(tier),
+                      const SizedBox(width: 6),
+                    ],
+                    Flexible(child: Text([if (branch.isNotEmpty) branch, if (team.isNotEmpty) 'Team $team'].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: _textLight))),
+                  ]),
+                ],
+              ),
+            ),
+            if (rank is num)
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text('#$rank', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _primary)),
+                const Text('company', style: TextStyle(fontSize: 10, color: _textPlaceholder)),
+              ]),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(children: [
+          _statBox('${d['itemsCompleted'] ?? 0} / ${d['totalItems'] ?? 0}', 'Lessons & quizzes'),
+          const SizedBox(width: 10),
+          _statBox('${d['coursesCompleted'] ?? 0} / ${d['totalCourses'] ?? 0}', 'Courses done'),
+          const SizedBox(width: 10),
+          _statBox('$pct%', 'Overall'),
+        ]),
+        const SizedBox(height: 18),
+        const Text('COURSE-BY-COURSE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.5)),
+        const SizedBox(height: 8),
+        ...courses.map((c) => _courseRow(Map<String, dynamic>.from(c))),
+      ],
+    );
+  }
+
+  Widget _tierPill(String tier) {
+    final c = widget.tierColors[tier]!;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: c[0], borderRadius: BorderRadius.circular(20)),
+      child: Text(tier, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: c[1])),
+    );
+  }
+
+  Widget _statBox(String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+        child: Column(children: [
+          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _textDark)),
+          const SizedBox(height: 3),
+          Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, color: _textLight)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _courseRow(Map<String, dynamic> c) {
+    final title = (c['title'] ?? 'Untitled').toString();
+    final vW = c['videosWatched'] ?? 0;
+    final vT = c['videosTotal'] ?? 0;
+    final qP = c['quizzesPassed'] ?? 0;
+    final qT = c['quizzesTotal'] ?? 0;
+    final pct = (c['pct'] is num) ? (c['pct'] as num).round() : 0;
+    final complete = c['complete'] == true;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: _white, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _textDark))),
+            if (complete) const Padding(padding: EdgeInsets.only(left: 6), child: Text('🏁', style: TextStyle(fontSize: 14))),
+          ]),
+          const SizedBox(height: 6),
+          Row(children: [
+            Text('🎬 $vW/$vT', style: const TextStyle(fontSize: 12, color: _textLight)),
+            const SizedBox(width: 14),
+            Text('✅ $qP/$qT', style: const TextStyle(fontSize: 12, color: _textLight)),
+            const Spacer(),
+            Text('$pct%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: complete ? _green : _textDark)),
+          ]),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: (pct.clamp(0, 100)) / 100.0,
+              minHeight: 5,
+              backgroundColor: _border,
+              valueColor: const AlwaysStoppedAnimation(_green),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
