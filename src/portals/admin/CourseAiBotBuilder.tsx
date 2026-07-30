@@ -1007,7 +1007,7 @@ function CourseSettingsPanel({ bot, onSave, saving, onDelete }: { bot: CourseBot
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/users").then(r => r.ok ? r.json() : []).then(data => setAllUsers(data.filter((u: any) => u.role !== "admin")));
+    fetch("/api/users").then(r => r.ok ? r.json() : []).then(data => setAllUsers(data.filter((u: any) => u.role !== "admin" && !u.testAccount)));
   }, []);
 
   useEffect(() => {

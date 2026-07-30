@@ -50,6 +50,10 @@ const userSchema = new Schema(
     // manager/admin/C-Level exec.
     fastForwardAllowed: { type: Boolean, default: false },
     suspended: Boolean,
+    // A test/demo account: hidden from every people-facing view (org chart,
+    // leaderboards, role dashboards, directory) while still fully usable and
+    // editable in User Management.
+    testAccount: { type: Boolean, default: false },
     deleted: { type: Boolean, default: false },
     deletedAt: Date,
     strengths: String,

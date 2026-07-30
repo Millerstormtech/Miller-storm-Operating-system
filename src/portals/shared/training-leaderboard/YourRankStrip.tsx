@@ -9,10 +9,12 @@ export function YourRankStrip({
   row,
   totalCourses,
   isNarrow,
+  onClick,
 }: {
   row: RepCardData & { rank: number | null; coursesCompleted: number };
   totalCourses: number;
   isNarrow: boolean;
+  onClick?: () => void;
 }) {
   return (
     <div style={{ marginBottom: 16 }}>
@@ -35,6 +37,7 @@ export function YourRankStrip({
         youTag
         milestone={nextMilestone(row.coursesCompleted, totalCourses)}
         containerStyle={{ background: "#eef2ff", border: "1.5px solid #c7d2fe", marginBottom: 0 }}
+        onClick={onClick}
       />
     </div>
   );

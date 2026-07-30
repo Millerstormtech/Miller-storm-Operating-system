@@ -4,6 +4,7 @@ import { UserProfile, FeatureToggles } from "../../types";
 import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
 import { roleDisplayName } from "../../lib/roleLabels";
+import { useAuth } from "../../contexts/AuthContext";
 
 type UserRole = "admin" | "sales-team-lead" | "sales" | "marketing" | "c-level" | "branch-manager";
 
@@ -15,6 +16,7 @@ type UserEditorProps = {
 };
 
 export function UserManagement(props: UserEditorProps) {
+  const { user: adminUser, viewAs } = useAuth();
   const [draftUsers, setDraftUsers] = useState<UserProfile[]>(props.users);
   const [draftDeletedUsers, setDraftDeletedUsers] = useState<UserProfile[]>(props.deletedUsers);
   
@@ -79,12 +81,6 @@ export function UserManagement(props: UserEditorProps) {
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
   const [devSearch, setDevSearch] = useState("");
   const [developerModalTab, setDeveloperModalTab] = useState<"selection" | "selected">("selection");
-  const [developerUsers, setDeveloperUsers] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("developerUsers");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
   const [showFeatureToggles, setShowFeatureToggles] = useState(false);
   const [showTrainingProgress, setShowTrainingProgress] = useState(false);
   const [showAssignedSales, setShowAssignedSales] = useState(false);
@@ -121,46 +117,41 @@ export function UserManagement(props: UserEditorProps) {
   }
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
-    admin: ["socialMediaMetrics", "businessUnits", "trainingCenter", "userManagement", "courseManagement", "appsTools", "aiBots", "courseAiBots", "messaging", "leaderboard"],
-    "sales-team-lead": ["dashboard", "plans", "onlineTraining", "aiChat", "appsTools", "profile", "taskTracker"],
-    sales: ["dashboard", "plan", "training", "aiChat", "appsTools", "profile"],
-    marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"],
-    // C-Level / Branch Manager: admin can hide any of these pages per user; an
-    // unchecked page disappears from that user's sidebar.
-    "c-level": ["dashboard", "trainingCenter", "teamStructure", "userManagement", "appsTools", "training", "leaderboard", "stormChat", "aiChat", "profile"],
-    "branch-manager": ["dashboard", "stormChat", "trainingCenter", "teamStructure", "userManagement", "appsTools", "leaderboard", "training", "aiChat", "profile"],
+    // Keys must match the exact toggleKey values in each role's Sidebar component
+    admin: ["cLevelDashboard", "branchManagerDashboard", "salesTeamDashboard", "salesRepDashboard", "marketingDashboard", "trainingCenter", "userManagement", "teamStructure", "courseManagement", "onlineTraining", "appsTools", "aiBots", "leaderboard", "stormChat", "emailConfig"],
+    "sales-team-lead": ["dashboard", "stormChat", "trainingCenter", "appsTools", "rankings", "onlineTraining", "aiChat", "profile"],
+    sales: ["dashboard", "stormChat", "trainingCenter", "appsTools", "rankings", "training", "aiChat", "profile"],
+    marketing: ["dashboard", "assets", "trainingCenter", "training", "appsTools", "rankings", "stormChat", "aiAssistant", "profile"],
+    "c-level": ["dashboard", "trainingCenter", "userManagement", "appsTools", "training", "leaderboard", "stormChat", "aiChat", "profile"],
+    "branch-manager": ["dashboard", "stormChat", "trainingCenter", "userManagement", "appsTools", "leaderboard", "training", "aiChat", "profile"],
   };
 
   const featureToggleLabels: Record<string, string> = {
     // Admin
-    socialMediaMetrics: "Social Media Executive View",
-    businessUnits: "Business Planner Executive View",
+    cLevelDashboard: "C Level Dashboard",
+    branchManagerDashboard: "Branch Manager Dashboard",
+    salesTeamDashboard: "Sales Team Dashboard",
+    salesRepDashboard: "Sales Rep Dashboard",
+    marketingDashboard: "Marketing Dashboard",
     trainingCenter: "Course Leaderboard",
     userManagement: "User Management",
+    teamStructure: "Organization Chart",
     courseManagement: "Course Builder",
-    appsTools: "Tools & Products",
-    stormChat: "StormChat",
-    aiBots: "Master Bot Builder",
-    courseAiBots: "Course Bots Builder",
-    messaging: "SMS Config",
-    leaderboard: "Sales Leaderboard",
-    emailConfig: "Email Config",
-    teamStructure: "Team Structure",
-    // Manager
-    dashboard: "Dashboard",
-    plans: "Team Business Planners",
     onlineTraining: "Training Center",
+    appsTools: "Tools & Products",
+    aiBots: "Master Bot Builder",
+    leaderboard: "Sales Leaderboard",
+    stormChat: "StormChat",
+    emailConfig: "Email Config",
+    // Shared
+    dashboard: "My Dashboard",
+    rankings: "Sales Leaderboard",
     aiChat: "Jay's AI Clone",
     profile: "My Profile",
-    taskTracker: "Task Manager",
-    // Sales
-    plan: "Business Planner",
     training: "Training Center",
     // Marketing
     assets: "Marketing Assets",
-    approvals: "Approval Queue",
-    socialMetrics: "Social Metrics",
-    aiAssistant: "AI Assistant"
+    aiAssistant: "Jay's AI Clone",
   };
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
@@ -169,10 +160,11 @@ export function UserManagement(props: UserEditorProps) {
   const userRoles = selectedUser ? [selectedUser.role] : [];
   const uniqueRoles = [...new Set(userRoles)];
   
-  // Get toggles grouped by role
+  // Get toggles grouped by role. A roleless draft (new "+ Add User" before a
+  // role is picked) has no entry, so default keys to [] — never undefined.
   const togglesByRole = uniqueRoles.map(role => ({
     role,
-    keys: featureToggleKeysByRole[role]
+    keys: featureToggleKeysByRole[role] ?? []
   }));
 
   const roleLabels: Record<UserRole, string> = {
@@ -224,15 +216,29 @@ export function UserManagement(props: UserEditorProps) {
     }
   };
 
-  function toggleDeveloperUser(userId: string) {
-    const newSet = new Set(developerUsers);
-    if (newSet.has(userId)) {
-      newSet.delete(userId);
-    } else {
-      newSet.add(userId);
+  // "Developer accounts" = accounts flagged testAccount (hidden everywhere).
+  // Derived from the users themselves so it always reflects the saved DB state.
+  const developerUsers = new Set(draftUsers.filter(u => u.testAccount).map(u => u.id));
+
+  // Toggle a user's testAccount flag from the Developer Accounts modal and
+  // persist it immediately (this is the ONLY way to un-hide a test account,
+  // since a flagged account no longer appears in the main list).
+  async function toggleDeveloperUser(userId: string) {
+    const target = draftUsers.find(u => u.id === userId);
+    if (!target) return;
+    const nextVal = !target.testAccount;
+    const next = draftUsers.map(u => (u.id === userId ? { ...u, testAccount: nextVal } : u));
+    setDraftUsers(next);
+    props.onUsersChange(next);
+    try {
+      await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testAccount: nextVal }),
+      });
+    } catch (e) {
+      console.error("Failed to update test account:", e);
     }
-    setDeveloperUsers(newSet);
-    localStorage.setItem("developerUsers", JSON.stringify([...newSet]));
   }
 
   function saveDeveloperAccounts() {
@@ -324,6 +330,11 @@ export function UserManagement(props: UserEditorProps) {
   function createUser() {
     const allToggles: FeatureToggles = {
       dashboard: true,
+      cLevelDashboard: true,
+      branchManagerDashboard: true,
+      salesTeamDashboard: true,
+      salesRepDashboard: true,
+      marketingDashboard: true,
       userManagement: true,
       roleHierarchy: true,
       businessUnits: true,
@@ -367,7 +378,9 @@ export function UserManagement(props: UserEditorProps) {
       messaging: true,
       leaderboard: true,
       teamStructure: true,
-      stormChat: true
+      stormChat: true,
+      emailConfig: true,
+      rankings: true
     };
     const newUser: UserProfile = {
       id: `user-${Date.now()}`,
@@ -614,7 +627,7 @@ export function UserManagement(props: UserEditorProps) {
             <span>User Management</span>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               {(['admin', 'c-level', 'branch-manager', 'sales-team-lead', 'sales', 'marketing'] as UserRole[]).map(role => {
-                const count = draftUsers.filter(u => u.role === role).length;
+                const count = draftUsers.filter(u => u.role === role && !u.testAccount).length;
                 const colors: Record<UserRole, { bg: string; color: string }> = {
                   admin: { bg: '#fef3c7', color: '#92400e' },
                   "c-level": { bg: "#ede9fe", color: "#5b21b6" },
@@ -641,6 +654,9 @@ export function UserManagement(props: UserEditorProps) {
             <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportCSV} />
             <button type="button" className="btn-secondary btn-small" onClick={() => setShowUpdateConfirm(true)} disabled={notifyingUpdate}>
               {notifyingUpdate ? "Sending..." : "Notify App Update"}
+            </button>
+            <button type="button" className="btn-secondary btn-small" onClick={() => { setDeveloperModalTab("selection"); setDevSearch(""); setShowDeveloperModal(true); }}>
+              👨‍💻 Developer Accounts{developerUsers.size > 0 ? ` (${developerUsers.size})` : ""}
             </button>
             <button type="button" className="btn-primary btn-success" onClick={createUser}>+ Add User</button>
           </div>
@@ -876,7 +892,12 @@ export function UserManagement(props: UserEditorProps) {
                     <button key={user.id} className={isActive ? "list-item active" : "list-item"} onClick={() => setSelectedUserId(user.id)}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <div>
-                          <div className="list-item-title">{user.name}</div>
+                          <div className="list-item-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {user.name}
+                            {user.testAccount && (
+                              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.3, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "1px 5px" }}>TEST</span>
+                            )}
+                          </div>
                           <div className="list-item-subtitle">
                             {user.role.toUpperCase()} • {user.email}
                           </div>
@@ -1165,6 +1186,17 @@ export function UserManagement(props: UserEditorProps) {
                       animation: "fadeIn 0.3s"
                     }}>✓ {saveNotice}</span>
                   )}
+                  {adminUser?.id !== selectedUser.id && (
+                    <button type="button" className="btn-secondary btn-small" title="Open this account read-only — you can see everything but change nothing" onClick={() => {
+                      viewAs({
+                        id: selectedUser.id,
+                        name: selectedUser.name,
+                        email: selectedUser.email,
+                        role: selectedUser.role,
+                        managerId: selectedUser.managerId,
+                      });
+                    }}>👁 View As</button>
+                  )}
                   <button type="button" className="btn-secondary btn-warning btn-small" onClick={async () => {
                     const action = selectedUser.suspended ? "Unsuspend" : "Suspend";
                     if (await appConfirm(`${action} ${selectedUser.name}?`)) {
@@ -1436,14 +1468,17 @@ export function UserManagement(props: UserEditorProps) {
               </div>
               {showFeatureToggles && (
                 <>
-                  {togglesByRole.map(({ role, keys }) => (
+                  {togglesByRole.filter(({ keys }) => keys && keys.length > 0).map(({ role, keys }) => (
                     <div key={role} style={{ marginBottom: 24 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#666" }}>
                         {roleLabels[role]}
                       </div>
                       <div className="toggle-grid">
                         {keys.map((key) => {
-                          const enabled = selectedUser.featureToggles[key];
+                          // Match the sidebar's visibility rule (`!== false`): a
+                          // feature is ON unless explicitly turned off, so a
+                          // missing/undefined key shows as checked by default.
+                          const enabled = selectedUser.featureToggles[key] !== false;
                           const label = featureToggleLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).replace(/ai/gi, "AI").trim();
                           return (
                             <label key={key} className="toggle-item">

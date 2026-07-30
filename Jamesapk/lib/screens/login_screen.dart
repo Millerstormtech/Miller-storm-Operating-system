@@ -132,6 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
     FirebaseMessagingService.saveTokenAfterLogin();
     if (role == 'sales') {
       Navigator.pushReplacementNamed(context, '/rankings');
+    } else if (role == 'marketing') {
+      // Marketing has its own screen set (same design as Sales), so its data
+      // can be tailored independently later.
+      Navigator.pushReplacementNamed(context, '/marketing-rankings');
     } else if (role == 'sales-team-lead') {
       Navigator.pushReplacementNamed(context, '/manager-rankings');
     } else if (role == 'c-level') {
@@ -140,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacementNamed(context, '/bm-rankings');
     } else {
       setState(() {
-        _error = 'Access denied. This app is only available for Sales, Sales Team Lead, C-Level and Branch Manager roles.';
+        _error = 'Access denied. This app is only available for Sales, Marketing, Sales Team Lead, C-Level and Branch Manager roles.';
       });
       AuthService.logout();
     }
@@ -183,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final role = user['role'] as String?;
       // Enable Face ID for next time only for the roles allowed into the app.
-      if (role == 'sales' || role == 'sales-team-lead' || role == 'c-level' || role == 'branch-manager') {
+      if (role == 'sales' || role == 'marketing' || role == 'sales-team-lead' || role == 'c-level' || role == 'branch-manager') {
         await AuthService.enableBiometricLogin();
       }
       _navigateByRole(user);

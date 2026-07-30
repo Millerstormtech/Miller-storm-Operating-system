@@ -8,6 +8,7 @@ import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { gradeQuizAttempt, toLearnerReview } from "../../../src/lib/training/quiz-grading";
+import { celebrateIfCourseCompleted } from "../../../src/lib/training/celebration";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["POST"])) return;
@@ -65,6 +66,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       review: toLearnerReview(grade.review),
       submittedAt: new Date(),
     };
+    // Snapshot before the write, for the celebration's transition check. Read
+    // here rather than reusing anything above: this endpoint writes with
+    // updateOne, so there is no in-memory document to compare against.
+    const progressBefore: any = await UserProgressModel.findOne({ userId, courseId }).lean();
+
     // Two atomic operations instead of read-modify-write (which loses
     // concurrent updates): remove any prior entry for this page, then add the
     // new one. A double submit therefore converges on exactly one entry.
@@ -74,6 +80,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { $push: { quizResults: entry } },
       { upsert: true }
     );
+
+    // Storm Bot celebration. Passing a course's final quiz is now the most
+    // common way to finish a course on the web, and this endpoint is the only
+    // writer of that pass, so without this hook the celebration would silently
+    // never fire for it. Fire-and-forget: the helper fans out 70+
+    // notifications and must not slow the rep's submit.
+    //
+    // Always self-earned here: userId is auth.sub, never body-supplied.
+    const progressAfter: any = await UserProgressModel.findOne({ userId, courseId }).lean();
+    celebrateIfCourseCompleted({
+      userId,
+      courseId,
+      progressBefore,
+      progressAfter,
+    }).catch(() => {});
   }
 
   return res.status(200).json({

@@ -6,9 +6,13 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 export const marketingSidebarItems = [
   { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "assets", label: "Marketing Assets", toggleKey: "assets" },
+  { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
+  { id: "training", label: "Training Center", toggleKey: "training" },
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
+  { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "ai-chat", label: "Jay's AI Clone", toggleKey: "aiAssistant" },
+  { id: "profile", label: "Profile", toggleKey: "profile" },
 ];
 
 const baseItems = marketingSidebarItems;

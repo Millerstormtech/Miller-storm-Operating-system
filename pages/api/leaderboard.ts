@@ -46,7 +46,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let usersQuery: any = {
       role: { $in: [...RANKED_ROLES] },
       deleted: { $ne: true },
-      suspended: { $ne: true }
+      suspended: { $ne: true },
+      testAccount: { $ne: true }
     };
 
     // If managerId is provided, only get that manager's team
@@ -266,7 +267,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Light app enrichment (never gating): match a Miller Storm user by email for the
   // profile photo and the "You" highlight.
-  const appUsers = await UserModel.find({ deleted: { $ne: true } }).select("id email headshotUrl name managerId").lean();
+  const appUsers = await UserModel.find({ deleted: { $ne: true }, testAccount: { $ne: true } }).select("id email headshotUrl name managerId").lean();
   const byEmail = new Map<string, any>();
   for (const u of appUsers) {
     const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);

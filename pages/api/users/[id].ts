@@ -198,7 +198,15 @@ export default async function handler(
       res.status(403).json({ error: "Forbidden" });
       return;
     }
-    const { action, featureToggles, fcmToken } = req.body;
+    const { action, featureToggles, fcmToken, testAccount } = req.body;
+
+    // Save the test-account (developer) flag only — from the Developer Accounts
+    // modal. Toggling it hides/shows the account across every people view.
+    if (typeof testAccount === "boolean") {
+      await UserModel.findOneAndUpdate({ id }, { testAccount });
+      res.status(200).json({ success: true });
+      return;
+    }
 
     // Save fcmToken (from Flutter app)
     if (fcmToken !== undefined) {

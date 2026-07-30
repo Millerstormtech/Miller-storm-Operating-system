@@ -45,7 +45,7 @@ export function ChatHistoryViewer() {
       const res = await fetch("/api/users");
       if (res.ok) {
         const data = await res.json();
-        setUsers(data.filter((u: User) => u.role !== 'admin'));
+        setUsers(data.filter((u: User) => u.role !== 'admin' && !(u as any).testAccount));
       }
     } catch (error) {
       console.error("Failed to load users:", error);

@@ -23,12 +23,14 @@ export function RosterGrid({
   filters,
   isNarrow,
   youId,
+  onOpenRep,
 }: {
   rows: OverallRow[];
   notStartedRows: OverallRow[];
   filters: BoardFilters;
   isNarrow: boolean;
   youId: string | null;
+  onOpenRep: (id: string) => void;
 }) {
   const active = filtersActive(filters);
   const visible = filterRows(rows, filters);
@@ -54,9 +56,10 @@ export function RosterGrid({
             coRank={r.rank}
             isNarrow={isNarrow}
             youTag={r.id === youId}
+            onClick={() => onOpenRep(r.id)}
           />
         ))}
-        <NotStartedGroup rows={visibleNotStarted} isNarrow={isNarrow} />
+        <NotStartedGroup rows={visibleNotStarted} isNarrow={isNarrow} onOpenRep={onOpenRep} />
       </div>
     );
   }
@@ -67,13 +70,13 @@ export function RosterGrid({
     <div>
       {top3.length > 0 && <SectionLabel>Top 3</SectionLabel>}
       {top3.map((r) => (
-        <RepCard key={r.id} row={r} primaryRank={r.rank} medal isNarrow={isNarrow} youTag={r.id === youId} />
+        <RepCard key={r.id} row={r} primaryRank={r.rank} medal isNarrow={isNarrow} youTag={r.id === youId} onClick={() => onOpenRep(r.id)} />
       ))}
       {rest.length > 0 && <SectionLabel>All reps</SectionLabel>}
       {rest.map((r) => (
-        <RepCard key={r.id} row={r} primaryRank={r.rank} isNarrow={isNarrow} youTag={r.id === youId} />
+        <RepCard key={r.id} row={r} primaryRank={r.rank} isNarrow={isNarrow} youTag={r.id === youId} onClick={() => onOpenRep(r.id)} />
       ))}
-      <NotStartedGroup rows={visibleNotStarted} isNarrow={isNarrow} />
+      <NotStartedGroup rows={visibleNotStarted} isNarrow={isNarrow} onOpenRep={onOpenRep} />
     </div>
   );
 }

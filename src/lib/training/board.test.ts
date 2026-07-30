@@ -7,6 +7,9 @@ import {
   filtersActive,
   teamStandings,
   teamSummaryFor,
+  weekStartMonday,
+  computeRankDeltas,
+  courseHeaderStats,
 } from "./board";
 import type { CourseStats } from "./scoring";
 
@@ -147,5 +150,86 @@ describe("teamStandings / teamSummaryFor", () => {
   it("returns null for an unknown or empty team", () => {
     expect(teamSummaryFor(rows, "Nope")).toBeNull();
     expect(teamSummaryFor(rows, "")).toBeNull();
+  });
+});
+
+describe("weekStartMonday", () => {
+  it("maps every weekday to that week's Monday at UTC midnight", () => {
+    // Wed 2026-07-22 15:30 UTC -> Mon 2026-07-20 00:00 UTC
+    expect(weekStartMonday(new Date(Date.UTC(2026, 6, 22, 15, 30))).toISOString()).toBe(
+      "2026-07-20T00:00:00.000Z"
+    );
+    // Monday maps to itself
+    expect(weekStartMonday(new Date(Date.UTC(2026, 6, 20, 0, 0))).toISOString()).toBe(
+      "2026-07-20T00:00:00.000Z"
+    );
+  });
+
+  it("maps Sunday to the PREVIOUS Monday (weeks start Monday)", () => {
+    // Sun 2026-07-26 -> Mon 2026-07-20
+    expect(weekStartMonday(new Date(Date.UTC(2026, 6, 26, 10, 0))).toISOString()).toBe(
+      "2026-07-20T00:00:00.000Z"
+    );
+  });
+
+  it("crosses month boundaries correctly", () => {
+    // Sat 2026-08-01 -> Mon 2026-07-27
+    expect(weekStartMonday(new Date(Date.UTC(2026, 7, 1))).toISOString()).toBe(
+      "2026-07-27T00:00:00.000Z"
+    );
+  });
+});
+
+describe("computeRankDeltas", () => {
+  const prev = [
+    { userId: "a", rank: 5 },
+    { userId: "b", rank: 2 },
+    { userId: "c", rank: 3 },
+  ];
+
+  it("is positive moving up and negative moving down", () => {
+    const d = computeRankDeltas(
+      [
+        { id: "a", rank: 2 },
+        { id: "b", rank: 4 },
+      ],
+      prev
+    );
+    expect(d.get("a")).toBe(3);
+    expect(d.get("b")).toBe(-2);
+  });
+
+  it("is 0 when unchanged and null for a rep with no previous rank", () => {
+    const d = computeRankDeltas(
+      [
+        { id: "c", rank: 3 },
+        { id: "new", rank: 1 },
+      ],
+      prev
+    );
+    expect(d.get("c")).toBe(0);
+    expect(d.get("new")).toBeNull();
+  });
+
+  it("is null for unranked (not started) rows and when there is no previous week", () => {
+    expect(computeRankDeltas([{ id: "a", rank: null }], prev).get("a")).toBeNull();
+    expect(computeRankDeltas([{ id: "a", rank: 1 }], []).get("a")).toBeNull();
+  });
+});
+
+describe("courseHeaderStats", () => {
+  it("counts starters and averages across ALL reps, zeros included", () => {
+    const s = courseHeaderStats([
+      { done: 10, pct: 50 },
+      { done: 1, pct: 10 },
+      { done: 0, pct: 0 },
+    ]);
+    expect(s.started).toBe(2);
+    expect(s.total).toBe(3);
+    expect(s.avgPct).toBe(20);
+  });
+
+  it("handles an empty roster", () => {
+    expect(courseHeaderStats([])).toEqual({ started: 0, total: 0, avgPct: 0 });
   });
 });
