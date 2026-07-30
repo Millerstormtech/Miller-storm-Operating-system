@@ -164,10 +164,11 @@ export function UserManagement(props: UserEditorProps) {
   const userRoles = selectedUser ? [selectedUser.role] : [];
   const uniqueRoles = [...new Set(userRoles)];
   
-  // Get toggles grouped by role
+  // Get toggles grouped by role. A roleless draft (new "+ Add User" before a
+  // role is picked) has no entry, so default keys to [] — never undefined.
   const togglesByRole = uniqueRoles.map(role => ({
     role,
-    keys: featureToggleKeysByRole[role]
+    keys: featureToggleKeysByRole[role] ?? []
   }));
 
   const roleLabels: Record<UserRole, string> = {
