@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isRankedRole } from "../../../lib/training/scoring";
 import type { BoardFilters, OverallResponse, OverallRow } from "../../../lib/training/board";
-import { teamSummaryFor, teamStandings } from "../../../lib/training/board";
+import { teamSummaryFor, filterRows, filtersActive, teamStandings } from "../../../lib/training/board";
+import { ExportReportButton, type ExportRequest, type ExportScope } from "../../../components/report/ExportReportButton";
+import {
+  buildCourseByCourseReport,
+  buildCourseOverallReport,
+  courseOverallFields,
+  courseOverallTitle,
+  type CourseRowInput,
+} from "../../../lib/report/courseBoard";
 import { resolveTeam, TEAM_BRANCH, resolveNameBranch } from "../../../lib/repcard/org-chart";
 import { useIsNarrow } from "./useIsNarrow";
 import { WelcomeBanner } from "./WelcomeBanner";
@@ -41,6 +49,10 @@ export function TrainingLeaderboard() {
   const [showHide, setShowHide] = useState(false);
   const [detailRepId, setDetailRepId] = useState<string | null>(null);
   const [prefsError, setPrefsError] = useState<string | null>(null);
+  // Lifted out of CourseView so the Export report button can see which course
+  // is open and which rows it loaded.
+  const [courseId, setCourseId] = useState("");
+  const [courseRows, setCourseRows] = useState<CourseRowInput[]>([]);
 
   const isAdmin = user?.role === "admin";
 
@@ -131,6 +143,69 @@ export function TrainingLeaderboard() {
     [standings, filters.branch]
   );
 
+  // Default to the first course once the board arrives (CourseView used to own this).
+  useEffect(() => {
+    if (!courseId && data?.courses?.length) setCourseId(data.courses[0].id);
+  }, [data, courseId]);
+
+  // ---- Export report -------------------------------------------------------
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const courseTitle = data?.courses.find((c) => c.id === courseId)?.title || "";
+  const visibleStarted = useMemo(() => filterRows(startedRows, filters), [startedRows, filters]);
+  const visibleNotStarted = useMemo(() => filterRows(notStartedRows, filters), [notStartedRows, filters]);
+  const visibleCourseRows = useMemo(() => filterRows(courseRows, filters), [courseRows, filters]);
+
+  const exportViewCount = view === "overall" ? visibleStarted.length : visibleCourseRows.length;
+  const exportBoardCount = view === "overall" ? startedRows.length : courseRows.length;
+
+  function buildCourseExport(req: ExportRequest) {
+    const useView = req.scope === "view";
+    if (view === "overall") {
+      return buildCourseOverallReport({
+        rows: useView ? visibleStarted : startedRows,
+        notStartedRows: useView ? visibleNotStarted : notStartedRows,
+        filters,
+        scope: req.scope,
+        totalCourses: data?.totalCourses ?? 0,
+        title: req.title,
+        note: req.note,
+        selectedKeys: req.selectedKeys,
+        isoDate: todayIso,
+      });
+    }
+    const rowsForCourse = useView ? visibleCourseRows : courseRows;
+    return buildCourseByCourseReport({
+      rows: rowsForCourse.filter((r) => r.done > 0),
+      notStartedRows: rowsForCourse.filter((r) => r.done === 0),
+      filters,
+      scope: req.scope,
+      courseTitle,
+      title: req.title,
+      note: req.note,
+      selectedKeys: req.selectedKeys,
+      isoDate: todayIso,
+    });
+  }
+
+  function exportDefaultTitle(scope: ExportScope) {
+    if (view === "course") return `Course Leaderboard: ${courseTitle}`;
+    return courseOverallTitle(scope === "board" ? { search: "", branch: "", team: "" } : filters);
+  }
+
+  // The picker only reads `key` and `label`; buildCourse*Report rebuilds the
+  // real value functions when the export runs.
+  function exportFields(scope: ExportScope) {
+    if (view === "course") {
+      return [
+        { key: "branch", label: "Branch", align: "left" as const, value: () => "" },
+        { key: "team", label: "Team", align: "left" as const, value: () => "" },
+        { key: "done", label: "Completed", align: "right" as const, value: () => "" },
+        { key: "pct", label: "Progress", align: "right" as const, value: () => "" },
+      ];
+    }
+    return courseOverallFields(scope === "view" && filtersActive(filters));
+  }
+
   if (!user) return null;
 
   return (
@@ -155,6 +230,16 @@ export function TrainingLeaderboard() {
         isNarrow={isNarrow}
         adminSlot={
           isAdmin ? <AdminMenu onOverride={() => setShowOverride(true)} onHide={() => setShowHide(true)} /> : undefined
+        }
+        exportSlot={
+          <ExportReportButton
+            viewCount={exportViewCount}
+            boardCount={exportBoardCount}
+            defaultTitle={exportDefaultTitle}
+            fieldsFor={exportFields}
+            buildDocument={buildCourseExport}
+            disabledReason={loading ? "Still loading" : undefined}
+          />
         }
       />
 
@@ -219,6 +304,9 @@ export function TrainingLeaderboard() {
               isNarrow={isNarrow}
               youId={user.id}
               hiddenIds={hiddenIds}
+              courseId={courseId}
+              onCourseId={setCourseId}
+              onRows={setCourseRows}
               onOpenRep={setDetailRepId}
             />
           )}

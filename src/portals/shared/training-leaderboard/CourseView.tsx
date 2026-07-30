@@ -29,6 +29,9 @@ export function CourseView({
   isNarrow,
   youId,
   hiddenIds,
+  courseId,
+  onCourseId,
+  onRows,
   onOpenRep,
 }: {
   courses: Array<{ id: string; title: string; videos: number; quizzes: number }>;
@@ -37,9 +40,15 @@ export function CourseView({
   isNarrow: boolean;
   youId: string | null;
   hiddenIds: Set<string>;
+  /** Owned by the parent so the Export report button can see which course is open. */
+  courseId: string;
+  onCourseId: (id: string) => void;
+  /** Reports the rows this view is showing so the parent can export them. */
+  onRows: (
+    rows: Array<{ id: string; name: string; branch: string; team: string; done: number; total: number; pct: number }>
+  ) => void;
   onOpenRep: (id: string) => void;
 }) {
-  const [courseId, setCourseId] = useState(courses[0]?.id || "");
   const [rows, setRows] = useState<CourseRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -89,7 +98,9 @@ export function CourseView({
 
   const enriched = withoutHidden.map((r) => {
     const overall = overallById.get(r.id);
-    const card: RepCardData & { branch: string; team: string; done: number } = {
+    // `total` is carried for the Export report (exportRows below); `rankDelta`
+    // drives the rank-change arrow on the card.
+    const card: RepCardData & { branch: string; team: string; done: number; total: number } = {
       id: r.id,
       name: r.name,
       headshotUrl: r.headshotUrl || "",
@@ -103,6 +114,7 @@ export function CourseView({
       videosWatched: overall?.videosWatched,
       quizzesPassed: overall?.quizzesPassed,
       done: r.done,
+      total: r.total,
     };
     return { card, coRank: overall?.rank ?? null };
   });
@@ -116,11 +128,32 @@ export function CourseView({
     .filter((e) => e.card.done === 0)
     .map((e) => ({ id: e.card.id, name: e.card.name, branch: e.card.branch, team: e.card.team }));
 
+  // Report the rows upward so the parent's Export report button can use them.
+  // Deliberately reports `enriched`, NOT `filtered`: the parent re-applies the
+  // filters for a "This view" export, and needs the unfiltered set intact so
+  // "Full board" really means the full board.
+  const exportRows = enriched.map((e) => ({
+    id: e.card.id,
+    name: e.card.name,
+    branch: e.card.branch,
+    team: e.card.team,
+    done: e.card.done,
+    total: e.card.total ?? 0,
+    pct: e.card.pct,
+  }));
+  const exportKey = exportRows.map((r) => `${r.id}:${r.done}/${r.total}`).join(",");
+  useEffect(() => {
+    onRows(exportRows);
+    // exportKey stands in for deep equality on exportRows: reporting on every
+    // render would loop, because the parent's setState re-renders this child.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exportKey]);
+
   return (
     <div>
       <select
         value={courseId}
-        onChange={(e) => setCourseId(e.target.value)}
+        onChange={(e) => onCourseId(e.target.value)}
         style={{
           width: "100%",
           padding: "9px 10px",

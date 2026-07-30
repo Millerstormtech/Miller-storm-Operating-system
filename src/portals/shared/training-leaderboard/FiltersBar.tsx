@@ -24,6 +24,7 @@ export function FiltersBar({
   teams,
   isNarrow,
   adminSlot,
+  exportSlot,
 }: {
   view: "overall" | "course";
   onView: (v: "overall" | "course") => void;
@@ -33,6 +34,7 @@ export function FiltersBar({
   teams: string[];
   isNarrow: boolean;
   adminSlot?: ReactNode;
+  exportSlot?: ReactNode;
 }) {
   const [showNarrowFilters, setShowNarrowFilters] = useState(false);
   const toggle = (v: "overall" | "course", label: string) => (
@@ -115,6 +117,7 @@ export function FiltersBar({
         ) : (
           selects
         )}
+        {exportSlot}
         {adminSlot}
       </div>
       {isNarrow && showNarrowFilters && <div style={{ display: "flex", gap: 8 }}>{selects}</div>}
