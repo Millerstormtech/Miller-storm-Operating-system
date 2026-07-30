@@ -9,7 +9,7 @@ const Rankings: NextPage = () => {
   const { user } = useAuth();
   return (
     <ProtectedRoute allowedRoles={["sales", "sales-team-lead", "admin"]}>
-      <SalesLayout currentView="rankings" userName={user?.name} userId={user?.id}>
+      <SalesLayout currentView="rankings" userName={user?.name} userId={user?.id} pageSubtitle="Refreshed every 30 minutes">
         <RankingsPage currentUserId={user?.id} />
       </SalesLayout>
     </ProtectedRoute>

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'lesson_player_screen.dart';
@@ -36,6 +38,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   Map<String, dynamic>? _course;
   bool _isLoading = true;
+
+  // Guided tour (inside a course): the lessons list + a "?" replay button.
+  final GlobalKey _kLessons = GlobalKey();
+  final GlobalKey _kReplay = GlobalKey();
+  bool _tourChecked = false;
+  static const _tourSeenKey = 'tour_seen_training_course_v1';
   bool _loadError = false;
   int _completedLessons = 0;
   int _totalLessons = 0;
@@ -188,6 +196,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap in ShowCaseWidget so the in-course tour can spotlight elements.
+    return ShowCaseWidget(
+      blurValue: 0.4,
+      builder: (context) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
+    // Auto-start the tour once per user, after the course loads (normal course
+    // view only, not the playlist preview).
+    if (!_isLoading && _course != null && widget.playlistModules == null && !_tourChecked) {
+      _tourChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
+    }
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
@@ -202,6 +224,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           style: const TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: widget.playlistModules == null ? [
+          Showcase(
+            key: _kReplay,
+            title: 'Replay anytime',
+            description: 'Tap here to replay this quick tour whenever you want a refresher.',
+            child: IconButton(
+              icon: const Icon(Icons.help_outline, color: _textDark, size: 24),
+              tooltip: 'Guided tour',
+              onPressed: () => _startTour(context),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.playlist_add, color: _textDark),
             onPressed: () => _showCreatePlaylistDialog(),
@@ -223,7 +255,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   if (widget.playlistModules == null) _buildContinueButton(),
                   if (widget.playlistModules == null) const SizedBox(height: 32),
                   if (widget.playlistModules != null) const SizedBox(height: 16),
-                  _buildCourseContent(),
+                  Showcase(
+                    key: _kLessons,
+                    title: 'Lessons in order',
+                    description: 'Lessons unlock from top to bottom, so finish one to open the next. Quizzes need 80% to pass, with 2 tries before a rewatch.',
+                    child: _buildCourseContent(),
+                  ),
                 ],
               ),
             ),
@@ -462,6 +499,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         ),
       ),
     );
+  }
+
+  void _startTour(BuildContext context) {
+    ShowCaseWidget.of(context).startShowCase([_kLessons, _kReplay]);
+  }
+
+  Future<void> _maybeAutoStartTour(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_tourSeenKey) == true) return;
+      await prefs.setBool(_tourSeenKey, true);
+      if (!mounted) return;
+      _startTour(context);
+    } catch (_) {}
   }
 
   Widget _buildCourseContent() {

@@ -2,6 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../src/lib/auth";
+import { resolveIncomingQuizResults } from "../../src/lib/training/quiz-intake";
+import { loadGradableQuizPages } from "../../src/lib/training/quiz-pages";
+import { logToDb } from "../../src/lib/models/SystemLog";
+import { celebrateIfCourseCompleted } from "../../src/lib/training/celebration";
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,7 +30,22 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    const userId = auth.sub;
+    // Whose progress? Self by default. A leader (the same role list the
+    // course-progress bulk mode trusts) may read a specific other user, which
+    // is what the manager Team Training Progress screen does. Anyone else
+    // asking about another user gets an explicit 403, never someone else's
+    // data and never silently their own (that silent fallback is the bug this
+    // fixes: leaders were shown THEIR OWN progress labeled as each member's).
+    const LEADER_ROLES = ['admin', 'c-level', 'branch-manager', 'sales-team-lead'];
+    const requestedUserId = typeof req.query.userId === 'string' ? req.query.userId : '';
+    let userId = auth.sub;
+    if (requestedUserId && requestedUserId !== auth.sub) {
+      if (!LEADER_ROLES.includes((auth.role || '').toString())) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+      userId = requestedUserId;
+    }
     const { courseId } = req.query;
 
     console.log('📊 Progress API GET called for userId:', userId, 'courseId:', courseId);
@@ -74,7 +93,19 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const userId = auth.sub;
+    // Writes are self-only, with ONE exception: an admin may write on behalf
+    // of another user (the leaderboard's Override tool). Before this fix the
+    // body's userId was ignored entirely, so an admin override silently wrote
+    // to the ADMIN'S OWN record and the target rep was never touched.
+    const requestedUserId = typeof req.body.userId === 'string' ? req.body.userId : '';
+    let userId = auth.sub;
+    if (requestedUserId && requestedUserId !== auth.sub) {
+      if ((auth.role || '').toString() !== 'admin') {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+      userId = requestedUserId;
+    }
     const { courseId, completedPages, quizResults, courseCompleted } = req.body;
 
     console.log('💾 Progress API POST called:', { userId, courseId, completedPages: completedPages?.length, courseCompleted });
@@ -87,14 +118,44 @@ export default async function handler(
     try {
       // Find existing progress or create new
       let progress = await UserProgressModel.findOne({ userId, courseId });
-      
+
+      // Pre-save snapshot for the celebration transition check (complete
+      // false -> true). toObject() detaches it from the doc mutated below.
+      const progressBefore = progress ? progress.toObject() : null;
+
+      // The server re-grades every incoming quiz result from its own answer
+      // key; the caller's claimed score and passed flag are ignored entirely
+      // (spec 2026-07-26 §5). Stored results with unchanged answers are
+      // preserved exactly, and an earned pass is never downgraded.
+      let quizResultsToStore = quizResults;
+      if (quizResults !== undefined) {
+        const quizPages = await loadGradableQuizPages(courseId);
+        const storedResults = (progress?.quizResults || []).map((r: any) =>
+          typeof r?.toObject === "function" ? r.toObject() : r
+        );
+        const outcome = resolveIncomingQuizResults({
+          quizPages,
+          stored: storedResults,
+          incoming: Array.isArray(quizResults) ? quizResults : [],
+        });
+        quizResultsToStore = outcome.results;
+        for (const r of outcome.rejected) {
+          await logToDb(
+            "warn",
+            "QUIZ-INTAKE",
+            `Rejected quiz claim: user ${userId}, course ${courseId}, page ${r.pageId}`,
+            { claimed: r.claimed, server: r.server }
+          );
+        }
+      }
+
       if (!progress) {
         // Create new progress record
         progress = new UserProgressModel({
           userId,
           courseId,
           completedPages: completedPages || [],
-          quizResults: quizResults || [],
+          quizResults: quizResultsToStore || [],
           courseCompleted: courseCompleted || false
         });
         console.log('📝 Creating new progress record');
@@ -104,7 +165,7 @@ export default async function handler(
           progress.completedPages = completedPages;
         }
         if (quizResults !== undefined) {
-          progress.quizResults = quizResults;
+          progress.quizResults = quizResultsToStore;
         }
         if (courseCompleted !== undefined) {
           progress.courseCompleted = courseCompleted;
@@ -115,6 +176,23 @@ export default async function handler(
       // Save to database
       await progress.save();
       console.log('💾 Progress saved successfully');
+
+      // Storm Bot celebration: fire-and-forget so the completing save stays
+      // fast (the helper fans out 70+ notifications). It is failure-isolated
+      // and never rejects; the catch is belt-and-braces.
+      //
+      // SELF-EARNED ONLY. This endpoint lets an admin write on behalf of another
+      // user (the leaderboard Override tool), and an override must never post a
+      // public "just passed the course" announcement on that rep's behalf: the
+      // whole point of the celebration is that the finish was earned.
+      if (userId === auth.sub) {
+        celebrateIfCourseCompleted({
+          userId,
+          courseId,
+          progressBefore,
+          progressAfter: progress.toObject(),
+        }).catch(() => {});
+      }
 
       res.status(200).json({
         success: true,

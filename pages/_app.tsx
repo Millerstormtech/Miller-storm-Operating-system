@@ -2,6 +2,7 @@ import type { AppProps } from "next/app";
 import { useEffect } from "react";
 import { AuthProvider } from "../src/contexts/AuthContext";
 import { AppDialogs } from "../src/components/AppDialogs";
+import { ViewAsBanner } from "../src/components/ViewAsBanner";
 import "../src/styles.css";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
@@ -22,6 +23,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <AuthProvider>
+      <ViewAsBanner />
       <Component {...pageProps} />
       <AppDialogs />
     </AuthProvider>

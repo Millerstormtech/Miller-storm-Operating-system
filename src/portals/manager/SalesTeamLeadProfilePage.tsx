@@ -73,11 +73,11 @@ export function SalesTeamLeadProfilePage(props: {
       });
   }
 
+  // Real branches (same list the admin User Management "Branch" field uses).
   const territoryOptions = [
-    "DFW, Texas",
-    "Lubbock, Texas",
-    "Round Rock, Texas",
-    "Other"
+    "Dallas",
+    "West Texas",
+    "Fort Worth"
   ];
 
   const selectedTerritories =
@@ -86,6 +86,8 @@ export function SalesTeamLeadProfilePage(props: {
           .split("·")
           .map((t) => t.trim())
           .filter((t) => t.length > 0)
+          // Drop stale/legacy values (old territories) so only real branches show.
+          .filter((t) => territoryOptions.includes(t))
       : [];
 
   useEffect(() => {
@@ -253,7 +255,7 @@ export function SalesTeamLeadProfilePage(props: {
               setIsTerritoryOpen(false);
             }}
           >
-            <span className="field-label">Territory</span>
+            <span className="field-label">Branch</span>
             <button
               type="button"
               className={
@@ -274,7 +276,7 @@ export function SalesTeamLeadProfilePage(props: {
               >
                 {selectedTerritories.length > 0
                   ? selectedTerritories.join(", ")
-                  : "Select territories"}
+                  : "Select branch"}
               </span>
               <span className="territory-trigger-icon">▾</span>
             </button>
@@ -304,7 +306,7 @@ export function SalesTeamLeadProfilePage(props: {
                             : selectedTerritories.filter(
                                 (item) => item !== option
                               );
-                          update({ territory: next.join(" · ") });
+                          update({ territory: next.join(" · "), branches: next });
                         }}
                       />
                       <span>{option}</span>
@@ -315,26 +317,6 @@ export function SalesTeamLeadProfilePage(props: {
             )}
           </div>
         </div>
-      </div>
-      <div className="form-grid plan-form-grid">
-        <label className="field">
-          <span className="field-label">Strengths / Superpowers</span>
-          <textarea
-            className="field-input"
-            rows={4}
-            value={profile.strengths}
-            onChange={(e) => update({ strengths: e.target.value })}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">Weaknesses / Insecurities</span>
-          <textarea
-            className="field-input"
-            rows={4}
-            value={profile.weaknesses}
-            onChange={(e) => update({ weaknesses: e.target.value })}
-          />
-        </label>
       </div>
       <div className="profile-save-row">
         <button

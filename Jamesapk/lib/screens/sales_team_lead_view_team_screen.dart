@@ -343,7 +343,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.leaderboard_outlined, 'Leaderboard', '/manager-rankings', context),
+              _navItem(Icons.leaderboard_outlined, 'Sales', '/manager-rankings', context),
               _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat', context),
               _navItem(Icons.apps_outlined, 'Tools', '/manager-apps-tools-items', context),
               _navItemActive(Icons.group_outlined, 'View Team'),

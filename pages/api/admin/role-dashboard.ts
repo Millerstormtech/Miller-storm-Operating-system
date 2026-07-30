@@ -22,6 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Users holding this role (primary field OR in the roles[] array).
     const users = await UserModel.find({
       deleted: { $ne: true },
+      testAccount: { $ne: true },
       $or: [{ role }, { roles: role }],
     })
       .select("id name email role roles headshotUrl businessPlan managerId suspended")

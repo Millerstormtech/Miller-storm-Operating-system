@@ -270,7 +270,7 @@ const TaskTracker: NextPage = () => {
 
   if (!user) {
     return (
-      <SalesLayout currentView="task-tracker">
+      <SalesLayout currentView="task-tracker" pageTitle="My Tasks">
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
@@ -282,11 +282,7 @@ const TaskTracker: NextPage = () => {
   }
 
   return (
-    <SalesLayout currentView="task-tracker">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0', paddingTop: '0' }}>
-        <h1 className="page-title" style={{ marginTop: '0', marginBottom: '0' }}>My Tasks</h1>
-      </div>
-      
+    <SalesLayout currentView="task-tracker" pageTitle="My Tasks">
       <div className="panel" style={{ marginTop: '16px' }}>
         {isLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>

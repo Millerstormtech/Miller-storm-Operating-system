@@ -41,14 +41,14 @@ const MyProfilePage: NextPage = () => {
 
   if (!profile || !user) {
     return (
-      <SalesTeamLeadLayout currentView="my-profile">
+      <SalesTeamLeadLayout currentView="my-profile" pageTitle="Profile">
         <div style={{ padding: 24, textAlign: 'center' }}>Loading...</div>
       </SalesTeamLeadLayout>
     );
   }
 
   return (
-    <SalesTeamLeadLayout currentView="my-profile">
+    <SalesTeamLeadLayout currentView="my-profile" pageTitle="Profile">
       <SalesTeamLeadProfilePage profile={profile} onProfileChange={handleProfileChange} />
     </SalesTeamLeadLayout>
   );

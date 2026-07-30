@@ -43,6 +43,7 @@ export async function loadBoardData(): Promise<BoardData> {
     role: { $in: [...RANKED_ROLES] },
     deleted: { $ne: true },
     suspended: { $ne: true },
+    testAccount: { $ne: true },
   })
     .select("id name email role headshotUrl")
     .lean();

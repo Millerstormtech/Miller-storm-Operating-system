@@ -15,7 +15,6 @@ const AiChat: NextPage = () => {
   return (
     <SalesLayout currentView="aiChat" userName={user.name} userId={user.id}>
       <div className="page-header" style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-        <h1 className="page-title">AI Assistant</h1>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {bots.map(b => (
             <button key={b.id} onClick={() => selectFn?.(b)} style={{

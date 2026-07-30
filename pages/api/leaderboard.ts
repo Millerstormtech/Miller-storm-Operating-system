@@ -12,6 +12,7 @@ import { RepCardKnockFactModel } from "../../src/lib/models/RepCardKnockFact";
 import { RepCardUserModel } from "../../src/lib/models/RepCardUser";
 import { AcculynxUserModel } from "../../src/lib/models/AcculynxUser";
 import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
+import { compareStanding } from "../../src/lib/leaderboard/ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "../../src/lib/leaderboard/identity";
 import { officeToBranch, saleRegion } from "../../src/lib/repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch, isBranchless } from "../../src/lib/repcard/org-chart";
@@ -45,7 +46,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let usersQuery: any = {
       role: { $in: [...RANKED_ROLES] },
       deleted: { $ne: true },
-      suspended: { $ne: true }
+      suspended: { $ne: true },
+      testAccount: { $ne: true }
     };
 
     // If managerId is provided, only get that manager's team
@@ -265,13 +267,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Light app enrichment (never gating): match a Miller Storm user by email for the
   // profile photo and the "You" highlight.
-  const appUsers = await UserModel.find({ deleted: { $ne: true } }).select("id email headshotUrl name managerId").lean();
+  const appUsers = await UserModel.find({ deleted: { $ne: true }, testAccount: { $ne: true } }).select("id email headshotUrl name managerId").lean();
   const byEmail = new Map<string, any>();
   for (const u of appUsers) {
     const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);
   }
 
-  merged.sort((a, b) => b.revenue - a.revenue || b.verifiedKnocks - a.verifiedKnocks || b.won - a.won || b.filed - a.filed);
+  // Rank order: Contract Amount, then break ties by Contracts -> Claims Filed ->
+  // Leads Created -> Verified Door Knocks. Shared with the board component so the
+  // server rank and the on-screen order always agree (see ranking.ts).
+  merged.sort(compareStanding);
 
   const leaderboard = merged.map((m, i) => {
     const u = m.email ? byEmail.get(m.email) : null;
@@ -310,6 +315,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // "both" = the rep has an AccuLynx ACCOUNT (roster match) OR any all-time sales
       // (backstop — a selling rep can never be flagged). "repcard" = a genuine account gap.
       source: hasAccount || linked.get(m.id) ? "both" : "repcard",
+      // Former = deactivated in RepCard. The reliable signal is the RepCard `status`
+      // field (ACTIVE vs DEACTIVATE), NOT the ❌ baked into the synced name. A blank/
+      // unknown status is treated as current, so we never hide a rep we're unsure about.
+      former: !!(rcu?.status && String(rcu.status).toUpperCase() !== "ACTIVE"),
       // Per-branch breakdown so the UI can show a rep's numbers for a single branch.
       byBranch,
     };

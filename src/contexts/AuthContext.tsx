@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/router";
-import { setToken, clearToken, installAuthFetch, getToken } from "../lib/authToken";
+import { setToken, clearToken, installAuthFetch, getToken, setViewOnly } from "../lib/authToken";
 import { enableWebPush } from "../lib/webPush";
 import {
   enableBiometric as enableBio,
@@ -34,6 +34,13 @@ type AuthContextType = {
   resumeSession: (user: User, token: string) => void;
   // Turn on Face ID / fingerprint login for the current signed-in user.
   enableBiometric: () => Promise<boolean>;
+  // Admin "View As": enter a read-only view of another user's account (no
+  // password), then exit back to the admin account. `impersonating` is true and
+  // `realUser` holds the admin while a view-as session is active.
+  viewAs: (target: User) => void;
+  exitViewAs: () => void;
+  impersonating: boolean;
+  realUser: User | null;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [bioPrompt, setBioPrompt] = useState(false);
+  // The admin behind an active "View As" session (null when not impersonating).
+  const [realUser, setRealUser] = useState<User | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -139,7 +148,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return enableBio(user as any, token);
   }
 
+  // Enter a read-only view of another user's account. Keeps the admin's own
+  // token (so reads stay authorized) but flips the fetch layer into view-only,
+  // so no write can ever reach the API. Uses client-side navigation so the
+  // AuthProvider never remounts (a full reload would clear the session).
+  function viewAs(target: User) {
+    if (!user) return;
+    setRealUser((prev) => prev ?? user); // remember the admin, even if called twice
+    setViewOnly(true);
+    setUser(target);
+    try { localStorage.setItem("user", JSON.stringify(target)); } catch { /* ignore */ }
+    goToDashboard(target);
+  }
+
+  // Leave the read-only view and restore the admin account.
+  function exitViewAs() {
+    if (!realUser) return;
+    const admin = realUser;
+    setViewOnly(false);
+    setRealUser(null);
+    setUser(admin);
+    try { localStorage.setItem("user", JSON.stringify(admin)); } catch { /* ignore */ }
+    router.push("/admin/user-management");
+  }
+
   function logout() {
+    setViewOnly(false);
+    setRealUser(null);
     setUser(null);
     localStorage.removeItem("user");
     clearToken();
@@ -151,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, resumeSession, enableBiometric }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, resumeSession, enableBiometric, viewAs, exitViewAs, impersonating: !!realUser, realUser }}>
       {children}
       {bioPrompt && (
         <div

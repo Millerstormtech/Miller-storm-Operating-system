@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
@@ -30,6 +31,13 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
   // "couldn't load, retry" state instead of a misleading "No courses available".
   bool _loadError = false;
   late TabController _tabController;
+
+  // Guided tour (Training Center): tabs, course grid, and a "?" replay button.
+  final GlobalKey _kTabs = GlobalKey();
+  final GlobalKey _kGrid = GlobalKey();
+  final GlobalKey _kReplay = GlobalKey();
+  bool _tourChecked = false;
+  static const _tourSeenKey = 'tour_seen_training_center_v1';
   String? _userId;
   static const String _cacheKey = 'manager_courses_cache';
 
@@ -945,19 +953,53 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Wrap in ShowCaseWidget so the Training Center tour can spotlight elements.
+    return ShowCaseWidget(
+      blurValue: 0.4,
+      builder: (context) => _buildTourBody(context),
+    );
+  }
+
+  Widget _buildTourBody(BuildContext context) {
+    // Auto-start the tour once per user, after courses have loaded.
+    if (!_isLoading && !_tourChecked) {
+      _tourChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
+    }
     return Column(
       children: [
         Container(
           color: _white,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: _blue,
-            unselectedLabelColor: _textLight,
-            indicatorColor: _blue,
-            labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            tabs: const [
-              Tab(text: 'Courses'),
-              Tab(text: 'My Playlists'),
+          child: Row(
+            children: [
+              Expanded(
+                child: Showcase(
+                  key: _kTabs,
+                  title: 'Your training areas',
+                  description: 'Courses holds the full library. My Playlists is where you build custom lesson lists.',
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: _blue,
+                    unselectedLabelColor: _textLight,
+                    indicatorColor: _blue,
+                    labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    tabs: const [
+                      Tab(text: 'Courses'),
+                      Tab(text: 'My Playlists'),
+                    ],
+                  ),
+                ),
+              ),
+              Showcase(
+                key: _kReplay,
+                title: 'Replay anytime',
+                description: 'Tap here to replay this quick tour whenever you want a refresher.',
+                child: IconButton(
+                  icon: const Icon(Icons.help_outline, color: _textLight, size: 22),
+                  tooltip: 'Guided tour',
+                  onPressed: () => _startTour(context),
+                ),
+              ),
             ],
           ),
         ),
@@ -1020,7 +1062,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
       itemCount: _courses.length,
       itemBuilder: (context, index) {
         final course = _courses[index];
-        return Padding(
+        final Widget card = Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: GestureDetector(
             onTap: () {
@@ -1042,8 +1084,46 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
             ),
           ),
         );
+        // Spotlight the first course card for the tour.
+        if (index == 0) {
+          return Showcase(
+            key: _kGrid,
+            title: 'Pick a course',
+            description: 'Each card shows your progress. Tap a course to open it and continue where you left off.',
+            child: card,
+          );
+        }
+        return card;
       },
     );
+  }
+
+  // Walk the tour: tabs -> a course card -> the replay button. The grid lives on
+  // the Courses tab, so jump there first if needed.
+  void _startTour(BuildContext context) {
+    void run() {
+      final keys = <GlobalKey>[_kTabs];
+      if (_courses.isNotEmpty) keys.add(_kGrid);
+      keys.add(_kReplay);
+      ShowCaseWidget.of(context).startShowCase(keys);
+    }
+    if (_tabController.index != 0) {
+      _tabController.animateTo(0);
+      WidgetsBinding.instance.addPostFrameCallback((_) => run());
+    } else {
+      run();
+    }
+  }
+
+  // First visit only: run the tour once, then remember it per user/device.
+  Future<void> _maybeAutoStartTour(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_tourSeenKey) == true) return;
+      await prefs.setBool(_tourSeenKey, true);
+      if (!mounted) return;
+      _startTour(context);
+    } catch (_) {}
   }
 
   Widget _buildMyPlaylistsTab() {

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Layout } from "../../components/Layout";
-import { AdminSidebar } from "../../components/AdminSidebar";
+import { AdminSidebar, adminSidebarItems } from "../../components/AdminSidebar";
 import { Header } from "../../components/Header";
+import { PageHeader } from "../../components/PageHeader";
+import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 
 type AdminViewId =
@@ -37,11 +39,14 @@ type AdminViewId =
 type AdminLayoutProps = {
   children: React.ReactNode;
   currentView: AdminViewId;
+  pageTitle?: string;
+  pageSubtitle?: string;
 };
 
-export function AdminLayout({ children, currentView }: AdminLayoutProps) {
+export function AdminLayout({ children, currentView, pageTitle, pageSubtitle }: AdminLayoutProps) {
   const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const resolvedTitle = resolvePageTitle(adminSidebarItems, currentView, pageTitle);
 
   return (
     <Layout
@@ -64,6 +69,7 @@ export function AdminLayout({ children, currentView }: AdminLayoutProps) {
         />
       }
     >
+      {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} /> : null}
       {children}
     </Layout>
   );

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Layout } from "../../components/Layout";
-import { BranchManagerSidebar } from "../../components/BranchManagerSidebar";
+import { BranchManagerSidebar, branchManagerSidebarItems } from "../../components/BranchManagerSidebar";
 import { Header } from "../../components/Header";
+import { PageHeader } from "../../components/PageHeader";
+import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
@@ -35,13 +37,16 @@ type BranchManagerViewId =
 type BranchManagerLayoutProps = {
   children: React.ReactNode;
   currentView: BranchManagerViewId;
+  pageTitle?: string;
+  pageSubtitle?: string;
 };
 
-export function BranchManagerLayout({ children, currentView }: BranchManagerLayoutProps) {
+export function BranchManagerLayout({ children, currentView, pageTitle, pageSubtitle }: BranchManagerLayoutProps) {
   const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   // Redirect to the dashboard if this page's feature toggle is off for the user.
   useFeatureGate(user?.id, currentView, BRANCH_MANAGER_VIEW_TOGGLE, "/branch-manager/dashboard");
+  const resolvedTitle = resolvePageTitle(branchManagerSidebarItems, currentView, pageTitle);
 
   return (
     <Layout
@@ -65,6 +70,7 @@ export function BranchManagerLayout({ children, currentView }: BranchManagerLayo
         />
       }
     >
+      {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} /> : null}
       {children}
     </Layout>
   );

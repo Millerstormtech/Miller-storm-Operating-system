@@ -40,11 +40,11 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
   final _phoneController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
+  // Real branches (same list the admin User Management "Branch" field uses).
   final List<String> _availableTerritories = [
-    'DFW, Texas',
-    'Lubbock, Texas',
-    'Round Rock, Texas',
-    'Other',
+    'Dallas',
+    'West Texas',
+    'Fort Worth',
   ];
 
   @override
@@ -96,7 +96,7 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
                     .toString()
                     .split('·')
                     .map((t) => t.trim())
-                    .where((t) => t.isNotEmpty)
+                    .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                     .toList();
               } else {
                 _userTerritories = [];
@@ -131,7 +131,7 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
                 .toString()
                 .split('·')
                 .map((t) => t.trim())
-                .where((t) => t.isNotEmpty)
+                .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                 .toList();
           } else {
             _userTerritories = [];
@@ -271,7 +271,7 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
                 .toString()
                 .split('·')
                 .map((t) => t.trim())
-                .where((t) => t.isNotEmpty)
+                .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                 .toList();
           } else {
             _userTerritories = [];
@@ -635,14 +635,14 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
   }
 
   Widget _buildTerritoryField() {
-    String displayText = _userTerritories.isEmpty ? 'Select Territory' : _userTerritories.join(', ');
+    String displayText = _userTerritories.isEmpty ? 'Select Branch' : _userTerritories.join(', ');
     bool _showTerritoryDropdown = false;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Territory',
+          'Branch',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -658,7 +658,7 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
                 backgroundColor: _white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 title: const Text(
-                  'Select Territory',
+                  'Select Branch',
                   style: TextStyle(color: _textDark, fontWeight: FontWeight.bold),
                 ),
                 content: SingleChildScrollView(

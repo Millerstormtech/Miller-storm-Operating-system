@@ -186,45 +186,12 @@ export function TeamMemberDetail(props: {
                     />
                   </label>
                   <label className="field">
-                    <span className="field-label">Territory</span>
+                    <span className="field-label">Branch</span>
                     <input
                       className="field-input"
                       value={props.member.territory ?? ""}
                       disabled
                       style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
-                    />
-                  </label>
-                </div>
-              </div>
-              <div className="panel-section">
-                <div className="panel-section-title">Strengths & Weaknesses</div>
-                <div className="form-grid">
-                  <label className="field">
-                    <span className="field-label">Strengths / Superpowers</span>
-                    <textarea
-                      className="field-input"
-                      rows={4}
-                      value={props.member.strengths}
-                      onChange={(e) =>
-                        props.onMemberChange({
-                          ...props.member,
-                          strengths: e.target.value
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="field-label">Weaknesses / Insecurities</span>
-                    <textarea
-                      className="field-input"
-                      rows={4}
-                      value={props.member.weaknesses}
-                      onChange={(e) =>
-                        props.onMemberChange({
-                          ...props.member,
-                          weaknesses: e.target.value
-                        })
-                      }
                     />
                   </label>
                 </div>

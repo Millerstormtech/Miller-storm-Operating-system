@@ -40,11 +40,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _phoneController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
+  // Real branches (same list the admin User Management "Branch" field uses).
   final List<String> _availableTerritories = [
-    'DFW, Texas',
-    'Lubbock, Texas',
-    'Round Rock, Texas',
-    'Other',
+    'Dallas',
+    'West Texas',
+    'Fort Worth',
   ];
 
   bool _showTerritoryDropdown = false;
@@ -97,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     .toString()
                     .split('·')
                     .map((t) => t.trim())
-                    .where((t) => t.isNotEmpty)
+                    .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                     .toList();
               } else {
                 _userTerritories = [];
@@ -137,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 .toString()
                 .split('·')
                 .map((t) => t.trim())
-                .where((t) => t.isNotEmpty)
+                .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                 .toList();
           } else {
             _userTerritories = [];
@@ -313,7 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 .toString()
                 .split('·')
                 .map((t) => t.trim())
-                .where((t) => t.isNotEmpty)
+                .where((t) => t.isNotEmpty && _availableTerritories.contains(t))
                 .toList();
           } else {
             _userTerritories = [];
@@ -500,7 +500,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.leaderboard_outlined, 'Leaderboard', false, '/rankings', context),
+              _navItem(Icons.leaderboard_outlined, 'Sales', false, '/rankings', context),
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/stormchat', context),
               const SizedBox(width: 2),
@@ -888,13 +888,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildTerritoryField() {
-    String displayText = _userTerritories.isEmpty ? 'Select Territory' : _userTerritories.join(', ');
+    String displayText = _userTerritories.isEmpty ? 'Select Branch' : _userTerritories.join(', ');
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Territory',
+          'Branch',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,

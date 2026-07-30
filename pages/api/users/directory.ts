@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
   try {
     const users = await UserModel.find(
-      { deleted: { $ne: true } },
+      { deleted: { $ne: true }, testAccount: { $ne: true } },
       { _id: 1, id: 1, name: 1, role: 1, headshotUrl: 1 }
     ).sort({ name: 1 }).lean();
     res.status(200).json(users);

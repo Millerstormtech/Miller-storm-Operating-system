@@ -5,9 +5,6 @@ import { MarketingMaterialsViewer } from "../../src/components/MarketingMaterial
 const AssetsPage: NextPage = () => {
   return (
     <MarketingLayout currentView="assets">
-      <div className="page-header">
-        <h1 className="page-title">Marketing Assets</h1>
-      </div>
       <MarketingMaterialsViewer />
     </MarketingLayout>
   );

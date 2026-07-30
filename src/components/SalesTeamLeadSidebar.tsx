@@ -7,8 +7,8 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // the portal spec). Team Structure, Team Business Planners, Team Tasks and the
 // Master Bot Builder are intentionally NOT here. (Raise a Ticket lives in the
 // top bar, not the sidebar.)
-const baseItems = [
-  { id: "dashboard", label: "Sales Team Dashboard", toggleKey: "dashboard" },
+export const salesTeamLeadSidebarItems = [
+  { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
@@ -17,6 +17,8 @@ const baseItems = [
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
+
+const baseItems = salesTeamLeadSidebarItems;
 
 type SalesTeamLeadSidebarProps = {
   activeId: string;
@@ -46,7 +48,9 @@ export function SalesTeamLeadSidebar({ activeId, isCollapsed, onToggleCollapse }
     <Sidebar
       header={
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%', marginTop: -30 }}>
-          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40 }} />
+          {/* Decorative only: pointer-events:none keeps the transparent overlap
+              from swallowing clicks on the first menu item. */}
+          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40, pointerEvents: 'none' }} />
         </div>
       }
       items={sidebarItems}

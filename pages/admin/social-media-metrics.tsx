@@ -4,7 +4,7 @@ import { SocialMediaMetrics } from "../../src/portals/admin/SocialMediaMetrics";
 
 const SocialMediaMetricsPage: NextPage = () => {
   return (
-    <AdminPageWrapper currentView="socialMediaMetrics">
+    <AdminPageWrapper currentView="socialMediaMetrics" pageTitle="Social Media Metrics">
       <SocialMediaMetrics />
     </AdminPageWrapper>
   );

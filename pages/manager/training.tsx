@@ -31,7 +31,7 @@ const TrainingPage: NextPage = () => {
   }, []);
 
   return (
-    <SalesTeamLeadLayout currentView="training">
+    <SalesTeamLeadLayout currentView="training" pageTitle="Team Training Progress">
       <TeamTrainingProgressPage currentUser={currentUser} teamMembers={teamMembers} courses={courses} />
     </SalesTeamLeadLayout>
   );

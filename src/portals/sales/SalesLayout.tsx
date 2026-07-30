@@ -1,20 +1,24 @@
 import { useState } from "react";
 import { Layout } from "../../components/Layout";
-import { SalesSidebar } from "../../components/SalesSidebar";
+import { SalesSidebar, salesSidebarItems } from "../../components/SalesSidebar";
 import { Header } from "../../components/Header";
+import { PageHeader } from "../../components/PageHeader";
+import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
-type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "ai-bot-builder" | "task-tracker" | "rankings" | "team-structure" | "storm-chat" | "course-leaderboard";
+type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "task-tracker" | "rankings" | "team-structure" | "storm-chat" | "course-leaderboard";
 
 type SalesLayoutProps = {
   children: React.ReactNode;
   currentView: SalesViewId;
   userName?: string;
   userId?: string;
+  pageTitle?: string;
+  pageSubtitle?: string;
 };
 
-export function SalesLayout({ children, currentView, userName, userId }: SalesLayoutProps) {
+export function SalesLayout({ children, currentView, userName, userId, pageTitle, pageSubtitle }: SalesLayoutProps) {
   const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -26,7 +30,6 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
     aiChat: "aiChat",
     "apps-tools": "appsTools",
     profile: "profile",
-    "ai-bot-builder": "aiBots",
     "task-tracker": "taskTracker",
     "storm-chat": "stormChat",
     "course-leaderboard": "trainingCenter",
@@ -34,6 +37,7 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
   };
 
   const allowed = useFeatureGate(user?.id, currentView, viewToToggleKey, "/sales/dashboard");
+  const resolvedTitle = resolvePageTitle(salesSidebarItems, currentView, pageTitle);
 
   return (
     <Layout
@@ -57,7 +61,12 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
         />
       }
     >
-      {allowed ? children : null}
+      {allowed ? (
+        <>
+          {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} /> : null}
+          {children}
+        </>
+      ) : null}
     </Layout>
   );
 }

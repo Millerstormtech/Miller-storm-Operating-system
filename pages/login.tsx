@@ -6,6 +6,36 @@ import { useAuth } from "../src/contexts/AuthContext";
 import { isBiometricEnabled, isBiometricSupported, loginWithBiometric, biometricLabel, isRunningAsApp } from "../src/lib/biometricAuth";
 import logoImage from "../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
 
+// Each role's home page and the URL prefix that role is allowed to land on.
+const ROLE_HOME: Record<string, string> = {
+  admin: "/admin/user-management",
+  "c-level": "/c-level/dashboard",
+  "branch-manager": "/branch-manager/dashboard",
+  "sales-team-lead": "/manager/dashboard",
+  sales: "/sales/dashboard",
+  marketing: "/marketing/dashboard",
+};
+const ROLE_PREFIX: Record<string, string> = {
+  admin: "/admin",
+  "c-level": "/c-level",
+  "branch-manager": "/branch-manager",
+  "sales-team-lead": "/manager",
+  sales: "/sales",
+  marketing: "/marketing",
+};
+
+// Where to send a user right after login. A leftover `redirect_to` (e.g. from
+// being bounced off another role's page) is only honoured when it belongs to
+// THIS user's role — otherwise, e.g., an admin who logged in on a page that was
+// redirected from /sales would wrongly land in the sales panel. Cross-role
+// redirects fall back to the user's own home.
+function destForRole(role: string, redirectTo?: string | null): string {
+  const home = ROLE_HOME[role] || "/sales/dashboard";
+  const prefix = ROLE_PREFIX[role];
+  if (redirectTo && prefix && redirectTo.startsWith(prefix)) return redirectTo;
+  return home;
+}
+
 const LoginPage: NextPage = () => {
   const router = useRouter();
   const { login, resumeSession, user, isLoading: authLoading } = useAuth();
@@ -23,15 +53,10 @@ const LoginPage: NextPage = () => {
   // me out every time I reopen it".
   useEffect(() => {
     if (authLoading || !user) return;
-    const routes: Record<string, string> = {
-      admin: "/admin/user-management",
-      "c-level": "/c-level/dashboard",
-      "branch-manager": "/branch-manager/dashboard",
-      "sales-team-lead": "/manager/dashboard",
-      sales: "/sales/dashboard",
-      marketing: "/marketing/dashboard",
-    };
-    router.replace((router.query.redirect_to as string) || routes[user.role] || "/sales/dashboard");
+    // Route by the logged-in user's ROLE. A leftover redirect_to only applies if
+    // it's within this role's area (see destForRole) — so the right credentials
+    // always land on the right panel.
+    router.replace(destForRole(user.role, router.query.redirect_to as string));
   }, [authLoading, user]);
 
   // Show the "Login with Face ID" button only inside the installed app/PWA (never
@@ -52,9 +77,9 @@ const LoginPage: NextPage = () => {
       setError("Biometric sign-in was cancelled. Please use your email and password.");
       return;
     }
+    // Routing is handled by the role-aware redirect effect above once `user` is
+    // set — no manual redirect_to push (that ignored the user's role).
     resumeSession(result.user as any, result.token);
-    const redirectTo = router.query.redirect_to as string;
-    if (redirectTo) router.push(redirectTo);
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -64,11 +89,8 @@ const LoginPage: NextPage = () => {
 
     try {
       await login(email, password);
-      // After successful login, redirect to the redirect_to URL if provided
-      const redirectTo = router.query.redirect_to as string;
-      if (redirectTo) {
-        router.push(redirectTo);
-      }
+      // Routing is handled by the role-aware redirect effect once `user` is set,
+      // so we never follow a redirect_to that points at another role's panel.
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {

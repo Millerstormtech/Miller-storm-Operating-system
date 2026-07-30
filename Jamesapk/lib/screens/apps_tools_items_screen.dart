@@ -225,7 +225,7 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
                       children: const [
                         Icon(Icons.leaderboard_outlined, color: Color(0xFF9CA3AF), size: 24),
                         SizedBox(height: 4),
-                        Text('Leaderboard', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text('Sales', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),

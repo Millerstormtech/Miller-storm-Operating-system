@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
 import 'jays_ai_clone_screen.dart';
@@ -48,6 +49,15 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   late TabController _tabController;
   String? _userId;
   final TextEditingController _searchController = TextEditingController();
+
+  // Guided tour (Training Center) — mirrors the web: tabs, search, course grid,
+  // and a "?" replay button. Auto-starts once per user/device.
+  final GlobalKey _kTabs = GlobalKey();
+  final GlobalKey _kSearch = GlobalKey();
+  final GlobalKey _kGrid = GlobalKey();
+  final GlobalKey _kReplay = GlobalKey();
+  bool _tourChecked = false;
+  static const _tourSeenKey = 'tour_seen_training_center_v1';
   String _searchQuery = '';
   static const String _cacheKey = 'courses_cache';
   static const String _cacheTimeKey = 'courses_cache_time';
@@ -327,6 +337,19 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    // Wrap in ShowCaseWidget so the Training Center tour can spotlight elements.
+    return ShowCaseWidget(
+      blurValue: 0.4,
+      builder: (context) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
+    // Auto-start the tour once per user, after courses have loaded.
+    if (!_isLoading && !_tourChecked) {
+      _tourChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
+    }
     return WillPopScope(
       onWillPop: () async {
         // Prevent back button from exiting app
@@ -362,37 +385,55 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
               Navigator.pushNamed(context, '/training-leaderboard');
             },
           ),
-          const SizedBox(width: 8),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: _blue,
-          unselectedLabelColor: _textLight,
-          indicatorColor: _blue,
-          labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          tabs: [
-            const Tab(text: 'Courses'),
-            const Tab(text: 'My Playlists'),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Assigned'),
-                  if (_assignedBadge > 0) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      constraints: const BoxConstraints(minWidth: 18),
-                      decoration: BoxDecoration(color: _primary, borderRadius: BorderRadius.circular(10)),
-                      alignment: Alignment.center,
-                      child: Text('$_assignedBadge',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ],
-              ),
+          Showcase(
+            key: _kReplay,
+            title: 'Replay anytime',
+            description: 'Tap here to replay this quick tour whenever you want a refresher.',
+            child: IconButton(
+              icon: const Icon(Icons.help_outline, color: _textLight, size: 24),
+              tooltip: 'Guided tour',
+              onPressed: () => _startTour(context),
             ),
-          ],
+          ),
+          const SizedBox(width: 4),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Showcase(
+            key: _kTabs,
+            title: 'Your training areas',
+            description: 'Courses holds the full library, My Playlists is where you build custom lesson lists, and Assigned Playlists shows what your manager sent you.',
+            child: TabBar(
+              controller: _tabController,
+              labelColor: _blue,
+              unselectedLabelColor: _textLight,
+              indicatorColor: _blue,
+              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              tabs: [
+                const Tab(text: 'Courses'),
+                const Tab(text: 'My Playlists'),
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Assigned'),
+                      if (_assignedBadge > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          constraints: const BoxConstraints(minWidth: 18),
+                          decoration: BoxDecoration(color: _primary, borderRadius: BorderRadius.circular(10)),
+                          alignment: Alignment.center,
+                          child: Text('$_assignedBadge',
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
       body: Column(
@@ -414,13 +455,45 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
     );
   }
 
+  // Walk the tour: tabs -> search -> a course card -> the replay button. The
+  // search + grid live on the Courses tab, so jump there first if needed.
+  void _startTour(BuildContext context) {
+    void run() {
+      final keys = <GlobalKey>[_kTabs, _kSearch];
+      if (_filteredCourses.isNotEmpty) keys.add(_kGrid);
+      keys.add(_kReplay);
+      ShowCaseWidget.of(context).startShowCase(keys);
+    }
+    if (_tabController.index != 0) {
+      _tabController.animateTo(0);
+      WidgetsBinding.instance.addPostFrameCallback((_) => run());
+    } else {
+      run();
+    }
+  }
+
+  // First visit only: run the tour once, then remember it per user/device.
+  Future<void> _maybeAutoStartTour(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_tourSeenKey) == true) return;
+      await prefs.setBool(_tourSeenKey, true);
+      if (!mounted) return;
+      _startTour(context);
+    } catch (_) {}
+  }
+
   Widget _buildCoursesTab() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _primary));
     }
     return Column(
       children: [
-        Container(
+        Showcase(
+          key: _kSearch,
+          title: 'Find anything fast',
+          description: 'Type a course name here to filter the library.',
+          child: Container(
           color: _white,
           padding: const EdgeInsets.all(16),
           child: TextField(
@@ -448,6 +521,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
+        ),
         ),
         Expanded(
           child: _filteredCourses.isEmpty
@@ -521,7 +595,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                     itemCount: _filteredCourses.length,
                     itemBuilder: (context, index) {
                       final course = _filteredCourses[index];
-                      return Padding(
+                      final Widget card = Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: GestureDetector(
                           onTap: () {
@@ -543,6 +617,16 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                           ),
                         ),
                       );
+                      // Spotlight the first course card for the tour.
+                      if (index == 0) {
+                        return Showcase(
+                          key: _kGrid,
+                          title: 'Pick a course',
+                          description: 'Each card shows your progress. Tap a course to open it and continue where you left off.',
+                          child: card,
+                        );
+                      }
+                      return card;
                     },
                   ),
                 ),
@@ -928,7 +1012,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.leaderboard_outlined, 'Leaderboard', '/rankings'),
+              _navItem(Icons.leaderboard_outlined, 'Sales', '/rankings'),
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble, 'StormChat', '/stormchat'),
               const SizedBox(width: 2),
