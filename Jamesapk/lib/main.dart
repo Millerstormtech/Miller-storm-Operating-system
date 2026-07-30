@@ -32,6 +32,7 @@ import 'screens/marketing_courses_screen.dart';
 import 'screens/marketing_storm_chat_screen.dart';
 import 'screens/marketing_apps_tools_items_screen.dart';
 import 'screens/marketing_profile_screen.dart';
+import 'screens/marketing_training_leaderboard_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
 import 'screens/sales_team_lead_apps_tools_items_screen.dart';
 import 'screens/sales_team_lead_apps_tools_detail_screen.dart';
@@ -285,6 +286,8 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const MarketingAppsToolsItemsScreen());
           case '/marketing-profile':
             return MaterialPageRoute(builder: (_) => const MarketingProfileScreen());
+          case '/marketing-training-leaderboard':
+            return MaterialPageRoute(builder: (_) => const MarketingTrainingLeaderboardScreen());
           case '/profile':
             return MaterialPageRoute(builder: (_) => const ProfileScreen());
           case '/tickets':

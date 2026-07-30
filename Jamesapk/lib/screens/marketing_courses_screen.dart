@@ -382,7 +382,7 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
           IconButton(
             icon: const Text('🏆', style: TextStyle(fontSize: 26)),
             onPressed: () {
-              Navigator.pushNamed(context, '/training-leaderboard');
+              Navigator.pushNamed(context, '/marketing-training-leaderboard');
             },
           ),
           Showcase(
