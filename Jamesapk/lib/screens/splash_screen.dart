@@ -35,6 +35,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
         if (role == 'sales') {
           Navigator.pushReplacementNamed(context, '/rankings');
+        } else if (role == 'marketing') {
+          Navigator.pushReplacementNamed(context, '/marketing-rankings');
         } else if (role == 'sales-team-lead') {
           Navigator.pushReplacementNamed(context, '/manager-rankings');
         } else if (role == 'c-level') {
