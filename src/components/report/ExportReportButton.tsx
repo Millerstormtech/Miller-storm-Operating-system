@@ -97,6 +97,11 @@ export function ExportReportButton({
   const nothingToExport = viewCount === 0 && boardCount === 0;
   const disabled = nothingToExport || !!disabledReason;
   const tooltip = nothingToExport ? "Nothing to export" : disabledReason || "";
+  // The button stays enabled when only the CURRENT view is empty, because
+  // "Full board" is still worth exporting. Submitting is what gets blocked, so
+  // a filter matching nobody can never produce a blank PDF.
+  const selectedCount = scope === "view" ? viewCount : boardCount;
+  const emptySelection = selectedCount === 0;
 
   // Seeds the form from a scope. Changing scope re-seeds the title and the
   // column list, because the two scopes can offer different columns (the sales
@@ -247,6 +252,12 @@ export function ExportReportButton({
                 </label>
               ))}
 
+              {emptySelection && (
+                <div style={{ marginTop: 14, fontSize: 12.5, color: "#b45309", fontWeight: 600 }}>
+                  Nothing to export: no reps match these filters. Pick Full board, or close this and clear a filter.
+                </div>
+              )}
+
               {error && (
                 <div style={{ marginTop: 14, fontSize: 12.5, color: "#dc2626", fontWeight: 600 }}>{error}</div>
               )}
@@ -270,8 +281,14 @@ export function ExportReportButton({
               </button>
               <button
                 onClick={submit}
-                disabled={busy}
-                style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#2563eb", fontSize: 13, fontWeight: 600, color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}
+                disabled={busy || emptySelection}
+                title={emptySelection ? "Nothing to export" : ""}
+                style={{
+                  padding: "8px 20px", borderRadius: 8, border: "none", background: "#2563eb",
+                  fontSize: 13, fontWeight: 600, color: "#fff",
+                  cursor: busy ? "wait" : emptySelection ? "not-allowed" : "pointer",
+                  opacity: busy || emptySelection ? 0.55 : 1,
+                }}
               >
                 {busy ? "Creating…" : "Export PDF"}
               </button>
