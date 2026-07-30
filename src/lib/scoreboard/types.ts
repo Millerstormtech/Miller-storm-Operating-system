@@ -7,7 +7,7 @@ export interface SalesRow {
   knocks: number;           // verifiedKnocks
   claims: number;           // filed
   contracts: number;        // won
-  active: boolean;          // RepCard status === "ACTIVE"; false = departed/former rep (kept in totals, excluded from ranking)
+  former: boolean;          // deactivated in RepCard; kept in totals, excluded from ranking. Same field name and semantics the API already returns (see leaderboard/compute.ts)
 }
 
 export interface Totals {

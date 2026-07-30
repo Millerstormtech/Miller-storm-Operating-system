@@ -6,6 +6,7 @@ import { RepCardUserModel } from "../models/RepCardUser";
 import { AcculynxUserModel } from "../models/AcculynxUser";
 import { UserModel } from "../models/User";
 import { mergeLeaderboard } from "./merge";
+import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
 import { officeToBranch, saleRegion } from "../repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch, isBranchless } from "../repcard/org-chart";
@@ -24,7 +25,11 @@ export interface SalesLeaderRow {
   headshotUrl: string;
   isTeamLead: boolean;
   source: "both" | "repcard";
-  active: boolean;          // RepCard status === "ACTIVE"; false = departed/former rep
+  // Former = deactivated in RepCard. Kept as `former` (not the inverse `active`)
+  // because the web board and the four Flutter rankings screens already read
+  // `former` off this endpoint. Unknown/blank status counts as CURRENT, so a rep
+  // is never hidden on a missing field.
+  former: boolean;
   byBranch: Record<string, { verifiedKnocks: number; leadsCreated: number; filed: number; won: number; revenue: number }>;
 }
 
@@ -184,7 +189,10 @@ export async function computeSalesRows(range: { start: Date; end: Date }): Promi
     const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);
   }
 
-  merged.sort((a, b) => b.revenue - a.revenue || b.verifiedKnocks - a.verifiedKnocks || b.won - a.won || b.filed - a.filed);
+  // Rank order: Contract Amount, then break ties by Contracts -> Claims Filed ->
+  // Leads Created -> Verified Door Knocks. Shared with the board component so the
+  // server rank and the on-screen order always agree (see ranking.ts).
+  merged.sort(compareStanding);
 
   const leaderboard = merged.map((m, i) => {
     const u = m.email ? byEmail.get(m.email) : null;
@@ -223,10 +231,12 @@ export async function computeSalesRows(range: { start: Date; end: Date }): Promi
       // "both" = the rep has an AccuLynx ACCOUNT (roster match) OR any all-time sales
       // (backstop — a selling rep can never be flagged). "repcard" = a genuine account gap.
       source: hasAccount || linked.get(m.id) ? "both" : "repcard",
-      // Departed reps (RepCard status !== "ACTIVE") keep counting in totals but must not
-      // occupy a ranking slot on the Scoreboard. Default true when the rep has no RepCard
-      // directory doc, so an unknown status never silently un-ranks a real rep.
-      active: rcu ? String(rcu.status) === "ACTIVE" : true,
+      // Former = deactivated in RepCard. The reliable signal is the RepCard `status`
+      // field (ACTIVE vs DEACTIVATE), NOT the marker baked into the synced name.
+      // Departed reps keep counting in totals but must not occupy a ranking slot on
+      // the Scoreboard. Case-insensitive, and a blank/absent status counts as CURRENT,
+      // so an unknown status never silently un-ranks a real rep.
+      former: !!(rcu?.status && String(rcu.status).toUpperCase() !== "ACTIVE"),
       // Per-branch breakdown so the UI can show a rep's numbers for a single branch.
       byBranch,
     };

@@ -47,9 +47,9 @@ export function rankFor(rows: SalesRow[], scope: Scope): { rank: number; of: num
     if (scope.userId == null) return null;
     const groups = new Map<string, number>();
     for (const r of rows) {
-      // Departed reps (active:false) are not ranked — they don't occupy a slot
+      // Departed reps (former:true) are not ranked — they don't occupy a slot
       // and don't inflate the "of N". Their dollars remain in the totals elsewhere.
-      if (r.active && r.repUserId != null) groups.set(r.repUserId, (groups.get(r.repUserId) ?? 0) + r.revenue);
+      if (!r.former && r.repUserId != null) groups.set(r.repUserId, (groups.get(r.repUserId) ?? 0) + r.revenue);
     }
     return rankByRevenue(groups, scope.userId);
   }

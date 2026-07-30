@@ -4,7 +4,7 @@ import type { SalesRow } from "./types";
 
 const row = (over: Partial<SalesRow>): SalesRow => ({
   repUserId: null, name: "X", team: null, branch: "",
-  revenue: 0, knocks: 0, claims: 0, contracts: 0, active: true, ...over,
+  revenue: 0, knocks: 0, claims: 0, contracts: 0, former: false, ...over,
 });
 
 const rows: SalesRow[] = [
@@ -20,8 +20,8 @@ describe("sumTotals", () => {
   it("returns zeros for an empty roster (honest empty state)", () => {
     expect(sumTotals([])).toEqual({ revenue: 0, knocks: 0, claims: 0, contracts: 0 });
   });
-  it("keeps departed reps' dollars in the totals (active:false still counts)", () => {
-    const withFormer = [...rows, row({ repUserId: "gone", revenue: 500, knocks: 10, claims: 1, contracts: 1, active: false })];
+  it("keeps departed reps' dollars in the totals (former:true still counts)", () => {
+    const withFormer = [...rows, row({ repUserId: "gone", revenue: 500, knocks: 10, claims: 1, contracts: 1, former: true })];
     expect(sumTotals(withFormer)).toEqual({ revenue: 1100, knocks: 110, claims: 10, contracts: 5 });
   });
 });
@@ -68,7 +68,7 @@ describe("rankFor", () => {
   it("self -> departed reps are excluded from the pool and the count", () => {
     const withFormer = [
       ...rows, // A=100, B=200, C=300 (all active)
-      row({ repUserId: "ex", name: "Ex", revenue: 999, active: false }), // would be #1 if counted
+      row({ repUserId: "ex", name: "Ex", revenue: 999, former: true }), // would be #1 if counted
     ];
     // C (300) is still the top ACTIVE rep; the departed 999 is ignored, and of=3 (not 4).
     expect(rankFor(withFormer, { level: "self", userId: "u3" })).toEqual({ rank: 1, of: 3 });
@@ -87,7 +87,7 @@ describe("rankFor", () => {
   it("team -> a departed member's revenue still counts toward the team's rank (dollars kept)", () => {
     const withFormer = [
       ...rows,
-      row({ repUserId: "ex", team: "Gunner", branch: "Fort Worth", revenue: 500, active: false }),
+      row({ repUserId: "ex", team: "Gunner", branch: "Fort Worth", revenue: 500, former: true }),
     ];
     // Gunner = 100 + 200 + 500 = 800 (incl. departed) vs Cooper = 300 -> Gunner #1.
     expect(rankFor(withFormer, { level: "team", team: "Gunner" })).toEqual({ rank: 1, of: 2 });

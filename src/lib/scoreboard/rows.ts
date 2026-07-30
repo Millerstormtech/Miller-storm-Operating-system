@@ -13,6 +13,9 @@ export function toSalesRow(r: SalesLeaderRow): SalesRow {
     knocks: r.verifiedKnocks,
     claims: r.filed,
     contracts: r.won,
-    active: r.active,
+    // `former` deliberately keeps its name across the boundary: the departed-rep
+    // rule is one rule, and an inverted copy of it is how the two boards would
+    // start disagreeing about who is ranked.
+    former: r.former,
   };
 }
