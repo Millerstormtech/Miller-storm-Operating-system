@@ -4,6 +4,7 @@ import { UserProfile, FeatureToggles } from "../../types";
 import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
 import { roleDisplayName } from "../../lib/roleLabels";
+import { useAuth } from "../../contexts/AuthContext";
 
 type UserRole = "admin" | "sales-team-lead" | "sales" | "marketing" | "c-level" | "branch-manager";
 
@@ -15,6 +16,7 @@ type UserEditorProps = {
 };
 
 export function UserManagement(props: UserEditorProps) {
+  const { user: adminUser, viewAs } = useAuth();
   const [draftUsers, setDraftUsers] = useState<UserProfile[]>(props.users);
   const [draftDeletedUsers, setDraftDeletedUsers] = useState<UserProfile[]>(props.deletedUsers);
   
@@ -1183,6 +1185,17 @@ export function UserManagement(props: UserEditorProps) {
                       boxShadow: "0 2px 8px rgba(22,163,74,0.25)",
                       animation: "fadeIn 0.3s"
                     }}>✓ {saveNotice}</span>
+                  )}
+                  {adminUser?.id !== selectedUser.id && (
+                    <button type="button" className="btn-secondary btn-small" title="Open this account read-only — you can see everything but change nothing" onClick={() => {
+                      viewAs({
+                        id: selectedUser.id,
+                        name: selectedUser.name,
+                        email: selectedUser.email,
+                        role: selectedUser.role,
+                        managerId: selectedUser.managerId,
+                      });
+                    }}>👁 View As</button>
                   )}
                   <button type="button" className="btn-secondary btn-warning btn-small" onClick={async () => {
                     const action = selectedUser.suspended ? "Unsuspend" : "Suspend";
