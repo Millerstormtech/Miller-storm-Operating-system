@@ -43,7 +43,7 @@ export function ViewAsBanner() {
         gap: 14,
         flexWrap: "wrap",
         padding: "8px 16px",
-        background: flash ? "#b91c1c" : "#7c3aed",
+        background: flash ? "#7f1d1d" : "#CB0002",
         color: "#fff",
         fontSize: 13,
         fontWeight: 600,
