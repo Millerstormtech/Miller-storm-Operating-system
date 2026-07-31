@@ -187,30 +187,29 @@ export function NewCoursePopup() {
         }}
         style={{
           position: "absolute",
-          top: 10,
-          right: 10,
-          background: "rgba(255,255,255,0.2)",
+          top: 8,
+          right: 8,
+          background: "rgba(255,255,255,0.22)",
           border: "none",
           color: "#fff",
-          width: 24,
-          height: 24,
-          borderRadius: "50%",
+          borderRadius: 6,
+          padding: "3px 10px",
           cursor: "pointer",
-          fontSize: 14,
-          lineHeight: "24px",
-          textAlign: "center",
+          fontSize: 11,
+          fontWeight: 700,
+          lineHeight: 1.4,
         }}
       >
-        ×
+        Close
       </button>
 
       {isAnnouncement && (
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, opacity: 0.9, marginBottom: 4 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, opacity: 0.9, marginBottom: 4, paddingRight: 56 }}>
           📢 ANNOUNCEMENT{notif.metadata?.postedByName ? ` · ${notif.metadata.postedByName}` : ""}
         </div>
       )}
 
-      <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6, paddingRight: 20 }}>
+      <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6, paddingRight: isAnnouncement ? 4 : 56 }}>
         {notif.title}
       </div>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, opacity: 0.95, marginBottom: courseName ? 8 : 14, whiteSpace: "pre-wrap" }}>
