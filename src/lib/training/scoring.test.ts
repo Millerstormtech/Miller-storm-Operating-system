@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { publishedItems, courseStats, rankTitleFor, badgesFor, teamScore, isRankedRole, isRankedUser, isPageComplete, type CourseLike, type ProgressLike } from "./scoring";
+import { publishedItems, courseStats, lessonCount, rankTitleFor, badgesFor, teamScore, isRankedRole, isRankedUser, isPageComplete, type CourseLike, type ProgressLike } from "./scoring";
 import { isExcludedAccount } from "./excluded-accounts";
 
 const course: CourseLike = {
@@ -31,6 +31,29 @@ describe("publishedItems", () => {
 
   it("separates quizzes from videos", () => {
     expect(publishedItems(course).quizIds).toEqual(["q1", "qf"]);
+  });
+
+  describe("lessonCount", () => {
+    it("counts published lessons and excludes quizzes", () => {
+      // `course` holds v1, v2 visible plus q1 and qf quizzes.
+      expect(lessonCount(course)).toBe(2);
+    });
+
+    it("excludes draft lessons and lessons in draft folders", () => {
+      // v3 (draft) and v4 (published, but inside a draft folder) must not count.
+      expect(lessonCount(course)).toBe(2);
+    });
+
+    it("is zero for a course with no pages at all", () => {
+      expect(lessonCount({ pages: [] } as CourseLike)).toBe(0);
+      expect(lessonCount({} as CourseLike)).toBe(0);
+    });
+
+    it("is zero for a course that is nothing but quizzes", () => {
+      expect(
+        lessonCount({ pages: [{ id: "q", status: "published", isQuiz: true }] } as CourseLike)
+      ).toBe(0);
+    });
   });
 
   it("identifies the final test by its isFinalTest flag", () => {

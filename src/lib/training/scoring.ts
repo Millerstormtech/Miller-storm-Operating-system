@@ -51,6 +51,18 @@ export function publishedItems(course: CourseLike): CourseItems {
   };
 }
 
+/**
+ * How many LESSONS a course holds, for the "12 lessons" line on a Training
+ * Center card. Quizzes are excluded on purpose: the card answers "how much
+ * video is in here", not "how many items must I complete".
+ *
+ * Deliberately built on publishedItems() rather than a fresh filter, so it
+ * inherits the draft-folder rule and can never disagree with the course viewer.
+ */
+export function lessonCount(course: CourseLike): number {
+  return publishedItems(course).videoIds.length;
+}
+
 import { quizPct, isQuizResultPassing } from "../quiz";
 
 export type QuizResultLike = {

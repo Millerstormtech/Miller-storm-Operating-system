@@ -2428,6 +2428,13 @@ body {
   color: #111827;
 }
 
+/* "12 lessons" under a course title: how much is inside, before you open it. */
+.training-card-lessons {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .training-card-progress-row {
   margin-top: 8px;
   display: flex;

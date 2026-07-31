@@ -10,6 +10,7 @@ import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
+import { lessonCount } from "../../lib/training/scoring";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 import { GuidedTour } from "../shared/guided-tour/GuidedTour";
@@ -841,6 +842,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     </div>
                   <div className="training-card-body">
                       <div className="training-card-title">{course.title}</div>
+                      {/* How much is in here, before you open it. Lessons only:
+                          quizzes are counted in the progress bar, not here. */}
+                      {lessonCount(course) > 0 && (
+                        <div className="training-card-lessons">
+                          {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}
+                        </div>
+                      )}
                       {progress.total > 0 && (
                         <div className="training-card-progress-row">
                           <div className="training-card-progress-track">
