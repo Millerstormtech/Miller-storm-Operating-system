@@ -4195,6 +4195,30 @@ body {
 /* Leaderboard app-style cards are hidden on desktop (table shows instead). */
 .leaderboard-cards { display: none; }
 
+/*
+ * Sales Leaderboard table: horizontal scroll when the 720px-min table does not
+ * fit, and FROZEN headers (plus a sticky Sum row) when it does.
+ *
+ * These two cannot coexist. A box with overflow-x: auto computes overflow-y to
+ * auto as well, making it its own scroll container; sticky children then pin to
+ * that box, which never scrolls vertically, so they appear not to stick at all.
+ * The real scroll container is .app-content (.app-root is height:100vh /
+ * overflow:hidden, so the page itself never scrolls).
+ *
+ * So: keep the scrollbar below 1060px, and hand the scrolling back to
+ * .app-content above it, where the table fits anyway.
+ * 1060 = 720 table + 260 sidebar + 48 padding, plus slack for the scrollbar.
+ */
+.leaderboard-table-wrap {
+  overflow-x: auto;
+}
+
+@media (min-width: 1060px) {
+  .leaderboard-table-wrap {
+    overflow: visible;
+  }
+}
+
 @media (max-width: 767px) {
   .mobile-menu-button {
     display: flex !important;

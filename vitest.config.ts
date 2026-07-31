@@ -11,6 +11,9 @@ export default defineConfig({
       "src/lib/pageTitle.test.ts",
       "src/portals/shared/guided-tour/**/*.test.ts",
       "src/lib/report/**/*.test.ts",
+      // Targeted, NOT the whole leaderboard folder: adding src/lib/leaderboard/**
+      // would also wake identity/merge/ranking, which have never run here.
+      "src/lib/leaderboard/contractKing.test.ts",
     ],
     environment: "node",
   },

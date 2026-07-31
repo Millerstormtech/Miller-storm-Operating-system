@@ -13,6 +13,7 @@ import { RepCardUserModel } from "../../src/lib/models/RepCardUser";
 import { AcculynxUserModel } from "../../src/lib/models/AcculynxUser";
 import { mergeLeaderboard } from "../../src/lib/leaderboard/merge";
 import { compareStanding } from "../../src/lib/leaderboard/ranking";
+import { pickContractKing, kingMonthLabel } from "../../src/lib/leaderboard/contractKing";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "../../src/lib/leaderboard/identity";
 import { officeToBranch, saleRegion } from "../../src/lib/repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch, isBranchless } from "../../src/lib/repcard/org-chart";
@@ -324,9 +325,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
   });
 
+  // Contract King: the CURRENT CALENDAR MONTH's top rep by Contract Amount.
+  //
+  // Deliberately computed from its own month window rather than the selected
+  // period. On a Year to Date view the year's best rep would otherwise be
+  // crowned while the caption still read "July Contract King".
+  //
+  // When the selected period already IS the current month, `merged` is exactly
+  // the right data and no second query runs.
+  const monthRange = getWindowRange("month");
+  let kingSource = merged;
+  if (isCustom || w !== "month") {
+    const kingAcxRaw = await ScoringFactModel.aggregate([
+      { $match: { occurredAt: { $gte: monthRange.start, $lte: monthRange.end }, repExternalId: { $ne: null } } },
+      { $sort: { occurredAt: 1, _id: 1 } },
+      { $group: {
+          _id: "$repExternalId",
+          email: { $last: "$repEmail" }, phone: { $last: "$repPhone" }, name: { $last: "$repNameSnapshot" },
+          lead: { $sum: { $cond: [{ $eq: ["$metric", "lead"] }, "$value", 0] } },
+          filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
+          won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
+          revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
+      } },
+    ]);
+    const kingAcx = kingAcxRaw.map((r: any) => ({
+      repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
+      nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: "",
+      lead: r.lead, filed: r.filed, won: r.won, revenue: r.revenue,
+    }));
+    // Same roster (`rc`), month-scoped sales. Knocks stay on the selected
+    // range, which only ever matters as the last tie-break after revenue,
+    // contracts, claims and leads have all drawn.
+    kingSource = mergeLeaderboard(kingAcx, rc);
+  }
+  const king = pickContractKing(
+    kingSource.map((m) => ({
+      id: m.id, name: m.name, revenue: m.revenue, won: m.won,
+      filed: m.filed, lead: m.lead, verifiedKnocks: m.verifiedKnocks,
+    }))
+  );
+  // Photo via the same email join the rows use, so the banner obeys the same
+  // rules (and the same broken-image fallback) as the table.
+  const kingRow = king ? kingSource.find((m) => m.id === king.id) : null;
+  const kingUser = kingRow?.email ? byEmail.get(kingRow.email) : null;
+  const contractKing = king
+    ? {
+        ...king,
+        headshotUrl: kingUser ? (kingUser as any).headshotUrl || "" : "",
+        monthLabel: kingMonthLabel(centralDateStr(monthRange.start)),
+      }
+    : null;
+
   return res.status(200).json({
     window: isCustom ? "custom" : w,
     range: { from: isCustom ? fromQ : centralDateStr(start), to: isCustom ? toQ : centralDateStr(end) },
     leaderboard,
+    contractKing,
   });
 }
