@@ -59,10 +59,12 @@ export function NotificationBell({ userId }: { userId: string }) {
       if (!res.ok) return;
       const all: Notification[] = await res.json();
       // "course_added" notifications are shown as a dedicated dashboard pop-up
-      // (NewCoursePopup), not in the bell — filter them out here.
+      // (NewCoursePopup), not in the bell — filter them out here. "app_update"
+      // ("please update the app") is a mobile-only push; it must never show in
+      // the web bell, where updating an app makes no sense.
       // The bell shows ONLY unread notifications: clicking one marks it read so
       // it disappears from the bell ("seen → gone").
-      const data = all.filter((n) => n.type !== "course_added" && !n.read);
+      const data = all.filter((n) => n.type !== "course_added" && n.type !== "app_update" && !n.read);
       setNotifications(data);
       setUnreadCount(data.length);
 
