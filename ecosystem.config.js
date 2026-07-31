@@ -39,6 +39,13 @@ module.exports = {
       time: true
     },
     {
+      // PORT must be the MAIN app's port (6790). The cron POSTs to
+      // http://127.0.0.1:$PORT/api/acculynx/sync, served by the Next app on
+      // 6790. Nothing listens on 6789, so that value makes every sync fail
+      // silently with "fetch failed" into acculynx-sync-err.log. Same bug that
+      // was already fixed for repcard-sync below; this process was missed.
+      // It only kept working because the running process was started with no
+      // PORT in its environment and fell back to the script's 6790 default.
       name: 'acculynx-sync',
       script: 'scripts/acculynx-sync-cron.js',
       cwd: '/var/www/millerstorm',
@@ -47,7 +54,7 @@ module.exports = {
       watch: false,
       env: {
         NODE_ENV: 'production',
-        PORT: 6789
+        PORT: 6790
       },
       error_file: '/var/www/millerstorm/logs/acculynx-sync-err.log',
       out_file: '/var/www/millerstorm/logs/acculynx-sync-out.log',
