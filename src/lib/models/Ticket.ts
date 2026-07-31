@@ -9,7 +9,10 @@ const ticketSchema = new Schema(
     name: { type: String, required: true },
     email: { type: String, required: true },
     role: { type: String, default: "" },
-    type: { type: String, enum: ["bug", "feature", "other"], default: "other" },
+    // A support category key (see src/lib/support/categories.ts). No enum so
+    // categories can change without a schema migration; old tickets keep their
+    // legacy bug/feature/other values.
+    type: { type: String, default: "billing" },
     note: { type: String, default: "" },
     status: {
       type: String,

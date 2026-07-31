@@ -5,12 +5,7 @@ import { NotificationModel } from "../../../src/lib/models/Notification";
 import { UserModel } from "../../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { sendSupportTicketCreatedEmail } from "../../../src/lib/email";
-
-const TYPE_LABEL: Record<string, string> = {
-  bug: "Bug / Issue Fix",
-  feature: "Request New Feature",
-  other: "Other",
-};
+import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, SUPPORT_CATEGORIES } from "../../../src/lib/support/categories";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -45,8 +40,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(400).json({ error: "name, email and note are required" });
     return;
   }
-  const ticketType = ["bug", "feature", "other"].includes(type) ? type : "other";
-  const typeLabel = TYPE_LABEL[ticketType];
+  // Accept a support-category key OR a legacy type (bug/feature/other, still sent
+  // by the mobile app) as-is; anything else falls back to the first category.
+  const isKnown = !!SUPPORT_CATEGORY_BY_KEY[type] || ["bug", "feature", "other"].includes(type);
+  const ticketType = isKnown ? type : SUPPORT_CATEGORIES[0].key;
+  // undefined for legacy types → no category emails, just admins (old behaviour).
+  const category = SUPPORT_CATEGORY_BY_KEY[ticketType];
+  const typeLabel = supportTypeLabel(ticketType);
 
   const ticket = await TicketModel.create({
     id: `ticket-${Date.now()}`,
@@ -59,43 +59,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     status: "open",
   });
 
-  // Notify every admin: in-app bell notification + email.
   try {
     const admins = await UserModel.find(
       { role: "admin", deleted: { $ne: true } },
       { id: 1, name: 1, email: 1 }
     ).lean();
 
-    await Promise.all(
-      (admins as any[]).flatMap((admin) => {
-        const tasks: Promise<any>[] = [];
-        tasks.push(
-          NotificationModel.create({
-            id: `notif-${Date.now()}-${admin.id}`,
-            userId: admin.id,
-            type: "ticket_new",
-            title: "🎫 New Support Ticket",
-            message: `${name} raised a "${typeLabel}" ticket`,
-            metadata: { ticketId: ticket.id },
-          })
-        );
-        if (admin.email) {
-          tasks.push(
-            sendSupportTicketCreatedEmail({
-              adminName: admin.name || "Admin",
-              adminEmail: admin.email,
-              userName: name,
-              userEmail: email,
-              type: typeLabel,
-              note,
-            }).catch((e) => console.error("[ticket] admin email failed:", e?.message || e))
-          );
-        }
-        return tasks;
-      })
+    // Email goes to this category's addresses PLUS every admin (admins always
+    // receive all tickets), deduped so a shared address isn't emailed twice.
+    const adminEmails = (admins as any[]).map((a) => a.email).filter(Boolean);
+    const recipients = Array.from(
+      new Set([...(category?.emails || []), ...adminEmails].filter(Boolean).map((e) => e.toLowerCase()))
     );
+
+    await Promise.all([
+      // Per-category + admin emails.
+      ...recipients.map((to) =>
+        sendSupportTicketCreatedEmail({
+          adminName: "Team",
+          adminEmail: to,
+          userName: name,
+          userEmail: email,
+          type: typeLabel,
+          note,
+        }).catch((e) => console.error("[ticket] email failed:", e?.message || e))
+      ),
+      // In-app bell notification for every admin.
+      ...(admins as any[]).map((admin) =>
+        NotificationModel.create({
+          id: `notif-${Date.now()}-${admin.id}`,
+          userId: admin.id,
+          type: "ticket_new",
+          title: "🎫 New Support Request",
+          message: `${name} raised a "${typeLabel}" request`,
+          metadata: { ticketId: ticket.id },
+        })
+      ),
+    ]);
   } catch (e: any) {
-    console.error("[ticket] admin notify failed:", e?.message || e);
+    console.error("[ticket] notify failed:", e?.message || e);
   }
 
   res.status(201).json(ticket);

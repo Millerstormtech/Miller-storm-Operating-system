@@ -1,23 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../contexts/AuthContext";
+import { SUPPORT_CATEGORIES, supportTypeLabel } from "../lib/support/categories";
 
 type Ticket = {
   id: string;
   name: string;
   email: string;
-  type: "bug" | "feature" | "other";
+  type: string;
   note: string;
   status: "open" | "approved" | "in_progress" | "completed" | "rejected";
   adminNote?: string;
   createdAt?: string;
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  bug: "Bug / Issue Fix",
-  feature: "Request New Feature",
-  other: "Other",
-};
 
 export const STATUS_LABEL: Record<string, string> = {
   open: "Open",
@@ -63,7 +59,7 @@ export function TicketButton() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [type, setType] = useState<"bug" | "feature" | "other">("bug");
+  const [type, setType] = useState<string>(SUPPORT_CATEGORIES[0].key);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -161,7 +157,7 @@ export function TicketButton() {
         type="button"
         className="ticket-btn"
         onClick={() => setOpen(true)}
-        title="Raise a support ticket"
+        title="Contact Support"
         style={{
           display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", lineHeight: 1,
           background: "#bbf7d0", color: "#065f46", border: "1px solid #86efac",
@@ -169,7 +165,7 @@ export function TicketButton() {
           cursor: "pointer", marginRight: 8,
         }}
       >
-        🎫 <span className="ticket-btn-text">Raise a Ticket</span>
+        🎫 <span className="ticket-btn-text">Support</span>
       </button>
 
       {open && (
@@ -182,7 +178,7 @@ export function TicketButton() {
             style={{ background: "#fff", borderRadius: 14, maxWidth: 520, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
           >
             <div style={{ padding: "20px 24px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#111827" }}>🎫 Raise a Ticket</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#111827" }}>🎫 Support</h2>
               <button type="button" onClick={() => setOpen(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#6b7280" }}>×</button>
             </div>
 
@@ -194,10 +190,12 @@ export function TicketButton() {
                 <input value={email} onChange={(e) => setEmail(e.target.value)} style={inp} placeholder="you@example.com" />
               </label>
               <label style={lbl}>Reason
-                <select value={type} onChange={(e) => setType(e.target.value as any)} style={inp}>
-                  <option value="bug">Bug / Issue Fix</option>
-                  <option value="feature">Request New Feature</option>
-                  <option value="other">Other</option>
+                <select value={type} onChange={(e) => setType(e.target.value)} style={inp}>
+                  {SUPPORT_CATEGORIES.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.label} — {c.reason}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label style={lbl}>Note
@@ -223,7 +221,7 @@ export function TicketButton() {
                     return (
                       <div key={t.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 12px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontWeight: 600, fontSize: 13, color: "#111827" }}>{TYPE_LABEL[t.type]}</span>
+                          <span style={{ fontWeight: 600, fontSize: 13, color: "#111827" }}>{supportTypeLabel(t.type)}</span>
                           <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{STATUS_LABEL[t.status]}</span>
                         </div>
                         <p style={{ margin: "6px 0 0", fontSize: 12, color: "#6b7280", whiteSpace: "pre-wrap" }}>{t.note}</p>

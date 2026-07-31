@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { STATUS_LABEL, STATUS_COLOR } from "../../components/TicketButton";
+import { supportTypeLabel } from "../../lib/support/categories";
 
 type Ticket = {
   id: string;
@@ -12,12 +13,6 @@ type Ticket = {
   status: "open" | "approved" | "in_progress" | "completed" | "rejected";
   adminNote?: string;
   createdAt?: string;
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  bug: "Bug / Issue Fix",
-  feature: "Request New Feature",
-  other: "Other",
 };
 
 const STATUS_OPTIONS = ["open", "approved", "in_progress", "completed", "rejected"];
@@ -90,7 +85,7 @@ export function TicketTable() {
                       <div style={{ fontSize: 12, color: "#6b7280" }}>{t.email}</div>
                       {t.role && <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "capitalize" }}>{t.role}</div>}
                     </td>
-                    <td style={td}>{TYPE_LABEL[t.type]}</td>
+                    <td style={td}>{supportTypeLabel(t.type)}</td>
                     <td style={{ ...td, maxWidth: 320, whiteSpace: "pre-wrap" }}>{t.note}</td>
                     <td style={{ ...td, whiteSpace: "nowrap", color: "#6b7280", fontSize: 12 }}>
                       {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}
