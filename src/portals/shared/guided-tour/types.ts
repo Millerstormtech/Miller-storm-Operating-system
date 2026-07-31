@@ -9,8 +9,12 @@ export type TourStep = {
   target: string;
   /** Short, bold. */
   title: string;
-  /** One to two plain sentences. No em dashes. */
-  body: string;
+  /** One to two plain sentences. No em dashes.
+   *  An array renders as a bulleted list instead, for steps that name several
+   *  distinct things (a run-on sentence listing three areas is hard to scan).
+   *  A plain string renders exactly as it always has, so existing tours are
+   *  unaffected. */
+  body: string | string[];
   /** Defaults to automatic: the side with the most free space. */
   placement?: Placement;
 };

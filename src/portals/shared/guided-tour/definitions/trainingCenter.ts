@@ -5,9 +5,16 @@ export const TRAINING_CENTER_TOUR: TourDefinition = {
   version: 1,
   steps: [
     {
+      // A list, not a sentence: three named tabs are far easier to match to
+      // what is on screen as separate lines. Each label matches its tab
+      // exactly, so nobody hunts for a control that reads differently.
       target: "tabs",
       title: "Your training areas",
-      body: "Courses holds the full library. My Playlists is where you build custom lesson lists, and Assigned Playlists shows what your manager sent you.",
+      body: [
+        "Courses: the full lesson library.",
+        "My Playlists: custom lesson lists you build yourself.",
+        "Assigned Playlists: what your manager sent you.",
+      ],
     },
     {
       target: "search",
