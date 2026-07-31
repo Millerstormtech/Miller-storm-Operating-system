@@ -91,6 +91,102 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     return isAdmin || isGroupMember;
   }
 
+  // Pin/unpin: a moderator in a group (group admin or system admin); in a DM
+  // either member. Mirrors the server rule and canSendMessage's id comparison.
+  bool get _canPin {
+    final isDirect = widget.group['isDirect'] == true;
+    final admins = List<String>.from(widget.group['admins'] ?? []);
+    final members = List<String>.from(widget.group['members'] ?? []);
+    final isAdmin = widget.userRole == 'admin';
+    final isGroupAdmin = admins.contains(widget.userId);
+    final isGroupMember = members.contains(widget.userId);
+    return isDirect ? isGroupMember : (isGroupAdmin || isAdmin);
+  }
+
+  // The most recently pinned message (drives the banner).
+  Map<String, dynamic>? get _pinnedMessage {
+    final pinned = messages.where((m) => m['pinned'] == true).toList();
+    if (pinned.isEmpty) return null;
+    pinned.sort((a, b) => (b['pinnedAt'] ?? '').toString().compareTo((a['pinnedAt'] ?? '').toString()));
+    return Map<String, dynamic>.from(pinned.first);
+  }
+
+  Future<void> _togglePin(dynamic message) async {
+    final messageId = message['_id'];
+    final currentlyPinned = message['pinned'] == true;
+    try {
+      final res = await api.patch(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'action': currentlyPinned ? 'unpin' : 'pin', 'messageId': messageId}),
+      );
+      if (res.statusCode == 200 && mounted) {
+        final serverMsg = json.decode(res.body);
+        setState(() {
+          final idx = messages.indexWhere((m) => m['_id'] == messageId);
+          if (idx != -1) {
+            final u = Map<String, dynamic>.from(messages[idx]);
+            u['pinned'] = serverMsg['pinned'];
+            u['pinnedByName'] = serverMsg['pinnedByName'];
+            u['pinnedAt'] = serverMsg['pinnedAt'];
+            messages[idx] = u;
+          }
+        });
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to pin message')));
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to pin message')));
+    }
+  }
+
+  Widget _buildPinnedBanner() {
+    final pinned = _pinnedMessage;
+    if (pinned == null) return const SizedBox.shrink();
+    final type = (pinned['messageType'] ?? 'text').toString();
+    final preview = type == 'image'
+        ? '📷 Photo'
+        : type == 'video'
+            ? '🎬 Video'
+            : type == 'poll'
+                ? '📊 ${pinned['poll']?['question'] ?? 'Poll'}'
+                : (pinned['message'] ?? '').toString();
+    final bg = _isDarkTheme ? const Color(0xFF2A2413) : const Color(0xFFFFFBEB);
+    final line = _isDarkTheme ? const Color(0xFF3A331C) : const Color(0xFFFDE68A);
+    final by = (pinned['pinnedByName'] ?? '').toString();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+      decoration: BoxDecoration(color: bg, border: Border(bottom: BorderSide(color: line))),
+      child: Row(
+        children: [
+          const Icon(Icons.push_pin, size: 16, color: Color(0xFFB45309)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Pinned${by.isNotEmpty ? ' · $by' : ''}',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
+                Text('${pinned['senderName'] ?? ''}: $preview',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: _isDarkTheme ? Colors.white70 : const Color(0xFF374151))),
+              ],
+            ),
+          ),
+          if (_canPin)
+            TextButton(
+              onPressed: () => _togglePin(pinned),
+              style: TextButton.styleFrom(minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+              child: const Text('Unpin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1195,6 +1291,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         children: [
           Column(
             children: [
+              _buildPinnedBanner(),
               // Messages
               Expanded(
                 child: isLoading
@@ -2205,6 +2302,16 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Text copied to clipboard')),
                     );
+                  },
+                ),
+              // Pin / unpin (moderators in a group; either member in a DM).
+              if (_canPin)
+                ListTile(
+                  leading: Icon(message['pinned'] == true ? Icons.push_pin : Icons.push_pin_outlined, color: textColor),
+                  title: Text(message['pinned'] == true ? 'Unpin' : 'Pin', style: TextStyle(color: textColor)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _togglePin(message);
                   },
                 ),
               // Delete (own messages only — text, photo or video).

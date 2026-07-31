@@ -31,6 +31,10 @@ export interface IChatMessage extends Document {
   replyToSender?: string;
   mentions?: string[];
   reactions?: IReaction[];
+  pinned?: boolean;
+  pinnedAt?: Date;
+  pinnedBy?: string;
+  pinnedByName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -75,7 +79,14 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     replyToMessage: { type: String },
     replyToSender: { type: String },
     mentions: { type: [String], default: [] },
-    reactions: { type: [ReactionSchema], default: [] }
+    reactions: { type: [ReactionSchema], default: [] },
+    // A message can be pinned to the top of its group by a moderator (group
+    // admin / system admin; in a DM either member). pinnedAt orders the banner
+    // when more than one message is pinned (most recent wins).
+    pinned: { type: Boolean, default: false },
+    pinnedAt: { type: Date, default: null },
+    pinnedBy: { type: String, default: '' },
+    pinnedByName: { type: String, default: '' }
   },
   { timestamps: true }
 );

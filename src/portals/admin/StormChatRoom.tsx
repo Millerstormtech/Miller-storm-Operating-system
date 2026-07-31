@@ -16,6 +16,9 @@ type ChatMessage = {
   replyToMessage?: string;
   replyToSender?: string;
   reactions?: { emoji: string; userId: string; userName: string }[];
+  pinned?: boolean;
+  pinnedByName?: string;
+  pinnedAt?: string;
   createdAt: Date;
 };
 
@@ -154,8 +157,36 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const isGroupMember = isMember || group.members.includes(user?._id || user?.id || '');
   const isAdmin = user?.role === 'admin';
   const isGroupAdmin = group.admins.includes(user?._id || user?.id || '');
-  
+
   const canSendMessage = isAdmin || isGroupAdmin || (group.onlyAdminCanChat ? false : isGroupMember);
+  // Pin/unpin: a moderator in a group (group admin or system admin); in a DM
+  // either member. Matches the server rule.
+  const canPin = isDirect ? isGroupMember : (isGroupAdmin || isAdmin);
+  // The banner shows the most recently pinned message.
+  const pinnedMessage = messages
+    .filter((m) => m.pinned)
+    .sort((a, b) => new Date(b.pinnedAt || 0).getTime() - new Date(a.pinnedAt || 0).getTime())[0] || null;
+
+  // Pin or unpin a message; updates the list in place on success.
+  async function togglePin(msg: ChatMessage) {
+    try {
+      const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: msg.pinned ? 'unpin' : 'pin', messageId: msg._id }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setMessages((prev) => prev.map((m) => (m._id === msg._id
+          ? { ...m, pinned: updated.pinned, pinnedByName: updated.pinnedByName, pinnedAt: updated.pinnedAt }
+          : m)));
+      } else {
+        alert('Failed to pin message');
+      }
+    } catch {
+      alert('Failed to pin message');
+    }
+  }
 
   useEffect(() => {
     fetchMessages();
@@ -944,6 +975,16 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     >
                       📋 Copy
                     </button>
+                    {canPin && (
+                      <button
+                        onClick={() => { togglePin(msg); setMenuMessageId(null); }}
+                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        {msg.pinned ? '📌 Unpin' : '📌 Pin'}
+                      </button>
+                    )}
                     {(isMyMessage || (isAdmin && !isDirect)) && (
                       <button
                         onClick={() => { deleteMessage(msg._id); setMenuMessageId(null); }}
@@ -1167,8 +1208,36 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
         </div>
       </div>
 
+      {/* Pinned message banner */}
+      {pinnedMessage && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
+          <span style={{ fontSize: 15 }}>📌</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>
+              Pinned{pinnedMessage.pinnedByName ? ` · ${pinnedMessage.pinnedByName}` : ''}
+            </div>
+            <div style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <strong>{pinnedMessage.senderName}: </strong>
+              {pinnedMessage.messageType === 'image' ? '📷 Photo'
+                : pinnedMessage.messageType === 'video' ? '🎬 Video'
+                : pinnedMessage.messageType === 'poll' ? `📊 ${pinnedMessage.poll?.question || 'Poll'}`
+                : (pinnedMessage.message || '')}
+            </div>
+          </div>
+          {canPin && (
+            <button
+              onClick={() => togglePin(pinnedMessage)}
+              title="Unpin"
+              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#92400e', fontSize: 13, fontWeight: 700, flexShrink: 0 }}
+            >
+              Unpin
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Messages */}
-      <div 
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
         style={{ 

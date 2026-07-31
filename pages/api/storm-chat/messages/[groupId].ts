@@ -303,6 +303,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to send message' });
     }
   } else if (req.method === 'PATCH') {
+    // Pin / unpin a message. A moderator (group admin or system admin) may pin
+    // in a group; in a DM either of the two members may. Permission is derived
+    // from the message's OWN group, never the URL param.
+    if (req.body.action === 'pin' || req.body.action === 'unpin') {
+      try {
+        const { messageId } = req.body;
+        if (!messageId) return res.status(400).json({ error: 'messageId is required' });
+
+        const msg = await ChatMessage.findById(messageId);
+        if (!msg) return res.status(404).json({ error: 'Message not found' });
+
+        const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
+        if (!grp) return res.status(404).json({ error: 'Group not found' });
+
+        // group.members/admins store Mongo _ids; auth.sub is the app id.
+        const me = await UserModel.findOne({ id: auth.sub }, { _id: 1, name: 1 }).lean() as any;
+        const myIds = [auth.sub, me?._id?.toString()].filter(Boolean) as string[];
+        const isMember = (grp.members || []).some((m: string) => myIds.includes(m));
+        const isGroupAdmin = (grp.admins || []).some((m: string) => myIds.includes(m));
+        const dm = isDmGroup(grp);
+        const canPin = dm ? isMember : (isGroupAdmin || auth.role === 'admin');
+        if (!canPin) {
+          return res.status(403).json({ error: 'Only group admins can pin messages' });
+        }
+
+        const pin = req.body.action === 'pin';
+        (msg as any).pinned = pin;
+        (msg as any).pinnedAt = pin ? new Date() : null;
+        (msg as any).pinnedBy = pin ? auth.sub : '';
+        (msg as any).pinnedByName = pin ? (me?.name || '') : '';
+        await msg.save();
+        return res.status(200).json(msg);
+      } catch (error) {
+        console.error('Error pinning message:', error);
+        return res.status(500).json({ error: 'Failed to pin message' });
+      }
+    }
     // Add or remove a reaction on a message
     try {
       const { messageId, emoji, userName } = req.body;
