@@ -5,6 +5,14 @@ import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { SALES_LEADERBOARD_TOUR } from "../portals/shared/guided-tour/definitions/salesLeaderboard";
 import { compareStanding } from "../lib/leaderboard/ranking";
+import { ExportReportButton, type ExportRequest, type ExportScope } from "./report/ExportReportButton";
+import {
+  buildSalesReport,
+  salesDefaultTitle,
+  salesFields,
+  type SalesExportContext,
+  type SalesExportRow,
+} from "../lib/report/salesBoard";
 
 type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
@@ -185,6 +193,55 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     { verifiedKnocks: 0, leadsCreated: 0, filed: 0, won: 0, revenue: 0 }
   );
 
+  // ---- Export report -------------------------------------------------------
+  // "Full board" drops the row filters but NEVER the period: the period is not a
+  // client-side filter, it is what the API was asked to fetch. `boardRows` is
+  // therefore `rows`, the unfiltered set for the selected range.
+  const boardRows = rows;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const periodLabel = isCustom ? "Custom range" : WINDOWS.find((w) => w.key === window)?.label || "Month to Date";
+
+  const exportContext = useCallback(
+    (scope: ExportScope): SalesExportContext => ({
+      scope,
+      periodLabel,
+      from,
+      to,
+      branch: branchFilter,
+      team: teamFilter,
+      selectedRepCount: appliedReps.size,
+      hideFormer,
+      rowCount: scope === "view" ? visible.length : boardRows.length,
+    }),
+    [periodLabel, from, to, branchFilter, teamFilter, appliedReps, hideFormer, visible.length, boardRows.length]
+  );
+
+  const toExportRow = (r: any): SalesExportRow => ({
+    id: r.id,
+    name: r.name,
+    branch: r.branch || "",
+    team: r.team || "",
+    verifiedKnocks: r.verifiedKnocks ?? 0,
+    leadsCreated: r.leadsCreated ?? 0,
+    filed: r.filed ?? 0,
+    won: r.won ?? 0,
+    revenue: r.revenue ?? 0,
+  });
+
+  const buildExport = (req: ExportRequest) => {
+    // Full board is ordered by the board's own standing rule, not by whatever
+    // column happens to be sorted on screen.
+    const source = req.scope === "view" ? visible : [...boardRows].sort(compareStanding);
+    return buildSalesReport({
+      rows: source.map(toExportRow),
+      context: exportContext(req.scope),
+      title: req.title,
+      note: req.note,
+      selectedKeys: req.selectedKeys,
+      isoDate: todayIso,
+    });
+  };
+
   return (
     <div>
       <GuidedTour tour={SALES_LEADERBOARD_TOUR} ready={!loading} />
@@ -313,6 +370,14 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             Clear filters
           </button>
         ) : null}
+        <ExportReportButton
+          viewCount={visible.length}
+          boardCount={boardRows.length}
+          defaultTitle={(scope) => salesDefaultTitle(exportContext(scope))}
+          fieldsFor={(scope) => salesFields(exportContext(scope))}
+          buildDocument={buildExport}
+          disabledReason={loading ? "Still loading" : undefined}
+        />
         <span style={{ fontSize: 13, color: "#9ca3af", marginLeft: "auto" }}>
           {visible.length} rep{visible.length === 1 ? "" : "s"}
         </span>

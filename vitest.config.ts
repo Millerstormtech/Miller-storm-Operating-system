@@ -10,6 +10,7 @@ export default defineConfig({
       "src/lib/training/**/*.test.ts",
       "src/lib/pageTitle.test.ts",
       "src/portals/shared/guided-tour/**/*.test.ts",
+      "src/lib/report/**/*.test.ts",
     ],
     environment: "node",
   },

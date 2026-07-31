@@ -9,6 +9,7 @@ import {
   MEDAL_EDGE,
   GREEN,
   RING_TRACK,
+  DELTA_DOWN,
   avatarColor,
   initials,
 } from "./constants";
@@ -26,6 +27,8 @@ export type RepCardData = {
   isPodium: boolean;
   videosWatched?: number;
   quizzesPassed?: number;
+  /** Company-rank movement since last week. Nothing renders for null/undefined/0. */
+  rankDelta?: number | null;
 };
 
 export function ProgressRing({ pct, size = 52, holeBg = "#fff" }: { pct: number; size?: number; holeBg?: string }) {
@@ -67,7 +70,7 @@ export function ProgressRing({ pct, size = 52, holeBg = "#fff" }: { pct: number;
   );
 }
 
-function Avatar({ name, headshotUrl, size }: { name: string; headshotUrl: string; size: number }) {
+export function Avatar({ name, headshotUrl, size }: { name: string; headshotUrl: string; size: number }) {
   const [errored, setErrored] = useState(false);
   if (headshotUrl && !errored) {
     return (
@@ -243,6 +246,19 @@ export function RepCard({
               {row.rankTitle}
             </span>
           </Tooltip>
+          {typeof row.rankDelta === "number" && row.rankDelta !== 0 && (
+            <Tooltip text="Rank change: since last week (company-wide)">
+              <span
+                style={{
+                  fontSize: isNarrow ? 10 : 11,
+                  fontWeight: 700,
+                  color: row.rankDelta > 0 ? GREEN : DELTA_DOWN,
+                }}
+              >
+                {row.rankDelta > 0 ? `▲${row.rankDelta}` : `▼${-row.rankDelta}`}
+              </span>
+            </Tooltip>
+          )}
           {typeof coRank === "number" && (
             <span style={{ fontSize: isNarrow ? 10 : 11, color: "#6b7280", fontWeight: 600 }}>co.#{coRank}</span>
           )}

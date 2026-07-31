@@ -15,6 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch all non-deleted users that are managers or sales
     const allUsers = await UserModel.find({
       deleted: { $ne: true },
+      testAccount: { $ne: true },
       $or: [
         { role: "sales-team-lead" },
         { role: "sales" },

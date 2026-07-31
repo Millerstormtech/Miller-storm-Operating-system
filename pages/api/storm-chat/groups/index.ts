@@ -4,6 +4,7 @@ import ChatGroup from '../../../../src/lib/models/ChatGroup';
 import { UserModel } from '../../../../src/lib/models/User';
 import mongoose from 'mongoose';
 import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
+import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -34,10 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // DMs stay strictly members-only. All other groups (public AND private)
         // are visible to EVERYONE so non-members can find a private group and
         // request to join — each carries an `isMember` flag the UI uses to show
-        // the chat vs a "Request to Join" prompt.
+        // the chat vs a "Request to Join" prompt. `isDmGroup` also catches legacy
+        // DMs missing the isDirect flag, and we normalize isDirect=true on the way
+        // out so the client always renders them as a DM (never a joinable group).
         groups = groups
-          .filter((g: any) => (g.isDirect ? isMemberOf(g) : true))
-          .map((g: any) => (g.isDirect ? g : { ...g, isMember: isMemberOf(g) }));
+          .filter((g: any) => (isDmGroup(g) ? isMemberOf(g) : true))
+          .map((g: any) => (isDmGroup(g) ? { ...g, isDirect: true } : { ...g, isMember: isMemberOf(g) }));
 
         // Attach the caller's join-request status for private groups they aren't
         // in yet, so the UI can show Requested / Rejected instead of a fresh Join.
@@ -66,8 +69,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         }
       } else {
-        // Never leak private DM threads into the unfiltered list.
-        groups = groups.filter((g: any) => !g.isDirect);
+        // Never leak private DM threads into the unfiltered list (isDmGroup also
+        // catches legacy DMs missing the isDirect flag).
+        groups = groups.filter((g: any) => !isDmGroup(g));
       }
 
       // WhatsApp-style ordering: the group/DM with the newest message floats to

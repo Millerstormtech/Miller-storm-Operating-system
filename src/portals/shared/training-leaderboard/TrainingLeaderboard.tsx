@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isRankedRole } from "../../../lib/training/scoring";
 import type { BoardFilters, OverallResponse, OverallRow } from "../../../lib/training/board";
-import { teamSummaryFor } from "../../../lib/training/board";
+import { teamSummaryFor, filterRows, filtersActive, teamStandings } from "../../../lib/training/board";
+import { ExportReportButton, type ExportRequest, type ExportScope } from "../../../components/report/ExportReportButton";
+import {
+  buildCourseByCourseReport,
+  buildCourseOverallReport,
+  courseOverallFields,
+  courseOverallTitle,
+  type CourseRowInput,
+} from "../../../lib/report/courseBoard";
 import { resolveTeam, TEAM_BRANCH, resolveNameBranch } from "../../../lib/repcard/org-chart";
 import { useIsNarrow } from "./useIsNarrow";
 import { Legend } from "./Legend";
@@ -11,9 +19,11 @@ import { RosterGrid } from "./RosterGrid";
 import { CourseView } from "./CourseView";
 import { YourRankStrip } from "./YourRankStrip";
 import { MyTeamSummary } from "./MyTeamSummary";
+import { TeamStandings } from "./TeamStandings";
 import { AdminMenu } from "./AdminMenu";
 import { OverrideModal } from "./OverrideModal";
 import { HideModal } from "./HideModal";
+import { RepDetailModal } from "./RepDetailModal";
 import { GuidedTour } from "../guided-tour/GuidedTour";
 import { COURSE_LEADERBOARD_TOUR } from "../guided-tour/definitions/courseLeaderboard";
 
@@ -38,7 +48,12 @@ export function TrainingLeaderboard() {
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [showOverride, setShowOverride] = useState(false);
   const [showHide, setShowHide] = useState(false);
+  const [detailRepId, setDetailRepId] = useState<string | null>(null);
   const [prefsError, setPrefsError] = useState<string | null>(null);
+  // Lifted out of CourseView so the Export report button can see which course
+  // is open and which rows it loaded.
+  const [courseId, setCourseId] = useState("");
+  const [courseRows, setCourseRows] = useState<CourseRowInput[]>([]);
 
   const isAdmin = user?.role === "admin";
 
@@ -120,6 +135,78 @@ export function TrainingLeaderboard() {
     [allRows]
   );
 
+  // Company-wide team standings; a branch filter HIDES other branches' teams
+  // but never renumbers ranks (same principle as rep medals).
+  const standings = useMemo(() => teamStandings(allRows), [allRows]);
+  const visibleStandings = useMemo(
+    () =>
+      filters.branch ? standings.filter((s) => TEAM_BRANCH[s.team] === filters.branch) : standings,
+    [standings, filters.branch]
+  );
+
+  // Default to the first course once the board arrives (CourseView used to own this).
+  useEffect(() => {
+    if (!courseId && data?.courses?.length) setCourseId(data.courses[0].id);
+  }, [data, courseId]);
+
+  // ---- Export report -------------------------------------------------------
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const courseTitle = data?.courses.find((c) => c.id === courseId)?.title || "";
+  const visibleStarted = useMemo(() => filterRows(startedRows, filters), [startedRows, filters]);
+  const visibleNotStarted = useMemo(() => filterRows(notStartedRows, filters), [notStartedRows, filters]);
+  const visibleCourseRows = useMemo(() => filterRows(courseRows, filters), [courseRows, filters]);
+
+  const exportViewCount = view === "overall" ? visibleStarted.length : visibleCourseRows.length;
+  const exportBoardCount = view === "overall" ? startedRows.length : courseRows.length;
+
+  function buildCourseExport(req: ExportRequest) {
+    const useView = req.scope === "view";
+    if (view === "overall") {
+      return buildCourseOverallReport({
+        rows: useView ? visibleStarted : startedRows,
+        notStartedRows: useView ? visibleNotStarted : notStartedRows,
+        filters,
+        scope: req.scope,
+        totalCourses: data?.totalCourses ?? 0,
+        title: req.title,
+        note: req.note,
+        selectedKeys: req.selectedKeys,
+        isoDate: todayIso,
+      });
+    }
+    const rowsForCourse = useView ? visibleCourseRows : courseRows;
+    return buildCourseByCourseReport({
+      rows: rowsForCourse.filter((r) => r.done > 0),
+      notStartedRows: rowsForCourse.filter((r) => r.done === 0),
+      filters,
+      scope: req.scope,
+      courseTitle,
+      title: req.title,
+      note: req.note,
+      selectedKeys: req.selectedKeys,
+      isoDate: todayIso,
+    });
+  }
+
+  function exportDefaultTitle(scope: ExportScope) {
+    if (view === "course") return `Course Leaderboard: ${courseTitle}`;
+    return courseOverallTitle(scope === "board" ? { search: "", branch: "", team: "" } : filters);
+  }
+
+  // The picker only reads `key` and `label`; buildCourse*Report rebuilds the
+  // real value functions when the export runs.
+  function exportFields(scope: ExportScope) {
+    if (view === "course") {
+      return [
+        { key: "branch", label: "Branch", align: "left" as const, value: () => "" },
+        { key: "team", label: "Team", align: "left" as const, value: () => "" },
+        { key: "done", label: "Completed", align: "right" as const, value: () => "" },
+        { key: "pct", label: "Progress", align: "right" as const, value: () => "" },
+      ];
+    }
+    return courseOverallFields(scope === "view" && filtersActive(filters));
+  }
+
   if (!user) return null;
 
   return (
@@ -142,6 +229,22 @@ export function TrainingLeaderboard() {
         isNarrow={isNarrow}
         adminSlot={
           isAdmin ? <AdminMenu onOverride={() => setShowOverride(true)} onHide={() => setShowHide(true)} /> : undefined
+        }
+        exportSlot={
+          // The marker goes on this local wrapper, NOT inside ExportReportButton:
+          // that component is shared with the Sales Leaderboard, which must not
+          // inherit a clb- marker. inline-flex keeps the box tight to the button
+          // (display:contents would leave nothing for the tour to measure).
+          <span data-tour="clb-export" style={{ display: "inline-flex" }}>
+            <ExportReportButton
+              viewCount={exportViewCount}
+              boardCount={exportBoardCount}
+              defaultTitle={exportDefaultTitle}
+              fieldsFor={exportFields}
+              buildDocument={buildCourseExport}
+              disabledReason={loading ? "Still loading" : undefined}
+            />
+          </span>
         }
       />
 
@@ -173,19 +276,31 @@ export function TrainingLeaderboard() {
         </div>
       ) : (
         <>
-          {view === "overall" && youRow && (
-            <YourRankStrip row={youRow} totalCourses={data.totalCourses} isNarrow={isNarrow} />
-          )}
-          {view === "overall" && myTeam && <MyTeamSummary summary={myTeam} isNarrow={isNarrow} />}
-
           {view === "overall" ? (
-            <RosterGrid
-              rows={startedRows}
-              notStartedRows={notStartedRows}
-              filters={filters}
-              isNarrow={isNarrow}
-              youId={user.id}
-            />
+            <div style={{ display: isNarrow ? "block" : "flex", gap: 16, alignItems: "flex-start" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {isNarrow && (
+                  <TeamStandings standings={visibleStandings} activeTeam={filters.team} isNarrow />
+                )}
+                {youRow && (
+                  <YourRankStrip row={youRow} totalCourses={data.totalCourses} isNarrow={isNarrow} onClick={() => setDetailRepId(user.id)} />
+                )}
+                {myTeam && <MyTeamSummary summary={myTeam} isNarrow={isNarrow} />}
+                <RosterGrid
+                  rows={startedRows}
+                  notStartedRows={notStartedRows}
+                  filters={filters}
+                  isNarrow={isNarrow}
+                  youId={user.id}
+                  onOpenRep={setDetailRepId}
+                />
+              </div>
+              {!isNarrow && visibleStandings.length > 0 && (
+                <div style={{ width: 250, flexShrink: 0, position: "sticky", top: 12 }}>
+                  <TeamStandings standings={visibleStandings} activeTeam={filters.team} isNarrow={false} />
+                </div>
+              )}
+            </div>
           ) : (
             <CourseView
               courses={data.courses}
@@ -194,11 +309,16 @@ export function TrainingLeaderboard() {
               isNarrow={isNarrow}
               youId={user.id}
               hiddenIds={hiddenIds}
+              courseId={courseId}
+              onCourseId={setCourseId}
+              onRows={setCourseRows}
+              onOpenRep={setDetailRepId}
             />
           )}
         </>
       )}
 
+      {detailRepId && <RepDetailModal repId={detailRepId} onClose={() => setDetailRepId(null)} />}
       {showOverride && data && (
         <OverrideModal courses={data.courses} onClose={() => setShowOverride(false)} onSaved={loadBoard} />
       )}

@@ -27,6 +27,12 @@ import 'screens/profile_screen.dart';
 import 'screens/ticket_screen.dart';
 import 'services/api_client.dart';
 import 'screens/apps_tools_items_screen.dart';
+import 'screens/marketing_rankings_screen.dart';
+import 'screens/marketing_courses_screen.dart';
+import 'screens/marketing_storm_chat_screen.dart';
+import 'screens/marketing_apps_tools_items_screen.dart';
+import 'screens/marketing_profile_screen.dart';
+import 'screens/marketing_training_leaderboard_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
 import 'screens/sales_team_lead_apps_tools_items_screen.dart';
 import 'screens/sales_team_lead_apps_tools_detail_screen.dart';
@@ -270,6 +276,18 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const BranchManagerProfileScreen());
           case '/bm-user-management':
             return MaterialPageRoute(builder: (_) => const BranchManagerUserManagementScreen());
+          case '/marketing-rankings':
+            return MaterialPageRoute(builder: (_) => const MarketingRankingsScreen());
+          case '/marketing-courses':
+            return MaterialPageRoute(builder: (_) => const MarketingCoursesScreen());
+          case '/marketing-stormchat':
+            return MaterialPageRoute(builder: (_) => const MarketingStormChatScreen());
+          case '/marketing-apps-tools-items':
+            return MaterialPageRoute(builder: (_) => const MarketingAppsToolsItemsScreen());
+          case '/marketing-profile':
+            return MaterialPageRoute(builder: (_) => const MarketingProfileScreen());
+          case '/marketing-training-leaderboard':
+            return MaterialPageRoute(builder: (_) => const MarketingTrainingLeaderboardScreen());
           case '/profile':
             return MaterialPageRoute(builder: (_) => const ProfileScreen());
           case '/tickets':
