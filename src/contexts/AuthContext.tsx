@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useRouter } from "next/router";
 import { setToken, clearToken, installAuthFetch, getToken, setViewOnly } from "../lib/authToken";
 import { enableWebPush } from "../lib/webPush";
@@ -52,21 +52,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // The admin behind an active "View As" session (null when not impersonating).
   const [realUser, setRealUser] = useState<User | null>(null);
   const router = useRouter();
+  // Live user (for the cross-tab responder closure) + the shared auth channel.
+  const userRef = useRef<User | null>(null);
+  userRef.current = user;
+  const channelRef = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
     installAuthFetch();
-    // Web: the session is intentionally NOT restored from storage. Every fresh
-    // page load — new tab, reopen, or refresh — must go through the login form:
-    // the user has to type their email + password and click Login to enter any
-    // panel. (The mobile app keeps its own persistent session separately.)
-    // Clear any leftover from an older build/session so nothing lingers.
-    try {
-      localStorage.removeItem("user");
-    } catch {
-      /* ignore storage errors */
+    // The session lives in memory only, so a COLD start — the first tab, or a
+    // full refresh with no other tab open — still goes through the login form.
+    // But when another tab of this site is already signed in, a newly opened tab
+    // adopts that live session over a same-origin BroadcastChannel instead of
+    // making the user log in again. Nothing is persisted to storage, so closing
+    // every tab still ends the session.
+    const chan = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("ms-auth") : null;
+    channelRef.current = chan;
+    let resolved = false;
+
+    const finishNoSession = () => {
+      if (resolved) return;
+      resolved = true;
+      try { localStorage.removeItem("user"); } catch { /* ignore */ }
+      clearToken();
+      setIsLoading(false);
+    };
+
+    if (chan) {
+      chan.onmessage = (e) => {
+        const msg = e.data;
+        if (!msg || typeof msg !== "object") return;
+        if (msg.type === "session-request") {
+          // A starting-up tab wants a session — hand ours over if we have one.
+          const t = getToken();
+          if (t && userRef.current) {
+            chan.postMessage({ type: "session-offer", user: userRef.current, token: t });
+          }
+        } else if (msg.type === "session-offer" && !resolved && msg.user && msg.token) {
+          // Adopt the existing tab's session instead of forcing a fresh login.
+          resolved = true;
+          setToken(msg.token);
+          setUser(msg.user);
+          try { enableWebPush(msg.user.id); } catch { /* ignore */ }
+          setIsLoading(false);
+        } else if (msg.type === "logout") {
+          // Signed out in another tab → drop the session here too.
+          clearToken();
+          setUser(null);
+          try { localStorage.removeItem("user"); } catch { /* ignore */ }
+        }
+      };
+      chan.postMessage({ type: "session-request" });
+      // No answer in time → cold start; fall back to the login flow.
+      const timer = setTimeout(finishNoSession, 400);
+      return () => { clearTimeout(timer); };
     }
-    clearToken();
-    setIsLoading(false);
+
+    finishNoSession();
   }, []);
 
   // Web guard: with no restored session, any protected page must bounce to the
@@ -182,6 +223,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // otherwise the leftover bio_token/bio_user let the app re-establish the
     // session (auto-login) without the user re-entering email/password.
     disableBiometric();
+    // Sign out every other open tab too, so a shared session can't linger.
+    try { channelRef.current?.postMessage({ type: "logout" }); } catch { /* ignore */ }
     router.push("/login");
   }
 
