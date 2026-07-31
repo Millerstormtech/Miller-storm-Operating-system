@@ -32,7 +32,8 @@ type CLevelViewId =
   | "training"
   | "jays-ai-clone"
   | "my-profile"
-  | "user-management";
+  | "user-management"
+  | "announcements";
 
 type CLevelLayoutProps = {
   children: React.ReactNode;

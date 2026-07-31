@@ -2,7 +2,6 @@ import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
 import { ManagerDashboard } from "../../src/portals/manager/Dashboard";
-import { NewCoursePopup } from "../../src/components/NewCoursePopup";
 import { UserProfile } from "../../src/types";
 
 const DashboardPage: NextPage = () => {
@@ -25,7 +24,6 @@ const DashboardPage: NextPage = () => {
 
   return (
     <SalesTeamLeadLayout currentView="dashboard">
-      <NewCoursePopup />
       <ManagerDashboard teamMembers={teamMembers} />
     </SalesTeamLeadLayout>
   );

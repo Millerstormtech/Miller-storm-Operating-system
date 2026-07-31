@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { AuthProvider } from "../src/contexts/AuthContext";
 import { AppDialogs } from "../src/components/AppDialogs";
 import { ViewAsBanner } from "../src/components/ViewAsBanner";
+import { NewCoursePopup } from "../src/components/NewCoursePopup";
 import "../src/styles.css";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
@@ -24,6 +25,9 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   return (
     <AuthProvider>
       <ViewAsBanner />
+      {/* One shared corner pop-up for the whole app (announcements + new-course),
+          so it shows on every page of every portal, not just dashboards. */}
+      <NewCoursePopup />
       <Component {...pageProps} />
       <AppDialogs />
     </AuthProvider>

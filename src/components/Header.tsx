@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import { NotificationBell } from "./NotificationBell";
 import { TicketButton } from "./TicketButton";
+import { AnnouncementButton } from "./AnnouncementButton";
 
 type HeaderProps = {
   title: string;
@@ -44,6 +45,7 @@ export function Header(props: HeaderProps) {
         )}
       </div>
       <div className="header-profile">
+        <AnnouncementButton />
         <TicketButton />
         {props.userId && <NotificationBell userId={props.userId} />}
         <div className="header-user-info" style={{ position: "relative" }} ref={dropdownRef}>

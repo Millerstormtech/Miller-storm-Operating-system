@@ -1,7 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../contexts/AuthContext";
 import { trainingRouteForRole } from "../lib/trainingRoute";
+
+// Hard stop: a pop-up notification stops appearing once it is older than this,
+// even if the user never acknowledged it. Applies to BOTH announcements and the
+// existing new-course pop-up (deliberate behaviour change — course_added used to
+// nag forever until "Check it out" was clicked).
+const POPUP_MAX_AGE_DAYS = 14;
 
 type Notification = {
   id: string;
@@ -9,25 +15,49 @@ type Notification = {
   title: string;
   message: string;
   read: boolean;
-  metadata?: { courseId?: string; courseName?: string; watchUrl?: string; lessonId?: string };
+  createdAt?: string;
+  metadata?: {
+    courseId?: string;
+    courseName?: string;
+    watchUrl?: string;
+    lessonId?: string;
+    link?: string;
+    postedByName?: string;
+  };
 };
 
 /**
- * Red "new course" pop-up shown on the sales & manager dashboards.
+ * Corner pop-up shown on every page of every portal (mounted once in _app.tsx).
  *
- * It keeps appearing on every login until the user clicks "Check it out"
- * (which marks the notification read and takes them to training). Closing with
- * the X only hides it for the current view — it returns on the next login,
- * because it stays UNREAD until the course is actually opened.
+ * Handles two notification types:
+ *   - `announcement` — a company-wide message from an admin / c-level. The action
+ *     button opens metadata.link (external → new tab), or just says "Got it" when
+ *     there's no link. Announcements ALSO show in the bell.
+ *   - `course_added` — a newly published course. The action opens Training.
  *
- * These `course_added` notifications are intentionally NOT shown in the bell.
+ * The X hides it for the current view; it stays UNREAD so it returns on the next
+ * login, until the action button is clicked (which marks it read) or it ages out
+ * after POPUP_MAX_AGE_DAYS. If both types are outstanding, the announcement wins.
  */
 export function NewCoursePopup() {
   const { user } = useAuth();
   const router = useRouter();
   const [notif, setNotif] = useState<Notification | null>(null);
-  // Ids the user closed with the X this session — hidden until next login.
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  // Ids the user closed with the X during THIS login — kept in a ref so closing
+  // one doesn't re-run the poller. Reset on every login/logout below.
+  const dismissedRef = useRef<Set<string>>(new Set());
+
+  // A session boundary (login OR logout) is a "next login" for the X rule.
+  // Because logout/login are client-side navigations this component never
+  // unmounts, so we reset here whenever the user changes: forget what was
+  // dismissed and clear any shown pop-up. This runs BEFORE the poller effect
+  // (declared first), so the fresh poll below sees an empty dismissed set —
+  // an unread announcement reappears on the next login (until acknowledged or
+  // it ages out at 14 days), and nothing lingers on the login screen.
+  useEffect(() => {
+    dismissedRef.current = new Set();
+    setNotif(null);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -38,11 +68,22 @@ export function NewCoursePopup() {
         const res = await fetch("/api/notifications");
         if (!res.ok) return;
         const data: Notification[] = await res.json();
-        // Newest unread "course_added" the user hasn't closed this session
-        // (list is already sorted newest-first).
-        const fresh = data.find(
-          (n) => n.type === "course_added" && !n.read && !dismissedIds.has(n.id)
+        const now = Date.now();
+        const eligible = data.filter(
+          (n) =>
+            (n.type === "announcement" || n.type === "course_added") &&
+            !n.read &&
+            !dismissedRef.current.has(n.id) &&
+            // Hard stop: ignore anything older than POPUP_MAX_AGE_DAYS. Missing
+            // createdAt is treated as in-range (fail-open) so nothing is hidden
+            // by accident.
+            (!n.createdAt || now - new Date(n.createdAt).getTime() <= POPUP_MAX_AGE_DAYS * 864e5)
         );
+        // Announcement first, then course_added. The list is already newest-first.
+        const fresh =
+          eligible.find((n) => n.type === "announcement") ||
+          eligible.find((n) => n.type === "course_added") ||
+          null;
         if (active) setNotif(fresh || null);
       } catch {
         /* ignore */
@@ -50,25 +91,36 @@ export function NewCoursePopup() {
     }
 
     check();
-    // Re-check every 20s so a freshly published course pops up WITHOUT a manual
-    // page refresh.
+    // Re-check every 20s so a fresh announcement / course pops up without a manual refresh.
     const interval = setInterval(check, 20000);
     return () => {
       active = false;
       clearInterval(interval);
     };
-  }, [user?.id, dismissedIds]);
+  }, [user?.id]);
 
-  if (!notif) return null;
+  // Never render once logged out (user cleared), even if a stale notif remains.
+  if (!user?.id || !notif) return null;
 
-  // Always open the recipient's OWN Training Center (resolved from their role),
-  // ignoring any stale portal path stored on older notifications.
+  const isAnnouncement = notif.type === "announcement";
+
+  async function markRead(id: string) {
+    try {
+      await fetch("/api/notifications", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // course_added → open the recipient's own Training Center (deep-linked to the
+  // course/lesson when we have the ids).
   const baseWatchUrl = trainingRouteForRole(user?.role);
   const courseId = notif.metadata?.courseId;
   const lessonId = notif.metadata?.lessonId;
-  // Deep-link into the course (courseId is always present, even on older
-  // notifications) and straight to the new lesson/quiz when we also have the
-  // page id. This guarantees "Check it out" at least opens the course.
   const params = new URLSearchParams();
   if (courseId) params.set("courseId", courseId);
   if (lessonId) params.set("lessonId", lessonId);
@@ -76,19 +128,31 @@ export function NewCoursePopup() {
   const watchUrl = qs ? `${baseWatchUrl}?${qs}` : baseWatchUrl;
   const courseName = notif.metadata?.courseName;
 
-  async function watchNow() {
+  async function onAction() {
     if (!notif) return;
-    try {
-      await fetch("/api/notifications", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: notif.id }),
-      });
-    } catch {
-      /* ignore — still navigate */
+    await markRead(notif.id);
+    if (isAnnouncement) {
+      const link = (notif.metadata?.link || "").trim();
+      if (link) {
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const isInternal = link.startsWith("/") || (origin && link.startsWith(origin));
+        if (isInternal) {
+          router.push(link.startsWith("/") ? link : link.replace(origin, "") || "/");
+        } else {
+          window.open(link, "_blank", "noopener,noreferrer");
+        }
+      }
+      setNotif(null);
+    } else {
+      router.push(watchUrl);
     }
-    router.push(watchUrl);
   }
+
+  const actionLabel = isAnnouncement
+    ? notif.metadata?.link
+      ? "Learn more"
+      : "Got it"
+    : "▶ Check it out";
 
   return (
     <div
@@ -112,8 +176,8 @@ export function NewCoursePopup() {
         type="button"
         aria-label="Close"
         onClick={() => {
-          const id = notif.id;
-          setDismissedIds((prev) => new Set(prev).add(id));
+          // Hide for THIS login only — stays unread, so it returns next login.
+          dismissedRef.current.add(notif.id);
           setNotif(null);
         }}
         style={{
@@ -135,10 +199,16 @@ export function NewCoursePopup() {
         ×
       </button>
 
+      {isAnnouncement && (
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, opacity: 0.9, marginBottom: 4 }}>
+          📢 ANNOUNCEMENT{notif.metadata?.postedByName ? ` · ${notif.metadata.postedByName}` : ""}
+        </div>
+      )}
+
       <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6, paddingRight: 20 }}>
         {notif.title}
       </div>
-      <div style={{ fontSize: 13.5, lineHeight: 1.5, opacity: 0.95, marginBottom: courseName ? 8 : 14 }}>
+      <div style={{ fontSize: 13.5, lineHeight: 1.5, opacity: 0.95, marginBottom: courseName ? 8 : 14, whiteSpace: "pre-wrap" }}>
         {notif.message}
       </div>
       {courseName && (
@@ -158,7 +228,7 @@ export function NewCoursePopup() {
 
       <button
         type="button"
-        onClick={watchNow}
+        onClick={onAction}
         style={{
           width: "100%",
           background: "#fff",
@@ -171,7 +241,7 @@ export function NewCoursePopup() {
           cursor: "pointer",
         }}
       >
-        ▶ Check it out
+        {actionLabel}
       </button>
 
       <style jsx>{`
