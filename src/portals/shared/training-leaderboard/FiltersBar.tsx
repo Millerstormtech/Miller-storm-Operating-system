@@ -91,7 +91,8 @@ export function FiltersBar({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", background: "#f3f4f6", borderRadius: 8, padding: 2, flex: isNarrow ? "1 1 100%" : undefined }}>
+        {/* data-tour wraps BOTH toggles so the spotlight covers the pair, not one button. */}
+        <div data-tour="clb-views" style={{ display: "flex", background: "#f3f4f6", borderRadius: 8, padding: 2, flex: isNarrow ? "1 1 100%" : undefined }}>
           {toggle("overall", "Overall")}
           {toggle("course", "By Course")}
         </div>

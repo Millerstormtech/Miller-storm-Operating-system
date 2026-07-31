@@ -46,7 +46,7 @@ export function RosterGrid({
 
   if (active) {
     return (
-      <div>
+      <div data-tour="clb-roster">
         <SectionLabel>Results</SectionLabel>
         {visible.map((r, i) => (
           <RepCard
@@ -67,7 +67,11 @@ export function RosterGrid({
   const top3 = visible.slice(0, 3);
   const rest = visible.slice(3);
   return (
-    <div>
+    // Both card-bearing roots carry data-tour="clb-roster". The empty-state
+    // root above deliberately does NOT: the tour step talks about clicking a
+    // rep card, so with no cards on screen it should drop rather than
+    // spotlight "No reps match these filters".
+    <div data-tour="clb-roster">
       {top3.length > 0 && <SectionLabel>Top 3</SectionLabel>}
       {top3.map((r) => (
         <RepCard key={r.id} row={r} primaryRank={r.rank} medal isNarrow={isNarrow} youTag={r.id === youId} onClick={() => onOpenRep(r.id)} />

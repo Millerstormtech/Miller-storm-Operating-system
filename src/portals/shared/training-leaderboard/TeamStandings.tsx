@@ -89,7 +89,12 @@ export function TeamStandings({
 
   if (!isNarrow) {
     return (
+      // Both variants carry data-tour="clb-standings": this panel renders as a
+      // sticky right column on wide screens and as a collapsible block at the
+      // top of the content on narrow ones. The tour measures whichever is on
+      // screen and skips the other, which is zero-size or absent.
       <div
+        data-tour="clb-standings"
         style={{
           background: "#fff",
           border: "1px solid #e5e7eb",
@@ -117,6 +122,7 @@ export function TeamStandings({
 
   return (
     <div
+      data-tour="clb-standings"
       style={{
         background: "#fff",
         border: "1px solid #e5e7eb",

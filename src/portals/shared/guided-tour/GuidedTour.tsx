@@ -272,7 +272,25 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
             {counter.current} of {counter.total}
           </div>
         </div>
-        <div style={{ fontSize: 13, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{step.body}</div>
+        {Array.isArray(step.body) ? (
+          <ul
+            style={{
+              fontSize: 13,
+              color: "#6b7280",
+              margin: "6px 0 0",
+              paddingLeft: 17,
+              lineHeight: 1.45,
+            }}
+          >
+            {step.body.map((line) => (
+              <li key={line} style={{ marginBottom: 3 }}>
+                {line}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{step.body}</div>
+        )}
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 14 }}>
           <button

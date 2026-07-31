@@ -13,7 +13,6 @@ import {
 } from "../../../lib/report/courseBoard";
 import { resolveTeam, TEAM_BRANCH, resolveNameBranch } from "../../../lib/repcard/org-chart";
 import { useIsNarrow } from "./useIsNarrow";
-import { WelcomeBanner } from "./WelcomeBanner";
 import { Legend } from "./Legend";
 import { FiltersBar } from "./FiltersBar";
 import { RosterGrid } from "./RosterGrid";
@@ -25,6 +24,8 @@ import { AdminMenu } from "./AdminMenu";
 import { OverrideModal } from "./OverrideModal";
 import { HideModal } from "./HideModal";
 import { RepDetailModal } from "./RepDetailModal";
+import { GuidedTour } from "../guided-tour/GuidedTour";
+import { COURSE_LEADERBOARD_TOUR } from "../guided-tour/definitions/courseLeaderboard";
 
 /**
  * The Course Leaderboard (Overall board + minimal By Course view). Mounted by
@@ -218,8 +219,6 @@ export function TrainingLeaderboard() {
         )}
       </div>
 
-      <WelcomeBanner userId={user.id} />
-
       <FiltersBar
         view={view}
         onView={setView}
@@ -232,14 +231,20 @@ export function TrainingLeaderboard() {
           isAdmin ? <AdminMenu onOverride={() => setShowOverride(true)} onHide={() => setShowHide(true)} /> : undefined
         }
         exportSlot={
-          <ExportReportButton
-            viewCount={exportViewCount}
-            boardCount={exportBoardCount}
-            defaultTitle={exportDefaultTitle}
-            fieldsFor={exportFields}
-            buildDocument={buildCourseExport}
-            disabledReason={loading ? "Still loading" : undefined}
-          />
+          // The marker goes on this local wrapper, NOT inside ExportReportButton:
+          // that component is shared with the Sales Leaderboard, which must not
+          // inherit a clb- marker. inline-flex keeps the box tight to the button
+          // (display:contents would leave nothing for the tour to measure).
+          <span data-tour="clb-export" style={{ display: "inline-flex" }}>
+            <ExportReportButton
+              viewCount={exportViewCount}
+              boardCount={exportBoardCount}
+              defaultTitle={exportDefaultTitle}
+              fieldsFor={exportFields}
+              buildDocument={buildCourseExport}
+              disabledReason={loading ? "Still loading" : undefined}
+            />
+          </span>
         }
       />
 
@@ -325,6 +330,11 @@ export function TrainingLeaderboard() {
           onSave={saveHidden}
         />
       )}
+
+      {/* Replaces the dismissible welcome banner this screen used to show.
+          ready gates auto-start until board data lands, so the roster, rank
+          strip and legend all exist before any step is measured. */}
+      <GuidedTour tour={COURSE_LEADERBOARD_TOUR} ready={!loading} />
     </div>
   );
 }
