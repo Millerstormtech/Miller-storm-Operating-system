@@ -5,6 +5,7 @@ import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { SALES_LEADERBOARD_TOUR } from "../portals/shared/guided-tour/definitions/salesLeaderboard";
 import { compareStanding } from "../lib/leaderboard/ranking";
+import { RepAvatar } from "./RepAvatar";
 import { ExportReportButton, type ExportRequest, type ExportScope } from "./report/ExportReportButton";
 import {
   buildSalesReport,
@@ -21,6 +22,18 @@ const WINDOWS: { key: Window; label: string }[] = [
   { key: "month", label: "Month to Date" },
   { key: "year", label: "Year to Date" },
 ];
+// One sticky Sum cell. Background and top border sit on the CELL, not the row:
+// a position:sticky cell paints itself and does not inherit the <tr>'s.
+const stickyFootCell: React.CSSProperties = {
+  padding: "10px 14px",
+  textAlign: "center",
+  position: "sticky",
+  bottom: 0,
+  zIndex: 2,
+  background: "#f1f5f9",
+  borderTop: "2px solid #cbd5e1",
+};
+
 const fmtMoney = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
 
@@ -51,6 +64,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const [query, setQuery] = useState("window=month");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // This calendar month's top rep by Contract Amount. Computed server-side from
+  // its OWN month window, so it does not change meaning when a different period
+  // is selected. null until someone signs their first contract of the month.
+  const [contractKing, setContractKing] = useState<
+    { id: string; name: string; revenue: number; headshotUrl: string; monthLabel: string } | null
+  >(null);
 
   // Filters + sort (all applied client-side over the fetched rows).
   const [branchFilter, setBranchFilter] = useState<string>(ALL);
@@ -74,6 +93,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       if (res.ok) {
         const data = await res.json();
         setRows(data.leaderboard ?? []);
+        setContractKing(data.contractKing ?? null);
         // Echo the resolved range into the From/To boxes (fills them for quick views).
         if (data.range) { setFrom(data.range.from); setTo(data.range.to); }
       }
@@ -285,6 +305,33 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
       )}
 
+      {/* Contract King: this calendar month's top rep by Contract Amount.
+          Hidden entirely until someone has signed something this month, which
+          is the normal state in the first days of a new month. */}
+      {contractKing && (
+        <div
+          data-tour="contract-king"
+          style={{
+            display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
+            background: "linear-gradient(135deg,#78350f,#b45309)", color: "#fff",
+            borderRadius: 14, padding: "14px 18px", marginBottom: 16,
+            boxShadow: "0 4px 14px rgba(180,83,9,0.35)",
+          }}
+        >
+          <RepAvatar name={contractKing.name} url={contractKing.headshotUrl} size={52} fontSize={22} />
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <div style={{ fontSize: 12, opacity: 0.9, fontWeight: 700, letterSpacing: 0.4 }}>
+              👑 {contractKing.monthLabel.toUpperCase()} CONTRACT KING
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>{contractKing.name}</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>{fmtMoney(contractKing.revenue)}</div>
+            <div style={{ fontSize: 11, opacity: 0.85 }}>Contract Amount this month</div>
+          </div>
+        </div>
+      )}
+
       {/* Filters — Period, Branch, Team all as matching dropdowns. */}
       <div data-tour="filters" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
@@ -419,11 +466,14 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         <p style={{ color: "#6b7280" }}>Loading leaderboard…</p>
       ) : (
         <>
-        <div className="leaderboard-table-wrap" style={{ overflowX: "auto" }}>
+        {/* overflow lives in the stylesheet now, not inline: a wrapper with
+            overflow-x also becomes a vertical scroll container, which stops the
+            sticky header pinning to .app-content. See styles.css. */}
+        <div className="leaderboard-table-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
             <thead data-tour="columns">
               <tr style={{ background: "#f1f5f9" }}>
-                <th style={{ padding: "10px 14px", textAlign: "center", fontSize: 13, fontWeight: 600 }}>#</th>
+                <th style={{ padding: "10px 14px", textAlign: "center", fontSize: 13, fontWeight: 600, position: "sticky", top: 0, zIndex: 2, background: "#f1f5f9" }}>#</th>
                 {visibleColumns.map((c) => (
                   <th
                     key={c.key}
@@ -433,6 +483,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                       padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", userSelect: "none",
                       textAlign: c.type === "text" ? "left" : "center",
                       color: c.key === sortKey ? "#2563eb" : "#374151",
+                      // Frozen header. Needs its own opaque background: <thead>
+                      // backgrounds do not paint behind sticky cells.
+                      position: "sticky", top: 0, zIndex: 2, background: "#f1f5f9",
                     }}
                   >
                     {c.label}{arrow(c.key)}
@@ -450,7 +503,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700 }}>{i + 1}</td>
                     <td style={{ padding: "10px 14px", fontWeight: 600 }}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} /> : null}
+                        <RepAvatar name={r.name} url={r.headshotUrl} size={24} />
                         {r.source === "repcard" ? (
                           <span
                             title="No AccuLynx account"
@@ -458,6 +511,11 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                           />
                         ) : null}
                         <span>{r.name}{isYou ? " (You)" : ""}</span>
+                        {contractKing && r.id === contractKing.id ? (
+                          <span title={`Top Contract Amount this month (${contractKing.monthLabel})`} style={{ fontSize: 15 }}>
+                            👑
+                          </span>
+                        ) : null}
                       </span>
                     </td>
                     {!branchActive ? (
@@ -477,15 +535,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             </tbody>
             {visible.length > 0 ? (
               <tfoot>
-                <tr style={{ borderTop: "2px solid #cbd5e1", background: "#f1f5f9", fontWeight: 700 }}>
-                  <td colSpan={branchActive ? 2 : 4} style={{ padding: "10px 14px", textAlign: "left" }}>
+                {/* Totals stay in view while scrolling a long roster. Same
+                    technique as the header: each cell sticks, and each carries
+                    its own opaque background and border because a sticky cell
+                    does not inherit the row's. */}
+                <tr style={{ fontWeight: 700 }}>
+                  <td colSpan={branchActive ? 2 : 4} style={{ ...stickyFootCell, textAlign: "left" }}>
                     Sum ({visible.length} rep{visible.length === 1 ? "" : "s"})
                   </td>
-                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.verifiedKnocks}</td>
-                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.leadsCreated}</td>
-                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.filed}</td>
-                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{totals.won}</td>
-                  <td style={{ padding: "10px 14px", textAlign: "center", color: "#16a34a" }}>{fmtMoney(totals.revenue)}</td>
+                  <td style={stickyFootCell}>{totals.verifiedKnocks}</td>
+                  <td style={stickyFootCell}>{totals.leadsCreated}</td>
+                  <td style={stickyFootCell}>{totals.filed}</td>
+                  <td style={stickyFootCell}>{totals.won}</td>
+                  <td style={{ ...stickyFootCell, color: "#16a34a" }}>{fmtMoney(totals.revenue)}</td>
                 </tr>
               </tfoot>
             ) : null}
@@ -506,9 +568,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                   <div style={{ width: 34, textAlign: "center", fontSize: medal ? 24 : 16, fontWeight: 800, color: "#6b7280", flexShrink: 0 }}>
                     {medal || i + 1}
                   </div>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#374151", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 18, fontWeight: 700 }}>
-                    {r.headshotUrl ? <img src={r.headshotUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (r.name?.[0]?.toUpperCase() || "?")}
-                  </div>
+                  <RepAvatar name={r.name} url={r.headshotUrl} size={44} fontSize={18} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
                       {r.source === "repcard" ? <span title="No AccuLynx account" style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }} /> : null}
