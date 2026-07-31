@@ -100,7 +100,12 @@ export function NewCoursePopup() {
   }, [user?.id]);
 
   // Never render once logged out (user cleared), even if a stale notif remains.
-  if (!user?.id || !notif) return null;
+  // Also suppress it on the composer pages, which already show a static PREVIEW
+  // of the pop-up — two red pop-ups (one with a mock, non-clickable ×) is
+  // confusing while writing an announcement.
+  const onComposerPage =
+    router.pathname === "/admin/announcements" || router.pathname === "/c-level/announcements";
+  if (!user?.id || !notif || onComposerPage) return null;
 
   const isAnnouncement = notif.type === "announcement";
 

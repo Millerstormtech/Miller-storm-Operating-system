@@ -132,8 +132,7 @@ export function AnnouncementComposer() {
             position: "relative",
           }}
         >
-          <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.2)", width: 24, height: 24, borderRadius: "50%", textAlign: "center", lineHeight: "24px", fontSize: 14 }}>×</div>
-          <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6, paddingRight: 20 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6, paddingRight: 4 }}>
             {title.trim() || "Announcement title"}
           </div>
           <div style={{ fontSize: 13.5, lineHeight: 1.5, opacity: 0.95, marginBottom: 14, whiteSpace: "pre-wrap" }}>
