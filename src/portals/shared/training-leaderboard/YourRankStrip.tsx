@@ -15,7 +15,7 @@ export function YourRankStrip({
   isNarrow: boolean;
 }) {
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div data-tour="clb-rank" style={{ marginBottom: 16 }}>
       <div
         style={{
           fontSize: 11,

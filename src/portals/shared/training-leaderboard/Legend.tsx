@@ -15,6 +15,7 @@ export function Legend({ totalCourses }: { totalCourses: number }) {
   const rankLabels = rankRequirementLabels(totalCourses);
   return (
     <div
+      data-tour="clb-legend"
       style={{
         background: "#fffbeb",
         border: "1px solid #fde68a",

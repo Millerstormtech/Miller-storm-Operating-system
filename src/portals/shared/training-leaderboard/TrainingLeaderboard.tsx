@@ -5,7 +5,6 @@ import type { BoardFilters, OverallResponse, OverallRow } from "../../../lib/tra
 import { teamSummaryFor } from "../../../lib/training/board";
 import { resolveTeam, TEAM_BRANCH, resolveNameBranch } from "../../../lib/repcard/org-chart";
 import { useIsNarrow } from "./useIsNarrow";
-import { WelcomeBanner } from "./WelcomeBanner";
 import { Legend } from "./Legend";
 import { FiltersBar } from "./FiltersBar";
 import { RosterGrid } from "./RosterGrid";
@@ -15,6 +14,8 @@ import { MyTeamSummary } from "./MyTeamSummary";
 import { AdminMenu } from "./AdminMenu";
 import { OverrideModal } from "./OverrideModal";
 import { HideModal } from "./HideModal";
+import { GuidedTour } from "../guided-tour/GuidedTour";
+import { COURSE_LEADERBOARD_TOUR } from "../guided-tour/definitions/courseLeaderboard";
 
 /**
  * The Course Leaderboard (Overall board + minimal By Course view). Mounted by
@@ -131,8 +132,6 @@ export function TrainingLeaderboard() {
         )}
       </div>
 
-      <WelcomeBanner userId={user.id} />
-
       <FiltersBar
         view={view}
         onView={setView}
@@ -211,6 +210,11 @@ export function TrainingLeaderboard() {
           onSave={saveHidden}
         />
       )}
+
+      {/* Replaces the dismissible welcome banner this screen used to show.
+          ready gates auto-start until board data lands, so the roster, rank
+          strip and legend all exist before any step is measured. */}
+      <GuidedTour tour={COURSE_LEADERBOARD_TOUR} ready={!loading} />
     </div>
   );
 }
