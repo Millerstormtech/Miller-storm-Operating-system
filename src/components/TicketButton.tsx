@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../contexts/AuthContext";
-import { SUPPORT_CATEGORIES, supportTypeLabel } from "../lib/support/categories";
+import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel } from "../lib/support/categories";
 
 type Ticket = {
   id: string;
@@ -60,6 +60,8 @@ export function TicketButton() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [type, setType] = useState<string>(SUPPORT_CATEGORIES[0].key);
+  // Values for the selected category's predefined fields, keyed by field.key.
+  const [fields, setFields] = useState<Record<string, string>>({});
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -80,9 +82,17 @@ export function TicketButton() {
     }
   }, [open, user, loadTickets]);
 
+  const category = SUPPORT_CATEGORY_BY_KEY[type];
+
   const submit = async () => {
     if (!name.trim() || !email.trim() || !note.trim()) {
       setToast("Please fill name, email and details.");
+      return;
+    }
+    // Any required predefined field must be filled.
+    const missing = (category?.fields || []).find((f) => f.required && !(fields[f.key] || "").trim());
+    if (missing) {
+      setToast(`Please fill "${missing.label}".`);
       return;
     }
     setSubmitting(true);
@@ -90,11 +100,12 @@ export function TicketButton() {
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, type, note }),
+        body: JSON.stringify({ name, email, type, note, fields }),
       });
       if (res.ok) {
         setNote("");
-        setToast("✅ Ticket sent to admin!");
+        setFields({});
+        setToast("✅ Sent to Support!");
         loadTickets();
         setTimeout(() => setToast(""), 3000);
       } else {
@@ -190,7 +201,7 @@ export function TicketButton() {
                 <input value={email} onChange={(e) => setEmail(e.target.value)} style={inp} placeholder="you@example.com" />
               </label>
               <label style={lbl}>Reason
-                <select value={type} onChange={(e) => setType(e.target.value)} style={inp}>
+                <select value={type} onChange={(e) => { setType(e.target.value); setFields({}); }} style={inp}>
                   {SUPPORT_CATEGORIES.map((c) => (
                     <option key={c.key} value={c.key}>
                       {c.label} — {c.reason}
@@ -198,6 +209,33 @@ export function TicketButton() {
                   ))}
                 </select>
               </label>
+
+              {/* Predefined fields for the selected reason (Option 2). */}
+              {(category?.fields || []).map((f) => (
+                <label key={f.key} style={lbl}>
+                  {f.label}{f.required ? " *" : ""}
+                  {f.type === "select" ? (
+                    <select
+                      value={fields[f.key] || ""}
+                      onChange={(e) => setFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      style={inp}
+                    >
+                      <option value="">Select…</option>
+                      {(f.options || []).map((o) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={fields[f.key] || ""}
+                      onChange={(e) => setFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      style={inp}
+                      placeholder={f.placeholder || ""}
+                    />
+                  )}
+                </label>
+              ))}
+
               <label style={lbl}>Note
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} style={{ ...inp, resize: "vertical" }} placeholder="Describe the issue or request..." />
               </label>

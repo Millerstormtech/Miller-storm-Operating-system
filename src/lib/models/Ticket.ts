@@ -13,6 +13,8 @@ const ticketSchema = new Schema(
     // categories can change without a schema migration; old tickets keep their
     // legacy bug/feature/other values.
     type: { type: String, default: "billing" },
+    // Predefined per-category field values (Acculynx Job#, Amount, MSRR tool…).
+    fields: { type: Schema.Types.Mixed, default: {} },
     note: { type: String, default: "" },
     status: {
       type: String,

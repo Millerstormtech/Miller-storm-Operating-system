@@ -5,7 +5,7 @@ import { NotificationModel } from "../../../src/lib/models/Notification";
 import { UserModel } from "../../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { sendSupportTicketCreatedEmail } from "../../../src/lib/email";
-import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, SUPPORT_CATEGORIES } from "../../../src/lib/support/categories";
+import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES } from "../../../src/lib/support/categories";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // POST — raise a new ticket
-  const { name, email, type, note } = req.body || {};
+  const { name, email, type, note, fields: rawFields } = req.body || {};
   if (!name || !email || !note) {
     res.status(400).json({ error: "name, email and note are required" });
     return;
@@ -48,6 +48,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const category = SUPPORT_CATEGORY_BY_KEY[ticketType];
   const typeLabel = supportTypeLabel(ticketType);
 
+  // Keep only the values for THIS category's defined fields, as trimmed strings.
+  const fields: Record<string, string> = {};
+  if (rawFields && typeof rawFields === "object" && category) {
+    for (const f of category.fields) {
+      const v = (rawFields[f.key] ?? "").toString().trim();
+      if (v) fields[f.key] = v;
+    }
+  }
+
   const ticket = await TicketModel.create({
     id: `ticket-${Date.now()}`,
     userId: auth.sub,
@@ -55,9 +64,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     email,
     role: auth.role || "",
     type: ticketType,
+    fields,
     note,
     status: "open",
   });
+
+  // The email body carries the field values above the free-text note.
+  const fieldLines = supportFieldLines(ticketType, fields);
+  const emailNote = fieldLines.length ? `${fieldLines.join("\n")}\n\n${note}` : note;
 
   try {
     const admins = await UserModel.find(
@@ -81,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           userName: name,
           userEmail: email,
           type: typeLabel,
-          note,
+          note: emailNote,
         }).catch((e) => console.error("[ticket] email failed:", e?.message || e))
       ),
       // In-app bell notification for every admin.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { STATUS_LABEL, STATUS_COLOR } from "../../components/TicketButton";
-import { supportTypeLabel } from "../../lib/support/categories";
+import { supportTypeLabel, supportFieldLines } from "../../lib/support/categories";
 
 type Ticket = {
   id: string;
@@ -8,7 +8,8 @@ type Ticket = {
   name: string;
   email: string;
   role: string;
-  type: "bug" | "feature" | "other";
+  type: string;
+  fields?: Record<string, string>;
   note: string;
   status: "open" | "approved" | "in_progress" | "completed" | "rejected";
   adminNote?: string;
@@ -86,7 +87,12 @@ export function TicketTable() {
                       {t.role && <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "capitalize" }}>{t.role}</div>}
                     </td>
                     <td style={td}>{supportTypeLabel(t.type)}</td>
-                    <td style={{ ...td, maxWidth: 320, whiteSpace: "pre-wrap" }}>{t.note}</td>
+                    <td style={{ ...td, maxWidth: 320, whiteSpace: "pre-wrap" }}>
+                      {supportFieldLines(t.type, t.fields).map((line) => (
+                        <div key={line} style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{line}</div>
+                      ))}
+                      {t.note}
+                    </td>
                     <td style={{ ...td, whiteSpace: "nowrap", color: "#6b7280", fontSize: 12 }}>
                       {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}
                     </td>
