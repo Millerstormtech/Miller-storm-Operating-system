@@ -1,9 +1,10 @@
 import { defineConfig } from "vitest/config";
 
 // Scoped intentionally: the ONLY tested modules are the training scoring rules
-// (pure, no DB, no React, decides who gets paid), page-title utilities, and the
-// guided-tour pure helpers (storage, geometry, step resolution). React
-// components are verified manually: there is no jsdom in this project.
+// (pure, no DB, no React, decides who gets paid), the scoreboard roll-up rules
+// (same reasoning), page-title utilities, and the guided-tour pure helpers
+// (storage, geometry, step resolution). React components are verified manually:
+// there is no jsdom in this project.
 //
 // THIS REPO HAS TWO TEST RUNNERS. This config is one half; `npm run test:node`
 // is the other. src/lib/leaderboard/{identity,merge,ranking}, src/lib/acculynx/
@@ -20,6 +21,7 @@ export default defineConfig({
   test: {
     include: [
       "src/lib/training/**/*.test.ts",
+      "src/lib/scoreboard/**/*.test.ts",
       "src/lib/pageTitle.test.ts",
       "src/portals/shared/guided-tour/**/*.test.ts",
       "src/lib/report/**/*.test.ts",
