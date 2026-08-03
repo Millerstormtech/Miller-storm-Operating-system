@@ -11,6 +11,7 @@ import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
 import { conversions, trend, rateDir } from "../../src/lib/scoreboard/metrics";
 import { previousSlice, periodEndFor, paceFraction } from "../../src/lib/scoreboard/periods";
 import { toSalesRow } from "../../src/lib/scoreboard/rows";
+import { scaleTargetToWindow } from "../../src/lib/scoreboard/goals";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -56,9 +57,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const pace = paceFraction(cur.start, periodEndFor(w, cur.start), now);
 
-    // businessPlan.revenueGoal is a YEARLY figure (Business Planner's "Yearly Goals");
-    // name it accordingly so it can never be confused with the month-to-date totals above.
-    const revenueAnnualGoal = (user as any).businessPlan?.revenueGoal ?? null;
+    // Goals are the viewer's OWN targets for the scope they own: a rep's personal
+    // numbers, a team lead's team, a branch manager's branch. Entered directly,
+    // never summed from below (spec S8). null means "not set" so the UI shows its
+    // no-goal state rather than a fabricated zero.
+    const plan = (user as any).businessPlan || {};
+    const goals = {
+      revenue: scaleTargetToWindow(plan.monthlyRevenueTarget, w, cur.start),
+      knocks: scaleTargetToWindow(plan.monthlyKnockTarget, w, cur.start),
+      claims: scaleTargetToWindow(plan.monthlyClaimsTarget, w, cur.start),
+    };
 
     return res.status(200).json({
       window: w,
@@ -83,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       contracts: totals.contracts,
       rank: rankFor(curRows, scope),
       pace,
-      goals: { revenueAnnual: revenueAnnualGoal, knocks: null, claims: null },
+      goals,
       personal,
     });
   } catch (error) {
