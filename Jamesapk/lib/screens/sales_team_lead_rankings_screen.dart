@@ -454,6 +454,13 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     final visible = _visibleRows;
+    // Contract King banner + totals strip ride at the top of the scroll
+    // view (as list headers) so they scroll away with the rows instead
+    // of staying pinned under the filters.
+    final headerWidgets = <Widget>[
+      if (_contractKing != null) _contractKingBanner(),
+      if (visible.isNotEmpty) _buildTotalsStats(),
+    ];
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
@@ -521,36 +528,45 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                 ],
               ),
             ),
-            if (!_loading && _contractKing != null) _contractKingBanner(),
-            _buildTotalsStats(),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator(color: _primary))
-                  : visible.isEmpty
-                      ? const Center(
-                          child: Text('No data for this filter.',
-                              style: TextStyle(color: _textPlaceholder, fontSize: 14)))
-                      : RefreshIndicator(
-                          color: _primary,
-                          onRefresh: _fetch,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.all(14),
-                            itemCount: visible.length,
-                            itemBuilder: (context, i) {
-                              final row = _row(visible[i], i);
-                              // Spotlight the top row to explain the ranking.
-                              if (i == 0) {
-                                return Showcase(
-                                  key: _kBoard,
-                                  title: 'The live ranking',
-                                  description: 'Reps are ranked by contract amount for the selected period. Pull down to refresh.',
-                                  child: row,
-                                );
-                              }
-                              return row;
-                            },
-                          ),
-                        ),
+                  : RefreshIndicator(
+                      color: _primary,
+                      onRefresh: _fetch,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        itemCount: headerWidgets.length +
+                            (visible.isEmpty ? 1 : visible.length),
+                        itemBuilder: (context, i) {
+                          if (i < headerWidgets.length) return headerWidgets[i];
+                          final ri = i - headerWidgets.length;
+                          if (visible.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.only(top: 60),
+                              child: Center(
+                                child: Text('No data for this filter.',
+                                    style: TextStyle(color: _textPlaceholder, fontSize: 14)),
+                              ),
+                            );
+                          }
+                          final row = Padding(
+                            padding: EdgeInsets.fromLTRB(14, ri == 0 ? 12 : 0, 14, 0),
+                            child: _row(visible[ri], ri),
+                          );
+                          // Spotlight the top row to explain the ranking.
+                          if (ri == 0) {
+                            return Showcase(
+                              key: _kBoard,
+                              title: 'The live ranking',
+                              description: 'Reps are ranked by contract amount for the selected period. Pull down to refresh.',
+                              child: row,
+                            );
+                          }
+                          return row;
+                        },
+                      ),
+                    ),
             ),
             _buildTotalsSummary(),
             _buildBottomNav(context),
