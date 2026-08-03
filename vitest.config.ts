@@ -8,6 +8,7 @@ export default defineConfig({
   test: {
     include: [
       "src/lib/training/**/*.test.ts",
+      "src/lib/stormbot/**/*.test.ts",
       "src/lib/pageTitle.test.ts",
       "src/portals/shared/guided-tour/**/*.test.ts",
       "src/lib/report/**/*.test.ts",
