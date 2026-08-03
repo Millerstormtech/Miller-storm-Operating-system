@@ -12,6 +12,7 @@ import type { MappingConfig } from "./mapping";
 import { resolveSyncMode } from "./sync-policy";
 import { getWindowRange } from "./windows";
 import { normEmail, normName, normPhone } from "../leaderboard/identity";
+import { celebrateSalesFact } from "../stormbot/sales-celebration";
 
 const MAPPING_CFG: MappingConfig = {
   repTypes: REP_TYPES,
@@ -231,6 +232,22 @@ async function syncOneLocation(
               } },
             { upsert: true }
           );
+
+          // Storm Bot celebration for claims filed and contracts signed. Runs AFTER
+          // the upsert so the month-to-date count includes this win. Fire-and-forget:
+          // the helper fans out 70+ notifications and must not slow the sync loop, and
+          // it is failure-isolated, so the catch is belt-and-braces.
+          //
+          // Inside the !dryRun branch on purpose: a dry-run sync writes no facts, so
+          // it must announce nothing either. (Note this is the SYNC's dry-run flag,
+          // unrelated to STORMBOT_SALES_CELEBRATIONS, which gates posting separately.)
+          celebrateSalesFact({
+            factKey: f.factKey,
+            jobId: f.jobId,
+            metric: f.metric,
+            repUserId,
+            occurredAt: f.occurredAt,
+          }).catch(() => {});
         }
         result.factsWritten++;
       }
