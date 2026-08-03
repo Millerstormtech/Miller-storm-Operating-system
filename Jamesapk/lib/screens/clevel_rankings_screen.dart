@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../widgets/clevel_bottom_nav.dart';
+import 'scoreboard_screen.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
 // live from AccuLynx + RepCard via /api/leaderboard. Self-contained per panel.
@@ -451,108 +452,147 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     final visible = _visibleRows;
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              color: _white,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Sales Leaderboard',
-                                style: TextStyle(color: _textDark, fontSize: 22, fontWeight: FontWeight.w800)),
-                            SizedBox(height: 3),
-                            Text('Live from AccuLynx + RepCard · refreshed hourly',
-                                style: TextStyle(color: _textLight, fontSize: 12.5)),
-                          ],
-                        ),
-                      ),
-                      Showcase(
-                        key: _kReplay,
-                        title: 'Replay anytime',
-                        description: 'Tap here to replay this quick tour whenever you want a refresher.',
-                        child: GestureDetector(
-                          onTap: () => _startTour(context),
-                          child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: _bg,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: _border),
-                            ),
-                            child: const Icon(Icons.question_mark, size: 18, color: _textLight),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                color: _white,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Sales Rankings',
+                                  style: TextStyle(color: _textDark, fontSize: 22, fontWeight: FontWeight.w800)),
+                              SizedBox(height: 3),
+                              Text('Live from AccuLynx + RepCard · refreshed hourly',
+                                  style: TextStyle(color: _textLight, fontSize: 12.5)),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Showcase(
-                    key: _kFilters,
-                    title: 'Filter the board',
-                    description: 'Pick a time period or a custom date range, or narrow the board to one branch, one team, or hide former reps.',
-                    child: _filtersBar(),
-                  ),
-                  if (_period == 'custom') ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: _dateChip('From', _from, () => _pickDate(true))),
-                        const SizedBox(width: 8),
-                        Expanded(child: _dateChip('To', _to, () => _pickDate(false))),
+                        Showcase(
+                          key: _kReplay,
+                          title: 'Replay anytime',
+                          description: 'Tap here to replay this quick tour whenever you want a refresher.',
+                          child: GestureDetector(
+                            onTap: () => _startTour(context),
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: _bg,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: _border),
+                              ),
+                              child: const Icon(Icons.question_mark, size: 18, color: _textLight),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    TabBar(
+                      labelColor: _primary,
+                      unselectedLabelColor: _textLight,
+                      indicatorColor: _primary,
+                      labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                      tabs: const [
+                        Tab(text: 'Leaderboard'),
+                        Tab(text: 'Scoreboard'),
                       ],
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-            _buildTotalsStats(),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primary))
-                  : visible.isEmpty
-                      ? const Center(
-                          child: Text('No data for this filter.',
-                              style: TextStyle(color: _textPlaceholder, fontSize: 14)))
-                      : RefreshIndicator(
-                          color: _primary,
-                          onRefresh: _fetch,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.all(14),
-                            itemCount: visible.length,
-                            itemBuilder: (context, i) {
-                              final row = _row(visible[i], i);
-                              // Spotlight the top row to explain the ranking.
-                              if (i == 0) {
-                                return Showcase(
-                                  key: _kBoard,
-                                  title: 'The live ranking',
-                                  description: 'Reps are ranked by contract amount for the selected period. Pull down to refresh.',
-                                  child: row,
-                                );
-                              }
-                              return row;
-                            },
-                          ),
-                        ),
-            ),
-            _buildTotalsSummary(),
-            const CLevelBottomNav(active: 'leaderboard'),
-          ],
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _buildLeaderboardTab(visible),
+                    const ScoreboardScreen(),
+                  ],
+                ),
+              ),
+              const CLevelBottomNav(active: 'leaderboard'),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLeaderboardTab(List<Map<String, dynamic>> visible) {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          color: _white,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Showcase(
+                key: _kFilters,
+                title: 'Filter the board',
+                description: 'Pick a time period or a custom date range, or narrow the board to one branch, one team, or hide former reps.',
+                child: _filtersBar(),
+              ),
+              if (_period == 'custom') ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(child: _dateChip('From', _from, () => _pickDate(true))),
+                    const SizedBox(width: 8),
+                    Expanded(child: _dateChip('To', _to, () => _pickDate(false))),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        _buildTotalsStats(),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: _primary))
+              : visible.isEmpty
+                  ? const Center(
+                      child: Text('No data for this filter.',
+                          style: TextStyle(color: _textPlaceholder, fontSize: 14)))
+                  : RefreshIndicator(
+                      color: _primary,
+                      onRefresh: _fetch,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(14),
+                        itemCount: visible.length,
+                        itemBuilder: (context, i) {
+                          final row = _row(visible[i], i);
+                          // Spotlight the top row to explain the ranking.
+                          if (i == 0) {
+                            return Showcase(
+                              key: _kBoard,
+                              title: 'The live ranking',
+                              description: 'Reps are ranked by contract amount for the selected period. Pull down to refresh.',
+                              child: row,
+                            );
+                          }
+                          return row;
+                        },
+                      ),
+                    ),
+        ),
+        _buildTotalsSummary(),
+      ],
     );
   }
 
