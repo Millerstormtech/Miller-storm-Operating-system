@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -1119,8 +1120,20 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                     },
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(preview, fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade200)),
+                                      child: ExtendedImage.network(
+                                        preview,
+                                        fit: BoxFit.cover,
+                                        cache: true,
+                                        loadStateChanged: (state) {
+                                          if (state.extendedImageLoadState == LoadState.failed) {
+                                            return Container(color: Colors.grey.shade200);
+                                          }
+                                          if (state.extendedImageLoadState == LoadState.loading) {
+                                            return Container(color: Colors.grey.shade200);
+                                          }
+                                          return null;
+                                        },
+                                      ),
                                     ),
                                   );
                                 },
@@ -2044,19 +2057,22 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   Widget _buildReactions(dynamic message, bool isMyMessage) {
-    // Get reactions from message (sample data for now)
+    // Get reactions from message
     final reactions = message['reactions'] as List? ?? [];
     
     if (reactions.isEmpty) return const SizedBox();
     
-    // Count reactions by emoji + track which ones the current user reacted with.
+    // Count reactions by emoji + track which ones the current user reacted
+    // with. Match against ALL known ids (app id + Mongo _id) so the "mine"
+    // highlight works regardless of which id the server stored.
     final Map<String, int> reactionCounts = {};
     final Set<String> myEmojis = {};
     for (final reaction in reactions) {
       final emoji = reaction['emoji'] as String?;
       if (emoji != null) {
         reactionCounts[emoji] = (reactionCounts[emoji] ?? 0) + 1;
-        if (reaction['userId']?.toString() == widget.userId) myEmojis.add(emoji);
+        final rUserId = reaction['userId']?.toString() ?? '';
+        if (_myIds.contains(rUserId)) myEmojis.add(emoji);
       }
     }
 
@@ -2130,7 +2146,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final reactions = (message['reactions'] as List? ?? [])
         .where((r) => r['emoji'] == emoji)
         .toList();
-    final iReacted = reactions.any((r) => r['userId'] == widget.userId);
+    // Match against all known ids so the "You" label + Remove button appear
+    // regardless of which id form the server stored the reaction under.
+    final iReacted = reactions.any((r) => _myIds.contains(r['userId']?.toString() ?? ''));
     final bgColor = _isDarkTheme ? const Color(0xFF1C1C1E) : Colors.white;
     final textColor = _isDarkTheme ? Colors.white : Colors.black87;
 
@@ -2176,7 +2194,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             const Divider(height: 20),
             // User list
             ...reactions.map((r) {
-              final isMe = r['userId'] == widget.userId;
+              final isMe = _myIds.contains(r['userId']?.toString() ?? '');
               return ListTile(
                 leading: CircleAvatar(
                   radius: 20,
@@ -2674,7 +2692,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         final updated = Map<String, dynamic>.from(messages[messageIndex]);
         final reactions = List<dynamic>.from(updated['reactions'] ?? []);
         final existing = reactions.indexWhere(
-          (r) => r['userId'] == widget.userId && r['emoji'] == emoji,
+          (r) => _myIds.contains(r['userId']?.toString() ?? '') && r['emoji'] == emoji,
         );
         if (existing != -1) {
           reactions.removeAt(existing);
@@ -2720,6 +2738,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
+  /// Returns true for GIPHY CDN URLs and any URL ending in .gif —
+  /// these must be rendered by ExtendedImage to animate.
+  bool _isGifUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('giphy.com') ||
+        lower.contains('media.tenor.com') ||
+        lower.endsWith('.gif');
+  }
+
   Widget _buildMessageContent(dynamic message, bool isMyMessage) {
     final messageType = message['messageType'] ?? 'text';
     // Red (my) and dark (others') bubbles both use white text.
@@ -2750,44 +2777,89 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: CachedNetworkImage(
-            imageUrl: imageUrl,
-            width: 200,
-            height: 150,
-            fit: BoxFit.cover,
-            // Decode to a small thumbnail (not the full-res image) so the chat
-            // list stays fast and light on memory.
-            memCacheWidth: 400,
-            fadeInDuration: const Duration(milliseconds: 150),
-            placeholder: (context, url) => Container(
-              width: 200,
-              height: 150,
-              color: Colors.grey[200],
-              child: const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFCB0002),
-                  strokeWidth: 2,
-                ),
-              ),
-            ),
-            errorWidget: (context, url, error) => Container(
-              width: 200,
-              height: 150,
-              color: Colors.grey[300],
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.broken_image, size: 48, color: Colors.grey[600]),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Image failed to load',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    textAlign: TextAlign.center,
+          // GIFs (from GIPHY or any .gif URL) must be rendered with
+          // ExtendedImage so they animate. CachedNetworkImage freezes
+          // on the first frame. Static images fall back to CachedNetworkImage.
+          child: _isGifUrl(imageUrl)
+              ? ExtendedImage.network(
+                  imageUrl,
+                  width: 200,
+                  height: 150,
+                  fit: BoxFit.cover,
+                  cache: true,
+                  loadStateChanged: (state) {
+                    switch (state.extendedImageLoadState) {
+                      case LoadState.loading:
+                        return Container(
+                          width: 200,
+                          height: 150,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFCB0002),
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      case LoadState.failed:
+                        return Container(
+                          width: 200,
+                          height: 150,
+                          color: Colors.grey[300],
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.broken_image, size: 48, color: Colors.grey[600]),
+                              const SizedBox(height: 8),
+                              Text('GIF failed to load',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  textAlign: TextAlign.center),
+                            ],
+                          ),
+                        );
+                      default:
+                        return null; // show the image
+                    }
+                  },
+                )
+              : CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  width: 200,
+                  height: 150,
+                  fit: BoxFit.cover,
+                  // Decode to a small thumbnail (not the full-res image) so the
+                  // chat list stays fast and light on memory.
+                  memCacheWidth: 400,
+                  fadeInDuration: const Duration(milliseconds: 150),
+                  placeholder: (context, url) => Container(
+                    width: 200,
+                    height: 150,
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFCB0002),
+                        strokeWidth: 2,
+                      ),
+                    ),
                   ),
-                ],
-              ),
-            ),
-          ),
+                  errorWidget: (context, url, error) => Container(
+                    width: 200,
+                    height: 150,
+                    color: Colors.grey[300],
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.broken_image, size: 48, color: Colors.grey[600]),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Image failed to load',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
         ),
       );
     } else if (messageType == 'video' && message['mediaUrl'] != null) {
