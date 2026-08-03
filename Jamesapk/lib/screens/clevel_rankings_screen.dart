@@ -68,6 +68,9 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
   ];
 
   List<dynamic> _rows = [];
+  // This calendar month's top rep by Contract Amount, computed server-side and
+  // returned by /api/leaderboard. Null until someone signs something this month.
+  Map<String, dynamic>? _contractKing;
   bool _loading = true;
   String? _userId;
 
@@ -118,6 +121,7 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
         final data = json.decode(res.body);
         setState(() {
           _rows = (data['leaderboard'] as List?) ?? [];
+          _contractKing = (data['contractKing'] as Map?)?.cast<String, dynamic>();
           _loading = false;
         });
       } else {
@@ -518,6 +522,7 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
                 ],
               ),
             ),
+            if (!_loading && _contractKing != null) _contractKingBanner(),
             _buildTotalsStats(),
             Expanded(
               child: _loading
@@ -805,6 +810,73 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Contract King: this calendar month's top rep by Contract Amount. Mirrors
+  // the web banner — brown gradient, avatar, month label + name, and amount.
+  Widget _contractKingBanner() {
+    final k = _contractKing!;
+    final name = (k['name'] ?? '').toString();
+    final img = (k['headshotUrl'] ?? '').toString();
+    final monthLabel = (k['monthLabel'] ?? '').toString().toUpperCase();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF78350F), Color(0xFFB45309)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: const Color(0xFFB45309).withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF374151)),
+            clipBehavior: Clip.antiAlias,
+            alignment: Alignment.center,
+            child: img.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: 'https://millerstorm.tech$img',
+                    fit: BoxFit.cover, width: 48, height: 48,
+                    errorWidget: (_, __, ___) => _initial(name),
+                  )
+                : _initial(name),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('👑 $monthLabel CONTRACT KING',
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.4),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(name,
+                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(_money(k['revenue']),
+                  style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 1),
+              const Text('Contract Amount this month',
+                  style: TextStyle(color: Colors.white70, fontSize: 10.5)),
+            ],
+          ),
+        ],
       ),
     );
   }
