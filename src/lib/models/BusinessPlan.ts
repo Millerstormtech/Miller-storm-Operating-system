@@ -4,6 +4,9 @@ const businessPlanSchema = new Schema(
   {
     userId: { type: String, required: true },
     revenueGoal: Number,
+    monthlyRevenueTarget: Number,
+    monthlyKnockTarget: Number,
+    monthlyClaimsTarget: Number,
     daysPerWeek: Number,
     territories: [String],
     selectedPresetId: String,
