@@ -31,6 +31,7 @@
   ],
   "exclude": [
     "node_modules",
+    "docs",
     "seed.ts",
     "seed.js",
     "*.js",
