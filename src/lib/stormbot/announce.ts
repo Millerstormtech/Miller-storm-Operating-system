@@ -11,11 +11,12 @@ import { UserModel } from "../models/User";
 import { sendPushNotificationToMultiple } from "../firebase-admin";
 import { logToDb } from "../models/SystemLog";
 
-// Main Chat 2026, targeted by _id so renaming the group never breaks this.
+// Main Chat 2026 (public, top-level, whole company), targeted by _id so renaming
+// the group never breaks this. Verified against production 2026-08-03.
 // Dev verification overrides via env: point it at a throwaway group, never the
 // real one.
 export const CELEBRATION_GROUP_ID =
-  process.env.CELEBRATION_GROUP_ID || "REPLACE_IN_TASK_7";
+  process.env.CELEBRATION_GROUP_ID || "6a5a1fa5b32567bcbf56fb96";
 
 // Returns true if the message was posted. Never throws: a failed celebration
 // must not take down the save or sync that triggered it.
