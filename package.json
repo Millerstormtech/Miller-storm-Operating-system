@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start -p 6790",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:node": "node --test src/lib/leaderboard/identity.test.ts src/lib/leaderboard/merge.test.ts src/lib/leaderboard/ranking.test.ts \"src/lib/acculynx/*.test.ts\" \"src/lib/repcard/*.test.ts\"",
+    "test:all": "npm test && npm run test:node"
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
