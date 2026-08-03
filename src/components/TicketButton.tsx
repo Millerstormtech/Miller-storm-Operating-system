@@ -57,9 +57,7 @@ export function TicketButton() {
 
   // ── User: modal with form + own ticket list ─────────────────────────────────
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [type, setType] = useState<string>(SUPPORT_CATEGORIES[0].key);
+  const [type, setType] = useState<string>("");
   // Values for the selected category's predefined fields, keyed by field.key.
   const [fields, setFields] = useState<Record<string, string>>({});
   const [note, setNote] = useState("");
@@ -75,18 +73,18 @@ export function TicketButton() {
   }, []);
 
   useEffect(() => {
-    if (open) {
-      setName(user?.name || "");
-      setEmail(user?.email || "");
-      loadTickets();
-    }
-  }, [open, user, loadTickets]);
+    if (open) loadTickets();
+  }, [open, loadTickets]);
 
   const category = SUPPORT_CATEGORY_BY_KEY[type];
 
   const submit = async () => {
-    if (!name.trim() || !email.trim() || !note.trim()) {
-      setToast("Please fill name, email and details.");
+    if (!type) {
+      setToast("Please select a reason.");
+      return;
+    }
+    if (!note.trim()) {
+      setToast("Please add a description.");
       return;
     }
     // Any required predefined field must be filled.
@@ -97,10 +95,18 @@ export function TicketButton() {
     }
     setSubmitting(true);
     try {
+      // Name and email come straight from the signed-in account — the user
+      // no longer types them.
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, type, note, fields }),
+        body: JSON.stringify({
+          name: user?.name || user?.email || "",
+          email: user?.email || "",
+          type,
+          note,
+          fields,
+        }),
       });
       if (res.ok) {
         setNote("");
@@ -194,14 +200,9 @@ export function TicketButton() {
             </div>
 
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
-              <label style={lbl}>What's your name?
-                <input value={name} onChange={(e) => setName(e.target.value)} style={inp} placeholder="Your name" />
-              </label>
-              <label style={lbl}>Email
-                <input value={email} onChange={(e) => setEmail(e.target.value)} style={inp} placeholder="you@example.com" />
-              </label>
-              <label style={lbl}>Reason
+              <label style={lbl}>Reason *
                 <select value={type} onChange={(e) => { setType(e.target.value); setFields({}); }} style={inp}>
+                  <option value="">Not Selected</option>
                   {SUPPORT_CATEGORIES.map((c) => (
                     <option key={c.key} value={c.key}>
                       {c.label} — {c.reason}
@@ -236,7 +237,7 @@ export function TicketButton() {
                 </label>
               ))}
 
-              <label style={lbl}>Note
+              <label style={lbl}>Description *
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} style={{ ...inp, resize: "vertical" }} placeholder="Describe the issue or request..." />
               </label>
 
