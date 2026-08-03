@@ -15,6 +15,7 @@ export const cLevelSidebarItems = [
   { id: "sales-leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "my-tasks", label: "My Tasks", toggleKey: "taskTracker" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 

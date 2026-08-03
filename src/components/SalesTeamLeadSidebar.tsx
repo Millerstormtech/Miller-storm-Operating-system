@@ -4,9 +4,10 @@ import { useAuth } from "../contexts/AuthContext";
 import { useFeatureToggles } from "../hooks/useFeatureToggles";
 
 // Sales Team Lead sidebar — the exact set of features they get (order matches
-// the portal spec). Team Structure, Team Business Planners, Team Tasks and the
-// Master Bot Builder are intentionally NOT here. (Raise a Ticket lives in the
-// top bar, not the sidebar.)
+// the portal spec). Team Structure, Team Business Planners and the Master Bot
+// Builder are intentionally NOT here. (Raise a Ticket lives in the top bar, not
+// the sidebar.) The old Team Tasks page was folded into My Tasks in 2026-08:
+// assigning now lives in that page's My Team tab.
 export const salesTeamLeadSidebarItems = [
   { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
@@ -15,6 +16,7 @@ export const salesTeamLeadSidebarItems = [
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "my-tasks", label: "My Tasks", toggleKey: "taskTracker" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 

@@ -7,7 +7,7 @@ import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
-type SalesTeamLeadViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager" | "team-structure" | "rankings" | "storm-chat" | "course-leaderboard";
+type SalesTeamLeadViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager" | "my-tasks" | "team-structure" | "rankings" | "storm-chat" | "course-leaderboard";
 
 type SalesTeamLeadLayoutProps = {
   children: React.ReactNode;
@@ -28,6 +28,7 @@ export function SalesTeamLeadLayout({ children, currentView, pageTitle, pageSubt
     "apps-tools": "appsTools",
     "my-profile": "profile",
     "task-manager": "taskTracker",
+    "my-tasks": "taskTracker",
     "storm-chat": "stormChat",
     "course-leaderboard": "trainingCenter",
     rankings: "rankings",

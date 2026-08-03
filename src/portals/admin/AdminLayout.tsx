@@ -7,6 +7,7 @@ import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 
 type AdminViewId =
+  | "myTasks"
   | "dashboard"
   | "cLevelDashboard"
   | "branchManagerDashboard"

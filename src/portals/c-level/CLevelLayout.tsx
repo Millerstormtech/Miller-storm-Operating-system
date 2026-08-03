@@ -20,6 +20,7 @@ const C_LEVEL_VIEW_TOGGLE: Record<string, string> = {
   "jays-ai-clone": "aiChat",
   "my-profile": "profile",
   "user-management": "userManagement",
+  "my-tasks": "taskTracker",
 };
 
 type CLevelViewId =
@@ -33,7 +34,8 @@ type CLevelViewId =
   | "jays-ai-clone"
   | "my-profile"
   | "user-management"
-  | "announcements";
+  | "announcements"
+  | "my-tasks";
 
 type CLevelLayoutProps = {
   children: React.ReactNode;

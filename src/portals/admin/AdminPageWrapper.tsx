@@ -32,6 +32,7 @@ export function AdminPageWrapper({ children, currentView, pageTitle, pageSubtitl
     messaging: "messaging",
     leaderboard: "leaderboard",
     emailConfig: "emailConfig",
+    myTasks: "taskTracker",
   };
 
   useEffect(() => {
