@@ -55,10 +55,18 @@ export async function celebrateSalesFact(fact: {
 
     // Month-to-date count for this rep, INCLUSIVE of the win being announced:
     // the sync upserts the fact before calling us, so it is already counted.
+    //
+    // Anchored on the month the win HAPPENED in, not the month we are announcing
+    // it in. The 24-hour freshness window straddles month boundaries: a claim
+    // filed at 11pm on the 31st and synced at 12:30am on the 1st is still fresh,
+    // and counting from the new month's start would find nothing and post
+    // "That's 0 claims this month" in front of the whole company. Anchoring on
+    // occurredAt also makes the count provably >= 1, since the win always falls
+    // inside its own month.
     const monthCount = await ScoringFactModel.countDocuments({
       repUserId,
       metric,
-      occurredAt: { $gte: monthStart(new Date()) },
+      occurredAt: { $gte: monthStart(new Date(occurredAt)) },
     });
 
     const name = user.name || user.email || "";
