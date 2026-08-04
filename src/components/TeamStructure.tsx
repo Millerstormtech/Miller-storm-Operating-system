@@ -9,6 +9,7 @@ type OrgUser = {
   roles?: string[];
   managerId?: string;
   headshotUrl?: string;
+  territory?: string;
 };
 
 const ROLE: Record<string, { label: string; bg: string; border: string; text: string; dot: string }> = {
@@ -187,13 +188,33 @@ export function TeamStructure() {
 
     // Team leads grouped under their branch manager. A team lead whose managerId
     // is not a branch manager is an "orphan" and gets its own bus below.
+    // The branch manager for each branch (territory), so a team lead can be placed
+    // under their branch's manager even when managerId was never set on them.
+    const branchManagerByTerritory = new Map<string, OrgUser>();
+    for (const bm of branchManagerList) {
+      const t = (bm.territory || "").trim().toLowerCase();
+      if (t && !branchManagerByTerritory.has(t)) branchManagerByTerritory.set(t, bm);
+    }
+
     const teamLeadsByBranch = new Map<string, OrgUser[]>();
     const orphanLeadList: OrgUser[] = [];
     for (const tl of teamLeadList) {
+      // Prefer an explicit managerId that points at a branch manager; otherwise
+      // fall back to the branch manager who shares this team lead's branch. This
+      // keeps every team lead on the SAME row under their branch manager instead
+      // of dropping the ones without a managerId into a lower orphan bus.
+      let bmId: string | null = null;
       if (tl.managerId && branchManagerIds.has(tl.managerId)) {
-        const arr = teamLeadsByBranch.get(tl.managerId) || [];
+        bmId = tl.managerId;
+      } else {
+        const t = (tl.territory || "").trim().toLowerCase();
+        const bm = t ? branchManagerByTerritory.get(t) : undefined;
+        if (bm) bmId = bm.id;
+      }
+      if (bmId) {
+        const arr = teamLeadsByBranch.get(bmId) || [];
         arr.push(tl);
-        teamLeadsByBranch.set(tl.managerId, arr);
+        teamLeadsByBranch.set(bmId, arr);
       } else {
         orphanLeadList.push(tl);
       }
