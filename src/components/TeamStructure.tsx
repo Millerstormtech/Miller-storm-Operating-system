@@ -165,10 +165,17 @@ export function TeamStructure() {
     const sales = byRole("sales");
     const marketingList = byRole("marketing");
 
+    // A rep belongs under whoever their managerId points to — a Sales Team Lead
+    // OR a Branch Manager. Branch managers double as team leads, so their direct
+    // reports were wrongly landing in "Unassigned" when only team-lead ids were
+    // accepted here.
+    const teamLeadIds = new Set(managerList.map((m) => m.id));
+    const branchManagerIds = new Set(branchManagerList.map((m) => m.id));
+
     const repsByManager = new Map<string, OrgUser[]>();
     const noManager: OrgUser[] = [];
     for (const s of sales) {
-      if (s.managerId && managerList.some((m) => m.id === s.managerId)) {
+      if (s.managerId && (teamLeadIds.has(s.managerId) || branchManagerIds.has(s.managerId))) {
         const arr = repsByManager.get(s.managerId) || [];
         arr.push(s);
         repsByManager.set(s.managerId, arr);
@@ -177,13 +184,19 @@ export function TeamStructure() {
       }
     }
 
-    const managers = managerList
-      .map((m) => ({ manager: m, reps: (repsByManager.get(m.id) || []).filter(match), self: match(m) }))
-      .filter(({ self, reps }) => self || reps.length > 0);
+    // Pair each manager with the reps under them, dropping (when searching) any
+    // manager that neither matches nor has a matching rep.
+    const withReps = (list: OrgUser[]) =>
+      list
+        .map((m) => ({ manager: m, reps: (repsByManager.get(m.id) || []).filter(match), self: match(m) }))
+        .filter(({ self, reps }) => self || reps.length > 0);
+
+    const managers = withReps(managerList);
+    const branchManagersWithReps = withReps(branchManagerList);
 
     return {
       cLevel: cLevelList.filter(match),
-      branchManagers: branchManagerList.filter(match),
+      branchManagers: branchManagersWithReps,
       admins: adminList.filter(match),
       managers,
       marketing: marketingList.filter(match),
@@ -254,11 +267,25 @@ export function TeamStructure() {
 
             {cLevel.length > 0 && branchManagers.length > 0 && <div className="trunk" />}
 
-            {/* Tier 2: Branch Managers */}
+            {/* Tier 2: Branch Managers, each with the reps that report directly
+                to them — branch managers double as team leads. */}
             {branchManagers.length > 0 && (
-              <div className="admin-row">
-                {branchManagers.map((a) => <Node key={a.id} user={a} isYou={a.id === user?.id} />)}
-              </div>
+              <ul className="branch">
+                {branchManagers.map(({ manager, reps }) => (
+                  <li key={manager.id}>
+                    <Node user={manager} isYou={manager.id === user?.id} />
+                    {reps.length > 0 && (
+                      <ul>
+                        {reps.map((r) => (
+                          <li key={r.id}>
+                            <Node user={r} isYou={r.id === user?.id} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
 
             {/* connector from leadership down to the Sales Team Leads bus */}
