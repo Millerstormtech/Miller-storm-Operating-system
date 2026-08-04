@@ -46,6 +46,15 @@ function toInputValue(n: number | null | undefined): string {
   return n === null || n === undefined ? "" : String(n);
 }
 
+// Never fabricate a $0 or 0 that the person never chose: an unset previous
+// (or new) value reads as "not set", not as zero.
+function formatMoneyOrNotSet(v: number | undefined): string {
+  return v === undefined ? "not set" : `$${v.toLocaleString()}`;
+}
+function formatCountOrNotSet(v: number | undefined): string {
+  return v === undefined ? "not set" : String(v);
+}
+
 export function BusinessPlanPage(props: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
@@ -79,6 +88,12 @@ export function BusinessPlanPage(props: {
     knocks?: number;
     claims?: number;
   }>({});
+
+  // Surfaced when a save/submit POST comes back non-OK (e.g. the 500
+  // pages/api/business-plan.ts:37 can return) or throws outright. fetch()
+  // does not reject on 4xx/5xx, so this has to be checked explicitly rather
+  // than relying on a try/catch alone.
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,11 +174,19 @@ export function BusinessPlanPage(props: {
   async function savePlan(isCommitted: boolean) {
     const payload = buildPayload(isCommitted);
 
-    await fetch("/api/business-plan", {
+    const response = await fetch("/api/business-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: props.profile.id, businessPlan: payload })
     });
+
+    if (!response.ok) {
+      // Do not treat this as success: nothing below this line runs, so the
+      // caller's catch block sees the failure and neither advances
+      // savedMonthlyTargets nor fires manager/admin notifications for a save
+      // that never actually happened.
+      throw new Error(`Save failed with status ${response.status}`);
+    }
 
     setLegacyFields(legacyFieldsFrom(monthlyRevenue, legacyFields));
     setCommitted(isCommitted);
@@ -171,27 +194,30 @@ export function BusinessPlanPage(props: {
   }
 
   async function handleSavePlan() {
+    setSaveError(null);
     try {
       await savePlan(false);
       setSavedMonthlyTargets({ revenue: monthlyRevenue, knocks: monthlyKnocks, claims: monthlyClaims });
     } catch (error) {
       console.error("Failed to save goals:", error);
+      setSaveError("Couldn't save your goals. Please try again.");
     }
   }
 
   async function handleCommitPlan() {
+    setSaveError(null);
     try {
       const payload = await savePlan(true);
 
       const changes: string[] = [];
       if (savedMonthlyTargets.revenue !== monthlyRevenue) {
-        changes.push(`Monthly Revenue Target: $${(savedMonthlyTargets.revenue || 0).toLocaleString()} to $${(monthlyRevenue || 0).toLocaleString()}`);
+        changes.push(`Monthly Revenue Target: ${formatMoneyOrNotSet(savedMonthlyTargets.revenue)} to ${formatMoneyOrNotSet(monthlyRevenue)}`);
       }
       if (savedMonthlyTargets.knocks !== monthlyKnocks) {
-        changes.push(`Monthly Door Knocks Target: ${savedMonthlyTargets.knocks || 0} to ${monthlyKnocks || 0}`);
+        changes.push(`Monthly Door Knocks Target: ${formatCountOrNotSet(savedMonthlyTargets.knocks)} to ${formatCountOrNotSet(monthlyKnocks)}`);
       }
       if (savedMonthlyTargets.claims !== monthlyClaims) {
-        changes.push(`Monthly Claims Target: ${savedMonthlyTargets.claims || 0} to ${monthlyClaims || 0}`);
+        changes.push(`Monthly Claims Target: ${formatCountOrNotSet(savedMonthlyTargets.claims)} to ${formatCountOrNotSet(monthlyClaims)}`);
       }
       const changeMessage = changes.length > 0 ? changes.join(", ") : "Goals submitted";
 
@@ -239,6 +265,7 @@ export function BusinessPlanPage(props: {
       });
     } catch (error) {
       console.error("Failed to submit goals:", error);
+      setSaveError("Couldn't submit your goals. Please try again.");
     }
   }
 
@@ -322,6 +349,18 @@ export function BusinessPlanPage(props: {
 
         <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {saveError && (
+              <span style={{
+                padding: "6px 12px",
+                backgroundColor: "#fee2e2",
+                color: "#991b1b",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600
+              }}>
+                {saveError}
+              </span>
+            )}
             {committed && (
               <span style={{
                 padding: "6px 12px",
