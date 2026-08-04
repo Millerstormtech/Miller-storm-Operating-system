@@ -49,12 +49,19 @@ function normalizeAcxAll(acxAllRaw: any[]) {
 // directory. Callers who need multiple ranges (e.g. current + previous period)
 // can load this once and pass it to every computeSalesRows() call instead of
 // re-running these unbounded scans per range.
+//
+// This object is SHARED across every computeSalesRows() call within a single
+// request (e.g. current period + previous period both read the same instance
+// concurrently via Promise.all). Treat it as immutable: the types below are
+// readonly on purpose, so a future normalization step that tries to sort,
+// push, or .set() onto any of these fields fails to compile instead of
+// silently corrupting the other in-flight range.
 export interface SharedRosterData {
-  acxAll: ReturnType<typeof normalizeAcxAll>;
-  allTimeKnockers: Set<string>;
-  rcById: Map<string, any>;
-  acctSets: { emails: Set<string>; phones: Set<string>; names: Set<string> };
-  byEmail: Map<string, any>;
+  readonly acxAll: ReadonlyArray<ReturnType<typeof normalizeAcxAll>[number]>;
+  readonly allTimeKnockers: ReadonlySet<string>;
+  readonly rcById: ReadonlyMap<string, any>;
+  readonly acctSets: Readonly<{ emails: ReadonlySet<string>; phones: ReadonlySet<string>; names: ReadonlySet<string> }>;
+  readonly byEmail: ReadonlyMap<string, any>;
 }
 
 export async function loadSharedRosterData(): Promise<SharedRosterData> {

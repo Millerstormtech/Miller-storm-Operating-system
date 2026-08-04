@@ -81,3 +81,17 @@ test("exact unique name is the last-resort match", () => {
   assert.equal(out.length, 1);
   assert.equal(out[0].source, "both");
 });
+
+// Pins the invariant compute.ts's SharedRosterData sharing relies on: the same
+// `acx` array (e.g. the all-time acxAll roster) is passed into multiple
+// mergeLeaderboard() calls within one request (current period + previous
+// period), so it must never be mutated in place by this function.
+test("does not mutate the acx array it was given", () => {
+  const acx = [
+    ax({ repExternalId: "a1", email: "alan@ms.com", name: "Alan", won: 2, revenue: 50000 }),
+    ax({ repExternalId: "a2", email: "office@ms.com", name: "Office", filed: 1 }),
+  ];
+  const snapshot = JSON.parse(JSON.stringify(acx));
+  mergeLeaderboard(acx, [rc({ repcardUserId: "r1", email: "alan@ms.com", name: "Alan", verifiedKnocks: 300 })]);
+  assert.deepEqual(acx, snapshot);
+});

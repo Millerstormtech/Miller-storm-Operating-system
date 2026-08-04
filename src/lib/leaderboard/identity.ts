@@ -24,7 +24,7 @@ export function normPhone(s?: string): string {
 // false, so the caller falls back to its sales-based flag and never mass-flags reps.
 export function hasAcculynxAccount(
   rep: { email?: string; phone?: string; nameKey?: string },
-  sets: { emails: Set<string>; phones: Set<string>; names: Set<string> }
+  sets: { emails: ReadonlySet<string>; phones: ReadonlySet<string>; names: ReadonlySet<string> }
 ): boolean {
   if (rep.email && sets.emails.has(rep.email)) return true;
   if (rep.phone && sets.phones.has(rep.phone)) return true;
