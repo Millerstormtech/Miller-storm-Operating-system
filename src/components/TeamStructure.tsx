@@ -33,8 +33,8 @@ function initials(name: string): string {
   return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-function Avatar({ user, size = 40 }: { user: OrgUser; size?: number }) {
-  const c = ROLE[roleOf(user)];
+function Avatar({ user, size = 40, role }: { user: OrgUser; size?: number; role?: string }) {
+  const c = ROLE[role || roleOf(user)];
   if (user.headshotUrl) {
     return (
       <img
@@ -58,12 +58,15 @@ function Avatar({ user, size = 40 }: { user: OrgUser; size?: number }) {
   );
 }
 
-// A single compact org-chart node (avatar on top, name, role badge).
-function Node({ user, isYou }: { user: OrgUser; isYou: boolean }) {
-  const c = ROLE[roleOf(user)];
+// A single compact org-chart node (avatar on top, name, role badge). `roleOverride`
+// lets a branch manager be re-drawn as their own Sales Team Lead card (the same
+// person appears twice in the chart when they also run a team).
+function Node({ user, isYou, roleOverride }: { user: OrgUser; isYou: boolean; roleOverride?: string }) {
+  const role = roleOverride || roleOf(user);
+  const c = ROLE[role];
   return (
     <div className="node" style={{ borderTop: `3px solid ${c.dot}`, boxShadow: isYou ? `0 0 0 2px ${c.dot}` : undefined }}>
-      <Avatar user={user} size={42} />
+      <Avatar user={user} size={42} role={role} />
       <div className="node-name" title={user.name}>
         {user.name}
         {isYou && <span className="you-badge" style={{ color: c.text, background: c.bg }}>YOU</span>}
@@ -152,7 +155,7 @@ export function TeamStructure() {
     return () => { active = false; };
   }, []);
 
-  const { cLevel, branchManagers, admins, managers, marketing, unassigned, counts } = useMemo(() => {
+  const { cLevel, branchTree, orphanLeads, admins, marketing, unassigned, counts } = useMemo(() => {
     const all = users || [];
     const q = query.trim().toLowerCase();
     const match = (u: OrgUser) => !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
@@ -161,17 +164,15 @@ export function TeamStructure() {
     const cLevelList = byRole("c-level");
     const branchManagerList = byRole("branch-manager");
     const adminList = byRole("admin");
-    const managerList = byRole("sales-team-lead");
+    const teamLeadList = byRole("sales-team-lead");
     const sales = byRole("sales");
     const marketingList = byRole("marketing");
 
-    // A rep belongs under whoever their managerId points to — a Sales Team Lead
-    // OR a Branch Manager. Branch managers double as team leads, so their direct
-    // reports were wrongly landing in "Unassigned" when only team-lead ids were
-    // accepted here.
-    const teamLeadIds = new Set(managerList.map((m) => m.id));
+    const teamLeadIds = new Set(teamLeadList.map((m) => m.id));
     const branchManagerIds = new Set(branchManagerList.map((m) => m.id));
 
+    // Sales reps grouped by whoever they report to (a Sales Team Lead OR, when a
+    // branch manager also runs a team directly, a Branch Manager).
     const repsByManager = new Map<string, OrgUser[]>();
     const noManager: OrgUser[] = [];
     for (const s of sales) {
@@ -184,28 +185,63 @@ export function TeamStructure() {
       }
     }
 
-    // Pair each manager with the reps under them, dropping (when searching) any
-    // manager that neither matches nor has a matching rep.
-    const withReps = (list: OrgUser[]) =>
-      list
-        .map((m) => ({ manager: m, reps: (repsByManager.get(m.id) || []).filter(match), self: match(m) }))
-        .filter(({ self, reps }) => self || reps.length > 0);
+    // Team leads grouped under their branch manager. A team lead whose managerId
+    // is not a branch manager is an "orphan" and gets its own bus below.
+    const teamLeadsByBranch = new Map<string, OrgUser[]>();
+    const orphanLeadList: OrgUser[] = [];
+    for (const tl of teamLeadList) {
+      if (tl.managerId && branchManagerIds.has(tl.managerId)) {
+        const arr = teamLeadsByBranch.get(tl.managerId) || [];
+        arr.push(tl);
+        teamLeadsByBranch.set(tl.managerId, arr);
+      } else {
+        orphanLeadList.push(tl);
+      }
+    }
 
-    const managers = withReps(managerList);
-    const branchManagersWithReps = withReps(branchManagerList);
+    type LeadNode = { key: string; lead: OrgUser; reps: OrgUser[]; asTeamLead: boolean };
+
+    // The team-lead tier under one branch manager: every real team lead, PLUS the
+    // branch manager themselves as a second card when they directly run a team.
+    // That duplicate is exactly the org chart's "Branch Manager appears twice".
+    const leadNodesFor = (bm: OrgUser): LeadNode[] => {
+      const nodes: LeadNode[] = [];
+      const bmReps = repsByManager.get(bm.id) || [];
+      if (bmReps.length > 0) nodes.push({ key: `${bm.id}-as-lead`, lead: bm, reps: bmReps, asTeamLead: true });
+      for (const tl of teamLeadsByBranch.get(bm.id) || []) {
+        nodes.push({ key: tl.id, lead: tl, reps: repsByManager.get(tl.id) || [], asTeamLead: false });
+      }
+      return nodes;
+    };
+
+    // Search filter, applied down the tree: keep a rep if it matches, a lead if it
+    // matches or has a matching rep, a branch manager if it matches or has any
+    // surviving lead node.
+    const keepLead = (n: LeadNode): LeadNode | null => {
+      const reps = n.reps.filter(match);
+      return match(n.lead) || reps.length > 0 ? { ...n, reps } : null;
+    };
+
+    const branchTree = branchManagerList
+      .map((bm) => ({ branchManager: bm, leadNodes: leadNodesFor(bm).map(keepLead).filter(Boolean) as LeadNode[] }))
+      .filter(({ branchManager, leadNodes }) => match(branchManager) || leadNodes.length > 0);
+
+    const orphanLeads = orphanLeadList
+      .map((tl) => ({ manager: tl, reps: (repsByManager.get(tl.id) || []).filter(match), self: match(tl) }))
+      .filter(({ self, reps }) => self || reps.length > 0);
 
     return {
       cLevel: cLevelList.filter(match),
-      branchManagers: branchManagersWithReps,
+      branchTree,
+      orphanLeads,
       admins: adminList.filter(match),
-      managers,
       marketing: marketingList.filter(match),
       unassigned: noManager.filter(match),
       counts: {
         cLevel: cLevelList.length,
         branchManagers: branchManagerList.length,
         admins: adminList.length,
-        managers: managerList.length,
+        managers: teamLeadList.length,
         sales: sales.length,
         marketing: marketingList.length,
       },
@@ -223,8 +259,8 @@ export function TeamStructure() {
     </div>
   );
 
-  const nothing = cLevel.length === 0 && branchManagers.length === 0 && admins.length === 0 && managers.length === 0 && marketing.length === 0 && unassigned.length === 0;
-  const hasLeadership = cLevel.length > 0 || branchManagers.length > 0;
+  const nothing = cLevel.length === 0 && branchTree.length === 0 && orphanLeads.length === 0 && admins.length === 0 && marketing.length === 0 && unassigned.length === 0;
+  const hasLeadership = cLevel.length > 0 || branchTree.length > 0;
 
   return (
     <div>
@@ -265,20 +301,35 @@ export function TeamStructure() {
               </div>
             )}
 
-            {cLevel.length > 0 && branchManagers.length > 0 && <div className="trunk" />}
+            {cLevel.length > 0 && branchTree.length > 0 && <div className="trunk" />}
 
-            {/* Tier 2: Branch Managers, each with the reps that report directly
-                to them — branch managers double as team leads. */}
-            {branchManagers.length > 0 && (
+            {/* Tier 2 → 3 → 4: Branch Manager → Sales Team Lead → Sales Reps.
+                A branch manager who also runs a team shows a second time here as
+                their own Sales Team Lead card, carrying the reps that report
+                directly to them. */}
+            {branchTree.length > 0 && (
               <ul className="branch">
-                {branchManagers.map(({ manager, reps }) => (
-                  <li key={manager.id}>
-                    <Node user={manager} isYou={manager.id === user?.id} />
-                    {reps.length > 0 && (
+                {branchTree.map(({ branchManager, leadNodes }) => (
+                  <li key={branchManager.id}>
+                    <Node user={branchManager} isYou={branchManager.id === user?.id} />
+                    {leadNodes.length > 0 && (
                       <ul>
-                        {reps.map((r) => (
-                          <li key={r.id}>
-                            <Node user={r} isYou={r.id === user?.id} />
+                        {leadNodes.map(({ key, lead, reps, asTeamLead }) => (
+                          <li key={key}>
+                            <Node
+                              user={lead}
+                              isYou={!asTeamLead && lead.id === user?.id}
+                              roleOverride={asTeamLead ? "sales-team-lead" : undefined}
+                            />
+                            {reps.length > 0 && (
+                              <ul>
+                                {reps.map((r) => (
+                                  <li key={r.id}>
+                                    <Node user={r} isYou={r.id === user?.id} />
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -288,13 +339,11 @@ export function TeamStructure() {
               </ul>
             )}
 
-            {/* connector from leadership down to the Sales Team Leads bus */}
-            {hasLeadership && managers.length > 0 && <div className="trunk" />}
-
-            {/* Tier 3 + 4: Sales Team Leads with their reps */}
-            {managers.length > 0 && (
+            {/* Sales Team Leads with no branch manager (data gaps) — their own bus. */}
+            {hasLeadership && orphanLeads.length > 0 && <div className="trunk" />}
+            {orphanLeads.length > 0 && (
               <ul className="branch">
-                {managers.map(({ manager, reps }) => (
+                {orphanLeads.map(({ manager, reps }) => (
                   <li key={manager.id}>
                     <Node user={manager} isYou={manager.id === user?.id} />
                     {reps.length > 0 && (
