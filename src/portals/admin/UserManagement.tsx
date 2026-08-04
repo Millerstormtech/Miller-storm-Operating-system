@@ -43,6 +43,11 @@ export function UserManagement(props: UserEditorProps) {
   const rolesTriggerRef = useRef<HTMLButtonElement>(null);
   const rolesDropdownRef = useRef<HTMLDivElement>(null);
   const [rolesDropdownPos, setRolesDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  // Branch dropdown uses the same fixed-position pattern as Role so it isn't
+  // clipped by the scrolling details panel.
+  const territoryTriggerRef = useRef<HTMLButtonElement>(null);
+  const territoryDropdownRef = useRef<HTMLDivElement>(null);
+  const [territoryDropdownPos, setTerritoryDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   // Close role dropdown when clicking outside (but NOT inside the dropdown itself)
   useEffect(() => {
@@ -56,6 +61,19 @@ export function UserManagement(props: UserEditorProps) {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showRolesDropdown]);
+
+  // Same click-outside close for the Branch dropdown.
+  useEffect(() => {
+    if (!showTerritoryDropdown) return;
+    function handleClick(e: MouseEvent) {
+      if (territoryTriggerRef.current && territoryTriggerRef.current.contains(e.target as Node)) return;
+      if (territoryDropdownRef.current && territoryDropdownRef.current.contains(e.target as Node)) return;
+      setShowTerritoryDropdown(false);
+      setTerritoryDropdownPos(null);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showTerritoryDropdown]);
   // Branch options (stored on the existing `territory` field). Fixed list keeps
   // every account consistent — no typos/duplicates from free text.
   const TERRITORY_OPTIONS = ["Dallas", "West Texas", "Fort Worth"];
@@ -1277,9 +1295,16 @@ export function UserManagement(props: UserEditorProps) {
                 <span className="field-label">Branch</span>
                 <div className="territory-field">
                   <button
+                    ref={territoryTriggerRef}
                     type="button"
                     className={showTerritoryDropdown ? "territory-trigger territory-trigger-open" : "territory-trigger"}
-                    onClick={() => setShowTerritoryDropdown(!showTerritoryDropdown)}
+                    onClick={() => {
+                      if (!showTerritoryDropdown && territoryTriggerRef.current) {
+                        const rect = territoryTriggerRef.current.getBoundingClientRect();
+                        setTerritoryDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+                      }
+                      setShowTerritoryDropdown(!showTerritoryDropdown);
+                    }}
                   >
                     <span className="territory-trigger-value" style={{ color: selectedUser.territory ? undefined : "#9ca3af" }}>
                       {selectedUser.territory && selectedUser.territory.trim().length > 0
@@ -1288,8 +1313,28 @@ export function UserManagement(props: UserEditorProps) {
                     </span>
                     <span className="territory-trigger-icon">{showTerritoryDropdown ? "▲" : "▼"}</span>
                   </button>
-                  {showTerritoryDropdown && (
-                    <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }} role="listbox">
+                  {showTerritoryDropdown && territoryDropdownPos && (
+                    <div
+                      ref={territoryDropdownRef}
+                      role="listbox"
+                      style={{
+                        position: "fixed",
+                        top: territoryDropdownPos.top,
+                        left: territoryDropdownPos.left,
+                        width: territoryDropdownPos.width,
+                        maxHeight: 260,
+                        overflowY: "auto",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #d4d4d8",
+                        borderRadius: 8,
+                        boxShadow: "0 18px 40px rgba(15, 23, 42, 0.18)",
+                        padding: 8,
+                        zIndex: 99999,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                      }}
+                    >
                       {TERRITORY_OPTIONS.map((option) => {
                         // Single-select: a user belongs to exactly one branch. The
                         // chosen branch is stored on `territory` (and mirrored into
@@ -1313,6 +1358,7 @@ export function UserManagement(props: UserEditorProps) {
                                 }
                                 updateUser(patch);
                                 setShowTerritoryDropdown(false);
+                                setTerritoryDropdownPos(null);
                               }}
                             />
                             <span>{option}</span>
