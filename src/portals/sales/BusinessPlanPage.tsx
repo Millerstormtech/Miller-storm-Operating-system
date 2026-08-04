@@ -29,6 +29,14 @@ const SCOPE_COPY: Record<string, ScopeCopy> = {
   "c-level": { heading: "Company Goals", helper: "Company-wide monthly targets." }
 };
 
+// Single source of truth for this screen's heading, shared with the page
+// shell (pages/sales/plan.tsx) so the header band above the screen and the
+// heading rendered inside it never drift apart. Same fallback as the
+// in-page heading below: an unrecognized or missing role reads as "sales".
+export function goalsPageTitle(role: string | undefined): string {
+  return (role ? SCOPE_COPY[role]?.heading : undefined) ?? SCOPE_COPY.sales.heading;
+}
+
 // Whole numbers only, never negative: strip anything that isn't a digit so a
 // "-" or "." can never enter the field in the first place.
 function sanitizeWholeNumberInput(raw: string): string {
