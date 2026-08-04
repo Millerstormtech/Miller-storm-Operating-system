@@ -65,15 +65,16 @@ export function AdminPageWrapper({ children, currentView, pageTitle, pageSubtitl
               <button
                 type="button"
                 onClick={() => router.push(backTo)}
+                title={backLabel || "Back to User Management"}
+                aria-label={backLabel || "Back to User Management"}
                 style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
                   background: "#fff", color: "#374151", border: "1px solid #e5e7eb",
-                  borderRadius: 8, padding: "8px 14px", fontSize: 14, fontWeight: 600,
+                  borderRadius: 8, width: 40, height: 40, fontSize: 20, lineHeight: 1,
                   cursor: "pointer", marginBottom: 16,
                 }}
               >
-                <span style={{ fontSize: 16, lineHeight: 1 }}>←</span>
-                {backLabel || "Back to User Management"}
+                ←
               </button>
             )}
             {children}
