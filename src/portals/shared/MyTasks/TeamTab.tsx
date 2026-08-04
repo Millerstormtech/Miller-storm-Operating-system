@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../../contexts/AuthContext";
 import { todayString } from "../../../lib/tasks/permissions";
 import { TaskCard, type Task } from "./TaskCard";
 import { AssignTaskModal } from "./AssignTaskModal";
@@ -6,6 +7,7 @@ import { AssignTaskModal } from "./AssignTaskModal";
 type Person = { id: string; name: string };
 
 export function TeamTab() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -20,15 +22,23 @@ export function TeamTab() {
         fetch("/api/tasks/assignable-users")
       ]);
       if (tasksRes.ok) setTasks(await tasksRes.json());
-      if (peopleRes.ok) setPeople(await peopleRes.json());
+      if (peopleRes.ok) {
+        const list: Person[] = await peopleRes.json();
+        // assignable-users includes you, because assigning yourself work is
+        // legitimate and the Assign form should offer it. But listing yourself
+        // under "My Team" is confusing: your own work lives in the other tab.
+        setPeople(list.filter((p) => String(p.id) !== String(user?.id)));
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+    // Depends on user.id: with an empty dep list this would close over the
+    // null user from the first render and never filter anyone out.
+  }, [user?.id]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (user?.id) load();
+  }, [user?.id, load]);
 
   const today = todayString();
 
