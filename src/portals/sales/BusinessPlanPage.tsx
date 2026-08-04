@@ -173,9 +173,16 @@ export function BusinessPlanPage(props: {
       territories,
       selectedPresetId,
       committed: isCommitted,
-      monthlyRevenueTarget: monthlyRevenue,
-      monthlyKnockTarget: monthlyKnocks,
-      monthlyClaimsTarget: monthlyClaims
+      // The endpoint now updates only the fields it is actually sent (see
+      // pages/api/business-plan.ts + src/lib/businessPlan/update.ts): a key
+      // left out of the payload is left alone in the database, not cleared.
+      // So a cleared target has to be sent as an explicit null, not
+      // undefined -- JSON.stringify would drop an undefined key entirely,
+      // which under the new endpoint means "leave it alone" and the target
+      // could never be unset once set.
+      monthlyRevenueTarget: monthlyRevenue ?? null,
+      monthlyKnockTarget: monthlyKnocks ?? null,
+      monthlyClaimsTarget: monthlyClaims ?? null
     };
   }
 

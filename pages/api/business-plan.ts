@@ -3,6 +3,7 @@ import { connectMongo } from '../../src/lib/mongodb';
 import { UserModel } from '../../src/lib/models/User';
 import { BusinessPlanModel } from '../../src/lib/models/BusinessPlan';
 import { requireUser, allowMethods } from '../../src/lib/auth';
+import { buildBusinessPlanUpdate } from '../../src/lib/businessPlan/update';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -17,19 +18,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { businessPlan } = req.body;
 
     try {
-      // Update user document with business plan
-      await UserModel.updateOne(
-        { id: userId },
-        { $set: { businessPlan } },
-        { upsert: true }
-      );
+      // Field-level update, not a whole-object replace: a key the caller
+      // omits is left alone, so one screen (e.g. a manager editing a rep's
+      // legacy funnel fields) can never silently erase fields it knows
+      // nothing about (e.g. the rep's own monthly goals). An explicit null
+      // on a field clears it; see src/lib/businessPlan/update.ts.
+      const userOps = buildBusinessPlanUpdate(businessPlan, 'businessPlan.');
+      const userUpdate: Record<string, unknown> = {};
+      if (userOps.$set) userUpdate.$set = userOps.$set;
+      if (userOps.$unset) userUpdate.$unset = userOps.$unset;
 
-      // Also update separate business plans collection for backward compatibility
-      await BusinessPlanModel.updateOne(
-        { userId },
-        { $set: { ...businessPlan, userId } },
-        { upsert: true }
-      );
+      // Nothing to change (e.g. an empty payload): skip the write rather than
+      // sending Mongo an update document with no operators, which it treats
+      // as a full replacement document and would wipe the user's record.
+      if (Object.keys(userUpdate).length > 0) {
+        await UserModel.updateOne({ id: userId }, userUpdate, { upsert: true });
+      }
+
+      // Mirror the same fields into the separate legacy business-plans
+      // collection, using the same absent/null/zero rules so the two
+      // collections can never drift apart. No prefix here: this collection
+      // stores the fields flat, not under a `businessPlan` subdocument.
+      // userId always comes from the trusted session id, never the payload.
+      const mirrorOps = buildBusinessPlanUpdate(businessPlan, '');
+      const mirrorUpdate: Record<string, unknown> = {
+        $set: { ...(mirrorOps.$set ?? {}), userId }
+      };
+      if (mirrorOps.$unset) mirrorUpdate.$unset = mirrorOps.$unset;
+
+      await BusinessPlanModel.updateOne({ userId }, mirrorUpdate, { upsert: true });
 
       res.status(200).json({ success: true });
     } catch (error) {

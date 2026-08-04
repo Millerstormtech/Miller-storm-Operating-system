@@ -23,6 +23,7 @@ export default defineConfig({
       "src/lib/training/**/*.test.ts",
       "src/lib/stormbot/**/*.test.ts",
       "src/lib/scoreboard/**/*.test.ts",
+      "src/lib/businessPlan/**/*.test.ts",
       "src/lib/pageTitle.test.ts",
       "src/portals/shared/guided-tour/**/*.test.ts",
       "src/lib/report/**/*.test.ts",
