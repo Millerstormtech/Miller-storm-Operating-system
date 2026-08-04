@@ -4,7 +4,7 @@ import { AnnouncementComposer } from "../../src/portals/admin/AnnouncementCompos
 
 const AnnouncementsPage: NextPage = () => {
   return (
-    <AdminPageWrapper currentView="announcements" pageTitle="Announcements">
+    <AdminPageWrapper currentView="announcements" pageTitle="Announcements" backTo="/admin/user-management">
       <AnnouncementComposer />
     </AdminPageWrapper>
   );

@@ -11,9 +11,12 @@ type AdminPageWrapperProps = {
   currentView: AdminViewId;
   pageTitle?: string;
   pageSubtitle?: string;
+  // When set, a back arrow is shown above the content that routes here.
+  backTo?: string;
+  backLabel?: string;
 };
 
-export function AdminPageWrapper({ children, currentView, pageTitle, pageSubtitle }: AdminPageWrapperProps) {
+export function AdminPageWrapper({ children, currentView, pageTitle, pageSubtitle, backTo, backLabel }: AdminPageWrapperProps) {
   const { user } = useAuth();
   const router = useRouter();
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -56,7 +59,26 @@ export function AdminPageWrapper({ children, currentView, pageTitle, pageSubtitl
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
       <AdminLayout currentView={currentView} pageTitle={pageTitle} pageSubtitle={pageSubtitle}>
-        {allowed === false ? null : children}
+        {allowed === false ? null : (
+          <>
+            {backTo && (
+              <button
+                type="button"
+                onClick={() => router.push(backTo)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  background: "#fff", color: "#374151", border: "1px solid #e5e7eb",
+                  borderRadius: 8, padding: "8px 14px", fontSize: 14, fontWeight: 600,
+                  cursor: "pointer", marginBottom: 16,
+                }}
+              >
+                <span style={{ fontSize: 16, lineHeight: 1 }}>←</span>
+                {backLabel || "Back to User Management"}
+              </button>
+            )}
+            {children}
+          </>
+        )}
       </AdminLayout>
     </ProtectedRoute>
   );

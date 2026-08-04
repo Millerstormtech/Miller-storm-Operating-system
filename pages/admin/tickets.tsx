@@ -4,7 +4,7 @@ import { TicketTable } from "../../src/portals/admin/TicketTable";
 
 const TicketsPage: NextPage = () => {
   return (
-    <AdminPageWrapper currentView="tickets" pageTitle="Support Tickets">
+    <AdminPageWrapper currentView="tickets" pageTitle="Support Tickets" backTo="/admin/user-management">
       <TicketTable />
     </AdminPageWrapper>
   );
