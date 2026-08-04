@@ -45,7 +45,8 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse, actor: Actor
   const scope = scopeFor(actor);
 
   if (view === "team" && scope.mode === "self") {
-    return res.status(403).json({ error: "Not permitted to view other people's tasks" });
+    res.status(403).json({ error: "Not permitted to view other people's tasks" });
+    return;
   }
 
   const base: any = { deleted: { $ne: true } };
@@ -55,7 +56,8 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse, actor: Actor
     const tasks = await TaskModel.find({ ...base, assignedTo: actor.id })
       .sort({ deadline: 1 })
       .lean();
-    return res.status(200).json(tasks);
+    res.status(200).json(tasks);
+    return;
   }
 
   // "team": narrow in the database first, then apply the privacy rule.
@@ -77,31 +79,35 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse, actor: Actor
     canViewTask(actor, t, owners[t.assignedTo] ?? { id: t.assignedTo })
   );
 
-  return res.status(200).json(visible);
+  res.status(200).json(visible);
+  return;
 }
 
 async function handlePost(req: NextApiRequest, res: NextApiResponse, actor: Actor) {
   const { assignedTo, description, deadline, priority, visibility } = req.body ?? {};
 
   if (!description || !String(description).trim()) {
-    return res.status(400).json({ error: "description is required" });
+    res.status(400).json({ error: "description is required" });
+    return;
   }
-  if (!deadline) return res.status(400).json({ error: "deadline is required" });
+  if (!deadline) { res.status(400).json({ error: "deadline is required" }); return; }
   if (!["low", "medium", "high"].includes(priority)) {
-    return res.status(400).json({ error: "priority must be low, medium or high" });
+    res.status(400).json({ error: "priority must be low, medium or high" });
+    return;
   }
 
   const targets: string[] = Array.isArray(assignedTo)
     ? assignedTo.filter(Boolean)
     : [assignedTo || actor.id];
-  if (targets.length === 0) return res.status(400).json({ error: "assignedTo is required" });
+  if (targets.length === 0) { res.status(400).json({ error: "assignedTo is required" }); return; }
 
   const owners = await loadOwners(targets);
   for (const targetId of targets) {
     const target = owners[targetId];
-    if (!target) return res.status(400).json({ error: `Unknown user: ${targetId}` });
+    if (!target) { res.status(400).json({ error: `Unknown user: ${targetId}` }); return; }
     if (!canAssignTo(actor, target)) {
-      return res.status(403).json({ error: "Not permitted to assign to that person" });
+      res.status(403).json({ error: "Not permitted to assign to that person" });
+      return;
     }
   }
 
@@ -143,15 +149,16 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, actor: Acto
     }
   }
 
-  return res.status(201).json(created.length === 1 ? created[0] : created);
+  res.status(201).json(created.length === 1 ? created[0] : created);
+  return;
 }
 
 async function handlePut(req: NextApiRequest, res: NextApiResponse, actor: Actor) {
   const { id, ...changes } = req.body ?? {};
-  if (!id) return res.status(400).json({ error: "id is required" });
+  if (!id) { res.status(400).json({ error: "id is required" }); return; }
 
   const task = (await TaskModel.findOne({ id, deleted: { $ne: true } }).lean()) as any;
-  if (!task) return res.status(404).json({ error: "Task not found" });
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
 
   const owners = await loadOwners([task.assignedTo]);
   const owner = owners[task.assignedTo] ?? { id: task.assignedTo };
@@ -160,7 +167,8 @@ async function handlePut(req: NextApiRequest, res: NextApiResponse, actor: Actor
   // request, so a partial write can never happen.
   for (const field of Object.keys(changes)) {
     if (!canEditField(actor, task, field, owner)) {
-      return res.status(403).json({ error: `Not permitted to change ${field}` });
+      res.status(403).json({ error: `Not permitted to change ${field}` });
+      return;
     }
   }
 
@@ -173,15 +181,16 @@ async function handlePut(req: NextApiRequest, res: NextApiResponse, actor: Actor
   }
 
   const saved = await TaskModel.findOneAndUpdate({ id }, update, { new: true }).lean();
-  return res.status(200).json(saved);
+  res.status(200).json(saved);
+  return;
 }
 
 async function handleDelete(req: NextApiRequest, res: NextApiResponse, actor: Actor) {
   const { id } = req.body ?? {};
-  if (!id) return res.status(400).json({ error: "id is required" });
+  if (!id) { res.status(400).json({ error: "id is required" }); return; }
 
   const task = (await TaskModel.findOne({ id, deleted: { $ne: true } }).lean()) as any;
-  if (!task) return res.status(404).json({ error: "Task not found" });
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
 
   const owners = await loadOwners([task.assignedTo]);
   const owner = owners[task.assignedTo] ?? { id: task.assignedTo };
@@ -192,11 +201,13 @@ async function handleDelete(req: NextApiRequest, res: NextApiResponse, actor: Ac
   const legacyFallback = !task.createdBy && canAssignTo(actor, owner);
 
   if (!isCreator && !isOrgWide && !legacyFallback) {
-    return res.status(403).json({ error: "Not permitted to delete this task" });
+    res.status(403).json({ error: "Not permitted to delete this task" });
+    return;
   }
 
   await TaskModel.updateOne({ id }, { deleted: true });
-  return res.status(204).end();
+  res.status(204).end();
+  return;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -208,7 +219,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   const actor = await loadActor(auth.sub, auth.role);
-  if (!actor) return res.status(404).json({ error: "User not found" });
+  if (!actor) { res.status(404).json({ error: "User not found" }); return; }
 
   if (req.method === "GET") return handleGet(req, res, actor);
   if (req.method === "POST") return handlePost(req, res, actor);

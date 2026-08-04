@@ -18,12 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const me = (await UserModel.findOne({ id: auth.sub })
     .select("id role branches")
     .lean()) as any;
-  if (!me) return res.status(404).json({ error: "User not found" });
+  if (!me) { res.status(404).json({ error: "User not found" }); return; }
 
   const actor: Actor = { id: auth.sub, role: auth.role, branches: me.branches ?? [] };
 
   // A self-only role has nobody to assign to, so skip the query entirely.
-  if (scopeFor(actor).mode === "self") return res.status(200).json([]);
+  if (scopeFor(actor).mode === "self") { res.status(200).json([]); return; }
 
   const candidates = (await UserModel.find({
     deleted: { $ne: true },
@@ -37,5 +37,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .map((u) => ({ id: u.id, name: u.name, email: u.email }))
     .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 
-  return res.status(200).json(allowed);
+  res.status(200).json(allowed);
+  return;
 }
