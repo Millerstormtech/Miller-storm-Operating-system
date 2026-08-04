@@ -4,7 +4,7 @@ import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, type Window } from "../../src/lib/acculynx/windows";
-import { computeSalesRows } from "../../src/lib/leaderboard/compute";
+import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 import type { Totals } from "../../src/lib/scoreboard/types";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
 import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
@@ -33,9 +33,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cur = getWindowRange(w, now);
     const prev = previousSlice(w, cur.start, now);
 
+    // The current-period and previous-period runs both need the range-independent
+    // roster data (all-time AccuLynx identities, all-time knockers, RepCard/AccuLynx/
+    // app-user directories). Load it once per request and hand the same object to
+    // both calls instead of letting each one re-run those unbounded scans.
+    const shared = await loadSharedRosterData();
     const [curRowsRaw, prevRowsRaw] = await Promise.all([
-      computeSalesRows(cur),
-      computeSalesRows(prev),
+      computeSalesRows(cur, shared),
+      computeSalesRows(prev, shared),
     ]);
     const curRows = curRowsRaw.map(toSalesRow);
     const prevRows = prevRowsRaw.map(toSalesRow);
