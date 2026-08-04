@@ -1302,7 +1302,16 @@ export function UserManagement(props: UserEditorProps) {
                               checked={checked}
                               onChange={(e) => {
                                 const value = e.target.checked ? option : "";
-                                updateUser({ ...selectedUser, territory: value, branches: value ? [value] : [] });
+                                const patch = { ...selectedUser, territory: value, branches: value ? [value] : [] };
+                                // A sales rep's Team Lead must belong to the chosen
+                                // branch. If the current one doesn't (or the branch was
+                                // cleared), drop it so a valid lead is re-picked.
+                                if (selectedUser.role === "sales") {
+                                  const currentLead = selectedUser.managerId ? draftUsers.find(u => u.id === selectedUser.managerId) : null;
+                                  const leadInBranch = !!currentLead && (currentLead.territory || "").trim().toLowerCase() === value.trim().toLowerCase();
+                                  if (!value || !leadInBranch) { patch.managerId = undefined; setManagerDraftId(""); }
+                                }
+                                updateUser(patch);
                                 setShowTerritoryDropdown(false);
                               }}
                             />
@@ -1406,29 +1415,56 @@ export function UserManagement(props: UserEditorProps) {
                   <span className="field-label" style={{ margin: 0 }}>Also a Sales Team Lead (has their own team of reps)</span>
                 </label>
               )}
-              {selectedUser.role === "sales" && (
-                <label className="field">
-                  <span className="field-label">Sales Team Lead <span style={{ color: "#dc2626" }}>*</span></span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                    <select className="field-input" style={{ flex: 1, minWidth: 0, borderColor: (!selectedUser.managerId || managerError) ? "#dc2626" : undefined }} value={managerDraftId} onChange={(e) => {
-                      const nextManagerId = e.target.value;
-                      setManagerDraftId(nextManagerId);
-                      setManagerError("");
-                      updateUser({ ...selectedUser, managerId: nextManagerId || undefined });
-                    }}>
-                      <option value="">-- Select a Sales Team Lead (required) --</option>
-                      {draftUsers.filter((u) => u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead")).map((manager) => (
-                        <option key={manager.id} value={manager.id}>{manager.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {(!selectedUser.managerId || managerError) && (
-                    <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>
-                      {managerError || "Sales Team Lead is required for sales users"}
+              {selectedUser.role === "sales" && (() => {
+                const branch = (selectedUser.territory || "").trim().toLowerCase();
+                const branchSelected = branch.length > 0;
+                // Team leads to choose from: real (non-developer) Sales Team Leads —
+                // including branch managers who also run a team — whose OWN branch
+                // matches the rep's selected branch. No branch → nothing to pick.
+                const teamLeadOptions = branchSelected
+                  ? draftUsers.filter((u) =>
+                      !u.testAccount &&
+                      (u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead")) &&
+                      (u.territory || "").trim().toLowerCase() === branch
+                    )
+                  : [];
+                return (
+                  <label className="field">
+                    <span className="field-label">Sales Team Lead <span style={{ color: "#dc2626" }}>*</span></span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <select
+                        className="field-input"
+                        disabled={!branchSelected}
+                        style={{ flex: 1, minWidth: 0, borderColor: (!selectedUser.managerId || managerError) ? "#dc2626" : undefined, background: !branchSelected ? "#f9fafb" : undefined, cursor: !branchSelected ? "not-allowed" : undefined }}
+                        value={managerDraftId}
+                        onChange={(e) => {
+                          const nextManagerId = e.target.value;
+                          setManagerDraftId(nextManagerId);
+                          setManagerError("");
+                          updateUser({ ...selectedUser, managerId: nextManagerId || undefined });
+                        }}
+                      >
+                        <option value="">
+                          {branchSelected ? "-- Select a Sales Team Lead (required) --" : "-- Select a branch first --"}
+                        </option>
+                        {teamLeadOptions.map((manager) => (
+                          <option key={manager.id} value={manager.id}>{manager.name}</option>
+                        ))}
+                      </select>
                     </div>
-                  )}
-                </label>
-              )}
+                    {branchSelected && teamLeadOptions.length === 0 && (
+                      <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+                        No Sales Team Leads in this branch yet.
+                      </div>
+                    )}
+                    {(!selectedUser.managerId || managerError) && (
+                      <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>
+                        {managerError || (branchSelected ? "Sales Team Lead is required for sales users" : "Select a branch first, then choose a Sales Team Lead")}
+                      </div>
+                    )}
+                  </label>
+                );
+              })()}
               {/* Branch Manager — auto-filled from the selected Branch: the
                   branch-manager account whose own Branch matches. Shown for
                   Sales Team Lead + Sales Rep once a Branch is picked. */}
