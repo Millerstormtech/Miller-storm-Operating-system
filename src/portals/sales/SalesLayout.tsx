@@ -7,7 +7,7 @@ import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
-type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "task-tracker" | "rankings" | "team-structure" | "storm-chat" | "course-leaderboard";
+type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "my-tasks" | "rankings" | "team-structure" | "storm-chat" | "course-leaderboard";
 
 type SalesLayoutProps = {
   children: React.ReactNode;
@@ -30,7 +30,7 @@ export function SalesLayout({ children, currentView, userName, userId, pageTitle
     aiChat: "aiChat",
     "apps-tools": "appsTools",
     profile: "profile",
-    "task-tracker": "taskTracker",
+    "my-tasks": "taskTracker",
     "storm-chat": "stormChat",
     "course-leaderboard": "trainingCenter",
     rankings: "rankings",

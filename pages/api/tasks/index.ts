@@ -1,81 +1,228 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { TaskModel } from "../../../src/lib/models/Task";
-import { requireAuth } from "../../../src/lib/auth";
+import { UserModel } from "../../../src/lib/models/User";
+import { NotificationModel } from "../../../src/lib/models/Notification";
+import { requireUser, allowMethods } from "../../../src/lib/auth";
+import {
+  scopeFor,
+  canAssignTo,
+  canViewTask,
+  canEditField,
+  type Actor,
+  type TargetUser
+} from "../../../src/lib/tasks/permissions";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  await connectMongo();
+// Load the caller as an Actor. Role and id come from the signed token; only the
+// branch list is read from the database.
+async function loadActor(userId: string, role: string): Promise<Actor | null> {
+  const me = (await UserModel.findOne({ id: userId }).select("id role branches").lean()) as any;
+  if (!me) return null;
+  return { id: userId, role, branches: me.branches ?? [] };
+}
 
-  if (req.method === "GET") {
-    const { assignedTo } = req.query;
-    const query: any = {};
-    if (assignedTo) {
-      query.assignedTo = assignedTo;
-    }
-    const tasks = await TaskModel.find(query).lean();
-    console.log('API GET returning tasks:', tasks);
+// id -> { id, managerId, branches } for every user named in a set of tasks, so
+// canViewTask can be applied without one query per task.
+async function loadOwners(ids: string[]): Promise<Record<string, TargetUser>> {
+  const unique = Array.from(new Set(ids));
+  const users = (await UserModel.find({ id: { $in: unique } })
+    .select("id managerId branches")
+    .lean()) as any[];
+  const map: Record<string, TargetUser> = {};
+  for (const u of users) {
+    map[u.id] = { id: u.id, managerId: u.managerId, branches: u.branches ?? [] };
+  }
+  return map;
+}
+
+function truncate(text: string, max = 120): string {
+  const clean = String(text ?? "").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}...` : clean;
+}
+
+async function handleGet(req: NextApiRequest, res: NextApiResponse, actor: Actor) {
+  const view = req.query.view === "team" ? "team" : "mine";
+  const scope = scopeFor(actor);
+
+  if (view === "team" && scope.mode === "self") {
+    res.status(403).json({ error: "Not permitted to view other people's tasks" });
+    return;
+  }
+
+  const base: any = { deleted: { $ne: true } };
+
+  // "mine" always means exactly my own tasks, whatever my role is.
+  if (view === "mine") {
+    const tasks = await TaskModel.find({ ...base, assignedTo: actor.id })
+      .sort({ deadline: 1 })
+      .lean();
     res.status(200).json(tasks);
     return;
   }
 
-  if (req.method === "POST") {
-    console.log('API POST received:', req.body);
-    console.log('req.body.editableFields:', req.body.editableFields);
-    
-    const { assignedTo, ...taskData } = req.body;
-    
-    // If assignedTo is an array, create multiple tasks
-    if (Array.isArray(assignedTo) && assignedTo.length > 0) {
-      const tasks = await Promise.all(
-        assignedTo.map((userId: string) => {
-          const taskToCreate = {
-            ...taskData,
-            id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            assignedTo: userId
-          };
-          console.log('Creating task for user:', userId, taskToCreate);
-          console.log('taskToCreate.editableFields:', taskToCreate.editableFields);
-          return TaskModel.create(taskToCreate);
-        })
-      );
-      console.log('Tasks created:', tasks);
-      res.status(201).json(tasks);
-    } else {
-      // Single user, create one task
-      const task = await TaskModel.create(req.body);
-      console.log('Single task created:', task);
-      res.status(201).json(task);
-    }
-    return;
+  // "team": narrow in the database first, then apply the privacy rule.
+  const filter: any = { ...base };
+  if (scope.mode === "team") {
+    const reports = (await UserModel.find({ managerId: actor.id }).select("id").lean()) as any[];
+    filter.assignedTo = { $in: reports.map((u) => u.id) };
+  } else if (scope.mode === "branch") {
+    const inBranch = (await UserModel.find({ branches: { $in: scope.branches } })
+      .select("id")
+      .lean()) as any[];
+    filter.assignedTo = { $in: inBranch.map((u) => u.id) };
   }
+  // scope.mode === "all" needs no assignedTo narrowing.
 
-  if (req.method === "PUT") {
-    console.log('API PUT received:', req.body);
-    console.log('req.body.id:', req.body.id);
-    console.log('req.body.editableFields:', req.body.editableFields);
-    const { id } = req.body;
-    const task = await TaskModel.findOneAndUpdate(
-      { id },
-      req.body,
-      { new: true }
-    ).lean();
-    console.log('Task updated:', task);
-    res.status(200).json(task);
-    return;
-  }
+  const candidates = (await TaskModel.find(filter).sort({ deadline: 1 }).lean()) as any[];
+  const owners = await loadOwners(candidates.map((t) => t.assignedTo));
+  const visible = candidates.filter((t) =>
+    canViewTask(actor, t, owners[t.assignedTo] ?? { id: t.assignedTo })
+  );
 
-  if (req.method === "DELETE") {
-    const { id } = req.body;
-    await TaskModel.findOneAndDelete({ id });
-    res.status(204).end();
-    return;
-  }
-
-  res.setHeader("Allow", "GET, POST, PUT, DELETE");
-  res.status(405).end();
+  res.status(200).json(visible);
+  return;
 }
 
-export default requireAuth(handler);
+async function handlePost(req: NextApiRequest, res: NextApiResponse, actor: Actor) {
+  const { assignedTo, description, deadline, priority, visibility } = req.body ?? {};
+
+  if (!description || !String(description).trim()) {
+    res.status(400).json({ error: "description is required" });
+    return;
+  }
+  if (!deadline) { res.status(400).json({ error: "deadline is required" }); return; }
+  if (!["low", "medium", "high"].includes(priority)) {
+    res.status(400).json({ error: "priority must be low, medium or high" });
+    return;
+  }
+
+  const targets: string[] = Array.isArray(assignedTo)
+    ? assignedTo.filter(Boolean)
+    : [assignedTo || actor.id];
+  if (targets.length === 0) { res.status(400).json({ error: "assignedTo is required" }); return; }
+
+  const owners = await loadOwners(targets);
+  for (const targetId of targets) {
+    const target = owners[targetId];
+    if (!target) { res.status(400).json({ error: `Unknown user: ${targetId}` }); return; }
+    if (!canAssignTo(actor, target)) {
+      res.status(403).json({ error: "Not permitted to assign to that person" });
+      return;
+    }
+  }
+
+  const assignedOn = new Date().toISOString().slice(0, 10);
+  const created: any[] = [];
+
+  for (const targetId of targets) {
+    const isSelf = String(targetId) === String(actor.id);
+    const task = await TaskModel.create({
+      id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      assignedOn,
+      description: String(description).trim(),
+      deadline,
+      priority,
+      status: "not started",
+      assignedTo: targetId,
+      // createdBy comes from the signed token. A createdBy in the body is ignored.
+      createdBy: actor.id,
+      origin: isSelf ? "self" : "assigned",
+      visibility: isSelf ? (visibility === "shared" ? "shared" : "private") : "shared",
+      notesByManager: req.body?.notesByManager ?? "",
+      documentLinkByManager: req.body?.documentLinkByManager ?? "",
+      meetingLink: req.body?.meetingLink ?? "",
+      editableFields: []
+    });
+    created.push(task);
+
+    // Tell the person they were given work. Self-created tasks notify nobody.
+    if (!isSelf) {
+      await NotificationModel.create({
+        id: `task-assigned-${task.id}`,
+        userId: targetId,
+        type: "task_assigned",
+        title: "New task assigned",
+        message: truncate(description),
+        read: false,
+        metadata: { taskId: task.id, deadline, priority, assignedBy: actor.id }
+      });
+    }
+  }
+
+  res.status(201).json(created.length === 1 ? created[0] : created);
+  return;
+}
+
+async function handlePut(req: NextApiRequest, res: NextApiResponse, actor: Actor) {
+  const { id, ...changes } = req.body ?? {};
+  if (!id) { res.status(400).json({ error: "id is required" }); return; }
+
+  const task = (await TaskModel.findOne({ id, deleted: { $ne: true } }).lean()) as any;
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+
+  const owners = await loadOwners([task.assignedTo]);
+  const owner = owners[task.assignedTo] ?? { id: task.assignedTo };
+
+  // Every field in the body must be permitted. One bad field rejects the whole
+  // request, so a partial write can never happen.
+  for (const field of Object.keys(changes)) {
+    if (!canEditField(actor, task, field, owner)) {
+      res.status(403).json({ error: `Not permitted to change ${field}` });
+      return;
+    }
+  }
+
+  const update: any = { ...changes };
+  if (changes.status === "done" && task.status !== "done") {
+    update.completedAt = new Date();
+  }
+  if (changes.status && changes.status !== "done" && task.status === "done") {
+    update.completedAt = null;
+  }
+
+  const saved = await TaskModel.findOneAndUpdate({ id }, update, { new: true }).lean();
+  res.status(200).json(saved);
+  return;
+}
+
+async function handleDelete(req: NextApiRequest, res: NextApiResponse, actor: Actor) {
+  const { id } = req.body ?? {};
+  if (!id) { res.status(400).json({ error: "id is required" }); return; }
+
+  const task = (await TaskModel.findOne({ id, deleted: { $ne: true } }).lean()) as any;
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+
+  const owners = await loadOwners([task.assignedTo]);
+  const owner = owners[task.assignedTo] ?? { id: task.assignedTo };
+
+  const isCreator = task.createdBy && String(task.createdBy) === String(actor.id);
+  const isOrgWide = actor.role === "admin" || actor.role === "c-level";
+  // Legacy tasks predate createdBy, so fall back to "could you have assigned it".
+  const legacyFallback = !task.createdBy && canAssignTo(actor, owner);
+
+  if (!isCreator && !isOrgWide && !legacyFallback) {
+    res.status(403).json({ error: "Not permitted to delete this task" });
+    return;
+  }
+
+  await TaskModel.updateOne({ id }, { deleted: true });
+  res.status(204).end();
+  return;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!allowMethods(req, res, ["GET", "POST", "PUT", "DELETE"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
+  await connectMongo();
+
+  const actor = await loadActor(auth.sub, auth.role);
+  if (!actor) { res.status(404).json({ error: "User not found" }); return; }
+
+  if (req.method === "GET") return handleGet(req, res, actor);
+  if (req.method === "POST") return handlePost(req, res, actor);
+  if (req.method === "PUT") return handlePut(req, res, actor);
+  if (req.method === "DELETE") return handleDelete(req, res, actor);
+}

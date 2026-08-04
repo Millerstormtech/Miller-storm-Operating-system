@@ -138,7 +138,18 @@ const collapsedIconMap: Record<string, ReactNode> = {
       />
     </svg>
   ),
-  taskTracker: (
+  // Icons are looked up by the sidebar item's id, not its toggle key. My Tasks
+  // uses "my-tasks" in the five role sidebars and "myTasks" in the admin one
+  // (which routes by an explicit path), so both keys map to the same glyph.
+  "my-tasks": (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M9 11H5v2h4v-2zm10-4H5v2h14V7zm-5 8H5v2h9v-2z"
+      />
+    </svg>
+  ),
+  myTasks: (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path
         fill="currentColor"

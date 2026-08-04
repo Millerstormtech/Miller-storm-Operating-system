@@ -20,6 +20,7 @@ export const adminSidebarItems: { id: string; label: string; toggleKey?: string;
   { id: "aiBots", label: "Master Bot Builder", toggleKey: "aiBots" },
   { id: "leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
   { id: "stormChat", label: "StormChat", toggleKey: "stormChat" },
+  { id: "myTasks", label: "My Tasks", toggleKey: "taskTracker", path: "/admin/my-tasks" },
   { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig" },
 ];
 
