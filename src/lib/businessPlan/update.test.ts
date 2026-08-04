@@ -138,7 +138,6 @@ describe("buildBusinessPlanUpdate", () => {
   it("ignores keys outside the fixed businessPlan whitelist, however they are spelled", () => {
     const malicious = {
       revenueGoal: 50000,
-      __proto__: { polluted: true },
       $where: "function() { return true; }",
       role: "admin",
       "businessPlan.revenueGoal": 999999999,
@@ -150,6 +149,26 @@ describe("buildBusinessPlanUpdate", () => {
     expect(result.$set).toEqual({ "businessPlan.revenueGoal": 50000 });
     // Only one key ever lands in $set, and it is the whitelisted one.
     expect(Object.keys(result.$set ?? {})).toEqual(["businessPlan.revenueGoal"]);
+  });
+
+  it("ignores an INHERITED (prototype-chain) property, not just own properties with odd names", () => {
+    // `key in plan` walks the prototype chain, so a naive guard would read
+    // this inherited monthlyRevenueTarget straight off the prototype even
+    // though the payload's own property list is just { revenueGoal }.
+    // (Note: `{ __proto__: {...} }` as an object-literal key does NOT create
+    // this case -- that syntax sets the prototype via the special-cased
+    // literal form, which is a different thing from an attacker's JSON body
+    // producing an inherited own-enumerable-looking key. Object.create is
+    // the direct, unambiguous way to construct "value reachable via `in`,
+    // absent from the object's own properties.")
+    const withInheritedField = Object.create({ monthlyRevenueTarget: 999 });
+    withInheritedField.revenueGoal = 50000;
+
+    const result = buildBusinessPlanUpdate(withInheritedField);
+
+    expect(result.$set).toEqual({ "businessPlan.revenueGoal": 50000 });
+    expect("businessPlan.monthlyRevenueTarget" in (result.$set ?? {})).toBe(false);
+    expect("businessPlan.monthlyRevenueTarget" in (result.$unset ?? {})).toBe(false);
   });
 
   it("supports an alternate (empty) prefix for mirroring into the flat legacy collection", () => {

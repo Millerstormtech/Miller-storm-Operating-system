@@ -62,7 +62,13 @@ export function buildBusinessPlanUpdate(
 
   if (plan && typeof plan === "object") {
     for (const key of ALLOWED_BUSINESS_PLAN_KEYS) {
-      if (!(key in plan)) continue; // absent: leave untouched
+      // Own-property check, not `key in plan`: `in` walks the prototype
+      // chain, so an object with an inherited (not own) monthlyRevenueTarget
+      // would otherwise leak that inherited value into $set. This module is
+      // the security boundary for the businessPlan subdocument, so it must
+      // only ever look at the payload's own data, never anything reachable
+      // through its prototype.
+      if (!Object.prototype.hasOwnProperty.call(plan, key)) continue; // absent: leave untouched
 
       const value = plan[key];
       if (value === undefined) continue; // explicit undefined behaves like absent
