@@ -503,8 +503,6 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
     String territory = user?['territory']?.toString() ?? '';
     String? managerId = user?['managerId']?.toString();
     String role = (user?['role']?.toString().isNotEmpty ?? false) ? user!['role'].toString() : 'sales';
-    // Sales Team Leads to choose from when assigning a sales rep's manager.
-    final teamLeads = _active.where((u) => u['role'] == 'sales-team-lead' || ((u['roles'] as List?)?.contains('sales-team-lead') ?? false)).toList();
 
     showModalBottomSheet(
       context: context,
@@ -548,14 +546,20 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                         color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: territory.isEmpty ? null : territory,
+                        value: territory,
                         isExpanded: true,
-                        hint: const Text('Select branch'),
                         items: [
-                          ..._territories,
-                          if (territory.isNotEmpty && !_territories.contains(territory)) territory,
-                        ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                        onChanged: (v) => setSheet(() => territory = v ?? ''),
+                          const DropdownMenuItem(value: '', child: Text('No Branch')),
+                          ..._territories.map((t) => DropdownMenuItem(value: t, child: Text(t))),
+                          if (territory.isNotEmpty && !_territories.contains(territory))
+                            DropdownMenuItem(value: territory, child: Text(territory)),
+                        ],
+                        onChanged: (v) => setSheet(() {
+                          territory = v ?? '';
+                          // A sales rep's team lead must belong to the chosen branch,
+                          // so clear it when the branch changes (No Branch => No team).
+                          if (role == 'sales') managerId = null;
+                        }),
                       ),
                     ),
                   ),
@@ -582,30 +586,44 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                   ),
                   if (role == 'sales') ...[
                     const SizedBox(height: 12),
-                    Row(children: const [
-                      Text('Sales Team Lead ', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
-                      Text('*', style: TextStyle(fontSize: 13, color: _primary, fontWeight: FontWeight.w700)),
+                    Row(children: [
+                      const Text('Sales Team Lead ', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                      if (territory.trim().isNotEmpty)
+                        const Text('*', style: TextStyle(fontSize: 13, color: _primary, fontWeight: FontWeight.w700)),
                     ]),
                     const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                          color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: teamLeads.any((m) => (m['id'] ?? m['_id']).toString() == managerId) ? managerId : null,
-                          isExpanded: true,
-                          hint: const Text('Select a Sales Team Lead'),
-                          items: teamLeads
-                              .map((m) => DropdownMenuItem(
+                    Builder(builder: (_) {
+                      final branch = territory.trim().toLowerCase();
+                      final branchSelected = branch.isNotEmpty;
+                      // Real (non-developer) team leads whose OWN branch matches the
+                      // rep's branch. No branch => only "No team".
+                      final scopedLeads = branchSelected
+                          ? _active.where((u) =>
+                              (u['testAccount'] != true) &&
+                              (u['role'] == 'sales-team-lead' || ((u['roles'] as List?)?.contains('sales-team-lead') ?? false)) &&
+                              (u['territory'] ?? '').toString().trim().toLowerCase() == branch).toList()
+                          : <dynamic>[];
+                      final validId = scopedLeads.any((m) => (m['id'] ?? m['_id']).toString() == managerId);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                            color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: validId ? managerId : '',
+                            isExpanded: true,
+                            items: [
+                              const DropdownMenuItem(value: '', child: Text('No team')),
+                              ...scopedLeads.map((m) => DropdownMenuItem(
                                     value: (m['id'] ?? m['_id']).toString(),
                                     child: Text((m['name'] ?? 'Unknown').toString()),
-                                  ))
-                              .toList(),
-                          onChanged: (v) => setSheet(() => managerId = v),
+                                  )),
+                            ],
+                            onChanged: (v) => setSheet(() => managerId = (v == null || v.isEmpty) ? null : v),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ],
                   // Branch Manager — auto-filled from the selected Branch (the
                   // branch-manager account whose Branch matches). Read-only.
@@ -643,7 +661,7 @@ class _BranchManagerUserManagementScreenState extends State<BranchManagerUserMan
                           _toast('Name and email are required');
                           return;
                         }
-                        if (role == 'sales' && (managerId == null || managerId!.isEmpty)) {
+                        if (role == 'sales' && territory.trim().isNotEmpty && (managerId == null || managerId!.isEmpty)) {
                           _toast('Please assign a Sales Team Lead to this sales rep');
                           return;
                         }
