@@ -15,6 +15,7 @@ import {
 import { MetricTile } from "./MetricTile";
 import { RankStrip } from "./RankStrip";
 import { ConversionStrip } from "./ConversionStrip";
+import { MarketingHome } from "./MarketingHome";
 
 // The three-period toggle deliberately excludes "day" even though the API's
 // Window type supports it (spec §5: "Week / Month / Year, defaulting to Month").
@@ -189,17 +190,27 @@ export function ScoreboardHome(): JSX.Element {
   }
 
   if (data.variant) {
-    // Marketing and admin get their own honest empty-state variant
-    // (spec §11, dedicated MarketingHome component -- a separate task on this
-    // same plan). That component does not exist on this branch yet, so this
-    // is a minimal, equally honest stand-in: no invented numbers, no fake
-    // percentages, just a plain statement of the real state. Replace this
-    // branch with `<MarketingHome />` once that component lands.
+    // Marketing and admin both get an honest empty-state variant instead of
+    // the sales rollup below -- pages/api/scoreboard.ts intercepts them
+    // before scope resolution (spec §11: marketing doesn't sell and has no
+    // org-chart subtree; admin dashboard work is explicitly out of scope for
+    // this phase). The two roles are NOT told the same thing: "marketing
+    // metrics aren't connected yet" is a specific, checkable, false claim
+    // about an admin account, which has no marketing metrics to be
+    // disconnected from in the first place. This nested check (rather than
+    // two sibling `if (data.variant === ...)` checks) is deliberate --
+    // `variant` is itself a two-value union ("marketing" | "admin"), so
+    // TypeScript can only narrow `data` down to the plain board-response
+    // shape for the `board = data` code below via the single outer truthy
+    // check, not via two separate literal-equality checks against it.
+    if (data.variant === "marketing") {
+      return <MarketingHome firstName={firstName} />;
+    }
     return (
       <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ fontSize: 20, fontWeight: 800, color: "#111827" }}>Hi, {firstName}</div>
         <div style={{ fontSize: 14, color: "#6b7280" }}>
-          Marketing metrics aren't connected to a data source yet.
+          Admin accounts don't have scoreboard metrics of their own to show.
         </div>
       </div>
     );
