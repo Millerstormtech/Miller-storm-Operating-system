@@ -10,7 +10,7 @@ import type { Totals } from "../../src/lib/scoreboard/types";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
 import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
 import { conversions, trend, rateDir } from "../../src/lib/scoreboard/metrics";
-import { scopeLabel } from "../../src/lib/scoreboard/display";
+import { scopeLabel, scopeResolved } from "../../src/lib/scoreboard/display";
 import { previousSlice, periodEndFor, paceFraction } from "../../src/lib/scoreboard/periods";
 import { toSalesRow } from "../../src/lib/scoreboard/rows";
 import { scaleTargetToWindow } from "../../src/lib/scoreboard/goals";
@@ -139,8 +139,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // "Dallas · 13 people contributed"), never a fabricated placeholder. See
       // scopeLabel() for why "self" is empty and how a null team/branch (a leader
       // whose app-account name never matched the org chart) gets a truthful
-      // fallback instead of a stray "null".
-      scope: { level: scope.level, label: scopeLabel(scope), count: inScope.length },
+      // fallback instead of a stray "null". `resolved` is the explicit signal the
+      // UI needs to tell "this branch/team genuinely has zero contributors" apart
+      // from "we could not match this account to a branch/team at all" -- inScope
+      // is [] in both cases (scopeRows requires a non-null team/branch key), so
+      // count alone cannot distinguish them. See scopeResolved().
+      scope: { level: scope.level, label: scopeLabel(scope), count: inScope.length, resolved: scopeResolved(scope) },
       totals,
       previous,
       trends: {

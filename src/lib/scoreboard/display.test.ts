@@ -10,6 +10,8 @@ import {
   formatSyncedAt,
   scopeLabel,
   scopeLine,
+  scopeResolved,
+  unresolvedScopeMessage,
   contractsSubtitle,
 } from "./display";
 import { conversions } from "./metrics";
@@ -259,6 +261,16 @@ describe("formatSyncedAt (pure -- `now` is always passed in, never read from the
     expect(text).not.toContain("-");
     expect(text).not.toContain("ago");
   });
+  it("an unparseable timestamp never throws -- same honest 'unknown' copy as null, not a crash", () => {
+    expect(() => formatSyncedAt("not-a-real-date", now)).not.toThrow();
+    const text = formatSyncedAt("not-a-real-date", now);
+    expect(text.toLowerCase()).toContain("unknown");
+    expect(text).toBe(formatSyncedAt(null, now));
+  });
+  it("an empty string is also unparseable -- same honest 'unknown' copy, no throw", () => {
+    expect(() => formatSyncedAt("", now)).not.toThrow();
+    expect(formatSyncedAt("", now)).toBe(formatSyncedAt(null, now));
+  });
   it("no em dash in any branch", () => {
     expect(formatSyncedAt(null, now)).not.toMatch(/—/);
     expect(formatSyncedAt(new Date(now.getTime() - 5000).toISOString(), now)).not.toMatch(/—/);
@@ -278,6 +290,9 @@ describe("scopeLabel (honest scope-line label; never invents a name)", () => {
     expect(label).not.toBe("");
     expect(label.toLowerCase()).not.toContain("null");
   });
+  it("team fallback reads 'not identified', not 'Unassigned' -- the true state is a failed match, not a category", () => {
+    expect(scopeLabel({ level: "team", team: null })).toBe("Team not identified");
+  });
   it("branch with a resolved name", () => {
     expect(scopeLabel({ level: "branch", branch: "Fort Worth" })).toBe("Fort Worth");
   });
@@ -285,6 +300,9 @@ describe("scopeLabel (honest scope-line label; never invents a name)", () => {
     const label = scopeLabel({ level: "branch", branch: null });
     expect(label).not.toBe("");
     expect(label.toLowerCase()).not.toContain("null");
+  });
+  it("branch fallback reads 'not identified', not 'Unassigned'", () => {
+    expect(scopeLabel({ level: "branch", branch: null })).toBe("Branch not identified");
   });
   it("company scope", () => {
     expect(scopeLabel({ level: "company" })).toBe("Company-wide");
@@ -329,6 +347,52 @@ describe("scopeLine (the full headcount line: label + count, distinct from the r
   });
   it("no em dash", () => {
     expect(scopeLine({ level: "team", label: "Gunner", count: 13 })).not.toMatch(/—/);
+  });
+});
+
+describe("scopeResolved (whether a team/branch scope actually matched the org chart)", () => {
+  it("self is always resolved -- it never depends on the org chart", () => {
+    expect(scopeResolved({ level: "self", userId: "u1" })).toBe(true);
+  });
+  it("company is always resolved -- it never depends on the org chart", () => {
+    expect(scopeResolved({ level: "company" })).toBe(true);
+  });
+  it("team with a real name is resolved", () => {
+    expect(scopeResolved({ level: "team", team: "Gunner" })).toBe(true);
+  });
+  it("team with a null key is NOT resolved", () => {
+    expect(scopeResolved({ level: "team", team: null })).toBe(false);
+  });
+  it("branch with a real name is resolved", () => {
+    expect(scopeResolved({ level: "branch", branch: "Fort Worth" })).toBe(true);
+  });
+  it("branch with a null key is NOT resolved", () => {
+    expect(scopeResolved({ level: "branch", branch: null })).toBe(false);
+  });
+});
+
+describe("unresolvedScopeMessage (honest explanation shown INSTEAD OF zero tiles when a team/branch never resolved)", () => {
+  it("team wording names the team", () => {
+    const msg = unresolvedScopeMessage("team");
+    expect(msg.toLowerCase()).toContain("team");
+    expect(msg.toLowerCase()).toContain("org chart");
+  });
+  it("branch wording names the branch", () => {
+    const msg = unresolvedScopeMessage("branch");
+    expect(msg.toLowerCase()).toContain("branch");
+    expect(msg.toLowerCase()).toContain("org chart");
+  });
+  it("points the reader at a real next step (profile or an admin), not a dead end", () => {
+    const msg = unresolvedScopeMessage("branch").toLowerCase();
+    expect(msg).toMatch(/profile|admin/);
+  });
+  it("never claims a zero or invents a number", () => {
+    const msg = unresolvedScopeMessage("team");
+    expect(msg).not.toMatch(/\$|%|\b0\b/);
+  });
+  it("no em dash", () => {
+    expect(unresolvedScopeMessage("team")).not.toMatch(/—/);
+    expect(unresolvedScopeMessage("branch")).not.toMatch(/—/);
   });
 });
 

@@ -114,6 +114,8 @@ const absoluteDateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
+const UNKNOWN_SYNC_TEXT = "Sales data: last sync time unknown";
+
 // The "last updated" note's copy. `syncedAt` is exactly what
 // pages/api/scoreboard.ts's resolveSyncedAt() returns: the OLDEST successful sync
 // among every source feeding the totals, or null when that freshness cannot be
@@ -125,15 +127,24 @@ const absoluteDateFormatter = new Intl.DateTimeFormat("en-US", {
 // reads) so every branch is deterministic and testable without faking the system
 // clock.
 export function formatSyncedAt(syncedAt: string | null, now: Date): string {
-  if (syncedAt === null) return "Sales data: last sync time unknown";
+  if (syncedAt === null) return UNKNOWN_SYNC_TEXT;
 
   const synced = new Date(syncedAt);
+
+  // An unparseable timestamp (malformed string, empty string, etc.) produces an
+  // Invalid Date whose getTime() is NaN. That is the SAME honest "we don't know"
+  // state as null -- return the identical unknown-state copy rather than letting
+  // NaN leak into the diff math below, which would eventually hand
+  // absoluteDateFormatter an Invalid Date and throw RangeError mid-render.
+  if (Number.isNaN(synced.getTime())) return UNKNOWN_SYNC_TEXT;
+
   const diffMs = now.getTime() - synced.getTime();
 
-  // A non-positive gap (clock skew, or a timestamp somehow in the future) makes
+  // A negative gap (clock skew, or a timestamp somehow in the future) makes
   // "N minutes ago" nonsensical -- state the honest absolute date instead of a
-  // negative or fabricated relative phrase.
-  if (!Number.isFinite(diffMs) || diffMs < 0) {
+  // negative or fabricated relative phrase. `synced` is guaranteed valid here
+  // (the NaN case already returned above), so this format() call is safe.
+  if (diffMs < 0) {
     return `Sales data last synced ${absoluteDateFormatter.format(synced)}`;
   }
 
@@ -162,7 +173,13 @@ export function formatSyncedAt(syncedAt: string | null, now: Date): string {
 // name never matched the org chart -- see resolve.ts). That must never render as
 // the literal word "null" or an invented specific name; a truthful generic
 // fallback keeps the line readable while staying honest about what is actually
-// known.
+// known. The fallback text deliberately says "not identified" rather than
+// "Unassigned" -- "Unassigned team" reads as a categorisation, as if the person's
+// team is literally named Unassigned, when the true state is "we could not match
+// this account to a team at all" (see scopeResolved / unresolvedScopeMessage
+// below, which callers should prefer for this case -- ScoreboardHome renders a
+// dedicated explanatory state instead of a scope line + zero tiles when
+// scopeResolved() is false).
 export function scopeLabel(scope: Scope): string {
   switch (scope.level) {
     case "self":
@@ -171,12 +188,39 @@ export function scopeLabel(scope: Scope): string {
       // string that could accidentally leak onto screen.
       return "";
     case "team":
-      return scope.team || "Unassigned team";
+      return scope.team || "Team not identified";
     case "branch":
-      return scope.branch || "Unassigned branch";
+      return scope.branch || "Branch not identified";
     case "company":
       return "Company-wide";
   }
+}
+
+// Whether a team/branch scope actually resolved to a real name. `self` and
+// `company` never depend on the org chart, so they are always "resolved". A
+// `team`/`branch` scope with a null key means resolveScope (resolve.ts) could
+// not match this viewer's account name to anything on the org chart -- a real,
+// if currently rare, failure mode (a leader's Miller Storm account name not
+// exactly matching their org-chart entry). Callers must treat `false` here as
+// "we don't know this person's numbers," not as "their numbers are zero."
+export function scopeResolved(scope: Scope): boolean {
+  if (scope.level === "team") return scope.team != null;
+  if (scope.level === "branch") return scope.branch != null;
+  return true;
+}
+
+// The honest explanatory copy shown INSTEAD OF the tiles when scopeResolved()
+// is false. A resolution failure must never fall through to scopeRows()
+// returning an empty array and the screen rendering a full page of real-looking
+// zero tiles ("Branch not identified · 0 people contributed", $0, 0, 0) -- those
+// zeros would be a false claim about the business ("nobody in this branch sold
+// anything") when the true state is "we could not work out which branch this
+// account belongs to."
+export function unresolvedScopeMessage(level: "team" | "branch"): string {
+  return (
+    `We couldn't match your account to a ${level} on the org chart, so there's ` +
+    `nothing to show yet. Check your profile, or ask an admin to confirm your ${level}.`
+  );
 }
 
 // The full scope headcount line, e.g. "Dallas · 13 people contributed". `null`

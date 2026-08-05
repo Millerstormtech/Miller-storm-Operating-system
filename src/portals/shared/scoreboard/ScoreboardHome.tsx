@@ -9,6 +9,7 @@ import {
   fmtCount,
   formatSyncedAt,
   scopeLine,
+  unresolvedScopeMessage,
   contractsSubtitle,
 } from "../../../lib/scoreboard/display";
 import { MetricTile } from "./MetricTile";
@@ -35,7 +36,7 @@ interface ConversionPayload {
 interface ScoreboardData {
   window: Window;
   syncedAt: string | null;
-  scope: { level: ScopeLevel; label: string; count: number };
+  scope: { level: ScopeLevel; label: string; count: number; resolved: boolean };
   totals: Totals;
   previous: Totals;
   trends: { revenue: TrendPayload; knocks: TrendPayload; claims: TrendPayload };
@@ -123,8 +124,13 @@ export function ScoreboardHome(): JSX.Element {
         setData(json);
       })
       .catch((e) => {
-        console.error(e);
-        if (!cancelled) setError(true);
+        // A cancelled request (the window changed again, or the component
+        // unmounted, before this one resolved) is not a real failure -- logging
+        // it would print a spurious error every time a user toggles quickly.
+        if (!cancelled) {
+          console.error(e);
+          setError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -136,25 +142,36 @@ export function ScoreboardHome(): JSX.Element {
 
   const firstName = (user?.name || "").trim().split(/\s+/)[0] || "there";
   const goToGoals = () => router.push("/sales/plan");
+  const retry = () => setRetryNonce((n) => n + 1);
 
-  // Honest loading state: no zeros, no stale numbers left on screen under a
-  // freshly-selected period label that no longer matches them. Covers both
-  // the very first load and every window-toggle refetch.
-  if (loading) {
+  // `data` is kept across refetches (the effect never clears it before a new
+  // response lands), so once the FIRST successful load has happened, `data`
+  // being non-null does not mean "the current request finished" -- it means
+  // "we have at least one answer to show." That distinction is exactly what
+  // separates the two loading/error states below: the full-page ones (nothing
+  // has ever loaded) vs. the in-region ones further down (something loaded
+  // before, a newer request for a different window is in flight or failed).
+  const hasData = data !== null;
+
+  // Honest full-page loading state: only for the very first load, when there
+  // is nothing on screen yet to preserve. No zeros, no placeholder frame.
+  if (!hasData && loading) {
     return (
       <div style={{ padding: 24, color: "#6b7280", fontSize: 14 }}>Loading your scoreboard…</div>
     );
   }
 
-  // Honest error state: never falls through to rendering zeros. Retry re-runs
-  // the fetch effect (no full page reload) by bumping retryNonce.
-  if (error || !data) {
+  // Honest full-page error state: covers a failed first load and the
+  // defensive "loading finished but nothing arrived" case. Never falls
+  // through to rendering zeros. Retry re-runs the fetch effect (no full page
+  // reload) by bumping retryNonce.
+  if (!hasData) {
     return (
       <div style={{ padding: 24, color: "#6b7280", fontSize: 14 }}>
         Couldn't load your scoreboard.{" "}
         <button
           type="button"
-          onClick={() => setRetryNonce((n) => n + 1)}
+          onClick={retry}
           style={{
             border: "none",
             background: "none",
@@ -189,8 +206,167 @@ export function ScoreboardHome(): JSX.Element {
   }
 
   const board = data;
+
+  // A team/branch scope that never matched the org chart is NOT the same
+  // state as "this team/branch genuinely has zero contributors": scopeRows()
+  // (rollup.ts) requires a non-null team/branch key, so an unresolved scope
+  // and a real empty one both produce inScope = [] server-side -- count alone
+  // cannot tell them apart. Rendering the normal frame here would show
+  // "Branch not identified · 0 people contributed" plus a full page of real-
+  // looking $0/0/0 tiles, which is a false claim about the business (it says
+  // "nobody sold anything" when the true state is "we don't know whose
+  // numbers these should be"). This replaces the whole scope-line-and-below
+  // region with an honest explanation instead. Greeting stays -- it comes
+  // from the session, not from this scope resolution -- and the toggle stays
+  // mounted too (every window hits the same unresolved scope, so nothing
+  // about switching periods would help, but it costs nothing to leave live).
+  const scopeUnresolved =
+    (board.scope.level === "team" || board.scope.level === "branch") && !board.scope.resolved;
+
   const scopeText = scopeLine(board.scope);
   const leaderboardHref = user?.role ? LEADERBOARD_ROUTE[user.role] : undefined;
+
+  // The data region: everything actually driven by the fetched totals/goals/
+  // conversions. Kept separate from the frame below (greeting, rank strip,
+  // toggle, scope line) so a window-toggle refetch blanks ONLY this part --
+  // the toggle a user just clicked, and their rank/scope context, stay on
+  // screen the whole time instead of the page flashing to a bare loading
+  // line and back (this endpoint runs two full aggregation pipelines, so
+  // that flash would be slow on every single click).
+  let dataRegion: JSX.Element;
+  if (scopeUnresolved) {
+    dataRegion = (
+      <div style={{ fontSize: 14, color: "#6b7280" }}>
+        {unresolvedScopeMessage(board.scope.level === "team" ? "team" : "branch")}
+      </div>
+    );
+  } else if (loading) {
+    // A refetch is in flight for a window we've already shown data for once.
+    // Never keep last window's tiles under the newly-selected toggle label
+    // (a stale "vs last month" trend under a freshly-clicked "Year" tab would
+    // be a real mislabel) -- but ALSO never blank the whole screen for it.
+    dataRegion = (
+      <div style={{ padding: 16, color: "#9ca3af", fontSize: 13 }}>Updating your numbers…</div>
+    );
+  } else if (error) {
+    dataRegion = (
+      <div style={{ padding: 16, color: "#6b7280", fontSize: 13 }}>
+        Couldn't update your numbers.{" "}
+        <button
+          type="button"
+          onClick={retry}
+          style={{
+            border: "none",
+            background: "none",
+            color: "#2563eb",
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 700,
+            padding: 0,
+          }}
+        >
+          Try again
+        </button>
+      </div>
+    );
+  } else {
+    dataRegion = (
+      <>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <MetricTile
+            label="Revenue"
+            value={board.totals.revenue}
+            format="money"
+            subtitle={contractsSubtitle(board.contracts)}
+            goal={board.goals.revenue}
+            pace={board.pace}
+            trend={board.trends.revenue}
+            window={board.window}
+            onSetGoal={goToGoals}
+          />
+          <MetricTile
+            label="Verified Door Knocks"
+            value={board.totals.knocks}
+            format="count"
+            goal={board.goals.knocks}
+            pace={board.pace}
+            trend={board.trends.knocks}
+            window={board.window}
+            onSetGoal={goToGoals}
+          />
+          <MetricTile
+            label="Claims Filed"
+            value={board.totals.claims}
+            format="count"
+            goal={board.goals.claims}
+            pace={board.pace}
+            trend={board.trends.claims}
+            window={board.window}
+            onSetGoal={goToGoals}
+          />
+        </div>
+
+        <ConversionStrip
+          knockToClaim={board.conversions.knockToClaim}
+          claimToContract={board.conversions.claimToContract}
+        />
+
+        {/* "You (personal)" strip: only present when the API decided this viewer
+            both leads a wider scope AND personally sells (see scoreboard.ts's
+            `personal` derivation). Numbers only, deliberately no goal bar (spec
+            §8: a leader's goal bar belongs to the scope they own, not their own
+            production), so this does not reuse MetricTile. */}
+        {board.personal && (
+          <div style={{ ...CARD, padding: "12px 16px" }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              You (personal)
+            </div>
+            <div style={{ display: "flex", gap: 24, marginTop: 6, flexWrap: "wrap" }}>
+              <PersonalNumber label="Revenue" value={fmtMoney(board.personal.revenue)} />
+              <PersonalNumber label="Verified Door Knocks" value={fmtCount(board.personal.knocks)} />
+              <PersonalNumber label="Claims Filed" value={fmtCount(board.personal.claims)} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ fontSize: 12, color: "#9ca3af" }}>{formatSyncedAt(board.syncedAt, new Date())}</div>
+
+        {leaderboardHref && (
+          <button
+            type="button"
+            onClick={() => router.push(leaderboardHref)}
+            style={{
+              alignSelf: "flex-start",
+              border: "none",
+              background: "none",
+              padding: 0,
+              color: "#2563eb",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            Full Sales Leaderboard
+          </button>
+        )}
+      </>
+    );
+  }
 
   return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
@@ -224,100 +400,9 @@ export function ScoreboardHome(): JSX.Element {
         })}
       </div>
 
-      {scopeText && <div style={{ fontSize: 13, color: "#6b7280" }}>{scopeText}</div>}
+      {!scopeUnresolved && scopeText && <div style={{ fontSize: 13, color: "#6b7280" }}>{scopeText}</div>}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 12,
-        }}
-      >
-        <MetricTile
-          label="Revenue"
-          value={board.totals.revenue}
-          format="money"
-          subtitle={contractsSubtitle(board.contracts)}
-          goal={board.goals.revenue}
-          pace={board.pace}
-          trend={board.trends.revenue}
-          window={board.window}
-          onSetGoal={goToGoals}
-        />
-        <MetricTile
-          label="Verified Door Knocks"
-          value={board.totals.knocks}
-          format="count"
-          goal={board.goals.knocks}
-          pace={board.pace}
-          trend={board.trends.knocks}
-          window={board.window}
-          onSetGoal={goToGoals}
-        />
-        <MetricTile
-          label="Claims Filed"
-          value={board.totals.claims}
-          format="count"
-          goal={board.goals.claims}
-          pace={board.pace}
-          trend={board.trends.claims}
-          window={board.window}
-          onSetGoal={goToGoals}
-        />
-      </div>
-
-      <ConversionStrip
-        knockToClaim={board.conversions.knockToClaim}
-        claimToContract={board.conversions.claimToContract}
-      />
-
-      {/* "You (personal)" strip: only present when the API decided this viewer
-          both leads a wider scope AND personally sells (see scoreboard.ts's
-          `personal` derivation). Numbers only, deliberately no goal bar (spec
-          §8: a leader's goal bar belongs to the scope they own, not their own
-          production), so this does not reuse MetricTile. */}
-      {board.personal && (
-        <div style={{ ...CARD, padding: "12px 16px" }}>
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#6b7280",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-            }}
-          >
-            You (personal)
-          </div>
-          <div style={{ display: "flex", gap: 24, marginTop: 6, flexWrap: "wrap" }}>
-            <PersonalNumber label="Revenue" value={fmtMoney(board.personal.revenue)} />
-            <PersonalNumber label="Verified Door Knocks" value={fmtCount(board.personal.knocks)} />
-            <PersonalNumber label="Claims Filed" value={fmtCount(board.personal.claims)} />
-          </div>
-        </div>
-      )}
-
-      <div style={{ fontSize: 12, color: "#9ca3af" }}>{formatSyncedAt(board.syncedAt, new Date())}</div>
-
-      {leaderboardHref && (
-        <button
-          type="button"
-          onClick={() => router.push(leaderboardHref)}
-          style={{
-            alignSelf: "flex-start",
-            border: "none",
-            background: "none",
-            padding: 0,
-            color: "#2563eb",
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: "pointer",
-            textDecoration: "underline",
-          }}
-        >
-          Full Sales Leaderboard
-        </button>
-      )}
+      {dataRegion}
     </div>
   );
 }
