@@ -29,27 +29,29 @@ import { scaleTargetToWindow } from "../../src/lib/scoreboard/goals";
 // locations for "is anything still working" monitoring, which is a different question
 // than "can a rep trust this number right now".
 async function resolveSyncedAt(): Promise<string | null> {
+  // Only read docs that a CURRENT sync actually writes: per-location AccuLynx docs
+  // (key "acculynx:<companyId>", written by src/lib/acculynx/sync.ts:120) and the
+  // single RepCard doc (key "repcard", written by src/lib/repcard/sync.ts:39).
+  //
+  // Deliberately excluded: the bare key "acculynx" (no colon). src/lib/models/SyncState.ts:4-6
+  // documents it as "a legacy single-location key ... may still exist from the earlier
+  // era" -- no sync writes it anymore, so it feeds none of the data this endpoint shows.
+  // The regex below is anchored on the colon specifically to keep that doc out; nothing
+  // ever falls back to it, no matter how few (or zero) real location docs exist, because
+  // a bare-key doc's age says nothing about whether TODAY's data is fresh.
   const [acculynxLocations, repcard] = await Promise.all([
     SyncStateModel.find({ key: { $regex: /^acculynx:/ } }).select("lastSyncAt").lean(),
     SyncStateModel.findOne({ key: "repcard" }).select("lastSyncAt").lean(),
   ]);
 
-  let acculynxDocs: any[] = acculynxLocations as any[];
-  if (!acculynxDocs.length) {
-    // No per-location docs yet -- fall back to the legacy pre-multi-location doc
-    // (key "acculynx", no colon), same fallback pages/api/acculynx/status.ts uses.
-    const legacy = await SyncStateModel.findOne({ key: "acculynx" }).select("lastSyncAt").lean();
-    if (legacy) acculynxDocs = [legacy];
-  }
-
   const times: number[] = [];
-  for (const doc of acculynxDocs) {
+  for (const doc of acculynxLocations as any[]) {
     if (doc?.lastSyncAt) times.push(new Date(doc.lastSyncAt).getTime());
   }
   if ((repcard as any)?.lastSyncAt) times.push(new Date((repcard as any).lastSyncAt).getTime());
 
   // Never invent a value: if nothing has ever synced successfully, say so with null
-  // rather than guessing or falling back to "now".
+  // rather than guessing or falling back to "now" or to the excluded legacy doc.
   return times.length ? new Date(Math.min(...times)).toISOString() : null;
 }
 
