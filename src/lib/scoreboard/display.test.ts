@@ -131,31 +131,62 @@ describe("fmtConversionRate (honors the sample floor already decided by metrics.
     expect(c.knockToClaim.hidden).toBe(false);
     expect(fmtConversionRate(c.knockToClaim.rate, c.knockToClaim.hidden)).toBe("0.0%");
   });
+  it("claimToContract below its own floor: 'not enough data yet' too, not just knockToClaim", () => {
+    const c = conversions(t({ knocks: 200, claims: 2, contracts: 1 }));
+    expect(c.claimToContract.hidden).toBe(true);
+    expect(fmtConversionRate(c.claimToContract.rate, c.claimToContract.hidden)).toBe("not enough data yet");
+  });
 });
 
 describe("trendLabel", () => {
   it("no prior period renders nothing at all, never a flat or fabricated arrow", () => {
-    expect(trendLabel(null, null)).toBeNull();
+    expect(trendLabel(null, null, "month")).toBeNull();
   });
   it("an upward trend contains the percent and has no em dash", () => {
-    const label = trendLabel(12, "up");
+    const label = trendLabel(12, "up", "month");
     expect(label).not.toBeNull();
     expect(label).toContain("12%");
     expect(label).not.toMatch(/—/);
   });
   it("a downward trend shows the magnitude, not a negative sign", () => {
-    expect(trendLabel(-4, "down")).toContain("4%");
-    expect(trendLabel(-4, "down")).not.toContain("-4%");
+    expect(trendLabel(-4, "down", "month")).toContain("4%");
+    expect(trendLabel(-4, "down", "month")).not.toContain("-4%");
   });
   it("exactly zero change (a real measurement) still renders, distinct from null", () => {
-    const label = trendLabel(0, "flat");
+    const label = trendLabel(0, "flat", "month");
     expect(label).not.toBeNull();
     expect(label).toContain("0%");
   });
   it("rounds up", () => {
-    expect(trendLabel(12.6, "up")).toContain("13%");
+    expect(trendLabel(12.6, "up", "month")).toContain("13%");
   });
   it("rounds down", () => {
-    expect(trendLabel(12.4, "up")).toContain("12%");
+    expect(trendLabel(12.4, "up", "month")).toContain("12%");
+  });
+
+  describe("comparison basis matches the window actually compared (previousSlice shifts back one window of the active type)", () => {
+    it("day compares to yesterday", () => {
+      expect(trendLabel(12, "up", "day")).toBe("12% vs yesterday");
+    });
+    it("week compares to last week", () => {
+      expect(trendLabel(12, "up", "week")).toBe("12% vs last week");
+    });
+    it("month compares to last month", () => {
+      expect(trendLabel(12, "up", "month")).toBe("12% vs last month");
+    });
+    it("year compares to last year", () => {
+      expect(trendLabel(12, "up", "year")).toBe("12% vs last year");
+    });
+    it("no em dash in any window's comparison phrase", () => {
+      const windows: Array<"day" | "week" | "month" | "year"> = ["day", "week", "month", "year"];
+      for (const w of windows) {
+        expect(trendLabel(5, "up", w)).not.toMatch(/—/);
+      }
+    });
+    it("null stays null regardless of which window was active", () => {
+      expect(trendLabel(null, null, "day")).toBeNull();
+      expect(trendLabel(null, null, "week")).toBeNull();
+      expect(trendLabel(null, null, "year")).toBeNull();
+    });
   });
 });

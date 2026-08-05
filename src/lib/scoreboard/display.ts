@@ -9,6 +9,7 @@
 // there is exactly one place that decides "is this enough data" and one place that
 // decides "how does a percentage look on screen".
 import type { Dir } from "./metrics";
+import type { Window } from "../acculynx/windows";
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -77,14 +78,31 @@ export function fmtConversionRate(rate: number, hidden: boolean): string {
   return fmtRate(rate);
 }
 
+// The comparison basis the label states must match what pages/api/scoreboard.ts
+// actually computed: `previousSlice(w, ...)` (./periods.ts) shifts back exactly one
+// window of whatever type is active, so a Week view's `pct`/`dir` genuinely compare
+// to last week, a Day view to yesterday, and so on. Hardcoding "vs last month" for
+// every window would be a specific, checkable, false claim on three of the four
+// views. This map is the single place that phrase lives; keyed on the same `Window`
+// union ./periods.ts and pages/api/scoreboard.ts already use, so there is no second
+// definition of the four window names to drift out of sync.
+const COMPARISON_LABEL: Record<Window, string> = {
+  day: "vs yesterday",
+  week: "vs last week",
+  month: "vs last month",
+  year: "vs last year",
+};
+
 // pct is percentage points (already *100, matching ./metrics.trend's output), dir
-// is the direction that same call computed. `dir === null` means there was no prior
-// period to compare against -- that must render as no label at all (an arrow or a
-// number would assert a direction we do not have), so this returns null rather than
-// a flat or zeroed string. A `dir === "flat"` (pct exactly 0) is a real measured
-// "no change" and does render, distinct from having no comparison at all.
-export function trendLabel(pct: number | null, dir: Dir): string | null {
+// is the direction that same call computed, and window says which comparison basis
+// pct/dir were actually computed against (see COMPARISON_LABEL above). `dir === null`
+// means there was no prior period to compare against -- that must render as no label
+// at all (an arrow or a number would assert a direction we do not have), so this
+// returns null rather than a flat or zeroed string. A `dir === "flat"` (pct exactly
+// 0) is a real measured "no change" and does render, distinct from having no
+// comparison at all.
+export function trendLabel(pct: number | null, dir: Dir, window: Window): string | null {
   if (dir == null || pct == null) return null;
   const magnitude = Math.round(Math.abs(pct));
-  return `${magnitude}% vs last month`;
+  return `${magnitude}% ${COMPARISON_LABEL[window]}`;
 }
