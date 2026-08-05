@@ -913,6 +913,8 @@ class _RankingsScreenState extends State<RankingsScreen> {
                 _stat('Contracts', '$won'),
               ],
             ),
+            const SizedBox(height: 8),
+            _leadToFiledLine(leads, filed),
           ],
         ),
       ),
@@ -930,6 +932,24 @@ class _RankingsScreenState extends State<RankingsScreen> {
         Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _textDark)),
         const SizedBox(height: 2),
         Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
+      ],
+    );
+  }
+
+  // Lead -> Filed conversion (filed / leads), mirroring the web board. Shown
+  // greyed when there is no rate or the lead count is a low sample (< 3).
+  String _rateStr(num from, num to) =>
+      from > 0 ? '${(to / from * 100).toStringAsFixed(1)}%' : '—';
+
+  Widget _leadToFiledLine(dynamic leadsRaw, dynamic filedRaw) {
+    final from = (leadsRaw is num) ? leadsRaw : num.tryParse('$leadsRaw') ?? 0;
+    final to = (filedRaw is num) ? filedRaw : num.tryParse('$filedRaw') ?? 0;
+    final color = (from <= 0 || from < 3) ? _textPlaceholder : _primary;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text('Lead → Filed  ', style: TextStyle(fontSize: 11, color: _textPlaceholder)),
+        Text(_rateStr(from, to), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
       ],
     );
   }
@@ -1017,6 +1037,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
           _totalStat('Leads', _sum('leadsCreated')),
           _totalStat('Claims', _sum('filed')),
           _totalStat('Contracts', _sum('won')),
+          _totalRateStat('Lead→Filed', _sum('leadsCreated'), _sum('filed')),
         ],
       ),
     );
@@ -1046,6 +1067,16 @@ class _RankingsScreenState extends State<RankingsScreen> {
         child: Column(
           children: [
             Text('${value.round()}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _textDark)),
+            Text(label, style: const TextStyle(fontSize: 10.5, color: _textLight), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      );
+
+  Widget _totalRateStat(String label, num from, num to) => Expanded(
+        child: Column(
+          children: [
+            Text(_rateStr(from, to),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: (from <= 0 || from < 3) ? _textLight : _primary)),
             Text(label, style: const TextStyle(fontSize: 10.5, color: _textLight), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
