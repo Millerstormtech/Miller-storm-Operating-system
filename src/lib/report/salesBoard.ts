@@ -70,7 +70,11 @@ export function salesFields(ctx: SalesExportContext): FieldSpec<SalesExportRow>[
     // A printed table has no gap between cells to float a rate into, so on paper
     // it is a real column. Never hidden by a branch filter: unlike Branch/Team it
     // stays meaningful when the row's numbers are scoped to one branch.
-    { key: "leadToFiled", label: "Lead → Filed", align: "right", value: (r) => formatRate(conversionRate(r.leadsCreated, r.filed)) },
+    // "Lead to Filed", NOT the on-screen "Lead → Filed": jsPDF's built-in fonts are
+    // WinAnsi-encoded and have no U+2192, so the arrow is silently DROPPED and the
+    // header prints as "Lead  Filed" with a hole in it. Verified in a generated PDF.
+    // The em dash used for an empty rate is fine, WinAnsi does have that one.
+    { key: "leadToFiled", label: "Lead to Filed", align: "right", value: (r) => formatRate(conversionRate(r.leadsCreated, r.filed)) },
     { key: "filed", label: "Claims Filed", align: "right", value: (r) => fmtInt(r.filed) },
     { key: "won", label: "Contracts", align: "right", value: (r) => fmtInt(r.won) },
     { key: "revenue", label: "Contract Amount", align: "right", value: (r) => fmtMoney(r.revenue) }

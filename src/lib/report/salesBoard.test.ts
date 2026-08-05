@@ -68,7 +68,8 @@ describe("Lead to Filed conversion column", () => {
 
   it("formats each rep's own rate", () => {
     const field = salesFields(CTX).find((f) => f.key === "leadToFiled")!;
-    expect(field.label).toBe("Lead → Filed");
+    // Plain ASCII on purpose: jsPDF's WinAnsi fonts drop U+2192 silently.
+    expect(field.label).toBe("Lead to Filed");
     expect(field.value(ROWS[0], 0)).toBe("50.0%"); // Alice: 12 leads, 6 filed
     expect(field.value(ROWS[1], 1)).toBe("40.0%"); // Bob: 5 leads, 2 filed
   });
