@@ -177,10 +177,14 @@ export function TeamStructure() {
     const repsByManager = new Map<string, OrgUser[]>();
     const noManager: OrgUser[] = [];
     for (const s of sales) {
-      if (s.managerId && (teamLeadIds.has(s.managerId) || branchManagerIds.has(s.managerId))) {
-        const arr = repsByManager.get(s.managerId) || [];
+      const hasBranch = (s.territory || "").trim().length > 0;
+      const validManager = !!s.managerId && (teamLeadIds.has(s.managerId) || branchManagerIds.has(s.managerId));
+      // A rep sits under their team lead only with BOTH a branch and a valid
+      // manager. No branch (or no manager) => Unassigned.
+      if (hasBranch && validManager) {
+        const arr = repsByManager.get(s.managerId!) || [];
         arr.push(s);
-        repsByManager.set(s.managerId, arr);
+        repsByManager.set(s.managerId!, arr);
       } else {
         noManager.push(s);
       }
