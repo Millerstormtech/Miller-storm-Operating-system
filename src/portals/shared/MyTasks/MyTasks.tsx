@@ -5,7 +5,7 @@ import { TaskCard, type Task } from "./TaskCard";
 import { AddTaskModal, type NewTaskInput } from "./AddTaskModal";
 import { TeamTab } from "./TeamTab";
 
-const ACCULYNX_URL = "https://app.acculynx.com";
+const ACCULYNX_URL = "https://acculynx.com/";
 
 const GROUP_LABELS: Record<string, string> = {
   overdue: "Overdue",
