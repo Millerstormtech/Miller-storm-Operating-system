@@ -25,6 +25,7 @@ export default defineConfig({
       "src/lib/scoreboard/**/*.test.ts",
       "src/lib/businessPlan/**/*.test.ts",
       "src/lib/pageTitle.test.ts",
+      "src/lib/subdomain.test.ts",
       "src/portals/shared/guided-tour/**/*.test.ts",
       "src/lib/report/**/*.test.ts",
       "src/lib/tasks/**/*.test.ts",
