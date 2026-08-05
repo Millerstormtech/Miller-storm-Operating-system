@@ -17,10 +17,11 @@
 // iterate this fixed whitelist rather than the caller's own keys. That is the
 // entire defense against writing outside the businessPlan subdocument: there
 // is no code path that ever copies an arbitrary key into the update.
-const ALLOWED_BUSINESS_PLAN_KEYS = [
-  // Legacy funnel fields. Three shipped Flutter screens and two other web
-  // screens (TeamBusinessPlans, BusinessUnits) still read these; see
-  // src/lib/scoreboard/goals.ts for how the monthly target keeps them in sync.
+//
+// Legacy funnel fields. Three shipped Flutter screens and two other web
+// screens (TeamBusinessPlans, BusinessUnits) still read these; see
+// src/lib/scoreboard/goals.ts for how the monthly target keeps them in sync.
+const LEGACY_BUSINESS_PLAN_KEYS = [
   "revenueGoal",
   "averageDealSize",
   "dealsPerYear",
@@ -31,13 +32,24 @@ const ALLOWED_BUSINESS_PLAN_KEYS = [
   "daysPerWeek",
   "territories",
   "selectedPresetId",
-  "committed",
-  // Phase 2 direct-entry monthly targets (My Goals). Source of truth for the
-  // Scoreboard. A manager/admin screen that never sends these three keys is
-  // therefore structurally unable to change a rep's own goals.
+  "committed"
+] as const;
+
+// Phase 2 direct-entry monthly targets (My Goals). Source of truth for the
+// Scoreboard. Exported (not just a local list) because
+// src/lib/businessPlan/authorization.ts strips exactly these keys from any
+// payload that targets someone other than the authenticated caller -- "each
+// person sets their own goals" is enforced there, on the server, so it can
+// never be defeated by a client that happens to start sending these keys.
+export const MONTHLY_GOAL_KEYS = [
   "monthlyRevenueTarget",
   "monthlyKnockTarget",
   "monthlyClaimsTarget"
+] as const;
+
+const ALLOWED_BUSINESS_PLAN_KEYS = [
+  ...LEGACY_BUSINESS_PLAN_KEYS,
+  ...MONTHLY_GOAL_KEYS
 ] as const;
 
 export type BusinessPlanKey = (typeof ALLOWED_BUSINESS_PLAN_KEYS)[number];

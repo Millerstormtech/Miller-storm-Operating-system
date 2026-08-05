@@ -4,6 +4,7 @@ import { UserModel } from '../../src/lib/models/User';
 import { BusinessPlanModel } from '../../src/lib/models/BusinessPlan';
 import { requireUser, allowMethods } from '../../src/lib/auth';
 import { buildBusinessPlanUpdate } from '../../src/lib/businessPlan/update';
+import { resolveBusinessPlanWrite, stripMonthlyGoalFields } from '../../src/lib/businessPlan/authorization';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -13,9 +14,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     const auth = requireUser(req, res);
     if (!auth) return;
-    // A user saves THEIR OWN plan — trust the session id, ignore any body userId.
-    const userId = auth.sub;
-    const { businessPlan } = req.body;
+    const { businessPlan, userId: requestedUserId } = req.body;
+
+    // A rep saves THEIR OWN plan by default — the trusted session id, not
+    // any body userId. admin and sales-team-lead (the same "privileged"
+    // roles the GET branch above already recognizes) may additionally save
+    // ANOTHER user's plan, which is what lets a team lead's mobile screens
+    // (sales_team_lead_planner_screen.dart,
+    // sales_team_lead_team_member_detail_screen.dart) actually save a rep's
+    // plan instead of silently overwriting the team lead's own record. See
+    // src/lib/businessPlan/authorization.ts for the full decision, including
+    // why a sales-team-lead is scoped to their own reports (managerId match)
+    // while admin is not, and why the three monthly goal fields always get
+    // stripped once the write target isn't the caller.
+    let targetManagerId: string | null | undefined;
+    if (
+      auth.role === 'sales-team-lead' &&
+      requestedUserId &&
+      requestedUserId !== auth.sub
+    ) {
+      const targetUser = await UserModel.findOne({ id: requestedUserId })
+        .select('managerId')
+        .lean();
+      targetManagerId = targetUser?.managerId ?? null;
+    }
+
+    const decision = resolveBusinessPlanWrite({
+      authUserId: auth.sub,
+      authRole: auth.role,
+      requestedUserId,
+      targetManagerId
+    });
+
+    if (!decision.allowed) {
+      // Same response whether requestedUserId names a real user or not, so
+      // a probing caller can never use this endpoint to learn which user
+      // ids exist.
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const userId = decision.targetUserId;
+    // "Each person sets their own goals": once the write target isn't the
+    // caller, the three monthly goal fields are removed from the payload
+    // before anything is built from it — enforced here, not by trusting
+    // that a client never sends those keys.
+    const planPayload = decision.stripGoals
+      ? stripMonthlyGoalFields(businessPlan)
+      : businessPlan;
 
     try {
       // Field-level update, not a whole-object replace: a key the caller
@@ -23,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // legacy funnel fields) can never silently erase fields it knows
       // nothing about (e.g. the rep's own monthly goals). An explicit null
       // on a field clears it; see src/lib/businessPlan/update.ts.
-      const userOps = buildBusinessPlanUpdate(businessPlan, 'businessPlan.');
+      const userOps = buildBusinessPlanUpdate(planPayload, 'businessPlan.');
       const userUpdate: Record<string, unknown> = {};
       if (userOps.$set) userUpdate.$set = userOps.$set;
       if (userOps.$unset) userUpdate.$unset = userOps.$unset;
@@ -39,8 +84,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // collection, using the same absent/null/zero rules so the two
       // collections can never drift apart. No prefix here: this collection
       // stores the fields flat, not under a `businessPlan` subdocument.
-      // userId always comes from the trusted session id, never the payload.
-      const mirrorOps = buildBusinessPlanUpdate(businessPlan, '');
+      // userId is always `decision.targetUserId` above, never read again
+      // from the raw request body here.
+      const mirrorOps = buildBusinessPlanUpdate(planPayload, '');
       const mirrorUpdate: Record<string, unknown> = {
         $set: { ...(mirrorOps.$set ?? {}), userId }
       };
