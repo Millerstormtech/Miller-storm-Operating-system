@@ -1092,7 +1092,9 @@ export function UserManagement(props: UserEditorProps) {
                     }
                     setRoleError("");
                     const isSales = selectedUser.role === "sales";
-                    if (isSales && !selectedUser.managerId) {
+                    // A team lead is required only when the rep has a branch. With
+                    // "No Branch" the rep is intentionally unassigned ("No team").
+                    if (isSales && (selectedUser.territory || "").trim() && !selectedUser.managerId) {
                       setManagerError("Please assign a Sales Team Lead to this sales user before saving.");
                       return;
                     }
@@ -1309,7 +1311,7 @@ export function UserManagement(props: UserEditorProps) {
                     <span className="territory-trigger-value" style={{ color: selectedUser.territory ? undefined : "#9ca3af" }}>
                       {selectedUser.territory && selectedUser.territory.trim().length > 0
                         ? selectedUser.territory
-                        : "Select branch"}
+                        : "No Branch"}
                     </span>
                     <span className="territory-trigger-icon">{showTerritoryDropdown ? "▲" : "▼"}</span>
                   </button>
@@ -1335,6 +1337,22 @@ export function UserManagement(props: UserEditorProps) {
                         gap: 2,
                       }}
                     >
+                      {/* No Branch — leaves the rep unassigned to any branch (and,
+                          for a sales rep, clears the team lead so "No team" applies). */}
+                      <label className={!(selectedUser.territory || "").trim() ? "territory-option territory-option-active" : "territory-option"}>
+                        <input
+                          type="checkbox"
+                          checked={!(selectedUser.territory || "").trim()}
+                          onChange={() => {
+                            const patch: UserProfile = { ...selectedUser, territory: "", branches: [] };
+                            if (selectedUser.role === "sales") { patch.managerId = undefined; setManagerDraftId(""); }
+                            updateUser(patch);
+                            setShowTerritoryDropdown(false);
+                            setTerritoryDropdownPos(null);
+                          }}
+                        />
+                        <span>No Branch</span>
+                      </label>
                       {TERRITORY_OPTIONS.map((option) => {
                         // Single-select: a user belongs to exactly one branch. The
                         // chosen branch is stored on `territory` (and mirrored into
@@ -1466,7 +1484,7 @@ export function UserManagement(props: UserEditorProps) {
                 const branchSelected = branch.length > 0;
                 // Team leads to choose from: real (non-developer) Sales Team Leads —
                 // including branch managers who also run a team — whose OWN branch
-                // matches the rep's selected branch. No branch → nothing to pick.
+                // matches the rep's selected branch. No branch → "No team" only.
                 const teamLeadOptions = branchSelected
                   ? draftUsers.filter((u) =>
                       !u.testAccount &&
@@ -1474,14 +1492,16 @@ export function UserManagement(props: UserEditorProps) {
                       (u.territory || "").trim().toLowerCase() === branch
                     )
                   : [];
+                // A team lead is required only once a real branch is picked. With
+                // "No Branch", the rep is unassigned and "No team" is valid.
+                const showError = branchSelected && (!selectedUser.managerId || !!managerError);
                 return (
                   <label className="field">
-                    <span className="field-label">Sales Team Lead <span style={{ color: "#dc2626" }}>*</span></span>
+                    <span className="field-label">Sales Team Lead {branchSelected && <span style={{ color: "#dc2626" }}>*</span>}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                       <select
                         className="field-input"
-                        disabled={!branchSelected}
-                        style={{ flex: 1, minWidth: 0, borderColor: (!selectedUser.managerId || managerError) ? "#dc2626" : undefined, background: !branchSelected ? "#f9fafb" : undefined, cursor: !branchSelected ? "not-allowed" : undefined }}
+                        style={{ flex: 1, minWidth: 0, borderColor: showError ? "#dc2626" : undefined }}
                         value={managerDraftId}
                         onChange={(e) => {
                           const nextManagerId = e.target.value;
@@ -1491,7 +1511,7 @@ export function UserManagement(props: UserEditorProps) {
                         }}
                       >
                         <option value="">
-                          {branchSelected ? "-- Select a Sales Team Lead (required) --" : "-- Select a branch first --"}
+                          {branchSelected ? "-- Select a Sales Team Lead (required) --" : "No team"}
                         </option>
                         {teamLeadOptions.map((manager) => (
                           <option key={manager.id} value={manager.id}>{manager.name}</option>
@@ -1503,9 +1523,9 @@ export function UserManagement(props: UserEditorProps) {
                         No Sales Team Leads in this branch yet.
                       </div>
                     )}
-                    {(!selectedUser.managerId || managerError) && (
+                    {showError && (
                       <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>
-                        {managerError || (branchSelected ? "Sales Team Lead is required for sales users" : "Select a branch first, then choose a Sales Team Lead")}
+                        {managerError || "Sales Team Lead is required for sales users"}
                       </div>
                     )}
                   </label>
