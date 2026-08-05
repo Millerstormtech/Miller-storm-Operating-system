@@ -16,7 +16,6 @@ import {
   type TotalsSpec,
 } from "./document";
 import { TEAM_LEADS } from "../repcard/org-chart";
-import { conversionRate, formatRate } from "../leaderboard/conversion";
 
 /** The "(No branch)" / "(No team)" sentinel used by the board's dropdowns. */
 const NONE = "__none__";
@@ -67,14 +66,6 @@ export function salesFields(ctx: SalesExportContext): FieldSpec<SalesExportRow>[
   fields.push(
     { key: "verifiedKnocks", label: "Verified Door Knocks", align: "right", value: (r) => fmtInt(r.verifiedKnocks) },
     { key: "leadsCreated", label: "Leads Created", align: "right", value: (r) => fmtInt(r.leadsCreated) },
-    // A printed table has no gap between cells to float a rate into, so on paper
-    // it is a real column. Never hidden by a branch filter: unlike Branch/Team it
-    // stays meaningful when the row's numbers are scoped to one branch.
-    // "Lead to Filed", NOT the on-screen "Lead → Filed": jsPDF's built-in fonts are
-    // WinAnsi-encoded and have no U+2192, so the arrow is silently DROPPED and the
-    // header prints as "Lead  Filed" with a hole in it. Verified in a generated PDF.
-    // The em dash used for an empty rate is fine, WinAnsi does have that one.
-    { key: "leadToFiled", label: "Lead to Filed", align: "right", value: (r) => formatRate(conversionRate(r.leadsCreated, r.filed)) },
     { key: "filed", label: "Claims Filed", align: "right", value: (r) => fmtInt(r.filed) },
     { key: "won", label: "Contracts", align: "right", value: (r) => fmtInt(r.won) },
     { key: "revenue", label: "Contract Amount", align: "right", value: (r) => fmtMoney(r.revenue) }
@@ -99,8 +90,6 @@ export function salesContextLines(ctx: SalesExportContext): string[] {
   }
   parts.push(`${ctx.rowCount} rep${ctx.rowCount === 1 ? "" : "s"}`);
   lines.push(parts.join(" · "));
-  // A PDF outlives the screen it came from, so the timing caveat travels with it.
-  lines.push("Conversion rates are less reliable over short date ranges (see note).");
   return lines;
 }
 
@@ -116,15 +105,10 @@ export function salesDefaultTitle(ctx: SalesExportContext): string {
 
 export function salesTotals(rows: SalesExportRow[]): TotalsSpec {
   const sum = (pick: (r: SalesExportRow) => number) => rows.reduce((n, r) => n + (pick(r) ?? 0), 0);
-  const totalLeads = sum((r) => r.leadsCreated);
-  const totalFiled = sum((r) => r.filed);
   const totals: Record<string, string> = {
     verifiedKnocks: fmtInt(sum((r) => r.verifiedKnocks)),
-    leadsCreated: fmtInt(totalLeads),
-    // The AGGREGATE rate, deliberately not the mean of the per-rep rates:
-    // averaging percentages lets a rep with 3 leads weigh as much as a rep with 300.
-    leadToFiled: formatRate(conversionRate(totalLeads, totalFiled)),
-    filed: fmtInt(totalFiled),
+    leadsCreated: fmtInt(sum((r) => r.leadsCreated)),
+    filed: fmtInt(sum((r) => r.filed)),
     won: fmtInt(sum((r) => r.won)),
     revenue: fmtMoney(sum((r) => r.revenue)),
   };
