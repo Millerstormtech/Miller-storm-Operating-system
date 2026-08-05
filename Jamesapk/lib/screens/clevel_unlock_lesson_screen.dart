@@ -60,7 +60,12 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
       // by the Courses screen, so the unlock view shows the same courses as the
       // web even when the network is slow/timing out (course list = light pages).
       await _loadCachedCourses();
-      await Future.wait([_fetchTeam(), _fetchCourses()]);
+      // Show the member list the moment the team loads. The course list is only
+      // needed once a member is picked (and is already cache-filled above), so it
+      // must not gate the initial list behind a second, heavier request.
+      await _fetchTeam();
+      if (mounted) setState(() => _loading = false);
+      await _fetchCourses();
     } catch (e) {
       print('Unlock init error: $e');
     }

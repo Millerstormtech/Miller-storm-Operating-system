@@ -90,4 +90,10 @@ userSchema.index(
   { unique: true, partialFilterExpression: { deleted: { $ne: true } } }
 );
 
+// Roster/team-picker queries filter by managerId (a manager's own team) and/or
+// role (e.g. all sales reps). Index both so those lists — like the Unlock Lesson
+// member list — never scan the whole users collection.
+userSchema.index({ managerId: 1, role: 1 });
+userSchema.index({ role: 1 });
+
 export const UserModel = models.User || model("User", userSchema);
