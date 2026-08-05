@@ -2,11 +2,6 @@ export type UserRole = "admin" | "sales-team-lead" | "sales" | "marketing" | "c-
 
 export type ModuleKey =
   | "dashboard"
-  | "cLevelDashboard"
-  | "branchManagerDashboard"
-  | "salesTeamDashboard"
-  | "salesRepDashboard"
-  | "marketingDashboard"
   | "userManagement"
   | "roleHierarchy"
   | "businessUnits"
