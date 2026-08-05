@@ -30,6 +30,7 @@ export default defineConfig({
       // Targeted, NOT the whole leaderboard folder: adding src/lib/leaderboard/**
       // would also wake identity/merge/ranking, which have never run here.
       "src/lib/leaderboard/contractKing.test.ts",
+      "src/lib/leaderboard/conversion.test.ts",
     ],
     environment: "node",
   },
