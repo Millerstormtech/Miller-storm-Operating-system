@@ -14,6 +14,7 @@ import {
   type SalesExportContext,
   type SalesExportRow,
 } from "../lib/report/salesBoard";
+import { conversionRate, formatRate, LOW_SAMPLE_THRESHOLD } from "../lib/leaderboard/conversion";
 
 type Window = "day" | "week" | "month" | "year";
 const WINDOWS: { key: Window; label: string }[] = [
@@ -24,6 +25,61 @@ const WINDOWS: { key: Window; label: string }[] = [
 ];
 // One sticky Sum cell. Background and top border sit on the CELL, not the row:
 // a position:sticky cell paints itself and does not inherit the <tr>'s.
+/**
+ * The conversion rate that floats in the gap between two numeric columns.
+ *
+ * Rendered INSIDE the left-hand cell and pushed out over the padding, because a
+ * table has no space between cells. The parent cell must be a positioned element:
+ * `position: relative` in the body, and the totals row already qualifies because
+ * `stickyFootCell` is `position: sticky`, which is also a positioned element.
+ *
+ * `allowDim` is separate from `lowSample` so the totals row can opt out: a
+ * board-wide denominator under the threshold means the whole board is empty, and
+ * greying the Sum row for that would read as an error rather than a caution.
+ */
+function RateArrow({
+  from,
+  to,
+  fromLabel,
+  toLabel,
+  allowDim = true,
+}: {
+  from: number;
+  to: number;
+  fromLabel: string;
+  toLabel: string;
+  allowDim?: boolean;
+}) {
+  const rate = conversionRate(from, to);
+  const dim = allowDim && rate.lowSample;
+  const title =
+    rate.value === null
+      ? `No ${fromLabel} in this range, so there is no rate to show.`
+      : `${from} ${fromLabel}, ${to} ${toLabel} (${formatRate(rate)}).` +
+        (dim ? ` Based on fewer than ${LOW_SAMPLE_THRESHOLD} ${fromLabel}, so treat it loosely.` : "");
+  return (
+    <span
+      title={title}
+      style={{
+        position: "absolute",
+        right: 0,
+        top: "50%",
+        transform: "translate(50%, -50%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        lineHeight: 1.1,
+        fontWeight: 500,
+        whiteSpace: "nowrap",
+        color: dim ? "#c7cbd1" : "#6b7280",
+      }}
+    >
+      <span style={{ fontSize: 11 }}>{formatRate(rate)}</span>
+      <span style={{ fontSize: 12 }} aria-hidden="true">→</span>
+    </span>
+  );
+}
+
 const stickyFootCell: React.CSSProperties = {
   padding: "10px 14px",
   textAlign: "center",
@@ -447,6 +503,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           <li><strong>Who&apos;s listed here:</strong> every active sales rep.</li>
           <li>A rep can sell in more than one branch (for example, when storm-chasing away from home). Filtering by branch shows only the sales made in that branch. In this case each row shows only that rep&apos;s sales data for the filtered branch. Remove the branch filter to see their full total across every branch.</li>
           <li>However, <strong>Verified Door Knocks</strong> is the only data point that always counts under a rep&apos;s home branch. So if you filter to another branch where the rep made sales, you&apos;ll see those sales (as mentioned in the previous point) but their knocks show as 0 there.</li>
+          <li><strong>Conversion rates:</strong> where a percentage and an arrow appear between two columns, it shows how many of the first column&apos;s items went on to become the second. Read any conversion rate alongside the date range you picked. Work moves through the funnel over time, so something created in one month often reaches the next stage weeks later. A short range (a single week, or the first few days of a month) ends up comparing numbers that mostly belong to different deals, and a rate can even read above 100% when later stage work lands for items created before the range began. The longer the range, the more accurate every rate becomes. A rate is shown in grey when the rep has fewer than 3 in the starting column, because 1 out of 1 reads as 100%.</li>
         </ul>
       </details>
 
@@ -480,7 +537,14 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     onClick={() => onSort(c.key)}
                     title="Click to sort"
                     style={{
-                      padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", userSelect: "none",
+                      // Widened on the facing sides of the two funnel columns so the
+                      // floating rate has a gap to sit in. Must match the body cells
+                      // exactly or the numbers stop lining up under their labels.
+                      padding:
+                        c.key === "leadsCreated" ? "10px 34px 10px 14px"
+                        : c.key === "filed" ? "10px 14px 10px 34px"
+                        : "10px 14px",
+                      fontSize: 13, fontWeight: 600, cursor: "pointer", userSelect: "none",
                       textAlign: c.type === "text" ? "left" : "center",
                       color: c.key === sortKey ? "#2563eb" : "#374151",
                       // Frozen header. Needs its own opaque background: <thead>
@@ -525,8 +589,11 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                       </>
                     ) : null}
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
-                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.leadsCreated ?? 0}</td>
-                    <td style={{ padding: "10px 14px", textAlign: "center" }}>{r.filed}</td>
+                    <td style={{ padding: "10px 34px 10px 14px", textAlign: "center", fontWeight: 600, position: "relative" }}>
+                      {r.leadsCreated ?? 0}
+                      <RateArrow from={r.leadsCreated ?? 0} to={r.filed ?? 0} fromLabel="leads created" toLabel="claims filed" />
+                    </td>
+                    <td style={{ padding: "10px 14px 10px 34px", textAlign: "center" }}>{r.filed}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.won}</td>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#16a34a" }}>{fmtMoney(r.revenue)}</td>
                   </tr>
@@ -544,8 +611,27 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     Sum ({visible.length} rep{visible.length === 1 ? "" : "s"})
                   </td>
                   <td style={stickyFootCell}>{totals.verifiedKnocks}</td>
-                  <td style={stickyFootCell}>{totals.leadsCreated}</td>
-                  <td style={stickyFootCell}>{totals.filed}</td>
+                  {/* No position:relative here on purpose. stickyFootCell is already
+                      position:sticky, which anchors the arrow the same way, and
+                      overriding it would unstick the Sum row while scrolling.
+
+                      zIndex 3 (not the shared 2) because the arrow overflows this
+                      cell into the next one, and EVERY footer cell paints its own
+                      opaque background. At equal z-index the later sibling wins, so
+                      Claims Filed covered the right half of the rate: "67.0%" was
+                      rendering as "67.". The body rows are immune because their
+                      <td>s have no background of their own. */}
+                  <td style={{ ...stickyFootCell, padding: "10px 34px 10px 14px", zIndex: 3 }}>
+                    {totals.leadsCreated}
+                    <RateArrow
+                      from={totals.leadsCreated}
+                      to={totals.filed}
+                      fromLabel="leads created"
+                      toLabel="claims filed"
+                      allowDim={false}
+                    />
+                  </td>
+                  <td style={{ ...stickyFootCell, padding: "10px 14px 10px 34px" }}>{totals.filed}</td>
                   <td style={stickyFootCell}>{totals.won}</td>
                   <td style={{ ...stickyFootCell, color: "#16a34a" }}>{fmtMoney(totals.revenue)}</td>
                 </tr>
