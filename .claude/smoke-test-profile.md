@@ -33,8 +33,24 @@ The universal process lives in the skill; this file holds the **project-specific
 - `AUTH_SECRET` must be ≥16 chars. In production a missing secret is a hard error; in dev it warns and uses a fallback.
 
 ## Roles / tenancy
-- Four roles: **admin, manager, sales, marketing**. Server-side gate is `requireUser` / `requireRole` in `src/lib/auth.ts` (401 unauthenticated, 403 wrong role). Client `ProtectedRoute` is UI-only — always verify the **server** rejects, not just the hidden button.
-- "Tenant" scoping that exists: a manager's team via `managerId`; DMs (`chatgroups.isDirect`) readable only by their two members (even admins can't moderate DMs — see the IDOR fix on branch `fix/storm-chat-dm-delete-idor`).
+- **SIX** role keys (verified 2026-08-05 in `src/lib/roleLabels.ts`): `admin`, `sales-team-lead`, `sales`, `marketing`, `branch-manager`, `c-level`. There is **no `manager` role** — an earlier version of this file said there was.
+- **Keys are not labels.** `sales-team-lead` displays as "Sales Team Lead" via `roleDisplayName()` in `src/lib/roleLabels.ts`. Always mint tokens and write `allowedRoles` with the raw **key**.
+- **The `sales-team-lead` role lives in the `manager/` folders** — it routes to `/manager/rankings` and its screens are in `src/portals/manager/`. Grepping for "sales-team-lead" will not find its UI.
+- Only `sales` and `sales-team-lead` are ranked competitors (`RANKED_ROLES` in `src/lib/training/scoring.ts`); leadership does not compete.
+- Server-side gate is `requireUser` / `requireRole` in `src/lib/auth.ts` (401 unauthenticated, 403 wrong role). Client `ProtectedRoute` is UI-only — always verify the **server** rejects, not just the hidden button.
+- "Tenant" scoping that exists: a team lead's reports via `managerId`; DMs (`chatgroups.isDirect`) readable only by their two members (even admins can't moderate DMs — see the IDOR fix on branch `fix/storm-chat-dm-delete-idor`).
+
+## Browser-smoke gotchas (all hit for real on 2026-08-05)
+- **Log in through the UI, then navigate by clicking.** The session token is held **in memory only** (`src/lib/authToken.ts`), so any hard navigation — including `page.goto` to a deep link — logs you straight back out. Use `/login?redirect_to=%2Fadmin%2Fleaderboard`: the redirect lands you on the target page inside the SPA.
+- **Leave the `users` collection EMPTY when seeding.** The first login then auto-creates that account as an `admin` (`pages/api/login.ts`), so you never need to seed a bcrypt hash.
+- **Use `localhost`, never `127.0.0.1`.** `middleware.ts` reads `127` as a subdomain and every page 404s.
+- **`next start` leaves a zombie holding port 6790** after the wrapper is killed. Free it explicitly:
+  `netstat -ano | grep LISTENING | grep :6790 | awk '{print $NF}' | sort -u | xargs -I{} taskkill //PID {} //F`
+- **Restart the server after every rebuild.** `next start` serves the build it loaded at boot, so edits appear only after a restart, not after `npm run build` alone.
+- **A scratchpad script cannot `require()` repo packages** — Node resolves from the *script's* directory. Run it with `NODE_PATH="<repo>/node_modules"`.
+- **Playwright writes into the REPO, not the scratchpad** (its allowed root is the repo). Screenshots land at the repo root and downloads in `.playwright-mcp/`, and **neither is gitignored**. Delete both before staging, and close the browser first or the directory is "Device or resource busy".
+- **jsPDF's built-in fonts are WinAnsi-encoded** and silently DROP characters they lack, e.g. `→` (U+2192) printed a header as "Lead  Filed". Verify exported PDFs by extracting their text operators, not by trusting the on-screen label:
+  `python -c "import re;d=open('x.pdf','rb').read();print(re.findall(rb'\((.*?)\)\s*Tj',d,re.S))"`
 
 ## ID gotchas (bite every time)
 - Users have BOTH an app `id` (e.g. `"user-123"`, = `auth.sub`) and a Mongo `_id`. `chatgroups.members/admins` may store either; the messages handler resolves both. Progress/notifications/leaderboard key off the **app `id`**.
