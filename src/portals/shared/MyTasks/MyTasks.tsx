@@ -105,8 +105,10 @@ export function MyTasks() {
         <div style={{ padding: 24 }}>Loading your tasks...</div>
       ) : (
         <div style={{ padding: 24, maxWidth: 900 }}>
-          <div style={{ display: "flex", alignItems: "center", marginBottom: 18 }}>
-            <h2 style={{ margin: 0, flex: 1 }}>My Tasks</h2>
+          {/* No heading here on purpose: the role layout already renders "My Tasks"
+              as the page title, and leaders also have a "My Tasks" tab, so a third
+              copy just repeats itself down the screen. */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 18 }}>
             <button type="button" onClick={() => setShowAdd(true)}>
               Add task
             </button>
