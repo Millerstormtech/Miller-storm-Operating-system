@@ -39,20 +39,35 @@ async function resolveSyncedAt(): Promise<string | null> {
   // The regex below is anchored on the colon specifically to keep that doc out; nothing
   // ever falls back to it, no matter how few (or zero) real location docs exist, because
   // a bare-key doc's age says nothing about whether TODAY's data is fresh.
-  const [acculynxLocations, repcard] = await Promise.all([
-    SyncStateModel.find({ key: { $regex: /^acculynx:/ } }).select("lastSyncAt").lean(),
-    SyncStateModel.findOne({ key: "repcard" }).select("lastSyncAt").lean(),
-  ]);
+  //
+  // This whole lookup is wrapped in try/catch because it is purely additive metadata
+  // annotating numbers that are computed independently of it. A transient Mongo error
+  // here must never fail the request that carries totals/trends/goals/etc -- a freshness
+  // NOTE is not allowed to take down the numbers it merely describes. On failure we
+  // return null, which is the SAME honest state as "nothing has synced yet": in both
+  // cases we genuinely do not know when the data last synced, and the UI already treats
+  // null as "omit the note" either way. Never substitute new Date() or a stale constant.
+  try {
+    const [acculynxLocations, repcard] = await Promise.all([
+      SyncStateModel.find({ key: { $regex: /^acculynx:/ } }).select("lastSyncAt").lean(),
+      SyncStateModel.findOne({ key: "repcard" }).select("lastSyncAt").lean(),
+    ]);
 
-  const times: number[] = [];
-  for (const doc of acculynxLocations as any[]) {
-    if (doc?.lastSyncAt) times.push(new Date(doc.lastSyncAt).getTime());
+    const times: number[] = [];
+    for (const doc of acculynxLocations) {
+      if (doc?.lastSyncAt) times.push(new Date(doc.lastSyncAt).getTime());
+    }
+    if (repcard?.lastSyncAt) times.push(new Date(repcard.lastSyncAt).getTime());
+
+    // Never invent a value: if nothing has ever synced successfully, say so with null
+    // rather than guessing or falling back to "now" or to the excluded legacy doc.
+    return times.length ? new Date(Math.min(...times)).toISOString() : null;
+  } catch (error) {
+    // Logged so a persistent problem is diagnosable, not silently invisible -- matches
+    // the handler's own [scoreboard] error tag below.
+    console.error("[scoreboard] resolveSyncedAt failed:", error);
+    return null;
   }
-  if ((repcard as any)?.lastSyncAt) times.push(new Date((repcard as any).lastSyncAt).getTime());
-
-  // Never invent a value: if nothing has ever synced successfully, say so with null
-  // rather than guessing or falling back to "now" or to the excluded legacy doc.
-  return times.length ? new Date(Math.min(...times)).toISOString() : null;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
