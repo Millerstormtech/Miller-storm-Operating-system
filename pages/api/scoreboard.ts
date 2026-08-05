@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
+import { SyncStateModel } from "../../src/lib/models/SyncState";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, type Window } from "../../src/lib/acculynx/windows";
 import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
@@ -12,6 +13,45 @@ import { conversions, trend, rateDir } from "../../src/lib/scoreboard/metrics";
 import { previousSlice, periodEndFor, paceFraction } from "../../src/lib/scoreboard/periods";
 import { toSalesRow } from "../../src/lib/scoreboard/rows";
 import { scaleTargetToWindow } from "../../src/lib/scoreboard/goals";
+
+// The scoreboard blends two independently-scheduled syncs: AccuLynx (revenue, claims,
+// contracts -- one SyncState doc per location, key "acculynx:<companyId>") and RepCard
+// (knocks -- one doc, key "repcard"). lastSyncAt on each doc is only ever advanced on a
+// SUCCESSFUL run (see src/lib/acculynx/sync.ts and src/lib/repcard/sync.ts, which both
+// explicitly skip advancing it on failure), so every value read here already means "the
+// last time this source actually finished".
+//
+// The screen's promise is "these numbers are current as of X". That statement is only
+// true up to the OLDEST successful sync among every source feeding it: if one AccuLynx
+// location or RepCard itself is behind, the combined totals are only as fresh as the
+// stalest contributor. So this takes the MINIMUM across all of them, not the maximum --
+// the admin status endpoint (pages/api/acculynx/status.ts) takes the max across AccuLynx
+// locations for "is anything still working" monitoring, which is a different question
+// than "can a rep trust this number right now".
+async function resolveSyncedAt(): Promise<string | null> {
+  const [acculynxLocations, repcard] = await Promise.all([
+    SyncStateModel.find({ key: { $regex: /^acculynx:/ } }).select("lastSyncAt").lean(),
+    SyncStateModel.findOne({ key: "repcard" }).select("lastSyncAt").lean(),
+  ]);
+
+  let acculynxDocs: any[] = acculynxLocations as any[];
+  if (!acculynxDocs.length) {
+    // No per-location docs yet -- fall back to the legacy pre-multi-location doc
+    // (key "acculynx", no colon), same fallback pages/api/acculynx/status.ts uses.
+    const legacy = await SyncStateModel.findOne({ key: "acculynx" }).select("lastSyncAt").lean();
+    if (legacy) acculynxDocs = [legacy];
+  }
+
+  const times: number[] = [];
+  for (const doc of acculynxDocs) {
+    if (doc?.lastSyncAt) times.push(new Date(doc.lastSyncAt).getTime());
+  }
+  if ((repcard as any)?.lastSyncAt) times.push(new Date((repcard as any).lastSyncAt).getTime());
+
+  // Never invent a value: if nothing has ever synced successfully, say so with null
+  // rather than guessing or falling back to "now".
+  return times.length ? new Date(Math.min(...times)).toISOString() : null;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -38,9 +78,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // app-user directories). Load it once per request and hand the same object to
     // both calls instead of letting each one re-run those unbounded scans.
     const shared = await loadSharedRosterData();
-    const [curRowsRaw, prevRowsRaw] = await Promise.all([
+    const [curRowsRaw, prevRowsRaw, syncedAt] = await Promise.all([
       computeSalesRows(cur, shared),
       computeSalesRows(prev, shared),
+      resolveSyncedAt(),
     ]);
     const curRows = curRowsRaw.map(toSalesRow);
     const prevRows = prevRowsRaw.map(toSalesRow);
@@ -75,6 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       window: w,
+      syncedAt,
       scope: { level: scope.level, label: "", count: inScope.length },
       totals,
       previous,
