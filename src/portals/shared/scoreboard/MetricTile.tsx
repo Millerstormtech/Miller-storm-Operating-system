@@ -10,6 +10,15 @@ const NEUTRAL = "#6b7280";
 const TRACK = "#e5e7eb";
 const NOTCH = "#111827";
 
+// The goal link is hidden until My Goals launches (no goals are set yet, the
+// backfill is deliberately unapplied). Flip to true to bring back
+// "Set your goals" / "Edit goals" on every tile at once -- this is the only
+// place that decides whether the link renders, for all three ScoreboardHome
+// tiles, since they all render through this one component. The `onSetGoal`
+// prop, its wiring in ScoreboardHome.tsx, and the /sales/plan route are left
+// untouched, so flipping this one flag is the entire restore.
+const SHOW_GOAL_LINK = false;
+
 /**
  * One scoreboard tile: label, value, an honest trend, and (when a goal
  * exists) a progress bar with a pace notch. Every calculation here is
@@ -17,9 +26,11 @@ const NOTCH = "#111827";
  * layout and which pre-computed piece to show.
  *
  * The goal link ("Set your goals" / "Edit goals") renders whenever a caller
- * supplies onSetGoal, in BOTH goal states. It is the only route into the My
- * Goals screen (/sales/plan) anywhere in the app, so it must stay reachable
- * even after a goal has been set, not just before.
+ * supplies onSetGoal AND SHOW_GOAL_LINK is true, in BOTH goal states. It is
+ * the only route into the My Goals screen (/sales/plan) anywhere in the app,
+ * so once re-enabled it must stay reachable even after a goal has been set,
+ * not just before. Currently SHOW_GOAL_LINK is false, so My Goals has no UI
+ * entry point at all (see SHOW_GOAL_LINK above for why).
  */
 export function MetricTile(props: {
   label: string;
@@ -134,7 +145,7 @@ export function MetricTile(props: {
         </div>
       )}
 
-      {onSetGoal && (
+      {SHOW_GOAL_LINK && onSetGoal && (
         <button
           type="button"
           onClick={onSetGoal}
