@@ -338,7 +338,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   }
 
   String _buildVideoHtml(String embedUrl, bool isCompleted) {
-    final isDirectVideo = embedUrl.contains('/uploads/') || 
+    // Privileged leadership roles may always fast-forward/skip (as if the video
+    // were already completed) — matches the web's `isPrivileged || completed`
+    // seek rule. Without this, leaders were seek-locked in the app but not on web.
+    isCompleted = isCompleted || widget.isPrivileged;
+    final isDirectVideo = embedUrl.contains('/uploads/') ||
                           embedUrl.endsWith('.mp4') || 
                           embedUrl.endsWith('.mov') || 
                           embedUrl.endsWith('.webm') ||
