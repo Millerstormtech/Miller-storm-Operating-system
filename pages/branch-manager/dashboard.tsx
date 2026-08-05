@@ -1,11 +1,11 @@
 import type { NextPage } from "next";
 import { BranchManagerLayout } from "../../src/portals/branch-manager/BranchManagerLayout";
-import { BranchManagerDashboard } from "../../src/portals/branch-manager/BranchManagerDashboard";
+import { ScoreboardHome } from "../../src/portals/shared/scoreboard/ScoreboardHome";
 
 const BranchManagerDashboardPage: NextPage = () => {
   return (
     <BranchManagerLayout currentView="dashboard">
-      <BranchManagerDashboard />
+      <ScoreboardHome />
     </BranchManagerLayout>
   );
 };
