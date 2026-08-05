@@ -12,7 +12,6 @@ export const marketingSidebarItems = [
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "ai-chat", label: "Jay's AI Clone", toggleKey: "aiAssistant" },
-  { id: "my-tasks", label: "My Tasks", toggleKey: "taskTracker" },
   { id: "profile", label: "Profile", toggleKey: "profile" },
 ];
 
