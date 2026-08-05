@@ -7,9 +7,13 @@ import {
   fmtRate,
   fmtConversionRate,
   trendLabel,
+  formatSyncedAt,
+  scopeLabel,
+  scopeLine,
+  contractsSubtitle,
 } from "./display";
 import { conversions } from "./metrics";
-import type { Totals } from "./types";
+import type { Totals, Scope } from "./types";
 
 const t = (over: Partial<Totals>): Totals => ({ revenue: 0, knocks: 0, claims: 0, contracts: 0, ...over });
 
@@ -188,5 +192,157 @@ describe("trendLabel", () => {
       expect(trendLabel(null, null, "week")).toBeNull();
       expect(trendLabel(null, null, "year")).toBeNull();
     });
+  });
+});
+
+describe("formatSyncedAt (pure -- `now` is always passed in, never read from the clock)", () => {
+  const now = new Date("2026-08-03T18:00:00.000Z");
+
+  it("null means the freshness itself is unknown, not 'never synced' -- say so honestly", () => {
+    const text = formatSyncedAt(null, now);
+    expect(text.toLowerCase()).toContain("unknown");
+    expect(text).not.toMatch(/—/);
+  });
+  it("never implies freshness on null (no 'just now', no 'today')", () => {
+    const text = formatSyncedAt(null, now).toLowerCase();
+    expect(text).not.toContain("just now");
+    expect(text).not.toContain("today");
+  });
+  it("under a minute ago", () => {
+    const t = new Date(now.getTime() - 30 * 1000).toISOString();
+    expect(formatSyncedAt(t, now).toLowerCase()).toContain("less than a minute");
+  });
+  it("singular minute", () => {
+    const t = new Date(now.getTime() - 60 * 1000).toISOString();
+    expect(formatSyncedAt(t, now)).toContain("1 minute ago");
+    expect(formatSyncedAt(t, now)).not.toContain("1 minutes ago");
+  });
+  it("plural minutes", () => {
+    const t = new Date(now.getTime() - 12 * 60 * 1000).toISOString();
+    expect(formatSyncedAt(t, now)).toContain("12 minutes ago");
+  });
+  it("boundary: 59 minutes stays in minutes, not hours", () => {
+    const t = new Date(now.getTime() - 59 * 60 * 1000).toISOString();
+    expect(formatSyncedAt(t, now)).toContain("59 minutes ago");
+  });
+  it("boundary: exactly 60 minutes rolls to 1 hour", () => {
+    const t = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    expect(formatSyncedAt(t, now)).toContain("1 hour ago");
+    expect(formatSyncedAt(t, now)).not.toContain("1 hours ago");
+  });
+  it("plural hours", () => {
+    const t = new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString();
+    expect(formatSyncedAt(t, now)).toContain("5 hours ago");
+  });
+  it("boundary: 23 hours stays in hours, not days", () => {
+    const t = new Date(now.getTime() - 23 * 60 * 60 * 1000).toISOString();
+    expect(formatSyncedAt(t, now)).toContain("23 hours ago");
+  });
+  it("boundary: exactly 24 hours rolls to 1 day", () => {
+    const t = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    expect(formatSyncedAt(t, now)).toContain("1 day ago");
+    expect(formatSyncedAt(t, now)).not.toContain("1 days ago");
+  });
+  it("plural days, still under a week", () => {
+    const t = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    expect(formatSyncedAt(t, now)).toContain("3 days ago");
+  });
+  it("a week or more falls back to an absolute date, not a huge day count", () => {
+    const t = new Date(now.getTime() - 9 * 24 * 60 * 60 * 1000).toISOString();
+    const text = formatSyncedAt(t, now);
+    expect(text).not.toContain("days ago");
+    expect(text).toMatch(/\d{4}/); // contains a year
+  });
+  it("a sync timestamp in the future (clock skew) never renders a negative 'ago'", () => {
+    const t = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+    const text = formatSyncedAt(t, now);
+    expect(text).not.toContain("-");
+    expect(text).not.toContain("ago");
+  });
+  it("no em dash in any branch", () => {
+    expect(formatSyncedAt(null, now)).not.toMatch(/—/);
+    expect(formatSyncedAt(new Date(now.getTime() - 5000).toISOString(), now)).not.toMatch(/—/);
+    expect(formatSyncedAt(new Date(now.getTime() - 9 * 86400000).toISOString(), now)).not.toMatch(/—/);
+  });
+});
+
+describe("scopeLabel (honest scope-line label; never invents a name)", () => {
+  it("self has no headcount line -- empty label, component omits it entirely", () => {
+    expect(scopeLabel({ level: "self", userId: "u1" })).toBe("");
+  });
+  it("team with a resolved name", () => {
+    expect(scopeLabel({ level: "team", team: "Gunner" })).toBe("Gunner");
+  });
+  it("team that resolved to null (name didn't map via the org chart) -- truthful fallback, not invented", () => {
+    const label = scopeLabel({ level: "team", team: null });
+    expect(label).not.toBe("");
+    expect(label.toLowerCase()).not.toContain("null");
+  });
+  it("branch with a resolved name", () => {
+    expect(scopeLabel({ level: "branch", branch: "Fort Worth" })).toBe("Fort Worth");
+  });
+  it("branch that resolved to null -- truthful fallback, not invented", () => {
+    const label = scopeLabel({ level: "branch", branch: null });
+    expect(label).not.toBe("");
+    expect(label.toLowerCase()).not.toContain("null");
+  });
+  it("company scope", () => {
+    expect(scopeLabel({ level: "company" })).toBe("Company-wide");
+  });
+  it("no em dash in any level", () => {
+    const scopes: Scope[] = [
+      { level: "self", userId: "u1" },
+      { level: "team", team: "Gunner" },
+      { level: "team", team: null },
+      { level: "branch", branch: "Fort Worth" },
+      { level: "branch", branch: null },
+      { level: "company" },
+    ];
+    for (const s of scopes) expect(scopeLabel(s)).not.toMatch(/—/);
+  });
+});
+
+describe("scopeLine (the full headcount line: label + count, distinct from the rank pool)", () => {
+  it("self renders nothing -- omitted for a rep, not a stray separator", () => {
+    expect(scopeLine({ level: "self", label: "", count: 1 })).toBeNull();
+  });
+  it("team scope: label, middle dot, plural count", () => {
+    expect(scopeLine({ level: "team", label: "Gunner", count: 13 })).toBe("Gunner · 13 people contributed");
+  });
+  it("branch scope reads the resolved branch name", () => {
+    expect(scopeLine({ level: "branch", label: "Dallas", count: 13 })).toBe("Dallas · 13 people contributed");
+  });
+  it("company scope", () => {
+    expect(scopeLine({ level: "company", label: "Company-wide", count: 47 })).toBe(
+      "Company-wide · 47 people contributed"
+    );
+  });
+  it("singular: exactly 1 contributor reads 'person', not 'people'", () => {
+    expect(scopeLine({ level: "branch", label: "Dallas", count: 1 })).toBe("Dallas · 1 person contributed");
+  });
+  it("a genuine zero headcount still renders as a real, distinct state -- not hidden, not fabricated", () => {
+    expect(scopeLine({ level: "branch", label: "Dallas", count: 0 })).toBe("Dallas · 0 people contributed");
+  });
+  it("never a stray leading separator even if label were somehow empty for a non-self level", () => {
+    const text = scopeLine({ level: "branch", label: "", count: 5 });
+    expect(text).not.toMatch(/^\s*·/);
+  });
+  it("no em dash", () => {
+    expect(scopeLine({ level: "team", label: "Gunner", count: 13 })).not.toMatch(/—/);
+  });
+});
+
+describe("contractsSubtitle (the Revenue tile's 'across N contracts' caption)", () => {
+  it("plural", () => {
+    expect(contractsSubtitle(2)).toBe("across 2 contracts");
+  });
+  it("singular", () => {
+    expect(contractsSubtitle(1)).toBe("across 1 contract");
+  });
+  it("a genuine zero is a real, distinct state, not blank", () => {
+    expect(contractsSubtitle(0)).toBe("across 0 contracts");
+  });
+  it("no em dash", () => {
+    expect(contractsSubtitle(4)).not.toMatch(/—/);
   });
 });

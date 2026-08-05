@@ -10,6 +10,7 @@ import type { Totals } from "../../src/lib/scoreboard/types";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
 import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
 import { conversions, trend, rateDir } from "../../src/lib/scoreboard/metrics";
+import { scopeLabel } from "../../src/lib/scoreboard/display";
 import { previousSlice, periodEndFor, paceFraction } from "../../src/lib/scoreboard/periods";
 import { toSalesRow } from "../../src/lib/scoreboard/rows";
 import { scaleTargetToWindow } from "../../src/lib/scoreboard/goals";
@@ -134,7 +135,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       window: w,
       syncedAt,
-      scope: { level: scope.level, label: "", count: inScope.length },
+      // label is the honest, non-empty name for the scope headcount line (the UI's
+      // "Dallas · 13 people contributed"), never a fabricated placeholder. See
+      // scopeLabel() for why "self" is empty and how a null team/branch (a leader
+      // whose app-account name never matched the org chart) gets a truthful
+      // fallback instead of a stray "null".
+      scope: { level: scope.level, label: scopeLabel(scope), count: inScope.length },
       totals,
       previous,
       trends: {
