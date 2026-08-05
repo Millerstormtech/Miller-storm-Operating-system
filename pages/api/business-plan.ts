@@ -4,7 +4,11 @@ import { UserModel } from '../../src/lib/models/User';
 import { BusinessPlanModel } from '../../src/lib/models/BusinessPlan';
 import { requireUser, allowMethods } from '../../src/lib/auth';
 import { buildBusinessPlanUpdate } from '../../src/lib/businessPlan/update';
-import { resolveBusinessPlanWrite, stripMonthlyGoalFields } from '../../src/lib/businessPlan/authorization';
+import {
+  resolveBusinessPlanWrite,
+  buildAuthorizedPlanPayload,
+  isValidRequestedUserId
+} from '../../src/lib/businessPlan/authorization';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -15,6 +19,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth = requireUser(req, res);
     if (!auth) return;
     const { businessPlan, userId: requestedUserId } = req.body;
+
+    // req.body is `any`, so nothing at the type level stops a client from
+    // sending a Mongo operator object (e.g. { "$ne": "x" }) instead of a
+    // real id string. Reject that BEFORE any DB read/write -- both the
+    // target lookup below and the eventual UserModel.updateOne({ id: userId
+    // }, ...) would otherwise turn a non-string value straight into a raw
+    // Mongo filter.
+    if (!isValidRequestedUserId(requestedUserId)) {
+      return res.status(400).json({ error: 'userId must be a string' });
+    }
 
     // A rep saves THEIR OWN plan by default — the trusted session id, not
     // any body userId. admin and sales-team-lead (the same "privileged"
@@ -27,15 +41,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // why a sales-team-lead is scoped to their own reports (managerId match)
     // while admin is not, and why the three monthly goal fields always get
     // stripped once the write target isn't the caller.
+    let targetExists: boolean | undefined;
     let targetManagerId: string | null | undefined;
     if (
-      auth.role === 'sales-team-lead' &&
+      (auth.role === 'admin' || auth.role === 'sales-team-lead') &&
       requestedUserId &&
       requestedUserId !== auth.sub
     ) {
+      // Looked up for BOTH privileged roles, not just sales-team-lead: admin
+      // is otherwise unscoped, so this existence check is its only defense
+      // against the upsert:true write below silently creating a phantom
+      // user from a typo'd or fabricated id. For sales-team-lead this also
+      // supplies the managerId the scope check needs.
       const targetUser = await UserModel.findOne({ id: requestedUserId })
         .select('managerId')
         .lean();
+      targetExists = !!targetUser;
       targetManagerId = targetUser?.managerId ?? null;
     }
 
@@ -43,24 +64,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       authUserId: auth.sub,
       authRole: auth.role,
       requestedUserId,
+      targetExists,
       targetManagerId
     });
 
     if (!decision.allowed) {
-      // Same response whether requestedUserId names a real user or not, so
-      // a probing caller can never use this endpoint to learn which user
-      // ids exist.
+      if (decision.reason === 'not-found') {
+        // Same convention the GET branch below already uses for a
+        // privileged caller's nonexistent single-user lookup. Not a new
+        // leak: GET already reveals existence to privileged roles, and this
+        // branch is only reachable for admin/sales-team-lead in the first
+        // place (a non-privileged caller never triggers the DB lookup
+        // above, so it can only ever get 'forbidden').
+        return res.status(404).json({ error: 'User not found' });
+      }
+      // Same response whether the target is out of the caller's scope or
+      // (for a non-privileged caller) simply someone else entirely, so a
+      // probing caller can never use this endpoint to learn which user ids
+      // exist or who reports to whom.
       return res.status(403).json({ error: 'Forbidden' });
     }
 
     const userId = decision.targetUserId;
-    // "Each person sets their own goals": once the write target isn't the
-    // caller, the three monthly goal fields are removed from the payload
-    // before anything is built from it — enforced here, not by trusting
-    // that a client never sends those keys.
-    const planPayload = decision.stripGoals
-      ? stripMonthlyGoalFields(businessPlan)
-      : businessPlan;
+    // "Each person sets their own goals": buildAuthorizedPlanPayload is the
+    // ONLY place that strips the three monthly goal fields, and the handler
+    // routes every write through it rather than re-deriving the strip
+    // decision inline here. See src/lib/businessPlan/authorization.ts for
+    // why that single call site matters.
+    const planPayload = buildAuthorizedPlanPayload(decision, businessPlan);
 
     try {
       // Field-level update, not a whole-object replace: a key the caller
