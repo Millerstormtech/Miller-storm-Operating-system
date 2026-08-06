@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
-import { BusinessPlanPage } from "../../src/portals/sales/BusinessPlanPage";
+import { BusinessPlanPage, goalsPageTitle } from "../../src/portals/sales/BusinessPlanPage";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
@@ -55,7 +55,7 @@ const Plan: NextPage = () => {
   }
 
   return (
-    <SalesLayout currentView="plan" userName={user.name} userId={user.id}>
+    <SalesLayout currentView="plan" userName={user.name} userId={user.id} pageTitle={goalsPageTitle(profile.role)}>
       <BusinessPlanPage profile={profile} onProfileChange={handleProfileChange} />
     </SalesLayout>
   );

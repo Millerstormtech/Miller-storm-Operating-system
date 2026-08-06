@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { resolveSubdomain } from './src/lib/subdomain';
 
 export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
@@ -33,19 +34,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Extract subdomain (e.g., "jett" from "jett.localhost:3000")
-  const parts = hostname.split('.');
-  
-  // Check if there's a subdomain (more than just "localhost:3000" or "millerstorm.tech")
-  // Only rewrite if there's a subdomain before the main domain
-  if (parts.length >= 3 && parts[0] !== 'www' && !parts[0].includes(':')) {
-    const subdomain = parts[0];
-    
+  // Extract subdomain (e.g., "jett" from "jett.millerstorm.tech"). Never
+  // treats an IP host (IPv4 or bracketed IPv6), localhost, or "www" as a
+  // subdomain, so hitting the app by IP address never 404s every page.
+  const subdomain = resolveSubdomain(hostname);
+
+  if (subdomain) {
     // Rewrite to /[username] route
     url.pathname = `/${subdomain}${pathname === '/' ? '' : pathname}`;
     return NextResponse.rewrite(url);
   }
-  
+
   return NextResponse.next();
 }
 

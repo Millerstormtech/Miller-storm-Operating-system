@@ -24,7 +24,7 @@ function uniqueIndex(buckets: Bucket[], pick: (b: Bucket) => string): Map<string
   return idx;
 }
 
-export function mergeLeaderboard(acx: AcxAgg[], rc: RcAgg[]): MergedRow[] {
+export function mergeLeaderboard(acx: readonly AcxAgg[], rc: RcAgg[]): MergedRow[] {
   const buckets: Bucket[] = rc.map((r) => ({
     id: `rc:${r.repcardUserId}`, name: r.name, branch: r.branch,
     email: r.email, phone: r.phone, nameKey: r.nameKey,

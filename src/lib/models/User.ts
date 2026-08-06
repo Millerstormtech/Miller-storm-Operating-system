@@ -15,6 +15,13 @@ const publicProfileSchema = new Schema(
 const businessPlanSchema = new Schema(
   {
     revenueGoal: Number,
+    // Phase 2: the three direct-entry MONTHLY targets the Scoreboard measures
+    // against. These are the source of truth. The legacy fields below are still
+    // written (derived) so the Flutter planner and the admin roll-ups keep
+    // working; see src/lib/scoreboard/goals.ts. Absent = not set (no goal bar).
+    monthlyRevenueTarget: Number,
+    monthlyKnockTarget: Number,
+    monthlyClaimsTarget: Number,
     daysPerWeek: Number,
     territories: [String],
     selectedPresetId: String,

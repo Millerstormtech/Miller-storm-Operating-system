@@ -33,9 +33,92 @@ export interface SalesLeaderRow {
   byBranch: Record<string, { verifiedKnocks: number; leadsCreated: number; filed: number; won: number; revenue: number }>;
 }
 
-export async function computeSalesRows(range: { start: Date; end: Date }): Promise<SalesLeaderRow[]> {
+// Normalize all-time AccuLynx identities (no date filter, purely a function of the
+// raw rows) -> shared exactly as-is between callers, see loadSharedRosterData().
+function normalizeAcxAll(acxAllRaw: any[]) {
+  return acxAllRaw.map((r: any) => ({
+    repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
+    nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: "",
+    lead: 0, filed: 0, won: 0, revenue: 0,
+  }));
+}
+
+// Everything computeSalesRows needs that does NOT depend on the requested
+// {start,end} range: all-time AccuLynx identities, the all-time door-knocker
+// roster, the RepCard directory, the AccuLynx account roster, and the app-user
+// directory. Callers who need multiple ranges (e.g. current + previous period)
+// can load this once and pass it to every computeSalesRows() call instead of
+// re-running these unbounded scans per range.
+//
+// This object is SHARED across every computeSalesRows() call within a single
+// request (e.g. current period + previous period both read the same instance
+// concurrently via Promise.all). Treat it as immutable: the types below are
+// readonly on purpose, so a future normalization step that tries to sort,
+// push, or .set() onto any of these fields fails to compile instead of
+// silently corrupting the other in-flight range.
+export interface SharedRosterData {
+  readonly acxAll: ReadonlyArray<ReturnType<typeof normalizeAcxAll>[number]>;
+  readonly allTimeKnockers: ReadonlySet<string>;
+  readonly rcById: ReadonlyMap<string, any>;
+  readonly acctSets: Readonly<{ emails: ReadonlySet<string>; phones: ReadonlySet<string>; names: ReadonlySet<string> }>;
+  readonly byEmail: ReadonlyMap<string, any>;
+}
+
+export async function loadSharedRosterData(): Promise<SharedRosterData> {
+  await connectMongo();
+
+  // All AccuLynx deals per rep ALL-TIME (identity only) -> flags reps who have an
+  // AccuLynx account at all, so the "no AccuLynx" dot means a true link gap rather
+  // than merely "no sales in this range".
+  const acxAllRaw = await ScoringFactModel.aggregate([
+    { $match: { repExternalId: { $ne: null } } },
+    { $sort: { occurredAt: 1, _id: 1 } },
+    { $group: { _id: "$repExternalId", email: { $last: "$repEmail" }, phone: { $last: "$repPhone" }, name: { $last: "$repNameSnapshot" } } },
+  ]);
+  const acxAll = normalizeAcxAll(acxAllRaw);
+
+  // Reps who have knocked at least once ALL-TIME -> defines the door-knocker roster.
+  const knockerRows = await RepCardKnockFactModel.aggregate([
+    { $group: { _id: "$repcardUserId", k: { $sum: "$verifiedKnocks" } } },
+    { $match: { k: { $gte: 1 } } },
+  ]);
+  const allTimeKnockers = new Set<string>(knockerRows.map((r: any) => String(r._id)));
+
+  // RepCard directory -> roster identity + Branch/Team. Includes status/email/phone so
+  // idle reps (no knock facts in the range) can still be placed with zeros.
+  const rcUsers = await RepCardUserModel.find({}).select("repcardUserId name office team status email phone").lean();
+  const rcById = new Map<string, any>();
+  for (const u of rcUsers) rcById.set(String((u as any).repcardUserId), u);
+
+  // AccuLynx account roster -> normalized identity sets. A rep "has an account" when their
+  // email/phone/name matches any AccuLynx login (same cascade as sales). Empty collection
+  // (before the first sync) -> all matches false -> source falls back to the sales flag below.
+  const acctDocs = await AcculynxUserModel.find({}).select("email nameKey phone").lean();
+  const acctSets = { emails: new Set<string>(), phones: new Set<string>(), names: new Set<string>() };
+  for (const a of acctDocs as any[]) {
+    if (a.email) acctSets.emails.add(a.email);
+    if (a.phone) acctSets.phones.add(a.phone);
+    if (a.nameKey) acctSets.names.add(a.nameKey);
+  }
+
+  // Light app enrichment (never gating): match a Miller Storm user by email for the
+  // profile photo and the "You" highlight.
+  const appUsers = await UserModel.find({ deleted: { $ne: true }, testAccount: { $ne: true } }).select("id email headshotUrl name managerId").lean();
+  const byEmail = new Map<string, any>();
+  for (const u of appUsers) {
+    const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);
+  }
+
+  return { acxAll, allTimeKnockers, rcById, acctSets, byEmail };
+}
+
+export async function computeSalesRows(
+  range: { start: Date; end: Date },
+  shared?: SharedRosterData
+): Promise<SalesLeaderRow[]> {
   await connectMongo();
   const { start, end } = range;
+  const roster = shared ?? (await loadSharedRosterData());
 
   // AccuLynx deals aggregated per rep for the selected range.
   const acxRaw = await ScoringFactModel.aggregate([
@@ -79,39 +162,16 @@ export async function computeSalesRows(range: { start: Date; end: Date }): Promi
     } },
   ]);
 
-  // All AccuLynx deals per rep ALL-TIME (identity only) -> flags reps who have an
-  // AccuLynx account at all, so the "no AccuLynx" dot means a true link gap rather
-  // than merely "no sales in this range".
-  const acxAllRaw = await ScoringFactModel.aggregate([
-    { $match: { repExternalId: { $ne: null } } },
-    { $sort: { occurredAt: 1, _id: 1 } },
-    { $group: { _id: "$repExternalId", email: { $last: "$repEmail" }, phone: { $last: "$repPhone" }, name: { $last: "$repNameSnapshot" } } },
-  ]);
+  const allTimeKnockers = roster.allTimeKnockers;
+  const rcById = roster.rcById;
 
-  // Reps who have knocked at least once ALL-TIME -> defines the door-knocker roster.
-  const knockerRows = await RepCardKnockFactModel.aggregate([
-    { $group: { _id: "$repcardUserId", k: { $sum: "$verifiedKnocks" } } },
-    { $match: { k: { $gte: 1 } } },
-  ]);
-  const allTimeKnockers = new Set<string>(knockerRows.map((r: any) => String(r._id)));
-
-  // RepCard directory -> roster identity + Branch/Team. Includes status/email/phone so
-  // idle reps (no knock facts in the range) can still be placed with zeros.
-  const rcUsers = await RepCardUserModel.find({}).select("repcardUserId name office team status email phone").lean();
-  const rcById = new Map<string, any>();
-  for (const u of rcUsers) rcById.set(String((u as any).repcardUserId), u);
-
-  // Normalize windowed AccuLynx + all-time AccuLynx identities.
+  // Normalize windowed AccuLynx identities for this range.
   const acx = acxRaw.map((r: any) => ({
     repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
     nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: r.branch || "",
     lead: r.lead, filed: r.filed, won: r.won, revenue: r.revenue,
   }));
-  const acxAll = acxAllRaw.map((r: any) => ({
-    repExternalId: r._id, email: normEmail(r.email), phone: normPhone(r.phone),
-    nameKey: normName(r.name), name: r.name || "Unknown Rep", branch: "",
-    lead: 0, filed: 0, won: 0, revenue: 0,
-  }));
+  const acxAll = roster.acxAll;
 
   // Build the roster: everyone with in-range knocks (active or former), PLUS idle ACTIVE
   // door-knockers as zero rows. Former reps with no in-range activity fall off.
@@ -144,16 +204,7 @@ export async function computeSalesRows(range: { start: Date; end: Date }): Promi
     mergeLeaderboard(acxAll, rc).map((r) => [r.id, r.source === "both"] as [string, boolean])
   );
 
-  // AccuLynx account roster -> normalized identity sets. A rep "has an account" when their
-  // email/phone/name matches any AccuLynx login (same cascade as sales). Empty collection
-  // (before the first sync) -> all matches false -> source falls back to the sales flag below.
-  const acctDocs = await AcculynxUserModel.find({}).select("email nameKey phone").lean();
-  const acctSets = { emails: new Set<string>(), phones: new Set<string>(), names: new Set<string>() };
-  for (const a of acctDocs as any[]) {
-    if (a.email) acctSets.emails.add(a.email);
-    if (a.phone) acctSets.phones.add(a.phone);
-    if (a.nameKey) acctSets.names.add(a.nameKey);
-  }
+  const acctSets = roster.acctSets;
   // Roster identity by repcardUserId (rc values are already normalized) -> lets us match a
   // merged row (which only carries email) by phone/name too.
   const rcIdentityById = new Map<string, { email: string; phone: string; nameKey: string }>(
@@ -181,13 +232,7 @@ export async function computeSalesRows(range: { start: Date; end: Date }): Promi
   const dfwById = sumsById(mergeLeaderboard(acxForRegion("DFW"), rc));
   const commById = sumsById(mergeLeaderboard(acxForRegion("Commercial"), rc));
 
-  // Light app enrichment (never gating): match a Miller Storm user by email for the
-  // profile photo and the "You" highlight.
-  const appUsers = await UserModel.find({ deleted: { $ne: true }, testAccount: { $ne: true } }).select("id email headshotUrl name managerId").lean();
-  const byEmail = new Map<string, any>();
-  for (const u of appUsers) {
-    const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);
-  }
+  const byEmail = roster.byEmail;
 
   // Rank order: Contract Amount, then break ties by Contracts -> Claims Filed ->
   // Leads Created -> Verified Door Knocks. Shared with the board component so the
