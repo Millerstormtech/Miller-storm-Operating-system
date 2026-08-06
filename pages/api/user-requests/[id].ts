@@ -105,6 +105,19 @@ export default async function handler(
           featureToggles: defaultToggles
         });
 
+        // The approved account joins its branch group chat(s) and every public
+        // StormChat group, matching the admin "Add User" path. Best-effort: a
+        // group-sync failure must not block the approval itself.
+        try {
+          const { addUserToPublicGroups } = await import('../../../src/lib/publicGroups');
+          const { addUserToBranchGroups } = await import('../../../src/lib/branchGroup');
+          const branches = (newUser.branches && newUser.branches.length > 0) ? newUser.branches : [newUser.territory];
+          await addUserToBranchGroups(String(newUser._id), branches);
+          await addUserToPublicGroups(String(newUser._id));
+        } catch (e) {
+          console.error('[user-requests] public/branch group sync failed:', e);
+        }
+
         // Update request status
         userRequest.status = "approved";
         userRequest.reviewedAt = new Date();
