@@ -32,6 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userHeadshotUrl = '';
   String? _userId;
   String _managerName = '';
+  String _branchManagerName = '';
   bool _isEditMode = false;
   bool _isSaving = false;
   bool _isUploadingImage = false;
@@ -47,7 +48,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'Fort Worth',
   ];
 
-  bool _showTerritoryDropdown = false;
 
   @override
   void initState() {
@@ -113,6 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (managerId != null && managerId.toString().isNotEmpty) {
               _fetchManagerName(managerId.toString());
             }
+            _fetchBranchManager();
             return;
           }
         } catch (e) {
@@ -153,6 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (managerId != null && managerId.toString().isNotEmpty) {
           _fetchManagerName(managerId.toString());
         }
+        _fetchBranchManager();
       }
     } catch (e) {
       print('Error loading user data: $e');
@@ -172,6 +174,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       print('Error fetching manager: $e');
+    }
+  }
+
+  // The Branch Manager for this rep's branch (read-only). Resolved from the org
+  // chart: the branch-manager account whose branch matches the rep's territory.
+  Future<void> _fetchBranchManager() async {
+    try {
+      final res = await api.get(Uri.parse('https://millerstorm.tech/api/org-chart'));
+      if (res.statusCode == 200) {
+        final users = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
+        final branches = _userTerritories.map((t) => t.trim().toLowerCase()).toSet();
+        final bm = users.firstWhere(
+          (u) =>
+              (u['role'] == 'branch-manager' || ((u['roles'] as List?)?.contains('branch-manager') ?? false)) &&
+              branches.contains((u['territory'] ?? '').toString().trim().toLowerCase()),
+          orElse: () => <String, dynamic>{},
+        );
+        if (mounted) setState(() => _branchManagerName = (bm['name'] ?? '').toString());
+      }
+    } catch (e) {
+      print('Error fetching branch manager: $e');
     }
   }
 
@@ -718,17 +741,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   _buildTerritoryField(),
                   const SizedBox(height: 16),
-                  if (_managerName.isNotEmpty) ...[
-                    _buildTextField(
-                      label: 'Sales Team Lead',
-                      controller: TextEditingController(text: _managerName),
-                      icon: Icons.manage_accounts_outlined,
-                      enabled: false,
-                      helperText: 'Assigned by admin',
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -819,16 +831,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
           _buildTerritoryField(),
           const SizedBox(height: 16),
-          if (_managerName.isNotEmpty) ...[
-            _buildTextField(
-              label: 'Sales Team Lead',
-              controller: TextEditingController(text: _managerName),
-              icon: Icons.manage_accounts_outlined,
-              enabled: false,
-              helperText: 'Assigned by admin',
-            ),
-            const SizedBox(height: 16),
-          ],
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
@@ -887,127 +889,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // Branch, Sales Team Lead, and Branch Manager — all READ-ONLY. They are set at
+  // registration / by an admin in User Management; the rep cannot change them here.
   Widget _buildTerritoryField() {
-    String displayText = _userTerritories.isEmpty ? 'Select Branch' : _userTerritories.join(', ');
-    
+    final branch = _userTerritories.isEmpty ? '—' : _userTerritories.join(', ');
+    const note = 'Set by your admin — cannot be changed here';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Branch',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: _textDark,
-          ),
+        _buildTextField(
+          label: 'Branch',
+          controller: TextEditingController(text: branch),
+          icon: Icons.apartment_outlined,
+          enabled: false,
+          helperText: note,
         ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _showTerritoryDropdown = !_showTerritoryDropdown;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: _white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _showTerritoryDropdown ? _primary : _border, width: _showTerritoryDropdown ? 2 : 1),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    displayText,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: _userTerritories.isEmpty ? _textLight : _textDark,
-                    ),
-                  ),
-                ),
-                Icon(
-                  _showTerritoryDropdown ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                  color: _textLight,
-                ),
-              ],
-            ),
-          ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          label: 'Sales Team Lead',
+          controller: TextEditingController(text: _managerName.isNotEmpty ? _managerName : '—'),
+          icon: Icons.manage_accounts_outlined,
+          enabled: false,
+          helperText: note,
         ),
-        if (_showTerritoryDropdown) ...[
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: _white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _border),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: _availableTerritories.map((territory) {
-                final isSelected = _userTerritories.contains(territory);
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      if (isSelected) {
-                        _userTerritories.remove(territory);
-                      } else {
-                        _userTerritories.add(territory);
-                      }
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected ? _primary.withOpacity(0.05) : Colors.transparent,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: isSelected ? _primary : Colors.transparent,
-                            border: Border.all(
-                              color: isSelected ? _primary : _border,
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: isSelected
-                              ? const Icon(
-                                  Icons.check,
-                                  size: 14,
-                                  color: _white,
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            territory,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: _textDark,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
+        const SizedBox(height: 16),
+        _buildTextField(
+          label: 'Branch Manager',
+          controller: TextEditingController(text: _branchManagerName.isNotEmpty ? _branchManagerName : '—'),
+          icon: Icons.badge_outlined,
+          enabled: false,
+          helperText: note,
+        ),
       ],
     );
   }

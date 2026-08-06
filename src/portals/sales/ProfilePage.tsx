@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect, ChangeEvent } from "react";
+import { useState, useRef, ChangeEvent } from "react";
 import { UserProfile } from "../../types";
 
 export function ProfilePage(props: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
+  // Read-only, resolved by the page from the org chart.
+  teamLeadName?: string;
+  branchManagerName?: string;
 }) {
   const profile = props.profile;
   const initials =
@@ -12,8 +15,6 @@ export function ProfilePage(props: {
       : "J";
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const territoryRef = useRef<HTMLDivElement | null>(null);
-  const [isTerritoryOpen, setIsTerritoryOpen] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const saveNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   function update(next: Partial<UserProfile>) {
@@ -46,47 +47,14 @@ export function ProfilePage(props: {
       });
   }
 
-  // Real branches (same list the admin User Management "Branch" field uses).
-  const territoryOptions = [
-    "Dallas",
-    "West Texas",
-    "Fort Worth"
-  ];
-
-  const selectedTerritories =
-    profile.territory && profile.territory.length > 0
-      ? profile.territory
-          .split("·")
-          .map((t) => t.trim())
-          .filter((t) => t.length > 0)
-          // Drop stale/legacy values (old territories) so only real branches show.
-          .filter((t) => territoryOptions.includes(t))
-      : [];
-
-  useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      if (!territoryRef.current) {
-        return;
-      }
-      if (!territoryRef.current.contains(event.target as Node)) {
-        setIsTerritoryOpen(false);
-      }
-    }
-
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsTerritoryOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    document.addEventListener("keydown", handleKeydown);
-
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeydown);
-    };
-  }, []);
+  // Branch is display-only here: it's set at registration / by an admin and the
+  // rep cannot change it. Show the real branch names, dropping any legacy value.
+  const branchDisplay =
+    (profile.branches && profile.branches.length > 0
+      ? profile.branches
+      : (profile.territory || "").split("·").map((t) => t.trim()))
+      .filter((t) => ["Dallas", "West Texas", "Fort Worth"].includes(t))
+      .join(", ") || "—";
 
   return (
     <div className="profile-page">
@@ -152,78 +120,21 @@ export function ProfilePage(props: {
               placeholder="Your mobile number"
             />
           </label>
-          <div
-            className="field territory-field"
-            ref={territoryRef}
-            onBlur={(event) => {
-              const nextTarget = event.relatedTarget as Node | null;
-              if (nextTarget && territoryRef.current?.contains(nextTarget)) {
-                return;
-              }
-              setIsTerritoryOpen(false);
-            }}
-          >
+          <label className="field">
             <span className="field-label">Branch</span>
-            <button
-              type="button"
-              className={
-                isTerritoryOpen
-                  ? "field-input territory-trigger territory-trigger-open"
-                  : "field-input territory-trigger"
-              }
-              aria-haspopup="listbox"
-              aria-expanded={isTerritoryOpen}
-              onClick={() => setIsTerritoryOpen((prev) => !prev)}
-            >
-              <span
-                className={
-                  selectedTerritories.length > 0
-                    ? "territory-trigger-value"
-                    : "territory-trigger-placeholder"
-                }
-              >
-                {selectedTerritories.length > 0
-                  ? selectedTerritories.join(", ")
-                  : "Select branch"}
-              </span>
-              <span className="territory-trigger-icon">▾</span>
-            </button>
-            {isTerritoryOpen && (
-              <div
-                className="territory-dropdown"
-                role="listbox"
-                aria-multiselectable="true"
-              >
-                {territoryOptions.map((option) => {
-                  const checked = selectedTerritories.includes(option);
-                  return (
-                    <label
-                      key={option}
-                      className={
-                        checked
-                          ? "territory-option territory-option-active"
-                          : "territory-option"
-                      }
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          const next = e.target.checked
-                            ? [...selectedTerritories, option]
-                            : selectedTerritories.filter(
-                                (item) => item !== option
-                              );
-                          update({ territory: next.join(" · "), branches: next });
-                        }}
-                      />
-                      <span>{option}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+            <input className="field-input field-input-disabled" value={branchDisplay} disabled />
+            <span className="field-help">Set by your admin — cannot be changed here</span>
+          </label>
+          <label className="field">
+            <span className="field-label">Sales Team Lead</span>
+            <input className="field-input field-input-disabled" value={props.teamLeadName || "—"} disabled />
+            <span className="field-help">Set by your admin — cannot be changed here</span>
+          </label>
+          <label className="field">
+            <span className="field-label">Branch Manager</span>
+            <input className="field-input field-input-disabled" value={props.branchManagerName || "—"} disabled />
+            <span className="field-help">Set by your admin — cannot be changed here</span>
+          </label>
         </div>
       </div>
       <div className="profile-save-row">

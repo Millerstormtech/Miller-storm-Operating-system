@@ -9,16 +9,38 @@ import { UserProfile } from "../../src/types";
 const Profile: NextPage = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // Read-only names shown on the profile: the rep's Sales Team Lead (by
+  // managerId) and their Branch Manager (the branch-manager on their branch).
+  const [teamLeadName, setTeamLeadName] = useState("");
+  const [branchManagerName, setBranchManagerName] = useState("");
 
   useEffect(() => {
     async function loadUserProfile() {
       if (!user?.id) return;
-      
+
       try {
         const userRes = await fetch(`/api/users/${user.id}`);
         if (userRes.ok) {
           const userProfile = await userRes.json();
           setProfile(userProfile);
+
+          // Resolve the team lead + branch manager names from the org chart
+          // (available to any authed user; only non-sensitive fields).
+          try {
+            const orgRes = await fetch("/api/org-chart");
+            if (orgRes.ok) {
+              const users = await orgRes.json();
+              const lead = users.find((u: any) => u.id === userProfile.managerId);
+              setTeamLeadName(lead?.name || "");
+              const branch = String(userProfile.territory || "").trim().toLowerCase();
+              const bm = users.find(
+                (u: any) =>
+                  (u.role === "branch-manager" || (u.roles || []).includes("branch-manager")) &&
+                  String(u.territory || "").trim().toLowerCase() === branch
+              );
+              setBranchManagerName(bm?.name || "");
+            }
+          } catch { /* names are best-effort */ }
         }
       } catch (error) {
         console.error("Failed to load user profile:", error);
@@ -47,7 +69,12 @@ const Profile: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["sales"]}>
       <SalesLayout currentView="profile" userName={user.name} userId={user.id}>
-        <ProfilePage profile={profile} onProfileChange={handleProfileChange} />
+        <ProfilePage
+          profile={profile}
+          onProfileChange={handleProfileChange}
+          teamLeadName={teamLeadName}
+          branchManagerName={branchManagerName}
+        />
       </SalesLayout>
     </ProtectedRoute>
   );
