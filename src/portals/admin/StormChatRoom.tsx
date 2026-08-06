@@ -162,10 +162,10 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   // Pin/unpin: a moderator in a group (group admin or system admin); in a DM
   // either member. Matches the server rule.
   const canPin = isDirect ? isGroupMember : (isGroupAdmin || isAdmin);
-  // The banner shows the most recently pinned message.
-  const pinnedMessage = messages
+  // The banner lists every pinned message, newest pin first.
+  const pinnedMessages = messages
     .filter((m) => m.pinned)
-    .sort((a, b) => new Date(b.pinnedAt || 0).getTime() - new Date(a.pinnedAt || 0).getTime())[0] || null;
+    .sort((a, b) => new Date(b.pinnedAt || 0).getTime() - new Date(a.pinnedAt || 0).getTime());
 
   // Pin or unpin a message; updates the list in place on success.
   async function togglePin(msg: ChatMessage) {
@@ -1208,31 +1208,38 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
         </div>
       </div>
 
-      {/* Pinned message banner */}
-      {pinnedMessage && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
-          <span style={{ fontSize: 15 }}>📌</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>
-              Pinned{pinnedMessage.pinnedByName ? ` · ${pinnedMessage.pinnedByName}` : ''}
-            </div>
-            <div style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              <strong>{pinnedMessage.senderName}: </strong>
-              {pinnedMessage.messageType === 'image' ? '📷 Photo'
-                : pinnedMessage.messageType === 'video' ? '🎬 Video'
-                : pinnedMessage.messageType === 'poll' ? `📊 ${pinnedMessage.poll?.question || 'Poll'}`
-                : (pinnedMessage.message || '')}
-            </div>
+      {/* Pinned messages banner — every pinned message, scrolls if many. */}
+      {pinnedMessages.length > 0 && (
+        <div style={{ maxHeight: 168, overflowY: 'auto', background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', padding: '7px 16px 3px' }}>
+            📌 {pinnedMessages.length} Pinned message{pinnedMessages.length === 1 ? '' : 's'}
           </div>
-          {canPin && (
-            <button
-              onClick={() => togglePin(pinnedMessage)}
-              title="Unpin"
-              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#92400e', fontSize: 13, fontWeight: 700, flexShrink: 0 }}
-            >
-              Unpin
-            </button>
-          )}
+          {pinnedMessages.map((pm) => (
+            <div key={pm._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderTop: '1px solid #fef3c7' }}>
+              <span style={{ fontSize: 14 }}>📌</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>
+                  Pinned{pm.pinnedByName ? ` · ${pm.pinnedByName}` : ''}
+                </div>
+                <div style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <strong>{pm.senderName}: </strong>
+                  {pm.messageType === 'image' ? '📷 Photo'
+                    : pm.messageType === 'video' ? '🎬 Video'
+                    : pm.messageType === 'poll' ? `📊 ${pm.poll?.question || 'Poll'}`
+                    : (pm.message || '')}
+                </div>
+              </div>
+              {canPin && (
+                <button
+                  onClick={() => togglePin(pm)}
+                  title="Unpin"
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#92400e', fontSize: 13, fontWeight: 700, flexShrink: 0 }}
+                >
+                  Unpin
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

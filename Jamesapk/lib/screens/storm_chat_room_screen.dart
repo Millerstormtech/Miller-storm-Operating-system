@@ -104,12 +104,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     return isDirect ? isGroupMember : (isGroupAdmin || isAdmin);
   }
 
-  // The most recently pinned message (drives the banner).
-  Map<String, dynamic>? get _pinnedMessage {
-    final pinned = messages.where((m) => m['pinned'] == true).toList();
-    if (pinned.isEmpty) return null;
+  // Every pinned message, newest pin first (drives the banner).
+  List<Map<String, dynamic>> get _pinnedMessages {
+    final pinned = messages
+        .where((m) => m['pinned'] == true)
+        .map((m) => Map<String, dynamic>.from(m))
+        .toList();
     pinned.sort((a, b) => (b['pinnedAt'] ?? '').toString().compareTo((a['pinnedAt'] ?? '').toString()));
-    return Map<String, dynamic>.from(pinned.first);
+    return pinned;
   }
 
   Future<void> _togglePin(dynamic message) async {
@@ -141,9 +143,40 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
   }
 
+  // Pinned messages banner — lists EVERY pinned message, scrolls if there are
+  // many, with a count header. Mirrors the web StormChat room.
   Widget _buildPinnedBanner() {
-    final pinned = _pinnedMessage;
-    if (pinned == null) return const SizedBox.shrink();
+    final pinned = _pinnedMessages;
+    if (pinned.isEmpty) return const SizedBox.shrink();
+    final bg = _isDarkTheme ? const Color(0xFF2A2413) : const Color(0xFFFFFBEB);
+    final line = _isDarkTheme ? const Color(0xFF3A331C) : const Color(0xFFFDE68A);
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(color: bg, border: Border(bottom: BorderSide(color: line))),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 7, 14, 3),
+            child: Text('📌 ${pinned.length} Pinned message${pinned.length == 1 ? '' : 's'}',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 168),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: pinned.length,
+              itemBuilder: (context, i) => _pinnedRow(pinned[i], line),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pinnedRow(Map<String, dynamic> pinned, Color line) {
     final type = (pinned['messageType'] ?? 'text').toString();
     final preview = type == 'image'
         ? '📷 Photo'
@@ -152,16 +185,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             : type == 'poll'
                 ? '📊 ${pinned['poll']?['question'] ?? 'Poll'}'
                 : (pinned['message'] ?? '').toString();
-    final bg = _isDarkTheme ? const Color(0xFF2A2413) : const Color(0xFFFFFBEB);
-    final line = _isDarkTheme ? const Color(0xFF3A331C) : const Color(0xFFFDE68A);
     final by = (pinned['pinnedByName'] ?? '').toString();
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
-      decoration: BoxDecoration(color: bg, border: Border(bottom: BorderSide(color: line))),
+      padding: const EdgeInsets.fromLTRB(14, 6, 10, 6),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: line))),
       child: Row(
         children: [
-          const Icon(Icons.push_pin, size: 16, color: Color(0xFFB45309)),
+          const Icon(Icons.push_pin, size: 15, color: Color(0xFFB45309)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
