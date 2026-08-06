@@ -4,7 +4,6 @@ import {
   salesContextLines,
   salesDefaultTitle,
   salesFields,
-  salesTotals,
   salesWarning,
   type SalesExportContext,
   type SalesExportRow,
@@ -30,7 +29,7 @@ const CTX: SalesExportContext = {
 describe("salesFields", () => {
   it("offers Branch and Team when no branch filter is active", () => {
     expect(salesFields(CTX).map((f) => f.key)).toEqual([
-      "pos", "name", "branch", "team", "verifiedKnocks", "leadsCreated", "leadToFiled", "filed", "won", "revenue",
+      "pos", "name", "branch", "team", "verifiedKnocks", "leadsCreated", "filed", "won", "revenue",
     ]);
   });
 
@@ -48,47 +47,6 @@ describe("salesFields", () => {
     const keys = salesFields({ ...CTX, scope: "board", branch: "Fort Worth" }).map((f) => f.key);
     expect(keys).toContain("branch");
     expect(keys).toContain("team");
-  });
-});
-
-describe("Lead to Filed conversion column", () => {
-  it("sits between Leads Created and Claims Filed in both scopes", () => {
-    const viewKeys = salesFields(CTX).map((f) => f.key);
-    expect(viewKeys.indexOf("leadToFiled")).toBe(viewKeys.indexOf("leadsCreated") + 1);
-    expect(viewKeys.indexOf("filed")).toBe(viewKeys.indexOf("leadToFiled") + 1);
-
-    const boardKeys = salesFields({ ...CTX, scope: "board" }).map((f) => f.key);
-    expect(boardKeys.indexOf("leadToFiled")).toBe(boardKeys.indexOf("leadsCreated") + 1);
-  });
-
-  it("survives a branch filter, unlike Branch and Team", () => {
-    const keys = salesFields({ ...CTX, branch: "Fort Worth" }).map((f) => f.key);
-    expect(keys).toContain("leadToFiled");
-  });
-
-  it("formats each rep's own rate", () => {
-    const field = salesFields(CTX).find((f) => f.key === "leadToFiled")!;
-    // Plain ASCII on purpose: jsPDF's WinAnsi fonts drop U+2192 silently.
-    expect(field.label).toBe("Lead to Filed");
-    expect(field.value(ROWS[0], 0)).toBe("50.0%"); // Alice: 12 leads, 6 filed
-    expect(field.value(ROWS[1], 1)).toBe("40.0%"); // Bob: 5 leads, 2 filed
-  });
-
-  it("totals the aggregate rate, NOT the average of the per-rep rates", () => {
-    // Tiny converts 1/1 = 100.0%. Huge converts 19/200 = 9.5%.
-    // The WRONG answer, averaging the two rates, is (100 + 9.5) / 2 = 54.8%.
-    // The RIGHT answer is total filed / total leads = 20 / 201 = 9.95% -> "10.0%".
-    const AVERAGING: SalesExportRow[] = [
-      { id: "rc:1", name: "Tiny", branch: "", team: "", verifiedKnocks: 0, leadsCreated: 1, filed: 1, won: 0, revenue: 0 },
-      { id: "rc:2", name: "Huge", branch: "", team: "", verifiedKnocks: 0, leadsCreated: 200, filed: 19, won: 0, revenue: 0 },
-    ];
-    const totals = salesTotals(AVERAGING);
-    expect(totals.cell("leadToFiled")).toBe("10.0%");
-    expect(totals.cell("leadToFiled")).not.toBe("54.8%");
-  });
-
-  it("warns about short date ranges in the context lines", () => {
-    expect(salesContextLines(CTX).join(" ")).toContain("less reliable over short date ranges");
   });
 });
 
