@@ -156,9 +156,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         parentGroupId: parentGroupId || ''
       });
 
-      // A public group contains every account — pull them all in now, then
-      // return the refreshed group so the client shows the real member count.
-      if (isPublic) {
+      // A public group — OR a subgroup created under a public parent — contains
+      // every account, so pull them all in now and return the refreshed group so
+      // the client shows the real member count.
+      let parentIsPublic = false;
+      if (parentGroupId) {
+        const parent = await ChatGroup.findById(parentGroupId).select('visibility').lean() as any;
+        parentIsPublic = parent?.visibility === 'public';
+      }
+      if (isPublic || parentIsPublic) {
         const { addAllUsersToGroup } = await import('../../../../src/lib/publicGroups');
         await addAllUsersToGroup(group._id as any);
         const refreshed = await ChatGroup.findById(group._id);
