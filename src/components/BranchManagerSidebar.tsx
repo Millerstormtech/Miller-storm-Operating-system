@@ -15,7 +15,6 @@ export const branchManagerSidebarItems = [
   { id: "sales-leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
   { id: "training", label: "Training Center", toggleKey: "training" },
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
-  { id: "my-tasks", label: "My Tasks", toggleKey: "taskTracker" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 

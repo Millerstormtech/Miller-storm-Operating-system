@@ -6,10 +6,12 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // Sales Team Lead sidebar — the exact set of features they get (order matches
 // the portal spec). Team Structure, Team Goals (/sales/plan) and the Master Bot
 // Builder are intentionally NOT here. (Raise a Ticket lives in the top bar, not
-// the sidebar.) The old Team Tasks page was folded into My Tasks in 2026-08:
-// assigning now lives in that page's My Team tab. Team Goals currently has no
-// way in at all: the Scoreboard tile link that would reach it is switched off
-// behind SHOW_GOAL_LINK in MetricTile.tsx until My Goals launches.
+// the sidebar.) The old Team Tasks page was folded into My Tasks in 2026-08,
+// and My Tasks itself was cancelled by Jay on 2026-08-05, so neither is here.
+// The page and its API still exist but nothing links to them. Team Goals
+// currently has no way in at all either: the Scoreboard tile link that would
+// reach it is switched off behind SHOW_GOAL_LINK in MetricTile.tsx until My
+// Goals launches.
 export const salesTeamLeadSidebarItems = [
   { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
@@ -18,7 +20,6 @@ export const salesTeamLeadSidebarItems = [
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
-  { id: "my-tasks", label: "My Tasks", toggleKey: "taskTracker" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 

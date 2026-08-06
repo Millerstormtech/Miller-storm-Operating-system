@@ -1,3 +1,16 @@
+// CANCELLED FEATURE, 2026-08-05. Jay cancelled My Tasks the day after it shipped.
+// The nav entry was removed from all six sidebars, so nothing links here: the
+// route still resolves for anyone who types the URL, but no user can reach it.
+//
+// Deliberately NOT deleted yet, and two things must survive any future cleanup:
+//   1. src/lib/tasks/permissions.ts and the hardened pages/api/tasks/index.ts.
+//      The old API returned every task in the company to any logged-in user and
+//      let any rep delete anyone's task. Removing that work reopens both holes.
+//   2. The three legacy task pages this replaced stay deleted. They were unused
+//      (the tasks collection has never held a single row) and one of them told
+//      reps they had new work that was never saved anywhere.
+//
+// Background: docs/superpowers/specs/2026-08-03-my-tasks-design.md
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { groupByUrgency, todayString, scopeFor } from "../../../lib/tasks/permissions";
