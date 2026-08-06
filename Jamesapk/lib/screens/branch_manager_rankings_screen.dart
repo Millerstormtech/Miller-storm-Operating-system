@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
+import '../widgets/scoreboard_view.dart';
 import '../widgets/branch_manager_bottom_nav.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
@@ -72,6 +73,8 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
   // returned by /api/leaderboard. Null until someone signs something this month.
   Map<String, dynamic>? _contractKing;
   bool _loading = true;
+  // 'leaderboard' (the live board) or 'dashboard' (the web-style Scoreboard).
+  String _tab = 'leaderboard';
   String? _userId;
 
   // Rep multi-select filter (deferred apply, like web): the committed set that
@@ -510,27 +513,33 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Showcase(
-                    key: _kFilters,
-                    title: 'Filter the board',
-                    description: 'Pick a time period or a custom date range, or narrow the board to one branch, one team, or hide former reps.',
-                    child: _filtersBar(),
-                  ),
-                  if (_period == 'custom') ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: _dateChip('From', _from, () => _pickDate(true))),
-                        const SizedBox(width: 8),
-                        Expanded(child: _dateChip('To', _to, () => _pickDate(false))),
-                      ],
+                  _tabBar(),
+                  if (_tab == 'leaderboard') ...[
+                    const SizedBox(height: 14),
+                    Showcase(
+                      key: _kFilters,
+                      title: 'Filter the board',
+                      description: 'Pick a time period or a custom date range, or narrow the board to one branch, one team, or hide former reps.',
+                      child: _filtersBar(),
                     ),
+                    if (_period == 'custom') ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: _dateChip('From', _from, () => _pickDate(true))),
+                          const SizedBox(width: 8),
+                          Expanded(child: _dateChip('To', _to, () => _pickDate(false))),
+                        ],
+                      ),
+                    ],
                   ],
                 ],
               ),
             ),
             Expanded(
-              child: _loading
+              child: _tab == 'dashboard'
+                  ? ScoreboardView(onOpenLeaderboard: () => setState(() => _tab = 'leaderboard'))
+                  : _loading
                   ? const Center(child: CircularProgressIndicator(color: _primary))
                   : RefreshIndicator(
                       color: _primary,
@@ -569,11 +578,42 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
                       ),
                     ),
             ),
-            _buildTotalsSummary(),
+            if (_tab == 'leaderboard') _buildTotalsSummary(),
             const BranchManagerBottomNav(active: 'leaderboard'),
           ],
         ),
       ),
+    );
+  }
+
+  // Segmented tab: the live Leaderboard vs the web-style "My Dashboard" scoreboard.
+  Widget _tabBar() {
+    Widget seg(String key, String label) {
+      final active = _tab == key;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () { if (_tab != key) setState(() => _tab = key); },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: active ? _primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: active ? Colors.white : _textLight)),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10)),
+      child: Row(children: [seg('leaderboard', 'Leaderboard'), seg('dashboard', 'My Dashboard')]),
     );
   }
 
