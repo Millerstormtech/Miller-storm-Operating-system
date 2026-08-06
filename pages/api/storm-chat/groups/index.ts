@@ -17,6 +17,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       // Use native driver so the `order` field (added after initial schema compile) is always read
       const db = mongoose.connection.db!;
+
+      // Self-heal public-group membership: make sure the caller is a member of
+      // EVERY public group BEFORE we read the list. This retroactively fixes
+      // any existing user who predates the auto-join, or who was created via a
+      // path that skipped it, so "public group = everyone is in it" holds for
+      // real and every public group then shows in their list. Idempotent
+      // ($addToSet), best-effort, and only for the per-user (mine=1) fetch.
+      let myDoc: any = null;
+      if (req.query.mine) {
+        myDoc = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean();
+        if (myDoc?._id) {
+          try {
+            const { addUserToPublicGroups } = await import('../../../../src/lib/publicGroups');
+            await addUserToPublicGroups(String(myDoc._id));
+          } catch (e) {
+            console.error('[groups] public-group self-heal failed:', e);
+          }
+        }
+      }
+
       let groups = await db.collection('chatgroups')
         .find({})
         .sort({ order: 1, createdAt: -1 })
@@ -26,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // view / app all-groups fetch) DMs are excluded entirely, so a user's
       // private threads are never exposed to non-members.
       if (req.query.mine) {
-        const me = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
+        const me = myDoc as any;
         const myId = me?._id?.toString();
         const myIds = [auth.sub, myId].filter(Boolean) as string[];
         const isMemberOf = (g: any) =>
