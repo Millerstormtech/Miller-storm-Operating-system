@@ -258,7 +258,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
               Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
               const Padding(
                 padding: EdgeInsets.fromLTRB(20, 14, 20, 4),
-                child: Align(alignment: Alignment.centerLeft, child: Text('Sort by', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark))),
+                child: Align(alignment: Alignment.centerLeft, child: Text('Sort By', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark))),
               ),
               ..._sortOptions.map((o) {
                 final sel = o['key'] == _sortKey;
@@ -421,7 +421,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   _filterSheetRow(Icons.apartment_outlined, 'Branch', _branch.isEmpty ? 'All Branches' : _branch, () { Navigator.pop(ctx); _openBranchSelector(); }),
                   _filterSheetRow(Icons.groups_outlined, 'Team', _team.isEmpty ? 'All Teams' : _teamLabel(_team), () { Navigator.pop(ctx); _openTeamSelector(); }),
                   _filterSheetRow(Icons.person_outline, 'Reps', _appliedReps.isEmpty ? 'All Reps' : '${_appliedReps.length} selected', () { Navigator.pop(ctx); _openRepSelector(); }),
-                  _filterSheetRow(Icons.sort, 'Sort by', '$_sortLabel ${_sortDesc ? "↓" : "↑"}', () { Navigator.pop(ctx); _openSortSelector(); }),
+                  _filterSheetRow(Icons.sort, 'Sort By', '$_sortLabel ${_sortDesc ? "↓" : "↑"}', () { Navigator.pop(ctx); _openSortSelector(); }),
                   SwitchListTile(
                     value: _hideFormer,
                     activeColor: _primary,
