@@ -5,10 +5,10 @@
  * scoreboard.ts intercepts marketing before scope resolution and returns
  * `{ variant: "marketing", scoreboard: null }` instead.
  *
- * This replaces the old src/portals/marketing/Dashboard.tsx, which showed
- * hardcoded, fabricated campaign/engagement/download figures made up out of
- * thin air. None of that survives here: every tile below is an honest "not
- * connected yet" placeholder, never a number that looks measured but isn't.
+ * This replaced the old marketing dashboard (deleted in this branch), which
+ * showed hardcoded, fabricated campaign/engagement/download figures made up
+ * out of thin air. None of that survives here: every tile below is an honest
+ * "not connected yet" placeholder, never a number that looks measured but isn't.
  * Tile set is the spec's provisional list (S11) -- Social Engagement,
  * Reach / Followers, Rep Pages Live -- pending a real marketing data source.
  *

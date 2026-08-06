@@ -136,7 +136,7 @@ export function UserManagement(props: UserEditorProps) {
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
     // Keys must match the exact toggleKey values in each role's Sidebar component
-    admin: ["cLevelDashboard", "branchManagerDashboard", "salesTeamDashboard", "salesRepDashboard", "marketingDashboard", "trainingCenter", "userManagement", "teamStructure", "courseManagement", "onlineTraining", "appsTools", "aiBots", "leaderboard", "stormChat", "emailConfig"],
+    admin: ["trainingCenter", "userManagement", "teamStructure", "courseManagement", "onlineTraining", "appsTools", "aiBots", "leaderboard", "stormChat", "emailConfig"],
     "sales-team-lead": ["dashboard", "stormChat", "trainingCenter", "appsTools", "rankings", "onlineTraining", "aiChat", "profile"],
     sales: ["dashboard", "stormChat", "trainingCenter", "appsTools", "rankings", "training", "aiChat", "profile"],
     marketing: ["dashboard", "assets", "trainingCenter", "training", "appsTools", "rankings", "stormChat", "aiAssistant", "profile"],
@@ -146,11 +146,6 @@ export function UserManagement(props: UserEditorProps) {
 
   const featureToggleLabels: Record<string, string> = {
     // Admin
-    cLevelDashboard: "C Level Dashboard",
-    branchManagerDashboard: "Branch Manager Dashboard",
-    salesTeamDashboard: "Sales Team Dashboard",
-    salesRepDashboard: "Sales Rep Dashboard",
-    marketingDashboard: "Marketing Dashboard",
     trainingCenter: "Course Leaderboard",
     userManagement: "User Management",
     teamStructure: "Organization Chart",
@@ -348,11 +343,6 @@ export function UserManagement(props: UserEditorProps) {
   function createUser() {
     const allToggles: FeatureToggles = {
       dashboard: true,
-      cLevelDashboard: true,
-      branchManagerDashboard: true,
-      salesTeamDashboard: true,
-      salesRepDashboard: true,
-      marketingDashboard: true,
       userManagement: true,
       roleHierarchy: true,
       businessUnits: true,
