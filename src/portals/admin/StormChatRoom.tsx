@@ -7,6 +7,7 @@ type ChatMessage = {
   groupId: string;
   senderId: string;
   senderName: string;
+  senderHeadshotUrl?: string;
   senderRole: string;
   message: string;
   messageType: 'text' | 'image' | 'video' | 'file' | 'poll' | 'system';
@@ -71,6 +72,29 @@ const COMPOSER_BTN: React.CSSProperties = {
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '😢', '👎'];
 
 const CHAT_EMOJIS = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😜","🤪","🤨","🧐","🤓","😎","🥳","😏","😒","😔","😟","🙁","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","🙄","😮","😲","🥱","😴","🤤","🤢","🤮","🤧","😷","🤒","🤑","🤠","😈","👍","👎","👌","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","👋","🙌","🤝","🙏","💪","🔥","⭐","🌟","✨","💯","✅","❌","❤️","🧡","💛","💚","💙","💜","🖤","💔","🎉","🎊","🚀","💰","📈","🏆","🥇","💡","👀","🎯"];
+
+// Small round avatar shown beside an incoming message: the sender's uploaded
+// photo (headshotUrl) when set, otherwise their initials.
+function SenderAvatar({ url, name }: { url?: string; name: string }) {
+  const initials =
+    (name || '?').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase() || '?';
+  return (
+    <div
+      style={{
+        width: 28, height: 28, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+        background: '#374151', color: '#fff', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', fontSize: 11, fontWeight: 700, marginBottom: 2,
+      }}
+    >
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        initials
+      )}
+    </div>
+  );
+}
 
 export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivately }: Props) {
   const { user } = useAuth();
@@ -776,10 +800,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
           </div>
         )}
         
-        <div 
-          style={{ 
-            display: 'flex', 
+        <div
+          style={{
+            display: 'flex',
             justifyContent: isMyMessage ? 'flex-end' : 'flex-start',
+            alignItems: 'flex-end',
+            gap: 8,
             marginBottom: 8,
             transition: 'background-color 0.25s',
             backgroundColor: isBlinking ? 'rgba(250, 204, 21, 0.3)' : 'transparent',
@@ -787,6 +813,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             padding: isBlinking ? 4 : 0,
             position: 'relative'
           }}>
+          {/* Incoming messages show the sender's avatar (uploaded photo, else initials). */}
+          {!isMyMessage && <SenderAvatar url={msg.senderHeadshotUrl} name={msg.senderName} />}
           <div
             onMouseEnter={() => setHoveredMessageId(msg._id)}
             onMouseLeave={() => { setHoveredMessageId(null); if (menuMessageId === msg._id) setMenuMessageId(null); }}

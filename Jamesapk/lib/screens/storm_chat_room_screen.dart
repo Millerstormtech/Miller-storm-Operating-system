@@ -1717,6 +1717,32 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
+  // The sender's uploaded photo (headshotUrl from the message) beside their name
+  // on an incoming message; falls back to the first initial.
+  Widget _senderAvatar(dynamic message) {
+    final url = (message['senderHeadshotUrl'] ?? '').toString();
+    final name = (message['senderName'] ?? '').toString();
+    final initials = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
+    final fallback = Text(initials,
+        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold));
+    return Container(
+      width: 22,
+      height: 22,
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF374151)),
+      child: url.isNotEmpty
+          ? Image.network(
+              'https://millerstorm.tech$url',
+              width: 22,
+              height: 22,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => fallback,
+            )
+          : fallback,
+    );
+  }
+
   Widget _buildMessage(dynamic message, int index) {
     final isMyMessage = _isMine(message);
     final showDate = index == 0 ||
@@ -1871,14 +1897,21 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                         children: [
                           if (!isMyMessage)
                             Padding(
-                              padding: const EdgeInsets.only(left: 8, bottom: 4),
-                              child: Text(
-                                message['senderName'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF6B7280),
-                                ),
+                              padding: const EdgeInsets.only(left: 4, bottom: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _senderAvatar(message),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    message['senderName'] ?? 'Unknown',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           // Different styling for different message types

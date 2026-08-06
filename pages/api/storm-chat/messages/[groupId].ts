@@ -58,8 +58,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const messages = await ChatMessage.find({ groupId })
         .sort({ createdAt: -1 })
         .limit(500)
-        .lean();
+        .lean() as any[];
       messages.reverse();
+
+      // Attach each sender's current avatar (headshotUrl) so message bubbles show
+      // the person's uploaded photo, not just initials. One lookup for all distinct
+      // senders; the photo is resolved live (not stored on the message) so a later
+      // photo change is reflected everywhere.
+      const senderIds = Array.from(new Set(messages.map((m) => m.senderId).filter(Boolean)));
+      if (senderIds.length) {
+        const senders = await UserModel.find(
+          { id: { $in: senderIds } },
+          { _id: 0, id: 1, headshotUrl: 1 }
+        ).lean() as any[];
+        const headshotById = new Map(senders.map((s) => [s.id, s.headshotUrl || '']));
+        for (const m of messages) {
+          m.senderHeadshotUrl = headshotById.get(m.senderId) || '';
+        }
+      }
 
       res.status(200).json(messages);
     } catch (error) {
