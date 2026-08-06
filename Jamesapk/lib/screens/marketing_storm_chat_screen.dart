@@ -58,10 +58,17 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
         final allGroups = json.decode(response.body) as List;
         print('🔵 Total groups from API: ${allGroups.length}');
         
-        // Filter groups where user is a member
+        // Which groups to show. Trust the server's flags instead of re-checking
+        // membership here: the `members` array stores Mongo _id strings, so the
+        // old members.contains(userId) test (userId is the app id) never matched
+        // a public group and silently hid every one of them. The server already
+        // returns my DMs (isDirect) + all public/private groups with an isMember
+        // flag. Show my DMs, groups I belong to, and every PUBLIC group.
         final userGroups = allGroups.where((group) {
-          final members = List<String>.from(group['members'] ?? []);
-          return members.contains(userId);
+          if (group['isDirect'] == true) return true;
+          if (group['isMember'] == true) return true;
+          if ((group['visibility'] ?? '') == 'public') return true;
+          return false;
         }).toList();
 
         print('🔵 User groups after filtering: ${userGroups.length}');
