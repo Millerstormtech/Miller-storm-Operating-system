@@ -183,8 +183,9 @@ const LoginPage: NextPage = () => {
               🔒 Login with {bioLabel}
             </button>
           )}
-          <div className="login-links" style={{marginTop: '12px'}}>
-            <a href="/register" className="login-link">Register</a>
+          <div className="login-links" style={{ marginTop: '14px', textAlign: 'center' }}>
+            <span style={{ color: '#6b7280', fontSize: 14 }}>{"Don't have an account? "}</span>
+            <a href="/register" className="login-link" style={{ color: '#dc2626', fontWeight: 700 }}>Register</a>
           </div>
         </form>
       </div>

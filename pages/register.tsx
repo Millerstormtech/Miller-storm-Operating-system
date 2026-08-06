@@ -1,8 +1,9 @@
 import type { NextPage } from "next";
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import logoImage from "../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
+import { BRANCHES } from "../src/lib/repcard/branches";
 
 const RegisterPage: NextPage = () => {
   const router = useRouter();
@@ -11,7 +12,9 @@ const RegisterPage: NextPage = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "sales"
+    role: "sales",
+    branch: "",
+    managerId: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -19,12 +22,27 @@ const RegisterPage: NextPage = () => {
   const [emailError, setEmailError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  // Sales Team Leads a Sales rep can pick as their team (filtered by branch).
+  const [teamLeads, setTeamLeads] = useState<Array<{ id: string; name: string; territory?: string }>>([]);
+
+  useEffect(() => {
+    fetch("/api/public/team-leads")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setTeamLeads(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
 
   function handleChange(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (e.target.name === "email") {
-      setEmailError("");
-    }
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      // Team leads are branch-scoped, so a new branch clears the chosen team.
+      if (name === "branch") next.managerId = "";
+      // Branch/Team only apply to Sales; leaving Sales drops them.
+      if (name === "role" && value !== "sales") { next.branch = ""; next.managerId = ""; }
+      return next;
+    });
+    if (name === "email") setEmailError("");
   }
 
   async function checkEmailAvailability(email: string) {
@@ -63,6 +81,11 @@ const RegisterPage: NextPage = () => {
       return;
     }
 
+    if (formData.role === "sales") {
+      if (!formData.branch) { setError("Please select your Branch."); return; }
+      if (!formData.managerId) { setError("Please select your Team (Sales Team Lead)."); return; }
+    }
+
     setIsLoading(true);
 
     try {
@@ -73,7 +96,9 @@ const RegisterPage: NextPage = () => {
           name: formData.name,
           email: formData.email,
           password: formData.password,
-          role: formData.role
+          role: formData.role,
+          branch: formData.role === "sales" ? formData.branch : "",
+          managerId: formData.role === "sales" ? formData.managerId : "",
         })
       });
 
@@ -144,7 +169,7 @@ const RegisterPage: NextPage = () => {
         <div className="login-subtitle">Register for Access</div>
         <form className="login-form" onSubmit={handleSubmit}>
           {error && <div className="form-error">{error}</div>}
-          
+
           <label className="field">
             <span className="field-label">Full Name</span>
             <input
@@ -192,6 +217,43 @@ const RegisterPage: NextPage = () => {
               <option value="marketing">Marketing</option>
             </select>
           </label>
+
+          {formData.role === "sales" && (
+            <>
+              <label className="field">
+                <span className="field-label">Branch *</span>
+                <select
+                  className="field-input"
+                  name="branch"
+                  value={formData.branch}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select branch</option>
+                  {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </label>
+
+              <label className="field">
+                <span className="field-label">Team *</span>
+                <select
+                  className="field-input"
+                  name="managerId"
+                  value={formData.managerId}
+                  onChange={handleChange}
+                  required
+                  disabled={!formData.branch}
+                >
+                  <option value="">
+                    {formData.branch ? "Select your Sales Team Lead" : "Select a branch first"}
+                  </option>
+                  {teamLeads
+                    .filter((tl) => (tl.territory || "").trim().toLowerCase() === formData.branch.trim().toLowerCase())
+                    .map((tl) => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
+                </select>
+              </label>
+            </>
+          )}
 
           <label className="field">
             <span className="field-label">Password</span>

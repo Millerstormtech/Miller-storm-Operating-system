@@ -84,6 +84,11 @@ export default async function handler(
           {}
         );
 
+        // The Branch + Team (Sales Team Lead) the rep chose at registration land
+        // on the account now, so it shows up in User Management already assigned.
+        const reqBranch = String((userRequest as any).branch || "").trim();
+        const reqManagerId = String((userRequest as any).managerId || "").trim();
+
         // Create user account with the hashed password from registration
         const newUser = await UserModel.create({
           id: `user-${Date.now()}`,
@@ -92,6 +97,9 @@ export default async function handler(
           role: userRequest.role || "sales",
           roles: [userRequest.role || "sales"],
           passwordHash: userRequest.passwordHash,
+          territory: reqBranch,
+          branches: reqBranch ? [reqBranch] : [],
+          managerId: reqManagerId || undefined,
           strengths: "",
           weaknesses: "",
           publicProfile: {

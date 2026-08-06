@@ -24,7 +24,7 @@ export default async function handler(
     }
   } else if (req.method === "POST") {
     try {
-      const { name, email, password, role } = req.body;
+      const { name, email, password, role, branch, managerId } = req.body;
 
       if (!name || !email || !password || !role) {
         res.status(400).json({ error: "All fields are required" });
@@ -33,6 +33,13 @@ export default async function handler(
 
       if (!["sales-team-lead", "sales", "marketing", "branch-manager"].includes(role)) {
         res.status(400).json({ error: "Invalid role" });
+        return;
+      }
+
+      // A self-registering Sales rep must choose a Branch and a Team (Sales Team
+      // Lead); both are carried onto the account when an admin approves it.
+      if (role === "sales" && (!String(branch || "").trim() || !String(managerId || "").trim())) {
+        res.status(400).json({ error: "Branch and Team are required for a Sales account" });
         return;
       }
 
@@ -67,6 +74,8 @@ export default async function handler(
         email: email.trim().toLowerCase(),
         passwordHash,
         role,
+        branch: role === "sales" ? String(branch || "").trim() : "",
+        managerId: role === "sales" ? String(managerId || "").trim() : "",
         status: "pending"
       });
 
