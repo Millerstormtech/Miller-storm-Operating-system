@@ -21,6 +21,17 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
   List<Map<String, dynamic>> messages = [];
   List<Map<String, dynamic>> chatSessions = [];
   String? currentChatId;
+
+  // The AI-generated title of the active conversation, shown under the bot name
+  // in the header once the first exchange has produced one.
+  String get _currentChatTitle {
+    if (messages.isEmpty) return '';
+    final s = chatSessions.firstWhere(
+      (s) => s['chatId'] == currentChatId,
+      orElse: () => <String, dynamic>{},
+    );
+    return (s['title'] ?? '').toString();
+  }
   bool isLoading = false;
   bool isSending = false;
   bool showHistory = false;
@@ -343,13 +354,32 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                botName,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    botName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (_currentChatTitle.isNotEmpty && _currentChatTitle != 'New Chat')
+                    Text(
+                      _currentChatTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                ],
               ),
             ),
           ],

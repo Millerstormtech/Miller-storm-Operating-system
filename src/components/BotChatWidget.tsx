@@ -734,7 +734,15 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
         <div style={{ padding: "0 20px", background: theme, display: "flex", alignItems: "center", gap: "12px", flexShrink: 0, minHeight: "56px" }}>
           <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgba(255,255,255,0.8)", padding: "4px" }}>☰</button>
           <AvatarImg size={34} fontSize="16px" />
-          <div style={{ fontWeight: 700, fontSize: "15px", color: "#fff", flex: 1 }}>{botTitle}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: "15px", color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
+            {(() => {
+              const t = messages.length > 0 ? (chatSessions.find(s => s.chatId === currentChatId)?.title || "") : "";
+              return t && t !== "New Chat"
+                ? <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t}</div>
+                : null;
+            })()}
+          </div>
           {recordingUrl && (
             <button onClick={downloadAudio} title="Download the voice recording (audio file)"
               style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
