@@ -2563,7 +2563,6 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
 
 function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean; onGoToSettings: () => void }) {
   const [assignedRoles, setAssignedRoles] = useState<string[]>(bot.assignedRoles || []);
-  const [copied, setCopied] = useState<string | null>(null);
   const roles = ["c-level", "branch-manager", "sales-team-lead", "sales", "marketing"];
 
   // Re-sync when bot prop updates
@@ -2574,17 +2573,6 @@ function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSa
     setAssignedRoles(bot.assignedRoles || []);
   }, [bot.id]);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const botUrl = `${origin}/bot/${bot.id}`;
-  const scriptTag = `<script defer src="${origin}/bot-widget.js" data-bot-id="${bot.id}"></script>`;
-  const iframeTag = `<iframe style="width:400px;height:580px;" src="${botUrl}"></iframe>`;
-
-  function copy(text: string, key: string) {
-    navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied(null), 2000);
-  }
-
   function toggleRole(role: string) {
     setAssignedRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
   }
@@ -2592,7 +2580,7 @@ function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSa
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Deploy</h2>
-      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "20px" }}>Choose from these 3 simple ways to use your chatbot.</p>
+      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "20px" }}>Choose which portals can access this chatbot.</p>
 
       {/* Not public banner */}
       {!bot.isPublic && (
@@ -2618,49 +2606,6 @@ function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSa
         </div>
         <div style={{ marginTop: "14px", display: "flex", justifyContent: "flex-end" }}>
           <button onClick={() => onSave({ assignedRoles })} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save"}</button>
-        </div>
-      </div>
-
-      {/* Direct Link */}
-      <div style={{ ...card, marginBottom: "20px", display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* Illustration */}
-        <div style={{ width: 120, height: 90, background: "#eff6ff", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "36px" }}>💬</div>
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Direct Link</div>
-          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>Share access to your chatbot by using the link below or with the QR code.</div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "12px" }}>
-            <div style={{ flex: 1, padding: "10px 12px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botUrl}</div>
-            <button onClick={() => copy(botUrl, "link")} style={{ ...btnSecondary, padding: "10px 14px", flexShrink: 0 }}>{copied === "link" ? "✓ Copied" : "📋 Copy"}</button>
-          </div>
-          <button style={{ ...btnPrimary, background: "#3b82f6", display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", padding: "8px 14px" }}>
-            ⬇ Download QR
-          </button>
-        </div>
-      </div>
-
-      {/* Add to Website */}
-      <div style={{ ...card, marginBottom: "20px", display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div style={{ width: 120, height: 90, background: "#f0fdf4", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "36px" }}>🌐</div>
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Add to a Website</div>
-          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>Add the code below to the header of your website to display the chatbot on all pages.</div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
-            <div style={{ flex: 1, padding: "12px", background: "#1f2937", borderRadius: "8px", fontSize: "12px", color: "#a5f3fc", fontFamily: "monospace", wordBreak: "break-all", lineHeight: "1.6" }}>{scriptTag}</div>
-            <button onClick={() => copy(scriptTag, "script")} style={{ ...btnSecondary, padding: "10px 14px", flexShrink: 0 }}>{copied === "script" ? "✓" : "📋"}</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Display Inside Webpage */}
-      <div style={{ ...card, display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div style={{ width: 120, height: 90, background: "#faf5ff", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "36px" }}>🖥️</div>
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Display Inside Webpage</div>
-          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>Display the open chatbot window inside a webpage with an iframe, ready to use.</div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
-            <div style={{ flex: 1, padding: "12px", background: "#1f2937", borderRadius: "8px", fontSize: "12px", color: "#a5f3fc", fontFamily: "monospace", wordBreak: "break-all", lineHeight: "1.6" }}>{iframeTag}</div>
-            <button onClick={() => copy(iframeTag, "iframe")} style={{ ...btnSecondary, padding: "10px 14px", flexShrink: 0 }}>{copied === "iframe" ? "✓" : "📋"}</button>
-          </div>
         </div>
       </div>
     </div>
