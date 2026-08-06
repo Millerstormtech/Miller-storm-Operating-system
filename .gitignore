@@ -2,7 +2,8 @@
 node_modules/
 dist/
 .env
-.env.*.local
+# Broader than `.env.*.local`, which does NOT match a plain `.env.local`.
+.env*.local
 *.log
 firebase-service-account.json
 *.plist
@@ -24,6 +25,16 @@ scripts/quiz-balance/
 
 # Local-only AI assistant guidance (kept off GitHub on purpose)
 CLAUDE.md
+# `.claude/*` (contents), not `.claude/` (the directory), because git will not
+# descend into an excluded directory, and that would make the negation below a no-op.
+.claude/*
+!.claude/smoke-test-profile.md
+
+# Local dev database (mongodb-memory-server). Holds a COPY OF PROD DATA, never commit.
+.localdb/
+
+# Local-only dev scaffolding for the seeded preview DB (contains roster fixtures)
+scripts/dev/
 
 # Brainstorming visual-companion scratch files
 .superpowers/
