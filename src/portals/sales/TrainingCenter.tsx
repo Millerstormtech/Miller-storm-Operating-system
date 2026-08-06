@@ -8,7 +8,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
-import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
@@ -1400,22 +1399,6 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             .course-header-mobile-actions { display: none !important; }
           }
         `}</style>
-        {user && (
-          <div className="training-timer-wrap">
-          <PlaybookTimer
-            userId={user.id}
-            courseId={selectedCourse.id}
-            courseTitle={selectedCourse.title}
-            onComplete={async () => {
-              const publishedPages = (selectedCourse.pages || []).filter((p: any) => p.status === "published");
-              const { completed: done, total } = computeItemProgress(publishedPages, completedPages, savedQuizResults);
-              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-              return { pct, done, total };
-            }}
-          />
-          </div>
-        )}
-
         {/* Quiz top-up modal — shown when a quiz is failed (< 80%) */}
         {quizModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}>

@@ -267,57 +267,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  Widget _buildTimerSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.timer_outlined, color: _primary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Training Timer',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _textDark),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: _primary,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'Start Timer',
-              style: TextStyle(color: _white, fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildProgressSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

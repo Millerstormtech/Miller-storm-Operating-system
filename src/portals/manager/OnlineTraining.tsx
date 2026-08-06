@@ -8,7 +8,6 @@ import { LessonTick } from "../../components/LessonTick";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
-import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 
@@ -1786,20 +1785,6 @@ export function ManagerOnlineTrainingPage(props: {
             .course-header-mobile-actions { display: none !important; }
           }
         `}</style>
-        <div className="training-timer-wrap">
-        <PlaybookTimer
-          userId={props.currentUser.id}
-          courseId={selectedCourse.id}
-          courseTitle={selectedCourse.title}
-          onComplete={async () => {
-            const publishedPages = (selectedCourse.pages || []).filter((p: any) => p.status === "published");
-            const { completed: done, total } = computeItemProgress(publishedPages, completedPages, savedQuizResults);
-            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-            return { pct, done, total };
-          }}
-        />
-        </div>
-
         {/* Quiz top-up modal — shown when a quiz is failed (< 80%) */}
         {quizModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}>
