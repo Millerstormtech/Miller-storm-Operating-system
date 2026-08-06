@@ -26,6 +26,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
   bool showHistory = false;
   String? userId;
   String? userName;
+  String _userHeadshot = '';
   List<Map<String, String>> attachments = [];
 
   @override
@@ -60,6 +61,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
         setState(() {
           userId = user['id'] ?? user['_id'];
           userName = user['name'] ?? 'User';
+          _userHeadshot = (user['headshotUrl'] ?? '').toString();
         });
         print('User loaded - userId: $userId, userName: $userName');
       }
@@ -766,22 +768,52 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
     );
   }
 
+  // A round chat avatar: the person's photo (user's headshot or the bot's image)
+  // when set, otherwise their initial.
+  Widget _cloneAvatar(String url, String name) {
+    final initials = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
+    final fallback = Text(initials,
+        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold));
+    return Container(
+      width: 26,
+      height: 26,
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF374151)),
+      child: url.isNotEmpty
+          ? Image.network(url, width: 26, height: 26, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback)
+          : fallback,
+    );
+  }
+
   Widget _buildMessage(Map<String, dynamic> message) {
     final isUser = message['role'] == 'user';
     final content = message['content'] ?? '';
     final timestamp = message['timestamp'] ?? '';
     final attachments = message['attachments'] as List<dynamic>?;
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
+    final botRaw = (widget.bot['botAvatarUrl'] ?? widget.bot['imageUrl'] ?? '').toString();
+    final botImg = botRaw.isEmpty ? '' : (botRaw.startsWith('http') ? botRaw : 'https://millerstorm.tech$botRaw');
+    final userImg = _userHeadshot.isEmpty ? '' : (_userHeadshot.startsWith('http') ? _userHeadshot : 'https://millerstorm.tech$_userHeadshot');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) ...[
+            _cloneAvatar(botImg, (widget.bot['name'] ?? 'AI').toString()),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75,
+              ),
+              child: Column(
+                crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
             // Show attachments if present
             if (attachments != null && attachments.isNotEmpty)
               Padding(
@@ -861,8 +893,15 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                   ),
                 ),
               ),
+                ],
+              ),
+            ),
+          ),
+          if (isUser) ...[
+            const SizedBox(width: 8),
+            _cloneAvatar(userImg, userName ?? 'You'),
           ],
-        ),
+        ],
       ),
     );
   }

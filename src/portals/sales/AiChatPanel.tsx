@@ -20,8 +20,33 @@ type ChatHistory = {
   updatedAt: Date;
 };
 
+// A round chat avatar beside a message: the person's photo (the user's uploaded
+// headshot, or the bot's icon) when present, otherwise a fallback glyph/initial.
+function MsgAvatar({ url, fallback }: { url?: string; fallback: string }) {
+  return (
+    <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: '#374151', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        fallback
+      )}
+    </div>
+  );
+}
+
 export function AiChatPanel() {
   const { user } = useAuth();
+  // The signed-in user's avatar for their own chat bubbles. Fetched live so a
+  // freshly-uploaded profile photo shows here too.
+  const [userHeadshot, setUserHeadshot] = useState("");
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch(`/api/users/${user.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((u) => { if (u?.headshotUrl) setUserHeadshot(u.headshotUrl); })
+      .catch(() => {});
+  }, [user?.id]);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [nextId, setNextId] = useState(1);
@@ -458,9 +483,12 @@ export function AiChatPanel() {
                 style={{
                   display: 'flex',
                   justifyContent: message.role === "user" ? 'flex-end' : 'flex-start',
+                  alignItems: 'flex-end',
+                  gap: 8,
                   marginBottom: '16px'
                 }}
               >
+                {message.role !== "user" && <MsgAvatar fallback="🤖" />}
                 <div
                   style={{
                     maxWidth: '65%',
@@ -519,6 +547,12 @@ export function AiChatPanel() {
                   )}
                   {message.text}
                 </div>
+                {message.role === "user" && (
+                  <MsgAvatar
+                    url={userHeadshot}
+                    fallback={(user?.name || "?").trim().charAt(0).toUpperCase() || "?"}
+                  />
+                )}
               </div>
             ))}
             {isLoading && (
