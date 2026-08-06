@@ -79,7 +79,14 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
     if (first === null) return;
     setOpen(true);
     setIndex(first);
-  }, [tour.steps]);
+    // Record "seen" the MOMENT the tour opens, not only when the user reaches
+    // Done/Skip/Escape. Logins land on a page with the tour, and a user who
+    // clicks a nav link (a client-side route change unmounts this before
+    // finish() can run) would otherwise never be recorded — so the tour would
+    // auto-start again on every login. finish() still marks seen too; a repeat
+    // write of the same version is harmless.
+    if (userId) markSeen(tour.id, userId, tour.version);
+  }, [tour.steps, tour.id, tour.version, userId]);
 
   // Auto-start once per user per version, and only once data has landed.
   useEffect(() => {
