@@ -23,6 +23,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _success = false;
   String _error = '';
+  // Sales reps pick a Branch + Team (Sales Team Lead) at registration.
+  String _branch = '';
+  String? _managerId;
+  List<Map<String, dynamic>> _teamLeads = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTeamLeads();
+  }
+
+  Future<void> _fetchTeamLeads() async {
+    try {
+      final res = await api.get(Uri.parse('$baseUrl/api/public/team-leads'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is List && mounted) {
+          setState(() => _teamLeads = data.map((e) => Map<String, dynamic>.from(e)).toList());
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -39,6 +61,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _error = 'Passwords do not match');
       return;
     }
+    if (_role == 'sales') {
+      if (_branch.isEmpty) { setState(() => _error = 'Please select your Branch.'); return; }
+      if (_managerId == null || _managerId!.isEmpty) {
+        setState(() => _error = 'Please select your Team (Sales Team Lead).');
+        return;
+      }
+    }
     setState(() { _isLoading = true; _error = ''; });
     try {
       final response = await api.post(
@@ -49,6 +78,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'email': _emailController.text.trim(),
           'password': _passwordController.text.trim(),
           'role': _role,
+          'branch': _role == 'sales' ? _branch : '',
+          'managerId': _role == 'sales' ? (_managerId ?? '') : '',
         }),
       );
       final data = jsonDecode(response.body);
@@ -198,8 +229,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
               DropdownMenuItem(value: 'sales-team-lead', child: Text('Sales Team Lead')),
               DropdownMenuItem(value: 'marketing', child: Text('Marketing')),
             ],
-            onChanged: (v) => setState(() => _role = v!),
+            onChanged: (v) => setState(() {
+              _role = v!;
+              if (_role != 'sales') { _branch = ''; _managerId = null; }
+            }),
           ),
+          if (_role == 'sales') ...[
+            const SizedBox(height: 16),
+            _fieldLabel('Branch *'),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              value: _branch.isEmpty ? null : _branch,
+              decoration: _inputDecoration(''),
+              hint: const Text('Select branch'),
+              items: const [
+                DropdownMenuItem(value: 'Fort Worth', child: Text('Fort Worth')),
+                DropdownMenuItem(value: 'Dallas', child: Text('Dallas')),
+                DropdownMenuItem(value: 'West Texas', child: Text('West Texas')),
+              ],
+              // Team leads are branch-scoped, so a new branch clears the team.
+              onChanged: (v) => setState(() { _branch = v ?? ''; _managerId = null; }),
+            ),
+            const SizedBox(height: 16),
+            _fieldLabel('Team *'),
+            const SizedBox(height: 6),
+            Builder(builder: (_) {
+              final scoped = _teamLeads
+                  .where((tl) => (tl['territory'] ?? '').toString().trim().toLowerCase() == _branch.trim().toLowerCase())
+                  .toList();
+              final validId = scoped.any((tl) => tl['id'].toString() == _managerId);
+              return DropdownButtonFormField<String>(
+                value: validId ? _managerId : null,
+                decoration: _inputDecoration(''),
+                hint: Text(_branch.isEmpty ? 'Select a branch first' : 'Select your Sales Team Lead'),
+                items: scoped
+                    .map((tl) => DropdownMenuItem(
+                          value: tl['id'].toString(),
+                          child: Text((tl['name'] ?? 'Unknown').toString()),
+                        ))
+                    .toList(),
+                onChanged: _branch.isEmpty ? null : (v) => setState(() => _managerId = v),
+              );
+            }),
+          ],
           const SizedBox(height: 16),
           _fieldLabel('Password'),
           const SizedBox(height: 6),
