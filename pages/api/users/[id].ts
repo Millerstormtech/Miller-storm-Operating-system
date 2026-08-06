@@ -7,6 +7,7 @@ import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { validateUserPayload } from "../../../src/lib/sanitize";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
+import { resolveBusinessPlanForProfileWrite } from "../../../src/lib/businessPlan/profileWrite";
 
 export default async function handler(
   req: NextApiRequest,
@@ -73,7 +74,7 @@ export default async function handler(
       return;
     }
 
-    const { password, passwordHash: _ph, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, id: _id, createdAt: _ca, updatedAt: _ua, __v: _v, _id: _mid, ...rest } = payload;
+    const { password, passwordHash: _ph, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, id: _id, createdAt: _ca, updatedAt: _ua, __v: _v, _id: _mid, businessPlan: incomingBusinessPlan, ...rest } = payload;
     const plainPassword = typeof password === "string" && password.trim().length > 0 ? password.trim() : null;
 
     // Fetch existing user to get current passwordHash
@@ -86,9 +87,35 @@ export default async function handler(
       ? await bcrypt.hash(plainPassword, 10)
       : existingUser.passwordHash;
 
+    // This endpoint writes businessPlan as a whole-object $set, not the
+    // field-level $set/$unset semantics pages/api/business-plan.ts uses (see
+    // src/lib/businessPlan/update.ts). Simply stripping the three monthly
+    // goal keys out of the payload before $set would DELETE them from the
+    // stored document instead of leaving them alone, because a whole-object
+    // replace discards anything the new object doesn't mention.
+    // resolveBusinessPlanForProfileWrite (src/lib/businessPlan/profileWrite.ts)
+    // is the guard: on a self-write it passes the caller's businessPlan
+    // through unrestricted ("each person sets their own goals"); on a
+    // cross-user write (an admin editing someone else -- the only role that
+    // reaches here for another user) it always overlays the TARGET's
+    // currently-stored goal values over whatever the payload carried, so an
+    // admin can neither set nor blank another user's monthly goals through
+    // this endpoint. Returns `undefined` when the payload never mentioned
+    // businessPlan at all, so the key is left out of $set entirely below.
+    const resolvedBusinessPlan = resolveBusinessPlanForProfileWrite({
+      isSelf,
+      incomingBusinessPlan,
+      existingBusinessPlan: existingUser.businessPlan
+    });
+
+    const updateFields: Record<string, unknown> = { ...rest, passwordHash: hashedPassword };
+    if (resolvedBusinessPlan !== undefined) {
+      updateFields.businessPlan = resolvedBusinessPlan;
+    }
+
     const updated = await UserModel.findOneAndUpdate(
       { id },
-      { $set: { ...rest, passwordHash: hashedPassword } },
+      { $set: updateFields },
       { returnDocument: 'after', new: true }
     ).lean();
     if (!updated) {
