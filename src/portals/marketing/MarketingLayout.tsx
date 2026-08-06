@@ -59,6 +59,7 @@ export function MarketingLayout({ children, currentView, pageTitle, pageSubtitle
         <Header
           title="Miller Storm Operating System"
           userName={user?.name ?? "Marketing"}
+          userId={user?.id}
           roleLabel="Marketing"
           panelName="Marketing Portal"
           onLogout={logout}
