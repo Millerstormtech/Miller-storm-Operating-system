@@ -45,6 +45,10 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// The signed-in user, mirrored to sessionStorage so a page refresh restores the
+// session (paired with the token in authToken.ts). Cleared on logout / no session.
+const SESSION_USER_KEY = "ms_auth_user";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,19 +63,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     installAuthFetch();
-    // The session lives in memory only, so a COLD start — the first tab, or a
-    // full refresh with no other tab open — still goes through the login form.
-    // But when another tab of this site is already signed in, a newly opened tab
-    // adopts that live session over a same-origin BroadcastChannel instead of
-    // making the user log in again. Nothing is persisted to storage, so closing
-    // every tab still ends the session.
+    // Session persistence: the token + user are mirrored to sessionStorage, which
+    // survives a page REFRESH in the same tab but is wiped when the tab closes.
+    // So a refresh keeps you signed in (the panel no longer logs you out on F5),
+    // while closing every tab still ends the session. A brand-new tab (empty
+    // sessionStorage) still adopts a live session from an already-open tab over a
+    // same-origin BroadcastChannel instead of forcing a fresh login.
     const chan = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("ms-auth") : null;
     channelRef.current = chan;
     let resolved = false;
 
+    // 1) Refresh restore: rebuild the session from sessionStorage if present.
+    const persistedToken = getToken(); // authToken hydrates this from sessionStorage
+    let persistedUser: User | null = null;
+    try {
+      const raw = sessionStorage.getItem(SESSION_USER_KEY);
+      if (raw) persistedUser = JSON.parse(raw);
+    } catch { /* ignore */ }
+    if (persistedToken && persistedUser) {
+      resolved = true;
+      setUser(persistedUser);
+      try { enableWebPush(persistedUser.id); } catch { /* ignore */ }
+      setIsLoading(false);
+    }
+
     const finishNoSession = () => {
       if (resolved) return;
       resolved = true;
+      try { sessionStorage.removeItem(SESSION_USER_KEY); } catch { /* ignore */ }
       try { localStorage.removeItem("user"); } catch { /* ignore */ }
       clearToken();
       setIsLoading(false);
@@ -92,22 +111,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           resolved = true;
           setToken(msg.token);
           setUser(msg.user);
+          try { sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(msg.user)); } catch { /* ignore */ }
           try { enableWebPush(msg.user.id); } catch { /* ignore */ }
           setIsLoading(false);
         } else if (msg.type === "logout") {
           // Signed out in another tab → drop the session here too.
           clearToken();
           setUser(null);
+          try { sessionStorage.removeItem(SESSION_USER_KEY); } catch { /* ignore */ }
           try { localStorage.removeItem("user"); } catch { /* ignore */ }
         }
       };
+      // Already restored from sessionStorage → don't need to ask other tabs.
+      if (resolved) return;
       chan.postMessage({ type: "session-request" });
       // No answer in time → cold start; fall back to the login flow.
       const timer = setTimeout(finishNoSession, 400);
       return () => { clearTimeout(timer); };
     }
 
-    finishNoSession();
+    if (!resolved) finishNoSession();
   }, []);
 
   // Web guard: with no restored session, any protected page must bounce to the
@@ -140,6 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function applySession(u: User, token: string | null) {
     if (token) setToken(token);
     setUser(u);
+    // Persist for refresh-restore (survives F5, cleared on tab close / logout).
+    try { sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(u)); } catch { /* ignore */ }
     localStorage.setItem("user", JSON.stringify(u));
     if (token) syncBiometricSession(u as any, token);
     enableWebPush(u.id);
@@ -217,6 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setViewOnly(false);
     setRealUser(null);
     setUser(null);
+    try { sessionStorage.removeItem(SESSION_USER_KEY); } catch { /* ignore */ }
     localStorage.removeItem("user");
     clearToken();
     // Fully clear the session: also drop the stored biometric credential + JWT,

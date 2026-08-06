@@ -8,12 +8,21 @@
 // the header is sent consistently and that existing call sites keep working.
 // ---------------------------------------------------------------------------
 
-// The auth token lives in memory only (module-scoped). It is deliberately NOT
-// persisted to localStorage/sessionStorage, so a full page reload — a new tab,
-// reopening the site, or refresh — starts with no token and forces a fresh
-// login. It survives client-side (SPA) navigation because the module stays
-// loaded for the lifetime of the tab.
-let tokenInMemory: string | null = null;
+// The auth token is held in memory AND mirrored to sessionStorage. sessionStorage
+// survives a page refresh in the same tab (so refreshing keeps you signed in) but
+// is wiped when the tab is closed — so closing every tab still ends the session.
+// It is intentionally NOT localStorage: we don't want the session to outlive the
+// browser session. A user only truly signs out via the Logout button.
+const TOKEN_STORAGE_KEY = "ms_auth_token";
+
+function readPersistedToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return window.sessionStorage.getItem(TOKEN_STORAGE_KEY); } catch { return null; }
+}
+
+// Hydrate from sessionStorage at module load so a refresh restores the token
+// before any component fires an API request.
+let tokenInMemory: string | null = readPersistedToken();
 
 export function getToken(): string | null {
   return tokenInMemory;
@@ -22,10 +31,12 @@ export function getToken(): string | null {
 export function setToken(token: string): void {
   if (!token) return;
   tokenInMemory = token;
+  try { window.sessionStorage.setItem(TOKEN_STORAGE_KEY, token); } catch { /* ignore */ }
 }
 
 export function clearToken(): void {
   tokenInMemory = null;
+  try { window.sessionStorage.removeItem(TOKEN_STORAGE_KEY); } catch { /* ignore */ }
 }
 
 // ---------------------------------------------------------------------------
