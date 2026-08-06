@@ -459,7 +459,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: const Icon(Icons.confirmation_number_outlined, color: _white),
             onPressed: () => Navigator.pushNamed(context, '/tickets'),
-            tooltip: 'Raise a Ticket',
+            tooltip: 'Support',
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: _white),
