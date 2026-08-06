@@ -94,6 +94,17 @@ function pickBestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | n
 
 export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoaded?: (bots: AiBot[], selected: AiBot | null, select: (b: AiBot) => void) => void }) {
   const { user } = useAuth();
+  // The signed-in user's avatar for their own chat bubbles. Fetched live so a
+  // freshly-uploaded profile photo shows here too (the session user has no
+  // headshotUrl on it).
+  const [userHeadshot, setUserHeadshot] = useState("");
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch(`/api/users/${user.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((u) => { if (u?.headshotUrl) setUserHeadshot(u.headshotUrl); })
+      .catch(() => {});
+  }, [user?.id]);
   const [bots, setBots] = useState<AiBot[]>([]);
   const [selectedBot, setSelectedBot] = useState<AiBot | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -763,7 +774,9 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
               {messages.map((m, i) => (
                 <div key={i} style={{ display: "flex", gap: "14px", alignItems: "flex-start", flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
                   <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: m.role === "user" ? "#1f2937" : theme, color: "#fff", overflow: "hidden" }}>
-                    {m.role === "user" ? "👤" : (avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🤖")}
+                    {m.role === "user"
+                      ? (userHeadshot ? <img src={userHeadshot} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤")
+                      : (avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🤖")}
                   </div>
                   <div style={{ flex: 1, maxWidth: "85%" }}>
                     {m.attachments && m.attachments.length > 0 && (
