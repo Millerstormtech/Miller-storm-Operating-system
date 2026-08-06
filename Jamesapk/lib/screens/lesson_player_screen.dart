@@ -307,6 +307,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               _quizReview = _reviewMap(savedResult['review']);
               _quizFailed = false;
               _quizSubmitted = true;
+              // A stored quiz result is always a pass, but the server records it
+              // in quizResults (not completedPages), so isCurrentLessonCompleted
+              // above stays false and would leave Next greyed out. Unlock it here
+              // so a rep revisiting a passed quiz isn't stuck — matches the web.
+              _canGoNext = true;
             }
           }
         });
