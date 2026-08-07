@@ -64,8 +64,17 @@ class _ScoreboardViewState extends State<ScoreboardView> {
       _error = false;
     });
     try {
+      // Send the logged-in user's id, matching the web ScoreboardHome. The server
+      // honors userId only for admins (for everyone else it's their own id, a
+      // no-op), so this keeps the app in step with the web /api/scoreboard call.
+      String userId = '';
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final userStr = prefs.getString('user');
+        if (userStr != null) userId = (jsonDecode(userStr)['id'] ?? '').toString();
+      } catch (_) {}
       final res = await api
-          .get(Uri.parse('https://millerstorm.tech/api/scoreboard?window=$_window'))
+          .get(Uri.parse('https://millerstorm.tech/api/scoreboard?window=$_window&userId=${Uri.encodeComponent(userId)}'))
           .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
