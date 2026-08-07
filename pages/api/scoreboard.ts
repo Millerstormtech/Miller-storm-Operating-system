@@ -78,8 +78,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   try {
-    const user = await UserModel.findOne({ id: auth.sub }).select("id role name businessPlan").lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    const caller = await UserModel.findOne({ id: auth.sub }).select("id role name businessPlan").lean();
+    if (!caller) return res.status(404).json({ error: "User not found" });
+
+    // Admin "View As": an admin may request another user's scoreboard by passing
+    // ?userId=. Everyone else can only see their own — the query param is ignored
+    // for them — so this can never leak one rep's board to another. When an admin
+    // views a rep, the scoreboard is computed for that REP (their role, scope,
+    // and numbers), which is exactly what View As should show.
+    const requestedId = typeof req.query.userId === "string" ? req.query.userId : "";
+    let user: any = caller;
+    if (requestedId && requestedId !== (caller as any).id && (caller as any).role === "admin") {
+      const target = await UserModel.findOne({ id: requestedId }).select("id role name businessPlan").lean();
+      if (target) user = target;
+    }
 
     // Marketing/admin do not use the sales roll-up; Phase 3 handles their variant.
     if ((user as any).role === "marketing" || (user as any).role === "admin") {

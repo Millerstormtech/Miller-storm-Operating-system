@@ -115,7 +115,11 @@ export function ScoreboardHome(): JSX.Element {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    fetch(`/api/scoreboard?window=${windowSel}`)
+    // Send the current viewer's id so an admin using "View As" gets the REP's
+    // scoreboard (the server honors userId only for admins; for everyone else
+    // it's their own id, a no-op). Without this, View As shows the admin's own
+    // token identity -> the "admins have no metrics" message.
+    fetch(`/api/scoreboard?window=${windowSel}&userId=${encodeURIComponent(user?.id || "")}`)
       .then((res) => {
         if (!res.ok) throw new Error(String(res.status));
         return res.json();
@@ -139,7 +143,7 @@ export function ScoreboardHome(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [windowSel, retryNonce]);
+  }, [windowSel, retryNonce, user?.id]);
 
   const firstName = (user?.name || "").trim().split(/\s+/)[0] || "there";
   const goToGoals = () => router.push("/sales/plan");
