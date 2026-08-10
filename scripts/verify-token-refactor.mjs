@@ -56,10 +56,15 @@ function canonicalColour(raw) {
 
 /**
  * Pull every colour token out of a file, in source order.
- * Matches hex literals, rgb()/rgba() literals, and var(...) references
- * (including rgb(var(--x-rgb) / 0.9), which is matched as a whole rgb() call).
+ * Matches hex literals, rgb()/rgba() literals, and var(...) references.
+ * The rgb/rgba alternative tolerates ONE level of nested parentheses, because
+ * a tokenized value like rgb(var(--gray-500-rgb) / 0.9) nests a var(...) call
+ * inside the rgb(...) call. A naive [^)]* stops at the var()'s own closing
+ * paren and truncates the match to "rgb(var(--gray-500-rgb)" -- losing the
+ * alpha and the outer paren, so two different alphas collapse to the same
+ * string and a real opacity change goes undetected.
  */
-const COLOUR_RE = /rgba?\([^)]*\)|var\(\s*--[a-zA-Z0-9-]+\s*(?:,[^)]*)?\)|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g;
+const COLOUR_RE = /rgba?\((?:[^()]|\([^()]*\))*\)|var\(\s*--[a-zA-Z0-9-]+\s*(?:,[^()]*)?\)|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g;
 
 function colourSequence(text, tokens) {
   const seq = [];
