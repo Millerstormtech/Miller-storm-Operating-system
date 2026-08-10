@@ -3,7 +3,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import '../widgets/notification_bell.dart';
 import 'storm_chat_room_screen.dart';
-import 'storm_communities_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
@@ -154,8 +153,6 @@ class _StormChatScreenState extends State<StormChatScreen> {
                     Row(
                       children: [
                         _newMessageButton(),
-                        const SizedBox(width: 10),
-                        _communityButton(),
                       ],
                     ),
                   ],
@@ -211,76 +208,28 @@ class _StormChatScreenState extends State<StormChatScreen> {
     );
   }
 
-  // Top-right "Communities" button (the dark pill). Opens the communities view.
-  Widget _communityButton() {
-    final count = _communityCount();
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => StormCommunitiesScreen(userId: userId ?? '', userRole: userRole ?? ''),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1F2937),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.groups_2_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 7),
-            const Text('Communities', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-            if (count > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(color: const Color(0xFFCB0002), borderRadius: BorderRadius.circular(10)),
-                child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+
+  // Top-level groups (not DMs, not subgroups): everything shown on the main page.
+  List<dynamic> _topLevelGroups() {
+    final byId = { for (final g in groups) g['_id'].toString(): g };
+    return groups.where((g) {
+      if (g['isDirect'] == true) return false; // DMs have their own section
+      final pid = (g['parentGroupId'] ?? '').toString();
+      // A subgroup (its parent is in the list) renders under its parent, not here.
+      return pid.isEmpty || !byId.containsKey(pid);
+    }).toList();
   }
 
-  // "Normal" groups only: not a community (has no subgroups) and not itself a
-  // subgroup of a visible community.
-  List<dynamic> _regularGroups() {
-    final byId = { for (final g in groups) g['_id'].toString(): g };
-    final parentIds = <String>{};
-    for (final g in groups) {
-      final pid = (g['parentGroupId'] ?? '').toString();
-      if (pid.isNotEmpty) parentIds.add(pid);
-    }
-    return groups.where((g) {
-      if (g['isDirect'] == true) return false; // DMs live in their own section
-      final id = g['_id'].toString();
-      final pid = (g['parentGroupId'] ?? '').toString();
-      final isCommunity = parentIds.contains(id);
-      final isSubgroup = pid.isNotEmpty && byId.containsKey(pid);
-      return !isCommunity && !isSubgroup;
-    }).toList();
+  // Direct subgroups of a group.
+  List<dynamic> _subgroupsOf(dynamic groupId) {
+    final id = groupId.toString();
+    return groups.where((g) =>
+        g['isDirect'] != true && (g['parentGroupId'] ?? '').toString() == id).toList();
   }
 
   // The user's private 1-on-1 direct messages.
   List<dynamic> _directMessages() {
     return groups.where((g) => g['isDirect'] == true).toList();
-  }
-
-  int _communityCount() {
-    final parentIds = <String>{};
-    for (final g in groups) {
-      if (g['isDirect'] == true) continue;
-      final pid = (g['parentGroupId'] ?? '').toString();
-      if (pid.isNotEmpty) parentIds.add(pid);
-    }
-    return groups.where((g) => parentIds.contains(g['_id'].toString())).length;
   }
 
   Widget _buildGroupsList() {
@@ -293,12 +242,11 @@ class _StormChatScreenState extends State<StormChatScreen> {
       },
       child: Builder(
         builder: (context) {
-          // Main list = private DMs, then "normal" groups: not a community (no
-          // subgroups) and not a subgroup itself. Communities + their subgroups
-          // live under the "Community" button in the header.
-          final regular = _regularGroups();
+          // One page: private DMs, then every group with its subgroups nested
+          // directly beneath it (no separate Communities screen).
+          final topLevel = _topLevelGroups();
           final dms = _directMessages();
-          if (regular.isEmpty && dms.isEmpty) return _buildEmptyState();
+          if (topLevel.isEmpty && dms.isEmpty) return _buildEmptyState();
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -307,9 +255,13 @@ class _StormChatScreenState extends State<StormChatScreen> {
                 ...dms.map((d) => _buildDmCard(d)),
                 const SizedBox(height: 8),
               ],
-              if (regular.isNotEmpty) ...[
+              if (topLevel.isNotEmpty) ...[
                 if (dms.isNotEmpty) _sectionLabel('Groups'),
-                ...regular.map((g) => _buildGroupCard(g)),
+                ...topLevel.expand((g) => [
+                      _buildGroupCard(g),
+                      ..._subgroupsOf(g['_id'])
+                          .map((sg) => _buildGroupCard(sg, isSubgroup: true)),
+                    ]),
               ],
             ],
           );
