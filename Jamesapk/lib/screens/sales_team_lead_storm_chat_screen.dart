@@ -62,18 +62,12 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
       if (response.statusCode == 200) {
         final allGroups = json.decode(response.body) as List;
 
-        // Which groups to show. Trust the server's flags instead of re-checking
-        // membership here: the `members` array stores Mongo _id strings, so the
-        // old members.contains(userId) test (userId is the app id) never matched
-        // a public group and silently hid every one of them. The server already
-        // returns my DMs (isDirect) + all public/private groups with an isMember
-        // flag. Show my DMs, groups I belong to, and every PUBLIC group.
-        final userGroups = allGroups.where((group) {
-          if (group['isDirect'] == true) return true;
-          if (group['isMember'] == true) return true;
-          if ((group['visibility'] ?? '') == 'public') return true;
-          return false;
-        }).toList();
+        // Show EVERY group + subgroup (public AND private) plus my DMs. Public
+        // groups are auto-joined server-side (isMember true); private groups the
+        // user isn't in still appear, with a "Join" button that requests access.
+        // The server already scoped DMs to me, so nothing is filtered out here —
+        // this fixes private groups/subgroups silently disappearing from the app.
+        final userGroups = List<dynamic>.from(allGroups);
 
         setState(() {
           groups = userGroups;
@@ -250,6 +244,48 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
     );
   }
 
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // Request access to a private group the user isn't a member of. The server is
+  // idempotent: it tells us if they're already a member, already pending, or
+  // were previously denied.
+  Future<void> _requestJoin(dynamic group) async {
+    final status = (group['joinStatus'] ?? 'none').toString();
+    if (status == 'denied') {
+      _snack("Your request was declined by the group admin.");
+      return;
+    }
+    if (status == 'pending') {
+      _snack("Your request is pending the group admin's approval.");
+      return;
+    }
+    try {
+      final res = await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/join-requests'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'groupId': group['_id']}),
+      );
+      final data = res.body.isNotEmpty
+          ? json.decode(res.body) as Map<String, dynamic>
+          : <String, dynamic>{};
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        if (data['alreadyMember'] == true) {
+          await _fetchGroups();
+        } else {
+          setState(() => group['joinStatus'] = 'pending');
+          _snack("Request sent — the group admin will approve it.");
+        }
+      } else {
+        _snack((data['message'] ?? data['error'] ?? "Couldn't send the request. Try again.").toString());
+      }
+    } catch (_) {
+      _snack("Couldn't send the request. Try again.");
+    }
+  }
+
   Widget _buildGroupCard(dynamic group, {bool isSubgroup = false}) {
     final name = group['name'] ?? 'Unnamed Group';
     final description = group['description'] ?? '';
@@ -259,10 +295,20 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
     final groupId = group['_id'];
     final unreadCount = unreadCounts[groupId] ?? 0;
     final mentionCount = mentionCounts[groupId] ?? 0;
+    // A private group the user isn't in yet: still shown, but tapping requests
+    // access instead of opening the chat (public groups are auto-joined).
+    final notMember = group['isDirect'] != true && group['isMember'] == false;
+    final joinStatus = (group['joinStatus'] ?? 'none').toString();
 
-    final subtitle = description.isNotEmpty
-        ? description
-        : '$memberCount member${memberCount == 1 ? '' : 's'}';
+    final subtitle = notMember
+        ? (joinStatus == 'pending'
+            ? 'Private · request pending'
+            : joinStatus == 'denied'
+                ? 'Private · request was declined'
+                : 'Private · tap to request to join')
+        : (description.isNotEmpty
+            ? description
+            : '$memberCount member${memberCount == 1 ? '' : 's'}');
 
     return Container(
       margin: EdgeInsets.only(bottom: isSubgroup ? 6 : 10),
@@ -282,6 +328,10 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
+            if (notMember) {
+              await _requestJoin(group);
+              return;
+            }
             await Navigator.push(
               context,
               MaterialPageRoute(
@@ -365,8 +415,9 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          const Icon(Icons.people_outline,
-                              size: 13, color: Color(0xFF9CA3AF)),
+                          Icon(notMember ? Icons.lock_outline : Icons.people_outline,
+                              size: 13,
+                              color: notMember ? const Color(0xFFCB0002) : const Color(0xFF9CA3AF)),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -383,6 +434,27 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
                   ),
                 ),
                 const SizedBox(width: 8),
+                if (notMember)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: joinStatus == 'pending'
+                          ? const Color(0xFFF3F4F6)
+                          : const Color(0xFFFFECEC),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      joinStatus == 'pending' ? 'Requested' : 'Join',
+                      style: TextStyle(
+                        color: joinStatus == 'pending'
+                            ? const Color(0xFF6B7280)
+                            : const Color(0xFFCB0002),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                else
                 // Badges (mention / unread) or chevron
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
