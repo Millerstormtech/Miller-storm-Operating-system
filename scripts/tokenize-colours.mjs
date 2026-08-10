@@ -66,6 +66,13 @@ function processFile(file) {
   const svgRanges = svgAttrRanges(original);
   const skipped = [];
   let converted = 0;
+  // Line numbers must be computed against `original` at record time — never
+  // re-derived from disk afterward. A real (non-dry) run rewrites the file
+  // in place before the report prints, and every conversion grows the file
+  // (a short hex becomes a longer var(--token)), so slicing the post-write
+  // content at a pre-write offset undercounts newlines for any skip that
+  // follows a conversion in the same file.
+  const lineOf = (idx) => (original.slice(0, idx).match(/\n/g) || []).length + 1;
 
   const out = original.replace(HEX, (hex, offset) => {
     const key = hex.toLowerCase();
@@ -73,7 +80,7 @@ function processFile(file) {
     if (!primitive) return hex;                       // not one of the eight
 
     if (svgRanges.some(([a, b]) => offset >= a && offset < b)) {
-      skipped.push({ hex, offset, reason: "SVG presentation attribute (var() renders black)" });
+      skipped.push({ hex, offset, line: lineOf(offset), reason: "SVG presentation attribute (var() renders black)" });
       return hex;
     }
 
@@ -86,17 +93,17 @@ function processFile(file) {
     const segment = original.slice(start + 1, offset);
     const m = segment.match(/^\s*['"`]?([A-Za-z][A-Za-z0-9_-]*)['"`]?\s*:/);
     if (!m) {
-      skipped.push({ hex, offset, reason: `no property found (segment: ${JSON.stringify(segment.slice(0, 48))})` });
+      skipped.push({ hex, offset, line: lineOf(offset), reason: `no property found (segment: ${JSON.stringify(segment.slice(0, 48))})` });
       return hex;
     }
     const category = categorise(m[1]);
     if (!category) {
-      skipped.push({ hex, offset, reason: `property "${m[1]}" is not text/surface/border` });
+      skipped.push({ hex, offset, line: lineOf(offset), reason: `property "${m[1]}" is not text/surface/border` });
       return hex;
     }
     const token = MAP[category][primitive];
     if (!token) {
-      skipped.push({ hex, offset, reason: `rare pair (${primitive} as ${category}) — needs a human decision` });
+      skipped.push({ hex, offset, line: lineOf(offset), reason: `rare pair (${primitive} as ${category}) — needs a human decision` });
       return hex;
     }
     converted++;
@@ -132,6 +139,5 @@ for (const target of targets) {
 console.log(`\n${DRY ? "[DRY RUN] " : ""}CONVERTED: ${totalConverted}`);
 console.log(`SKIPPED (need a human decision): ${allSkipped.length}\n`);
 for (const s of allSkipped) {
-  const line = (readFileSync(s.file, "utf8").slice(0, s.offset).match(/\n/g) || []).length + 1;
-  console.log(`  ${s.file}:${line}  ${s.hex}  — ${s.reason}`);
+  console.log(`  ${s.file}:${s.line}  ${s.hex}  — ${s.reason}`);
 }
