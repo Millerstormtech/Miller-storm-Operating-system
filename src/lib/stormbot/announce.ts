@@ -30,8 +30,8 @@ export async function announce(text: string): Promise<boolean> {
 
     const msg: any = await ChatMessage.create({
       groupId: CELEBRATION_GROUP_ID,
-      senderId: "storm-bot",
-      senderName: "Storm Bot",
+      senderId: "storm-bot", // stable internal id — not shown to users; leave as-is
+      senderName: "Miller Storm",
       senderRole: "system",
       message: text,
       messageType: "text",
@@ -40,7 +40,7 @@ export async function announce(text: string): Promise<boolean> {
     // group.members hold Mongo _ids; the bot is not a member, so everyone gets notified.
     const memberIds: string[] = group.members || [];
     const title = `New message in ${group.name}`;
-    const body = `Storm Bot: ${text.substring(0, 100)}`;
+    const body = `Miller Storm: ${text.substring(0, 100)}`;
     await Promise.all(
       memberIds.map((memberId) =>
         NotificationModel.create({
