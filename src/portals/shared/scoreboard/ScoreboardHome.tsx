@@ -14,7 +14,8 @@ import {
 } from "../../../lib/scoreboard/display";
 import { MetricTile } from "./MetricTile";
 import { RankStrip } from "./RankStrip";
-import { ConversionStrip } from "./ConversionStrip";
+// ConversionStrip is deliberately not imported: see the note where it used to
+// render, further down this file.
 import { MarketingHome } from "./MarketingHome";
 
 // The three-period toggle deliberately excludes "day" even though the API's
@@ -327,10 +328,19 @@ export function ScoreboardHome(): JSX.Element {
           />
         </div>
 
-        <ConversionStrip
-          knockToClaim={board.conversions.knockToClaim}
-          claimToContract={board.conversions.claimToContract}
-        />
+        {/* The knock-to-claim / claim-to-contract strip used to render here.
+            Jay pulled it on the 2026-08-07 call: "Take that out for right now
+            ... I just really want to look at absolute numbers and I don't want
+            to make this super confusing ... let's just keep it clean with
+            claims, verified door knocks and contract amounts."
+
+            This is a METHODOLOGY HOLD, not a rejection: he and Mo are still
+            settling how the rate should be computed (they are weighing trimming
+            the most recent 30 days to account for attribution lag). So
+            ConversionStrip.tsx and src/lib/leaderboard/conversion.ts stay put,
+            tested and registered, exactly as the leaderboard version was left
+            in PR #43. Bringing it back should be a revert of this commit, not a
+            rebuild. Do not "fix" its absence by re-adding it. */}
 
         {/* "You (personal)" strip: only present when the API decided this viewer
             both leads a wider scope AND personally sells (see scoreboard.ts's
