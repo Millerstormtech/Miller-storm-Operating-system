@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../widgets/scoreboard_view.dart';
+import '../widgets/notification_bell.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
 // live from AccuLynx + RepCard via /api/leaderboard. Self-contained per panel.
@@ -491,6 +492,8 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                           ],
                         ),
                       ),
+                      if (_userId != null) NotificationBell(userId: _userId!),
+                      const SizedBox(width: 4),
                       Showcase(
                         key: _kReplay,
                         title: 'Replay anytime',

@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../widgets/scoreboard_view.dart';
+import '../widgets/notification_bell.dart';
 import '../widgets/branch_manager_bottom_nav.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
@@ -492,6 +493,8 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
                           ],
                         ),
                       ),
+                      if (_userId != null) NotificationBell(userId: _userId!),
+                      const SizedBox(width: 4),
                       Showcase(
                         key: _kReplay,
                         title: 'Replay anytime',
