@@ -1,0 +1,71 @@
+/* =============================================================================
+   MILLER STORM DESIGN TOKENS — COLOUR
+   =============================================================================
+   The ONE place colour is defined. Changing a colour here changes it everywhere.
+
+   HOW TO USE:
+     In a component, reference a SEMANTIC name:   color: var(--text-muted)
+     Never reference a primitive directly.        color: var(--gray-500)   <-- no
+
+   WHY TWO TIERS:
+     Primitives name the COLOUR. Semantics name the JOB. Components use jobs, so
+     re-skinning means editing the semantic block only, never the components.
+
+   THE ONE EXCEPTION: transparency. A semantic resolves to a hex, and a hex cannot
+   take an opacity. Sites that need alpha use the *-rgb channel primitives:
+       rgb(var(--gray-500-rgb) / 0.9)
+
+   These values are TODAY's colours. This file was introduced as a pure refactor
+   with zero visual change; the new palette lands separately.
+   ============================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------- PRIMITIVES
+     Name the colour. Only the semantic block below may reference these. */
+  --gray-100: #F3F4F6;
+  --gray-200: #E5E7EB;
+  --gray-400: #9CA3AF;
+  --gray-500: #6B7280;
+  --gray-700: #374151;
+  --gray-800: #1F2937;
+  --gray-900: #111827;
+  --white:    #FFFFFF;
+
+  /* Channel forms, for the alpha exception above. Space-separated on purpose:
+     that is the syntax rgb() needs for the slash-alpha form. Only the five
+     colours actually used transparently in this codebase. */
+  --gray-100-rgb: 243 244 246;
+  --gray-500-rgb: 107 114 128;
+  --gray-800-rgb:  31  41  55;
+  --gray-900-rgb:  17  24  39;
+  --white-rgb:    255 255 255;
+
+  /* ----------------------------------------------------------------- SEMANTICS
+     Name the job. THIS is what components use.
+     Redefining this block (and only this block) re-skins the app. */
+
+  /* Text, strongest to faintest. Monotonic: each step is lighter than the last. */
+  --text-primary:   var(--gray-900);  /* headings, high-emphasis body */
+  --text-secondary: var(--gray-800);  /* DARKER and RARER than tertiary (64 uses) */
+  --text-tertiary:  var(--gray-700);  /* <<< DEFAULT body-secondary text (201 uses).
+                                             The workhorse. Reach for THIS one first;
+                                             --text-secondary is the rare darker one.
+                                             DO NOT DELETE THIS COMMENT: the names are
+                                             ordered by darkness, not by frequency, and
+                                             without this note people grab the wrong one. */
+  --text-muted:     var(--gray-500);  /* labels, captions, helper text (393 uses) */
+  --text-subtle:    var(--gray-400);  /* placeholders, disabled (222 uses) */
+  --text-inverse:   var(--white);     /* text on a dark surface (166 uses) */
+
+  /* Surfaces (backgrounds) */
+  --surface-default:        var(--white);     /* cards, panels (298 uses) */
+  --surface-subtle:         var(--gray-100);  /* page ground, zebra rows (103) */
+  --surface-muted:          var(--gray-200);  /* wells, inactive chips (52) */
+  --surface-inverse:        var(--gray-900);  /* dark sidebar (36) */
+  --surface-inverse-raised: var(--gray-800);  /* panel raised on dark (36) */
+
+  /* Borders */
+  --border-default: var(--gray-200);  /* the standard hairline (352 uses) */
+  --border-subtle:  var(--gray-100);  /* (26) */
+  --border-strong:  var(--gray-800);  /* (18) */
+}
