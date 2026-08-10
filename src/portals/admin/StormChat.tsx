@@ -1089,7 +1089,8 @@ export function StormChatManagement() {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                   <button type="button" className="btn-primary btn-small" onClick={() => { setSelectedGroup(g); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13 }}>💬 Open chat</button>
                   <button type="button" className="btn-ghost btn-small" onClick={() => { startEdit(g); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13 }}>✏️ Edit group</button>
-                  <button type="button" className="btn-ghost btn-small" onClick={() => { startCreateSubgroup(g); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13 }}>+ Add subgroup</button>
+                  {/* Single-level nesting only: a subgroup can't have its own subgroup. */}
+                  {!g.parentGroupId && <button type="button" className="btn-ghost btn-small" onClick={() => { startCreateSubgroup(g); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13 }}>+ Add subgroup</button>}
                   <button type="button" className="btn-ghost btn-small" onClick={() => { deleteGroup(g._id); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13, color: '#dc2626' }}>🗑️ Delete group</button>
                 </div>
 

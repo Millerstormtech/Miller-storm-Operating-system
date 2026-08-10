@@ -41,6 +41,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .find({})
         .sort({ order: 1, createdAt: -1 })
         .toArray();
+
+      // Enforce single-level nesting on read: a subgroup may never be the parent
+      // of another subgroup. Any group whose parent is itself a subgroup is
+      // flattened up to its top-level ancestor. This retroactively repairs data
+      // created before the create-time guard (a nested subgroup was counted in
+      // the header but never rendered). Only writes when a nested case exists.
+      try {
+        const byId = new Map(groups.map((g: any) => [String(g._id), g]));
+        const topAncestor = (g: any): string => {
+          let cur = g, hops = 0;
+          while (cur?.parentGroupId && byId.has(String(cur.parentGroupId)) && hops < 10) {
+            cur = byId.get(String(cur.parentGroupId));
+            hops++;
+          }
+          return String(cur._id);
+        };
+        const fixes: { id: any; parent: string }[] = [];
+        for (const g of groups) {
+          const pid = String(g.parentGroupId || '');
+          if (!pid) continue;
+          const parent = byId.get(pid);
+          if (parent && String(parent.parentGroupId || '')) {
+            const top = topAncestor(parent);
+            if (top !== pid) {
+              g.parentGroupId = top; // fix the in-memory copy for this response
+              fixes.push({ id: g._id, parent: top });
+            }
+          }
+        }
+        if (fixes.length) {
+          await Promise.all(
+            fixes.map((f) =>
+              db.collection('chatgroups').updateOne({ _id: f.id }, { $set: { parentGroupId: f.parent } })
+            )
+          );
+        }
+      } catch (e) {
+        console.error('[groups] subgroup flatten failed:', e);
+      }
       // ?mine=1 → only the groups the current user belongs to (including their
       // DMs). Used by the sales/manager chat UI. Without it (admin management
       // view / app all-groups fetch) DMs are excluded entirely, so a user's
@@ -135,6 +174,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Name and members are required' });
       }
 
+      // Single-level nesting only: a subgroup can never have its own subgroup.
+      // Reject creating a group whose parent is itself a subgroup — otherwise the
+      // nested group is counted but never shown (the tree renders one level), the
+      // exact "a subgroup has a subgroup" mismatch.
+      let parentDoc: any = null;
+      if (parentGroupId) {
+        parentDoc = await ChatGroup.findById(parentGroupId).select('visibility parentGroupId').lean();
+        if (parentDoc?.parentGroupId) {
+          return res.status(400).json({
+            error: "A subgroup can't have its own subgroup. Add it to the top-level group instead.",
+          });
+        }
+      }
+
       // A subgroup's order is scoped to its parent; top-level groups share the
       // global order. Append the new (sub)group at the end of its own list.
       const db = mongoose.connection.db!;
@@ -159,11 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // A public group — OR a subgroup created under a public parent — contains
       // every account, so pull them all in now and return the refreshed group so
       // the client shows the real member count.
-      let parentIsPublic = false;
-      if (parentGroupId) {
-        const parent = await ChatGroup.findById(parentGroupId).select('visibility').lean() as any;
-        parentIsPublic = parent?.visibility === 'public';
-      }
+      const parentIsPublic = parentDoc?.visibility === 'public';
       if (isPublic || parentIsPublic) {
         const { addAllUsersToGroup } = await import('../../../../src/lib/publicGroups');
         await addAllUsersToGroup(group._id as any);
