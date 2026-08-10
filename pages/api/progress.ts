@@ -162,7 +162,22 @@ export default async function handler(
       } else {
         // Update existing progress
         if (completedPages !== undefined) {
-          progress.completedPages = completedPages;
+          const incoming = Array.isArray(completedPages) ? completedPages : [];
+          // The admin Override tool sends replace:true to set an EXACT set (it
+          // can uncheck pages to reset a rep). Every OTHER caller is a learner
+          // recording a watched page, where completedPages must only ever GROW.
+          // So we union with what's already stored. That makes the write immune
+          // to a stale, partial, racy, or cross-device array silently erasing
+          // already-watched pages — the root of the "I keep having to rewatch
+          // videos I already watched, and it won't clear" bug (a full-array
+          // replace from client state could wipe progress on any bad write).
+          if (req.body.replace === true) {
+            progress.completedPages = incoming;
+          } else {
+            progress.completedPages = Array.from(
+              new Set([...(progress.completedPages || []), ...incoming])
+            );
+          }
         }
         if (quizResults !== undefined) {
           progress.quizResults = quizResultsToStore;

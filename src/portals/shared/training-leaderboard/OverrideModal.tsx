@@ -119,6 +119,9 @@ export function OverrideModal({
           userId: selectedUser.id,
           courseId,
           completedPages: Array.from(checked),
+          // This tool sets an EXACT set (an admin can uncheck to reset), so it
+          // must REPLACE, not union like the learner write path now does.
+          replace: true,
         }),
       });
       if (!res.ok) {
