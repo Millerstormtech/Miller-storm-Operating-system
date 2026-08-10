@@ -1,0 +1,22 @@
+import type { NextPage } from "next";
+import { MarketingLayout } from "../../src/portals/marketing/MarketingLayout";
+import { TeamStructure } from "../../src/components/TeamStructure";
+import { useAuth } from "../../src/contexts/AuthContext";
+
+const MarketingTeamStructurePage: NextPage = () => {
+  const { user } = useAuth();
+  if (!user) return <div>Loading...</div>;
+  return (
+    <MarketingLayout
+      currentView="team-structure"
+      pageTitle="Organization Chart"
+      pageSubtitle="Live org chart, built automatically from registered users and their roles."
+    >
+      <div style={{ padding: "0 24px 24px" }}>
+        <TeamStructure />
+      </div>
+    </MarketingLayout>
+  );
+};
+
+export default MarketingTeamStructurePage;

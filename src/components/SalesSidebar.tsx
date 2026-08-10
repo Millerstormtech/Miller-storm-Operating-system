@@ -4,8 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useFeatureToggles } from "../hooks/useFeatureToggles";
 
 // Sales Rep sidebar — the exact set of features they get (order matches the
-// portal spec). Team Structure, My Goals (/sales/plan) and the Master Bot
-// Builder are intentionally NOT here. (Raise a Ticket lives in the top bar, not
+// portal spec). My Goals (/sales/plan) and the Master Bot Builder are
+// intentionally NOT here. (Raise a Ticket lives in the top bar, not
 // the sidebar.) My Goals currently has no way in at all: the Scoreboard tile
 // link that would reach it is switched off behind SHOW_GOAL_LINK in
 // MetricTile.tsx until My Goals launches.
@@ -21,6 +21,7 @@ export const salesSidebarItems = [
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "training", label: "Training Center", toggleKey: "training" },
   { id: "aiChat", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
   { id: "profile", label: "Profile", toggleKey: "profile" },
 ];
 

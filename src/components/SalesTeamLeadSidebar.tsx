@@ -4,7 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useFeatureToggles } from "../hooks/useFeatureToggles";
 
 // Sales Team Lead sidebar — the exact set of features they get (order matches
-// the portal spec). Team Structure, Team Goals (/sales/plan) and the Master Bot
+// the portal spec). Team Goals (/sales/plan) and the Master Bot
 // Builder are intentionally NOT here. (Raise a Ticket lives in the top bar, not
 // the sidebar.) The old Team Tasks page was folded into My Tasks in 2026-08,
 // and My Tasks itself was cancelled by Jay on 2026-08-05, so neither is here.
@@ -20,6 +20,7 @@ export const salesTeamLeadSidebarItems = [
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 
