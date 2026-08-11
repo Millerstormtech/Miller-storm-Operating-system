@@ -60,7 +60,7 @@ const COMPOSER_BTN: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   flex: '0 0 auto',
-  backgroundColor: '#f3f4f6',
+  backgroundColor: 'var(--surface-subtle)',
   border: 'none',
   borderRadius: 8,
   cursor: 'pointer',
@@ -82,7 +82,7 @@ function SenderAvatar({ url, name }: { url?: string; name: string }) {
     <div
       style={{
         width: 28, height: 28, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
-        background: '#374151', color: '#fff', display: 'flex', alignItems: 'center',
+        background: 'var(--gray-700) /* no semantic: gray-700 as surface */', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center',
         justifyContent: 'center', fontSize: 11, fontWeight: 700, marginBottom: 2,
       }}
     >
@@ -643,7 +643,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     const mentionSet = new Set(names.map(n => '@' + n));
     const mentionRegex = names.length ? new RegExp(`(@(?:${names.map(esc).join('|')}))`, 'g') : null;
     const onColoredBubble = textColor === '#fff';
-    const mentionColor = onColoredBubble ? '#ffffff' : '#1d4ed8';
+    const mentionColor = onColoredBubble ? 'var(--text-inverse)' : '#1d4ed8';
     const mentionBg = onColoredBubble ? 'rgba(255,255,255,0.25)' : 'rgba(37,99,235,0.12)';
 
     const out: React.ReactNode[] = [];
@@ -697,7 +697,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             transform: 'translateY(-50%)',
             ...(isMyMessage ? { left: -54 } : { right: -54 }),
             width: 26, height: 26, borderRadius: '50%',
-            background: '#fff', border: '1px solid #e5e7eb',
+            background: 'var(--surface-default)', border: '1px solid var(--border-default)',
             boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
             cursor: 'pointer', fontSize: 14, lineHeight: 1,
             display: 'flex',
@@ -717,7 +717,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             style={{
               position: 'absolute', bottom: '100%', marginBottom: 6,
               ...(isMyMessage ? { right: 0 } : { left: 0 }),
-              background: '#fff', borderRadius: 22,
+              background: 'var(--surface-default)', borderRadius: 22,
               boxShadow: '0 6px 20px rgba(0,0,0,0.18)', border: '1px solid #eee',
               padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 2, zIndex: 1200,
             }}
@@ -728,7 +728,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 onClick={() => { toggleReaction(msg._id, em); setReactionPickerId(null); }}
                 title={em}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, padding: 3, borderRadius: '50%', lineHeight: 1 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.transform = 'scale(1.15)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-subtle)'; e.currentTarget.style.transform = 'scale(1.15)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'scale(1)'; }}
               >
                 {em}
@@ -737,18 +737,18 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <button
               onClick={() => setReactionPickerExpanded(v => !v)}
               title="More"
-              style={{ background: '#f3f4f6', border: 'none', cursor: 'pointer', fontSize: 16, width: 30, height: 30, borderRadius: '50%', lineHeight: 1, color: '#6b7280', marginLeft: 2 }}
+              style={{ background: 'var(--surface-subtle)', border: 'none', cursor: 'pointer', fontSize: 16, width: 30, height: 30, borderRadius: '50%', lineHeight: 1, color: 'var(--text-muted)', marginLeft: 2 }}
             >
               +
             </button>
             {reactionPickerExpanded && (
-              <div style={{ position: 'absolute', top: '100%', marginTop: 6, ...(isMyMessage ? { right: 0 } : { left: 0 }), width: 300, maxHeight: 200, overflowY: 'auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, zIndex: 1300 }}>
+              <div style={{ position: 'absolute', top: '100%', marginTop: 6, ...(isMyMessage ? { right: 0 } : { left: 0 }), width: 300, maxHeight: 200, overflowY: 'auto', background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, zIndex: 1300 }}>
                 {CHAT_EMOJIS.map((em) => (
                   <button
                     key={em}
                     onClick={() => { toggleReaction(msg._id, em); setReactionPickerId(null); setReactionPickerExpanded(false); }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 4, borderRadius: 6, lineHeight: 1 }}
-                    onMouseEnter={(ev) => (ev.currentTarget.style.background = '#f3f4f6')}
+                    onMouseEnter={(ev) => (ev.currentTarget.style.background = 'var(--surface-subtle)')}
                     onMouseLeave={(ev) => (ev.currentTarget.style.background = 'none')}
                   >
                     {em}
@@ -774,7 +774,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     if (msg.messageType === 'system') {
       return (
         <div key={msg._id} style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
-          <span style={{ background: '#eef2f7', color: '#6b7280', fontSize: 12, padding: '4px 12px', borderRadius: 12 }}>
+          <span style={{ background: '#eef2f7', color: 'var(--text-muted)', fontSize: 12, padding: '4px 12px', borderRadius: 12 }}>
             {msg.message}
           </span>
         </div>
@@ -788,10 +788,10 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             textAlign: 'center', 
             margin: '16px 0',
             fontSize: 12,
-            color: '#6b7280'
+            color: 'var(--text-muted)'
           }}>
             <span style={{ 
-              backgroundColor: '#f3f4f6',
+              backgroundColor: 'var(--surface-subtle)',
               padding: '4px 12px',
               borderRadius: 12
             }}>
@@ -826,7 +826,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             position: 'relative'
           }}>
             {!isMyMessage && (
-              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4, marginLeft: 8 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, marginLeft: 8 }}>
                 {msg.senderName}
               </div>
             )}
@@ -845,7 +845,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               const votersCount = voterSet.size;
               const myId = user?._id || user?.id || '';
               return (
-                <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6', color: isMyMessage ? '#fff' : '#111827', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
+                <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-subtle)', color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
                   {(isMyMessage || (isAdmin && !isDirect)) && (
                     <button
                       onClick={() => deleteMessage(msg._id)}
@@ -862,7 +862,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     const voted = (opt.votes || []).includes(myId);
                     return (
                       <button key={i} type="button" onClick={() => votePoll(msg._id, i)}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', position: 'relative', border: `1px solid ${isMyMessage ? 'rgba(255,255,255,0.4)' : '#e5e7eb'}`, background: 'transparent', borderRadius: 8, padding: '8px 10px', marginBottom: 6, cursor: 'pointer', overflow: 'hidden', color: 'inherit' }}>
+                        style={{ display: 'block', width: '100%', textAlign: 'left', position: 'relative', border: `1px solid ${isMyMessage ? 'rgba(255,255,255,0.4)' : 'var(--border-default)'}`, background: 'transparent', borderRadius: 8, padding: '8px 10px', marginBottom: 6, cursor: 'pointer', overflow: 'hidden', color: 'inherit' }}>
                         <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`, background: isMyMessage ? 'rgba(255,255,255,0.2)' : 'rgba(37,99,235,0.12)' }} />
                         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, fontWeight: voted ? 700 : 500 }}>
                           <span>{voted ? '✓ ' : ''}{opt.text}</span>
@@ -878,8 +878,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             {msg.messageType === 'text' && (
               <div
                 style={{
-                  backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
-                  color: isMyMessage ? '#fff' : '#111827',
+                  backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-subtle)',
+                  color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
                   padding: '10px 14px',
                   borderRadius: 16,
                   borderTopRightRadius: isMyMessage ? 4 : 16,
@@ -899,7 +899,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     ...(isMyMessage ? { left: -26 } : { right: -26 }),
                     background: 'none',
                     border: 'none',
-                    color: '#9ca3af',
+                    color: 'var(--text-subtle)',
                     cursor: 'pointer',
                     padding: 4,
                     fontSize: 18,
@@ -917,7 +917,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       position: 'absolute',
                       top: 28,
                       ...(isMyMessage ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }),
-                      backgroundColor: '#1f2937',
+                      backgroundColor: 'var(--surface-inverse-raised)',
                       borderRadius: 8,
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                       zIndex: 1000,
@@ -929,8 +929,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     {!isDirect && !isMyMessage && onMessagePrivately && (
                       <button
                         onClick={() => { onMessagePrivately(msg.senderId, msg.senderName); setMenuMessageId(null); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         ✉️ Message privately
@@ -946,7 +946,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         padding: '10px 16px',
                         background: 'none',
                         border: 'none',
-                        color: '#fff',
+                        color: 'var(--text-inverse)',
                         cursor: 'pointer',
                         textAlign: 'left',
                         fontSize: 14,
@@ -954,7 +954,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         alignItems: 'center',
                         gap: 12
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       ↩ Reply
@@ -966,7 +966,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         padding: '10px 16px',
                         background: 'none',
                         border: 'none',
-                        color: '#fff',
+                        color: 'var(--text-inverse)',
                         cursor: 'pointer',
                         textAlign: 'left',
                         fontSize: 14,
@@ -974,7 +974,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         alignItems: 'center',
                         gap: 12
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       ➦ Forward
@@ -990,7 +990,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         padding: '10px 16px',
                         background: 'none',
                         border: 'none',
-                        color: '#fff',
+                        color: 'var(--text-inverse)',
                         cursor: 'pointer',
                         textAlign: 'left',
                         fontSize: 14,
@@ -998,7 +998,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         alignItems: 'center',
                         gap: 12
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       📋 Copy
@@ -1006,8 +1006,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     {canPin && (
                       <button
                         onClick={() => { togglePin(msg); setMenuMessageId(null); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         {msg.pinned ? '📌 Unpin' : '📌 Pin'}
@@ -1017,7 +1017,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       <button
                         onClick={() => { deleteMessage(msg._id); setMenuMessageId(null); }}
                         style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         🗑 Delete
@@ -1033,23 +1033,23 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     style={{
                       marginBottom: 6,
                       padding: 8,
-                      backgroundColor: isMyMessage ? 'rgba(255, 255, 255, 0.2)' : '#fff',
+                      backgroundColor: isMyMessage ? 'rgba(255, 255, 255, 0.2)' : 'var(--surface-default)',
                       borderRadius: 8,
-                      borderLeft: `3px solid ${isMyMessage ? '#fff' : '#DC2626'}`,
+                      borderLeft: `3px solid ${isMyMessage ? 'var(--white) /* no semantic: white as border */' : '#DC2626'}`,
                       cursor: 'pointer'
                     }}
                   >
                     <div style={{
                       fontSize: 11,
                       fontWeight: 600,
-                      color: isMyMessage ? '#fff' : '#DC2626',
+                      color: isMyMessage ? 'var(--text-inverse)' : '#DC2626',
                       marginBottom: 2
                     }}>
                       {msg.replyToSender || 'Unknown'}
                     </div>
                     <div style={{
                       fontSize: 12,
-                      color: isMyMessage ? 'rgba(255, 255, 255, 0.8)' : '#6b7280',
+                      color: isMyMessage ? 'rgba(255, 255, 255, 0.8)' : 'var(--text-muted)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
@@ -1064,7 +1064,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   </div>
                   <div style={{ 
                     fontSize: 10, 
-                    color: isMyMessage ? 'rgba(255, 255, 255, 0.7)' : '#9ca3af',
+                    color: isMyMessage ? 'rgba(255, 255, 255, 0.7)' : 'var(--text-subtle)',
                     whiteSpace: 'nowrap',
                     alignSelf: 'flex-end'
                   }}>
@@ -1085,10 +1085,10 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
                   {(isMyMessage || (isAdmin && !isDirect)) && (
                     <button onClick={() => deleteMessage(msg._id)} title="Delete"
-                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
+                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
                   )}
                   <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
-                    style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
+                    style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
                 </div>
               </div>
             )}
@@ -1103,18 +1103,18 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
                   {(isMyMessage || (isAdmin && !isDirect)) && (
                     <button onClick={() => deleteMessage(msg._id)} title="Delete"
-                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
+                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
                   )}
                   <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
-                    style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
+                    style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
                 </div>
               </div>
             )}
             
             {msg.messageType === 'file' && msg.mediaUrl && (
               <div style={{ 
-                backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
-                color: isMyMessage ? '#fff' : '#111827',
+                backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-subtle)',
+                color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
                 padding: '10px 14px',
                 borderRadius: 16,
                 borderTopRightRadius: isMyMessage ? 4 : 16,
@@ -1126,7 +1126,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ 
-                    color: isMyMessage ? '#fff' : '#DC2626',
+                    color: isMyMessage ? 'var(--text-inverse)' : '#DC2626',
                     textDecoration: 'underline',
                     fontSize: 14
                   }}
@@ -1157,8 +1157,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       title={mine ? 'Remove your reaction' : 'React'}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 2,
-                        background: '#fff',
-                        border: `1px solid ${mine ? '#93c5fd' : '#e5e7eb'}`,
+                        background: 'var(--surface-default)',
+                        border: `1px solid ${mine ? '#93c5fd' : 'var(--border-default)'}`,
                         boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
                         borderRadius: 999, padding: '1px 6px', cursor: 'pointer', fontSize: 12, lineHeight: 1.5,
                       }}
@@ -1181,15 +1181,15 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
       display: 'flex',
       flexDirection: 'column',
       height: 'calc(100vh - 200px)',
-      backgroundColor: '#fff',
+      backgroundColor: 'var(--surface-default)',
       borderRadius: 12,
       overflow: 'hidden',
-      border: '1px solid #e5e7eb'
+      border: '1px solid var(--border-default)'
     }}>
       {/* Header */}
       <div style={{ 
         padding: 16,
-        borderBottom: '1px solid #e5e7eb',
+        borderBottom: '1px solid var(--border-default)',
         display: 'flex',
         alignItems: 'center',
         gap: 12,
@@ -1220,16 +1220,16 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 18,
-          color: '#fff'
+          color: 'var(--text-inverse)'
         }}>
           {!group.imageUrl && '👥'}
         </div>
         
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
             {title || group.name}
           </div>
-          <div style={{ fontSize: 12, color: '#6b7280' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             {isDirect ? 'Private message' : `${group.members.length} members`}
             {!isDirect && group.onlyAdminCanChat && ' • Admin-only chat'}
           </div>
@@ -1249,7 +1249,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>
                   Pinned{pm.pinnedByName ? ` · ${pm.pinnedByName}` : ''}
                 </div>
-                <div style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   <strong>{pm.senderName}: </strong>
                   {pm.messageType === 'image' ? '📷 Photo'
                     : pm.messageType === 'video' ? '🎬 Video'
@@ -1283,11 +1283,11 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
         }}
       >
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>
             Loading messages...
           </div>
         ) : messages.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
             <div>No messages yet. Start the conversation!</div>
           </div>
@@ -1300,8 +1300,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
       {/* Input */}
       <div style={{ 
         padding: 16,
-        borderTop: '1px solid #e5e7eb',
-        backgroundColor: '#fff'
+        borderTop: '1px solid var(--border-default)',
+        backgroundColor: 'var(--surface-default)'
       }}>
         {!canSendMessage ? (
           <div style={{ 
@@ -1321,7 +1321,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               <div style={{
                 marginBottom: 8,
                 padding: 8,
-                backgroundColor: '#f3f4f6',
+                backgroundColor: 'var(--surface-subtle)',
                 borderRadius: 8,
                 borderLeft: '3px solid #DC2626',
                 display: 'flex',
@@ -1332,7 +1332,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#DC2626' }}>
                     {replyingTo.senderName}
                   </div>
-                  <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
                     {replyingTo.message}
                   </div>
                 </div>
@@ -1343,7 +1343,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: 18,
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     padding: 4
                   }}
                 >
@@ -1357,16 +1357,16 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               const matches = members.filter(mm => (mm.name || '').toLowerCase().includes(q)).slice(0, 6);
               if (matches.length === 0) return null;
               return (
-                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 200, overflowY: 'auto', zIndex: 60 }}>
+                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 200, overflowY: 'auto', zIndex: 60 }}>
                   {matches.map(mm => (
                     <button key={mm._id} type="button" onClick={() => insertMention(mm.name)}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f4f6')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-subtle)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 12 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4b5563', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 12 }}>
                         {mm.headshotUrl ? <img src={mm.headshotUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (mm.name?.[0]?.toUpperCase() || '?')}
                       </div>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: '#1f2937' }}>{mm.name}</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{mm.name}</span>
                     </button>
                   ))}
                 </div>
@@ -1374,12 +1374,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             })()}
             {showPoll && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowPoll(false)}>
-                <div style={{ background: '#fff', borderRadius: 12, padding: 20, width: 380, maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                <div style={{ background: 'var(--surface-default)', borderRadius: 12, padding: 20, width: 380, maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                   <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Create a poll</div>
-                  <input value={pollQuestion} onChange={e => setPollQuestion(e.target.value)} placeholder="Ask a question..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 12, fontSize: 14, boxSizing: 'border-box' }} />
+                  <input value={pollQuestion} onChange={e => setPollQuestion(e.target.value)} placeholder="Ask a question..." style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-default)', borderRadius: 8, marginBottom: 12, fontSize: 14, boxSizing: 'border-box' }} />
                   {pollOptions.map((opt, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                      <input value={opt} onChange={e => setPollOptions(prev => prev.map((o, idx) => idx === i ? e.target.value : o))} placeholder={`Option ${i + 1}`} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+                      <input value={opt} onChange={e => setPollOptions(prev => prev.map((o, idx) => idx === i ? e.target.value : o))} placeholder={`Option ${i + 1}`} style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
                       {pollOptions.length > 2 && (
                         <button type="button" onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 20 }}>×</button>
                       )}
@@ -1388,12 +1388,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   {pollOptions.length < 10 && (
                     <button type="button" onClick={() => setPollOptions(prev => [...prev, ''])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontSize: 13, fontWeight: 600, marginBottom: 12, padding: 0 }}>+ Add option</button>
                   )}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
                     <input type="checkbox" checked={pollMultiple} onChange={e => setPollMultiple(e.target.checked)} /> Allow multiple answers
                   </label>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <button type="button" onClick={() => setShowPoll(false)} style={{ padding: '8px 16px', background: '#f3f4f6', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
-                    <button type="button" onClick={sendPoll} disabled={!pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2 || sending} style={{ padding: '8px 16px', background: '#CB0002', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Send Poll</button>
+                    <button type="button" onClick={() => setShowPoll(false)} style={{ padding: '8px 16px', background: 'var(--surface-subtle)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
+                    <button type="button" onClick={sendPoll} disabled={!pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2 || sending} style={{ padding: '8px 16px', background: '#CB0002', color: 'var(--text-inverse)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Send Poll</button>
                   </div>
                 </div>
               </div>
@@ -1409,18 +1409,18 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 : '📎 File';
               return (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setForwardMsg(null)}>
-                  <div style={{ background: '#fff', borderRadius: 12, padding: 18, width: 420, maxWidth: '92vw', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ background: 'var(--surface-default)', borderRadius: 12, padding: 18, width: 420, maxWidth: '92vw', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
                     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Forward message</div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 12, padding: '6px 10px', background: '#f3f4f6', borderRadius: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{preview}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, padding: '6px 10px', background: 'var(--surface-subtle)', borderRadius: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{preview}</div>
                     <input
                       value={forwardSearch}
                       onChange={e => setForwardSearch(e.target.value)}
                       placeholder="Search people..."
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 10, fontSize: 14, boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border-default)', borderRadius: 8, marginBottom: 10, fontSize: 14, boxSizing: 'border-box' }}
                     />
-                    <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #f3f4f6', borderRadius: 8 }}>
+                    <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 8 }}>
                       {list.length === 0 && (
-                        <div style={{ padding: 16, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+                        <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13 }}>
                           {forwardUsers.length === 0 ? 'Loading people…' : 'No matches'}
                         </div>
                       )}
@@ -1429,22 +1429,22 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         return (
                           <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: checked ? '#eff6ff' : 'transparent' }}>
                             <input type="checkbox" checked={checked} onChange={() => toggleForwardUser(u.id)} />
-                            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#6b7280', flex: '0 0 auto' }}>
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--text-muted)', flex: '0 0 auto' }}>
                               {u.headshotUrl ? <img src={u.headshotUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (u.name?.[0]?.toUpperCase() || '?')}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 14, fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name}</div>
-                              {u.role && <div style={{ fontSize: 11, color: '#9ca3af' }}>{u.role}</div>}
+                              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name}</div>
+                              {u.role && <div style={{ fontSize: 11, color: 'var(--text-subtle)' }}>{u.role}</div>}
                             </div>
                           </label>
                         );
                       })}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 12 }}>
-                      <span style={{ fontSize: 13, color: '#6b7280' }}>{forwardSelected.size} selected</span>
+                      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{forwardSelected.size} selected</span>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button type="button" onClick={() => setForwardMsg(null)} style={{ padding: '8px 16px', background: '#f3f4f6', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
-                        <button type="button" onClick={sendForward} disabled={forwardSelected.size === 0 || forwardSending} style={{ padding: '8px 16px', background: forwardSelected.size === 0 || forwardSending ? '#fca5a5' : '#CB0002', color: '#fff', border: 'none', borderRadius: 8, cursor: forwardSelected.size === 0 || forwardSending ? 'not-allowed' : 'pointer', fontWeight: 600 }}>{forwardSending ? 'Sending…' : 'Send'}</button>
+                        <button type="button" onClick={() => setForwardMsg(null)} style={{ padding: '8px 16px', background: 'var(--surface-subtle)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
+                        <button type="button" onClick={sendForward} disabled={forwardSelected.size === 0 || forwardSending} style={{ padding: '8px 16px', background: forwardSelected.size === 0 || forwardSending ? '#fca5a5' : '#CB0002', color: 'var(--text-inverse)', border: 'none', borderRadius: 8, cursor: forwardSelected.size === 0 || forwardSending ? 'not-allowed' : 'pointer', fontWeight: 600 }}>{forwardSending ? 'Sending…' : 'Send'}</button>
                       </div>
                     </div>
                   </div>
@@ -1454,18 +1454,18 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <div className="storm-composer" style={{ display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
             {/* Emoji picker */}
             {showEmoji && (
-              <div style={{ position: 'absolute', bottom: 56, left: 0, width: 296, maxHeight: 220, overflowY: 'auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, zIndex: 30 }}>
+              <div style={{ position: 'absolute', bottom: 56, left: 0, width: 296, maxHeight: 220, overflowY: 'auto', background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, zIndex: 30 }}>
                 {CHAT_EMOJIS.map((e) => (
                   <button key={e} type="button" onClick={() => { setNewMessage(prev => prev + e); }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 4, borderRadius: 6, lineHeight: 1 }}
-                    onMouseEnter={(ev) => (ev.currentTarget.style.background = '#f3f4f6')}
+                    onMouseEnter={(ev) => (ev.currentTarget.style.background = 'var(--surface-subtle)')}
                     onMouseLeave={(ev) => (ev.currentTarget.style.background = 'none')}>{e}</button>
                 ))}
               </div>
             )}
             {/* GIPHY GIF / sticker picker */}
             {giphyOpen && (
-              <div style={{ position: 'absolute', bottom: 56, left: 0, width: 320, maxHeight: 360, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 30 }}>
+              <div style={{ position: 'absolute', bottom: 56, left: 0, width: 320, maxHeight: 360, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 30 }}>
                 {/* GIF | Stickers tabs */}
                 <div style={{ display: 'flex', gap: 4, padding: 6, borderBottom: '1px solid #f0f0f0' }}>
                   {(['gifs', 'stickers'] as const).map((m) => (
@@ -1474,7 +1474,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       type="button"
                       onClick={() => { setGiphyMode(m); loadGiphy(m, giphyQuery); }}
                       style={{ flex: 1, padding: '6px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12,
-                        background: giphyMode === m ? '#111827' : '#f3f4f6', color: giphyMode === m ? '#fff' : '#6b7280' }}
+                        background: giphyMode === m ? 'var(--surface-inverse)' : 'var(--surface-subtle)', color: giphyMode === m ? 'var(--text-inverse)' : 'var(--text-muted)' }}
                     >
                       {m === 'gifs' ? 'GIF' : 'Stickers'}
                     </button>
@@ -1486,15 +1486,15 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     value={giphyQuery}
                     onChange={(e) => { setGiphyQuery(e.target.value); loadGiphy(giphyMode, e.target.value); }}
                     placeholder={`Search ${giphyMode === 'stickers' ? 'stickers' : 'GIFs'}…`}
-                    style={{ flex: 1, padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none' }}
+                    style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, outline: 'none' }}
                   />
-                  <button type="button" onClick={() => setGiphyOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#9ca3af', lineHeight: 1 }}>×</button>
+                  <button type="button" onClick={() => setGiphyOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-subtle)', lineHeight: 1 }}>×</button>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
                   {giphyLoading ? (
-                    <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: 20 }}>Loading…</div>
+                    <div style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13, padding: 20 }}>Loading…</div>
                   ) : giphyItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: 20 }}>No results</div>
+                    <div style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13, padding: 20 }}>No results</div>
                   ) : (
                     <div style={{ columnCount: 2, columnGap: 6 }}>
                       {giphyItems.map((it) => (
@@ -1516,7 +1516,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               type="button"
               onClick={() => setShowEmoji(v => !v)}
               title="Emoji"
-              style={{ ...COMPOSER_BTN, backgroundColor: showEmoji ? '#e5e7eb' : '#f3f4f6' }}
+              style={{ ...COMPOSER_BTN, backgroundColor: showEmoji ? 'var(--surface-muted)' : 'var(--surface-subtle)' }}
             >
               😊
             </button>
@@ -1525,7 +1525,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               type="button"
               onClick={() => openGiphy('gifs')}
               title="GIFs & Stickers"
-              style={{ ...COMPOSER_BTN, backgroundColor: giphyOpen ? '#e5e7eb' : '#f3f4f6', fontSize: 13, fontWeight: 700, color: '#6b7280' }}
+              style={{ ...COMPOSER_BTN, backgroundColor: giphyOpen ? 'var(--surface-muted)' : 'var(--surface-subtle)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}
             >
               GIF
             </button>
@@ -1579,7 +1579,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               style={{
                 flex: 1,
                 padding: '10px 14px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border-default)',
                 borderRadius: 8,
                 fontSize: 14,
                 resize: 'none',
@@ -1596,8 +1596,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               disabled={!newMessage.trim() || sending}
               style={{
                 padding: '10px 16px',
-                backgroundColor: newMessage.trim() ? '#DC2626' : '#e5e7eb',
-                color: '#fff',
+                backgroundColor: newMessage.trim() ? '#DC2626' : 'var(--surface-muted)',
+                color: 'var(--text-inverse)',
                 border: 'none',
                 borderRadius: 8,
                 cursor: newMessage.trim() && !sending ? 'pointer' : 'not-allowed',
@@ -1623,12 +1623,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <button
               onClick={(e) => { e.stopPropagation(); downloadMedia(viewerImage); }}
               title="Save"
-              style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
             >⬇ Save</button>
             <button
               onClick={() => setViewerImage(null)}
               title="Close"
-              style={{ width: 38, height: 38, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}
+              style={{ width: 38, height: 38, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}
             >×</button>
           </div>
           <img

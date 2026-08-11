@@ -75,8 +75,8 @@ export function Messaging() {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 240 }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ width: 36, height: 36, border: "3px solid #e5e7eb", borderTopColor: "#2563eb", borderRadius: "50%", margin: "0 auto 12px" }} />
-          <div style={{ color: "#6b7280", fontSize: 14 }}>Loading templates...</div>
+          <div style={{ width: 36, height: 36, border: "3px solid var(--border-default)", borderTopColor: "#2563eb", borderRadius: "50%", margin: "0 auto 12px" }} />
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading templates...</div>
         </div>
       </div>
     );
@@ -104,7 +104,7 @@ export function Messaging() {
       {/* Hero banner */}
       <div style={{
         background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
-        borderRadius: 14, padding: "22px 24px", marginBottom: 24, color: "#fff",
+        borderRadius: 14, padding: "22px 24px", marginBottom: 24, color: "var(--text-inverse)",
         display: "flex", alignItems: "center", gap: 16,
       }}>
         <span style={{ fontSize: 36, flexShrink: 0 }}>💬</span>
@@ -118,13 +118,13 @@ export function Messaging() {
 
       {/* Variables card */}
       <div style={{
-        background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12,
+        background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 12,
         padding: "16px 20px", marginBottom: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ fontSize: 15 }}>🔧</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Dynamic Variables</span>
-          <span style={{ fontSize: 12, color: "#9ca3af", marginLeft: "auto" }}>Click to copy</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Dynamic Variables</span>
+          <span style={{ fontSize: 12, color: "var(--text-subtle)", marginLeft: "auto" }}>Click to copy</span>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {VARIABLES.map(v => (
@@ -145,7 +145,7 @@ export function Messaging() {
             </span>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 10 }}>
+        <div style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 10 }}>
           Max 200 characters per template. Variables are replaced with live data when the SMS is sent.
         </div>
       </div>
@@ -157,7 +157,7 @@ export function Messaging() {
           const isSaving = saving === t.key;
           const isSaved = saved === t.key;
           const isOver = t.template.length > 200;
-          const charColor = isOver ? "#ef4444" : t.template.length > 160 ? "#f59e0b" : "#9ca3af";
+          const charColor = isOver ? "#ef4444" : t.template.length > 160 ? "#f59e0b" : "var(--text-subtle)";
           const isPublished = (t.status ?? "published") === "published";
 
           return (
@@ -165,7 +165,7 @@ export function Messaging() {
               key={t.key}
               className="sms-card"
               style={{
-                background: "#fff",
+                background: "var(--surface-default)",
                 border: `1px solid ${ac.border}`,
                 borderRadius: 14,
                 overflow: "hidden",
@@ -178,10 +178,10 @@ export function Messaging() {
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 24 }}>{ICONS[t.key]}</span>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
                         Alert {i + 1} — {t.label}
                       </div>
-                      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                         {TRIGGER_LABELS[t.key]}
                       </div>
                     </div>
@@ -189,7 +189,7 @@ export function Messaging() {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                     {/* Draft / Published toggle */}
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: !isPublished ? "#1f2937" : "#9ca3af" }}>Draft</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: !isPublished ? "var(--text-secondary)" : "var(--text-subtle)" }}>Draft</span>
                       <div
                         onClick={() => updateStatus(t.key, isPublished ? "draft" : "published")}
                         style={{
@@ -202,11 +202,11 @@ export function Messaging() {
                           position: "absolute", top: 2,
                           left: isPublished ? 20 : 2,
                           width: 18, height: 18, borderRadius: "50%",
-                          background: "#fff", transition: "left 0.2s",
+                          background: "var(--surface-default)", transition: "left 0.2s",
                           boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                         }} />
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: isPublished ? "#10b981" : "#9ca3af" }}>Published</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: isPublished ? "#10b981" : "var(--text-subtle)" }}>Published</span>
                     </div>
                     <span style={{
                       background: ac.badge, color: ac.text,
@@ -222,7 +222,7 @@ export function Messaging() {
               {/* Body */}
               <div style={{ padding: "16px 20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Message Template</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" }}>Message Template</label>
                   <span style={{ fontSize: 12, fontWeight: 600, color: charColor }}>
                     {t.template.length} / 200
                   </span>
@@ -238,14 +238,14 @@ export function Messaging() {
                     width: "100%",
                     padding: "11px 14px",
                     borderRadius: 8,
-                    border: `1.5px solid ${isOver ? "#fca5a5" : "#e5e7eb"}`,
+                    border: `1.5px solid ${isOver ? "#fca5a5" : "var(--border-default)"}`,
                     fontSize: 14,
                     lineHeight: 1.6,
                     resize: "vertical",
                     fontFamily: "inherit",
                     boxSizing: "border-box",
                     background: isOver ? "#fff5f5" : "#fafafa",
-                    color: "#111827",
+                    color: "var(--text-primary)",
                     transition: "border-color 0.15s, box-shadow 0.15s",
                   }}
                 />
@@ -270,7 +270,7 @@ export function Messaging() {
                         : isOver
                         ? "#d1d5db"
                         : "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                      color: "#fff",
+                      color: "var(--text-inverse)",
                       border: "none",
                       fontSize: 13,
                       fontWeight: 600,
@@ -286,7 +286,7 @@ export function Messaging() {
                       <>
                         <span
                           className="sms-spin"
-                          style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", flexShrink: 0 }}
+                          style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "var(--white) /* no semantic: white as border */", borderRadius: "50%", display: "inline-block", flexShrink: 0 }}
                         />
                         Saving...
                       </>

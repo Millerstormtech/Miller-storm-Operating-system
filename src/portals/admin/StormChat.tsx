@@ -174,17 +174,17 @@ export function StormChatManagement() {
         onClick={() => handleGroupClick(group)}
         title="Click to open chat · double-click to manage"
         style={isSub ? { background: '#fafbfc' } : undefined}>
-        <div style={{ width: isSub ? 36 : 44, height: isSub ? 36 : 44, borderRadius: 12, background: 'linear-gradient(135deg,#374151,#111827)', backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: isSub ? 15 : 18, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: isSub ? 36 : 44, height: isSub ? 36 : 44, borderRadius: 12, background: 'linear-gradient(135deg,var(--gray-700) /* no semantic: gradient stop */,var(--gray-900) /* no semantic: gradient stop */)', backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: isSub ? 15 : 18, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
           {!group.imageUrl && '👥'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isSub ? '↳ ' : ''}{group.name}</div>
-            <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 999, ...(group.visibility === 'public' ? { background: '#dbeafe', color: '#1d4ed8' } : { background: '#f3f4f6', color: '#6b7280' }) }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isSub ? '↳ ' : ''}{group.name}</div>
+            <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 999, ...(group.visibility === 'public' ? { background: '#dbeafe', color: '#1d4ed8' } : { background: 'var(--surface-subtle)', color: 'var(--text-muted)' }) }}>
               {group.visibility === 'public' ? '🌐 Public' : '🔒 Private'}
             </span>
           </div>
-          <div style={{ fontSize: 12, color: '#9ca3af' }}>{isSub ? 'Subgroup · ' : ''}👥 {group.members.length}{group.admins.length > 0 ? ` · 👑 ${group.admins.length}` : ''}{!isSub && subCount > 0 ? ` · ${subCount} subgroup${subCount === 1 ? '' : 's'}` : ''}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>{isSub ? 'Subgroup · ' : ''}👥 {group.members.length}{group.admins.length > 0 ? ` · 👑 ${group.admins.length}` : ''}{!isSub && subCount > 0 ? ` · ${subCount} subgroup${subCount === 1 ? '' : 's'}` : ''}</div>
         </div>
         {unread > 0 && (
           <span className="sc-badge">{unread > 99 ? '99+' : unread}</span>
@@ -562,7 +562,7 @@ export function StormChatManagement() {
           </div>
           
           {/* Selected count */}
-          <div style={{ marginBottom: 8, fontSize: 14, color: '#6b7280' }}>
+          <div style={{ marginBottom: 8, fontSize: 14, color: 'var(--text-muted)' }}>
             {selectedMembers.length} member(s) selected
           </div>
           
@@ -570,12 +570,12 @@ export function StormChatManagement() {
           <div style={{ 
             maxHeight: 400, 
             overflowY: 'auto', 
-            border: '1px solid #e5e7eb', 
+            border: '1px solid var(--border-default)', 
             borderRadius: 8,
             padding: 12
           }}>
             {filteredUsers.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 20, color: '#9ca3af' }}>
+              <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-subtle)' }}>
                 No users found
               </div>
             ) : (
@@ -586,7 +586,7 @@ export function StormChatManagement() {
                     display: 'flex', 
                     alignItems: 'center', 
                     padding: 12,
-                    borderBottom: '1px solid #f3f4f6',
+                    borderBottom: '1px solid var(--border-subtle)',
                     cursor: 'pointer',
                     backgroundColor: selectedMembers.includes(user._id) ? '#eff6ff' : 'transparent'
                   }}
@@ -600,15 +600,15 @@ export function StormChatManagement() {
                   />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{user.name}</div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>{user.email}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{user.email}</div>
                   </div>
                   <span style={{ 
                     padding: '4px 8px', 
                     borderRadius: 4, 
                     fontSize: 11, 
                     fontWeight: 600,
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151'
+                    backgroundColor: 'var(--surface-subtle)',
+                    color: 'var(--text-tertiary)'
                   }}>
                     {user.role}
                   </span>
@@ -624,13 +624,13 @@ export function StormChatManagement() {
             <label className="field-label" style={{ marginBottom: 8, display: 'block' }}>
               Assign Group Admins (Optional)
             </label>
-            <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
               Group admins can create and manage groups
             </div>
             <div style={{ 
               maxHeight: 200, 
               overflowY: 'auto', 
-              border: '1px solid #e5e7eb', 
+              border: '1px solid var(--border-default)', 
               borderRadius: 8,
               padding: 12
             }}>
@@ -663,8 +663,8 @@ export function StormChatManagement() {
 
   function renderGroupForm() {
     return (
-      <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16, paddingBottom: 16 }}>
-        <h3 style={{ marginBottom: 16, color: "#374151" }}>
+      <div style={{ borderBottom: "1px solid var(--border-default)", marginBottom: 16, paddingBottom: 16 }}>
+        <h3 style={{ marginBottom: 16, color: "var(--text-tertiary)" }}>
           {isEditing
             ? 'Edit Group'
             : parentGroupId
@@ -722,7 +722,7 @@ export function StormChatManagement() {
                     height: 100, 
                     objectFit: 'cover', 
                     borderRadius: 8,
-                    border: '2px solid #e5e7eb'
+                    border: '2px solid var(--border-default)'
                   }} 
                 />
               </div>
@@ -798,11 +798,11 @@ export function StormChatManagement() {
               alignItems: 'center', 
               gap: 10,
               padding: '12px 16px',
-              border: '2px solid #e5e7eb',
+              border: '2px solid var(--border-default)',
               borderRadius: 8,
               cursor: 'pointer',
               backgroundColor: onlyAdminCanChat ? '#fef2f2' : '#f9fafb',
-              borderColor: onlyAdminCanChat ? '#dc2626' : '#e5e7eb',
+              borderColor: onlyAdminCanChat ? '#dc2626' : 'var(--border-default)',
               transition: 'all 0.2s'
             }}
           >
@@ -817,10 +817,10 @@ export function StormChatManagement() {
               }}
             />
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: onlyAdminCanChat ? '#dc2626' : '#374151' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: onlyAdminCanChat ? '#dc2626' : 'var(--text-tertiary)' }}>
                 🔒 Only admins can send messages
               </div>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 Members can only read messages
               </div>
             </div>
@@ -828,7 +828,7 @@ export function StormChatManagement() {
 
           {/* Public vs Private */}
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Group visibility</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Group visibility</div>
             <div style={{ display: 'flex', gap: 8 }}>
               {(['private', 'public'] as const).map((v) => (
                 <button
@@ -841,14 +841,14 @@ export function StormChatManagement() {
                   }}
                   style={{
                     flex: 1, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-                    border: `2px solid ${groupVisibility === v ? '#2563eb' : '#e5e7eb'}`,
+                    border: `2px solid ${groupVisibility === v ? '#2563eb' : 'var(--border-default)'}`,
                     backgroundColor: groupVisibility === v ? '#eff6ff' : '#f9fafb',
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 600, color: groupVisibility === v ? '#2563eb' : '#374151' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: groupVisibility === v ? '#2563eb' : 'var(--text-tertiary)' }}>
                     {v === 'public' ? '🌐 Public' : '🔒 Private'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                     {v === 'public' ? 'Everyone auto-added (existing + new)' : 'You choose the members'}
                   </div>
                 </button>
@@ -888,19 +888,19 @@ export function StormChatManagement() {
   return (
     <div>
       <style>{`
-        .sc-wrap { background:#fff; border:1px solid #eef0f3; border-radius:18px; overflow:hidden; box-shadow:0 12px 40px rgba(17,24,39,0.06); }
+        .sc-wrap { background:var(--surface-default); border:1px solid #eef0f3; border-radius:18px; overflow:hidden; box-shadow:0 12px 40px rgba(17,24,39,0.06); }
         .sc-head { background:linear-gradient(135deg,#DC2626 0%,#991b1b 100%); padding:20px 24px; display:flex; align-items:center; gap:16px; }
         .sc-head-badge { width:48px; height:48px; border-radius:14px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; font-size:24px; }
         .sc-btn { border:none; cursor:pointer; font-weight:700; font-size:13.5px; border-radius:999px; padding:9px 18px; display:inline-flex; align-items:center; gap:7px; transition:transform .15s, box-shadow .15s, background .15s; white-space:nowrap; }
-        .sc-btn-ghost { background:rgba(255,255,255,0.16); color:#fff; }
+        .sc-btn-ghost { background:rgba(255,255,255,0.16); color:var(--text-inverse); }
         .sc-btn-ghost:hover { background:rgba(255,255,255,0.28); transform:translateY(-1px); }
-        .sc-btn-solid { background:#fff; color:#DC2626; box-shadow:0 4px 14px rgba(0,0,0,0.14); }
+        .sc-btn-solid { background:var(--surface-default); color:#DC2626; box-shadow:0 4px 14px rgba(0,0,0,0.14); }
         .sc-btn-solid:hover { transform:translateY(-1px); box-shadow:0 7px 20px rgba(0,0,0,0.2); }
-        .sc-label { font-size:11px; font-weight:800; color:#9ca3af; text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:8px; }
+        .sc-label { font-size:11px; font-weight:800; color:var(--text-subtle); text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:8px; }
         .sc-label::before { content:''; width:14px; height:2px; background:#DC2626; border-radius:2px; }
-        .sc-tile { display:flex; align-items:center; gap:13px; padding:11px 13px; background:#fff; border:1px solid #eef0f3; border-radius:14px; cursor:pointer; text-align:left; width:100%; transition:transform .14s, box-shadow .14s, border-color .14s; }
+        .sc-tile { display:flex; align-items:center; gap:13px; padding:11px 13px; background:var(--surface-default); border:1px solid #eef0f3; border-radius:14px; cursor:pointer; text-align:left; width:100%; transition:transform .14s, box-shadow .14s, border-color .14s; }
         .sc-tile:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgba(17,24,39,0.09); border-color:#fecaca; }
-        .sc-badge { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; font-size:11.5px; font-weight:800; min-width:22px; height:22px; border-radius:11px; display:flex; align-items:center; justify-content:center; padding:0 6px; box-shadow:0 2px 6px rgba(220,38,38,0.4); flex-shrink:0; }
+        .sc-badge { background:linear-gradient(135deg,#ef4444,#dc2626); color:var(--text-inverse); font-size:11.5px; font-weight:800; min-width:22px; height:22px; border-radius:11px; display:flex; align-items:center; justify-content:center; padding:0 6px; box-shadow:0 2px 6px rgba(220,38,38,0.4); flex-shrink:0; }
         .sc-info { color:#c4c9d2; font-size:18px; padding:2px 6px; flex-shrink:0; transition:color .15s; }
         .sc-info:hover { color:#DC2626; }
       `}</style>
@@ -911,7 +911,7 @@ export function StormChatManagement() {
         <div className="sc-head">
           <div className="sc-head-badge">💬</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 19, fontWeight: 800, color: '#fff', letterSpacing: 0.2 }}>StormChat</div>
+            <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text-inverse)', letterSpacing: 0.2 }}>StormChat</div>
             <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.82)' }}>Direct messages &amp; group channels</div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -928,15 +928,15 @@ export function StormChatManagement() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {joinRequests.map(r => (
-                  <div key={r._id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px' }}>
+                  <div key={r._id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-default)', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {r.userName || 'A user'} <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>({r.userRole})</span>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.userName || 'A user'} <span style={{ fontSize: 11, color: 'var(--text-subtle)', fontWeight: 500 }}>({r.userRole})</span>
                       </div>
-                      <div style={{ fontSize: 12, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>wants to join “{r.groupName}”</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>wants to join “{r.groupName}”</div>
                     </div>
-                    <button type="button" onClick={() => decideJoinRequest(r._id, 'approve')} style={{ padding: '6px 12px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Approve</button>
-                    <button type="button" onClick={() => decideJoinRequest(r._id, 'deny')} style={{ padding: '6px 12px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Deny</button>
+                    <button type="button" onClick={() => decideJoinRequest(r._id, 'approve')} style={{ padding: '6px 12px', background: '#16a34a', color: 'var(--text-inverse)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Approve</button>
+                    <button type="button" onClick={() => decideJoinRequest(r._id, 'deny')} style={{ padding: '6px 12px', background: 'var(--surface-subtle)', color: 'var(--text-tertiary)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Deny</button>
                   </div>
                 ))}
               </div>
@@ -945,7 +945,7 @@ export function StormChatManagement() {
           {/* Direct Messages */}
           <div className="sc-label" style={{ marginBottom: 10 }}>Direct Messages</div>
           {myDms.length === 0 ? (
-            <div style={{ padding: '6px 4px 14px', color: '#9ca3af', fontSize: 13 }}>
+            <div style={{ padding: '6px 4px 14px', color: 'var(--text-subtle)', fontSize: 13 }}>
               No private messages yet. Use “New message” to start one with any user.
             </div>
           ) : (
@@ -956,13 +956,13 @@ export function StormChatManagement() {
                 const unread = dmUnread[dm._id] || 0;
                 return (
                   <button key={dm._id} type="button" className="sc-tile" onClick={() => openDm(dm)}>
-                    <div style={{ position: 'relative', width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#6b7280,#374151)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 17, fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                    <div style={{ position: 'relative', width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,var(--gray-500) /* no semantic: gradient stop */,var(--gray-700) /* no semantic: gradient stop */)', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 17, fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                       <span>{name?.[0]?.toUpperCase() || '👤'}</span>
                       {img && <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-                      <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{dm.dmOther?.role || 'Private message'}</div>
+                      <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-subtle)', textTransform: 'capitalize' }}>{dm.dmOther?.role || 'Private message'}</div>
                     </div>
                     {unread > 0 && (
                       <span className="sc-badge">{unread > 99 ? '99+' : unread}</span>
@@ -978,7 +978,7 @@ export function StormChatManagement() {
             Groups ({groups.filter(g => !g.parentGroupId).length}){groups.filter(g => g.parentGroupId).length > 0 ? ` · ${groups.filter(g => g.parentGroupId).length} Subgroup${groups.filter(g => g.parentGroupId).length === 1 ? '' : 's'}` : ''}
           </div>
           {groups.filter(g => !g.parentGroupId).length === 0 ? (
-            <div style={{ padding: '4px 4px', color: '#9ca3af', fontSize: 13 }}>
+            <div style={{ padding: '4px 4px', color: 'var(--text-subtle)', fontSize: 13 }}>
               No groups yet. Use “Create group” to make one.
             </div>
           ) : (
@@ -1005,28 +1005,28 @@ export function StormChatManagement() {
         <div onClick={() => setDmPickerOpen(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            style={{ background: 'var(--surface-default)', borderRadius: 16, width: '100%', maxWidth: 460, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#1f2937' }}>New message</div>
-              <button type="button" onClick={() => setDmPickerOpen(false)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>×</button>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-secondary)' }}>New message</div>
+              <button type="button" onClick={() => setDmPickerOpen(false)} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--text-subtle)', cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
             <div style={{ padding: '12px 18px' }}>
               <input autoFocus value={dmUserSearch} onChange={e => setDmUserSearch(e.target.value)} placeholder="Search people"
-                style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none' }} />
+                style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border-default)', borderRadius: 10, fontSize: 14, outline: 'none' }} />
             </div>
             <div style={{ overflowY: 'auto', padding: '0 8px 12px' }}>
               {dmPickable.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#9ca3af', padding: '30px 0', fontSize: 13 }}>No people found</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-subtle)', padding: '30px 0', fontSize: 13 }}>No people found</div>
               ) : dmPickable.map(u => (
                 <button key={u.id} type="button" disabled={dmOpening} onClick={() => openDmWith(u._id || u.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'none', border: 'none', cursor: dmOpening ? 'wait' : 'pointer', width: '100%', textAlign: 'left', borderRadius: 10 }}>
-                  <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#6b7280,#374151)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 16, fontWeight: 600 }}>
+                  <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,var(--gray-500) /* no semantic: gradient stop */,var(--gray-700) /* no semantic: gradient stop */)', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 16, fontWeight: 600 }}>
                     <span>{u.name?.[0]?.toUpperCase() || '👤'}</span>
                     {u.headshotUrl && <img src={u.headshotUrl} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
-                    <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{roleDisplayName(u.role)}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-subtle)', textTransform: 'capitalize' }}>{roleDisplayName(u.role)}</div>
                   </div>
                 </button>
               ))}
@@ -1051,7 +1051,7 @@ export function StormChatManagement() {
                   if (isCreating) setIsCreating(false);
                   resetForm();
                 }}
-                style={{ color: '#6b7280' }}
+                style={{ color: 'var(--text-muted)' }}
               >
                 ✕ Close
               </button>
@@ -1074,15 +1074,15 @@ export function StormChatManagement() {
           <div onClick={() => setInfoGroup(null)}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              style={{ background: 'var(--surface-default)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
               <div style={{ padding: '16px 18px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 10, background: '#000', backgroundImage: g.imageUrl ? `url(${g.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{!g.imageUrl && '👥'}</div>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: '#000', backgroundImage: g.imageUrl ? `url(${g.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{!g.imageUrl && '👥'}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
                   {parent && <div style={{ fontSize: 12, color: '#2563eb', fontWeight: 600 }}>↳ Subgroup of “{parent.name}”</div>}
-                  {g.description && <div style={{ fontSize: 12, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.description}</div>}
+                  {g.description && <div style={{ fontSize: 12, color: 'var(--text-subtle)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.description}</div>}
                 </div>
-                <button type="button" onClick={() => setInfoGroup(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>×</button>
+                <button type="button" onClick={() => setInfoGroup(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--text-subtle)', cursor: 'pointer', lineHeight: 1 }}>×</button>
               </div>
 
               <div style={{ overflowY: 'auto', padding: '14px 18px' }}>
@@ -1093,33 +1093,33 @@ export function StormChatManagement() {
                   <button type="button" className="btn-ghost btn-small" onClick={() => { deleteGroup(g._id); setInfoGroup(null); }} style={{ padding: '8px 14px', fontSize: 13, color: '#dc2626' }}>🗑️ Delete group</button>
                 </div>
 
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Members ({memberUsers.length})</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Members ({memberUsers.length})</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-                  {memberUsers.length === 0 ? <div style={{ fontSize: 13, color: '#9ca3af' }}>No members</div> : memberUsers.map(u => (
+                  {memberUsers.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-subtle)' }}>No members</div> : memberUsers.map(u => (
                     <div key={u._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', background: '#f9fafb', borderRadius: 8 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4b5563', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13 }}>{u.name?.[0]?.toUpperCase() || '?'}</div>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4b5563', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13 }}>{u.name?.[0]?.toUpperCase() || '?'}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
-                        <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'capitalize' }}>{u.role}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-subtle)', textTransform: 'capitalize' }}>{u.role}</div>
                       </div>
                       {g.admins.includes(u._id) && <span style={{ fontSize: 11, fontWeight: 600, color: '#DC2626', background: 'rgba(220,38,38,0.1)', padding: '2px 8px', borderRadius: 4 }}>Admin</span>}
                     </div>
                   ))}
                 </div>
 
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Subgroups ({subgroups.length})</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Subgroups ({subgroups.length})</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {subgroups.map(sub => (
                     <div key={sub._id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f9fafb', border: '1px solid #eef0f3', borderRadius: 8 }}>
                       <span style={{ fontSize: 13 }}>💬</span>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.name}</span>
-                      <span style={{ fontSize: 11, color: '#9ca3af' }}>👥 {sub.members.length}</span>
-                      <button type="button" title="Open chat" onClick={() => { setSelectedGroup(sub); setInfoGroup(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#6b7280', padding: '2px 5px' }}>💬</button>
-                      <button type="button" title="Edit" onClick={() => { startEdit(sub); setInfoGroup(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6b7280', padding: '2px 5px' }}>✏️</button>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.name}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>👥 {sub.members.length}</span>
+                      <button type="button" title="Open chat" onClick={() => { setSelectedGroup(sub); setInfoGroup(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', padding: '2px 5px' }}>💬</button>
+                      <button type="button" title="Edit" onClick={() => { startEdit(sub); setInfoGroup(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)', padding: '2px 5px' }}>✏️</button>
                       <button type="button" title="Delete" onClick={() => { deleteGroup(sub._id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#dc2626', padding: '2px 5px' }}>🗑️</button>
                     </div>
                   ))}
-                  <button type="button" onClick={() => { startCreateSubgroup(g); setInfoGroup(null); }} style={{ marginTop: 2, padding: '6px 8px', border: '1px dashed #d1d5db', borderRadius: 8, background: '#fff', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>+ Add Subgroup</button>
+                  <button type="button" onClick={() => { startCreateSubgroup(g); setInfoGroup(null); }} style={{ marginTop: 2, padding: '6px 8px', border: '1px dashed #d1d5db', borderRadius: 8, background: 'var(--surface-default)', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>+ Add Subgroup</button>
                 </div>
               </div>
             </div>
