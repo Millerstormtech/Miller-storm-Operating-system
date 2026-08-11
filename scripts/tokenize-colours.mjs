@@ -16,6 +16,10 @@ const EXCLUDED_FILES = [
   "src/tokens.css",
   "src/lib/emailTemplates.ts",
   "src/lib/emailTemplatesServer.ts",
+  // Email HTML is ALSO built outside src/lib. Found during Task 9, after the
+  // codemod had already converted both and the implementer reverted them.
+  "pages/api/training-timer.ts",                     // 14 hex, emailed via Resend
+  "pages/api/playlist-assignments/weekly-digest.ts", // 10 hex, manager digest cron
 ];
 
 const CANON = {
