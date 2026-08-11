@@ -100,6 +100,22 @@ function processFile(file) {
       skipped.push({ hex, offset, line: lineOf(offset), reason: `no property found (segment: ${JSON.stringify(segment.slice(0, 48))})` });
       return hex;
     }
+    // The hex may be a comparison OPERAND rather than the declaration's value,
+    // e.g. `color: textColor === '#fff' ? a : b` — here '#fff' is being
+    // compared, not assigned, and converting it to var(...) silently makes
+    // the comparison always false (var() strings never equal a hex literal).
+    // Detect this by checking whether a comparison operator immediately
+    // precedes the hex (skipping whitespace and an optional opening quote).
+    // This must NOT trip on the legitimate ternary-result case, where the
+    // hex sits after a `?` rather than directly after `===`/`!==`/`==`/`!=`:
+    //   background: cond ? "#fff" : "#000"   <- still converts (result, not operand)
+    //   color: x === '#fff' ? a : b          <- skipped (operand)
+    const afterColon = segment.slice(m[0].length);
+    if (/(===|!==|==|!=)\s*['"`]?$/.test(afterColon)) {
+      skipped.push({ hex, offset, line: lineOf(offset), reason: "hex is a comparison operand, not a value" });
+      return hex;
+    }
+
     const category = categorise(m[1]);
     if (!category) {
       skipped.push({ hex, offset, line: lineOf(offset), reason: `property "${m[1]}" is not text/surface/border` });
