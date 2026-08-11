@@ -163,12 +163,12 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
       minHeight: 500,
       display: "flex",
       flexDirection: "column",
-      backgroundColor: "#fff",
-      borderLeft: "1px solid #e5e7eb"
+      backgroundColor: "var(--surface-default)",
+      borderLeft: "1px solid var(--border-default)"
     }}>
       <div style={{
         padding: "12px 16px",
-        borderBottom: "1px solid #e5e7eb",
+        borderBottom: "1px solid var(--border-default)",
         flexShrink: 0,
         display: "flex",
         justifyContent: "space-between",
@@ -176,13 +176,13 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
       }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Lesson AI Coach</div>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>Ask questions about {props.lessonTitle}.</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Ask questions about {props.lessonTitle}.</div>
         </div>
         <button
           onClick={() => setShowHistory(!showHistory)}
           style={{
             background: 'none',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border-default)',
             borderRadius: '6px',
             padding: '4px 8px',
             cursor: 'pointer',
@@ -206,7 +206,7 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
               width: '100%',
               padding: '8px',
               marginBottom: '8px',
-              backgroundColor: '#1f2937',
+              backgroundColor: 'var(--surface-inverse-raised)',
               color: 'white',
               border: 'none',
               borderRadius: '6px',
@@ -223,10 +223,10 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
               style={{
                 padding: '8px',
                 marginBottom: '6px',
-                backgroundColor: chat.chatId === currentChatId ? '#f3f4f6' : 'transparent',
+                backgroundColor: chat.chatId === currentChatId ? 'var(--surface-subtle)' : 'transparent',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                border: chat.chatId === currentChatId ? '1px solid #1f2937' : '1px solid transparent',
+                border: chat.chatId === currentChatId ? '1px solid var(--border-strong)' : '1px solid transparent',
                 transition: 'all 0.2s',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -239,7 +239,7 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
                 <div style={{
                   fontSize: '12px',
                   fontWeight: 500,
-                  color: '#1f2937',
+                  color: 'var(--text-secondary)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap'
@@ -248,7 +248,7 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
                 </div>
                 <div style={{
                   fontSize: '10px',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   marginTop: '2px'
                 }}>
                   {chat.messages.length} messages
@@ -287,8 +287,8 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
                 marginBottom: 12,
                 padding: "8px 12px",
                 borderRadius: 8,
-                backgroundColor: msg.role === "user" ? "#1f2937" : "#eff6ff",
-                color: msg.role === "user" ? "#ffffff" : "#1f2937",
+                backgroundColor: msg.role === "user" ? "var(--surface-inverse-raised)" : "#eff6ff",
+                color: msg.role === "user" ? "var(--text-inverse)" : "var(--text-secondary)",
                 fontSize: 13
               }}>
                 {msg.content}
@@ -300,7 +300,7 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
                 padding: "8px 12px",
                 borderRadius: 8,
                 backgroundColor: "#eff6ff",
-                color: "#6b7280",
+                color: "var(--text-muted)",
                 fontSize: 13
               }}>
                 Thinking...
@@ -310,7 +310,7 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
           </div>
           <div style={{
             padding: "16px",
-            borderTop: "1px solid #e5e7eb",
+            borderTop: "1px solid var(--border-default)",
             flexShrink: 0
           }}>
             <textarea
@@ -322,7 +322,7 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
                 minHeight: 60,
                 maxHeight: 120,
                 padding: "8px 12px",
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--border-default)",
                 borderRadius: 8,
                 fontSize: 13,
                 resize: "none",
@@ -343,8 +343,8 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
               style={{
                 width: "100%",
                 padding: "8px 16px",
-                backgroundColor: isLoading || !message.trim() ? "#9ca3af" : "#1f2937",
-                color: "#fff",
+                backgroundColor: isLoading || !message.trim() ? "var(--gray-400) /* no semantic: gray-400 as surface */" : "var(--surface-inverse-raised)",
+                color: "var(--text-inverse)",
                 border: "none",
                 borderRadius: 8,
                 fontSize: 13,

@@ -16,8 +16,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 24px 0" }}>
       <div>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#111827" }}>{title}</h1>
-        {subtitle ? <p style={{ margin: "4px 0 0", fontSize: 13, color: "#6b7280" }}>{subtitle}</p> : null}
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>{title}</h1>
+        {subtitle ? <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>{subtitle}</p> : null}
       </div>
       {hasRight ? (
         <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>

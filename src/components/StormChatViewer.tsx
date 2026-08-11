@@ -209,23 +209,23 @@ export function StormChatViewer() {
       <button
         key={g._id}
         onClick={() => openGroup(g)}
-        style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%", transition: "background 0.15s" }}
+        style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%", transition: "background 0.15s" }}
         onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-        onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+        onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-default)")}
       >
-        <div style={{ width: 46, height: 46, borderRadius: "50%", background: g.isDirect ? "#4b5563" : "#1f2937", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 20 }}>
+        <div style={{ width: 46, height: 46, borderRadius: "50%", background: g.isDirect ? "#4b5563" : "var(--surface-inverse-raised)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 20 }}>
           {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (g.isDirect ? "👤" : "💬")}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{titleFor(g)}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{titleFor(g)}</div>
           {!g.isDirect && g.description && (
-            <div style={{ fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{g.description}</div>
+            <div style={{ fontSize: 12, color: "var(--text-subtle)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{g.description}</div>
           )}
           {g.isDirect && (
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>Private message</div>
+            <div style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 2 }}>Private message</div>
           )}
           {notMember && (
-            <div style={{ fontSize: 12, marginTop: 2, fontWeight: 500, color: status === 'denied' ? "#6b7280" : status === 'pending' ? "#059669" : "#dc2626" }}>
+            <div style={{ fontSize: 12, marginTop: 2, fontWeight: 500, color: status === 'denied' ? "var(--text-muted)" : status === 'pending' ? "#059669" : "#dc2626" }}>
               {status === 'denied' ? "🚫 Rejected · no access" : status === 'pending' ? "✓ Request pending" : "🔒 Private · tap to request to join"}
             </div>
           )}
@@ -233,14 +233,14 @@ export function StormChatViewer() {
         {notMember ? (
           <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999,
             ...(status === 'denied'
-              ? { background: "#f3f4f6", color: "#6b7280", border: "1px solid #e5e7eb" }
+              ? { background: "var(--surface-subtle)", color: "var(--text-muted)", border: "1px solid var(--border-default)" }
               : status === 'pending'
                 ? { background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }
                 : { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }) }}>
             {status === 'denied' ? "Rejected" : status === 'pending' ? "Pending" : "Join"}
           </span>
         ) : count > 0 && (
-          <span style={{ background: "#ef4444", color: "#fff", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", flexShrink: 0 }}>
+          <span style={{ background: "#ef4444", color: "var(--text-inverse)", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", flexShrink: 0 }}>
             {count > 99 ? "99+" : count}
           </span>
         )}
@@ -252,32 +252,32 @@ export function StormChatViewer() {
     <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
-          style={{ flex: 1, minWidth: 160, padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 14, outline: "none" }} />
+          style={{ flex: 1, minWidth: 160, padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: 10, fontSize: 14, outline: "none" }} />
         <button onClick={openPicker}
-          style={{ padding: "10px 16px", background: "#1f2937", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+          style={{ padding: "10px 16px", background: "var(--surface-inverse-raised)", color: "var(--text-inverse)", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
           ✏️ New message
         </button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", color: "#9ca3af", padding: "60px 0" }}>Loading chats…</div>
+        <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "60px 0" }}>Loading chats…</div>
       ) : visible.length === 0 ? (
-        <div style={{ textAlign: "center", color: "#9ca3af", padding: "60px 20px" }}>
+        <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "60px 20px" }}>
           <div style={{ fontSize: 46, marginBottom: 12 }}>💬</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#374151", marginBottom: 6 }}>No chats yet</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>No chats yet</div>
           <div style={{ fontSize: 13 }}>Start one with “New message”, or you&apos;ll see your groups here once you&apos;re added.</div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {dms.length > 0 && (
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Direct Messages</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Direct Messages</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{dms.map(g => <GroupRow key={g._id} g={g} />)}</div>
             </div>
           )}
           {normalGroups.length > 0 && (
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Groups</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Groups</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{normalGroups.map(g => <GroupRow key={g._id} g={g} />)}</div>
             </div>
           )}
@@ -289,29 +289,29 @@ export function StormChatViewer() {
         <div onClick={() => setPickerOpen(false)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 460, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            style={{ background: "var(--surface-default)", borderRadius: 16, width: "100%", maxWidth: 460, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
             <div style={{ padding: "16px 18px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#1f2937" }}>New message</div>
-              <button onClick={() => setPickerOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#9ca3af", cursor: "pointer", lineHeight: 1 }}>×</button>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-secondary)" }}>New message</div>
+              <button onClick={() => setPickerOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "var(--text-subtle)", cursor: "pointer", lineHeight: 1 }}>×</button>
             </div>
             <div style={{ padding: "12px 18px" }}>
               <input autoFocus value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search people"
-                style={{ width: "100%", padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 14, outline: "none" }} />
+                style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: 10, fontSize: 14, outline: "none" }} />
             </div>
             <div style={{ overflowY: "auto", padding: "0 8px 12px" }}>
               {pickable.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#9ca3af", padding: "30px 0", fontSize: 13 }}>No people found</div>
+                <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "30px 0", fontSize: 13 }}>No people found</div>
               ) : pickable.map(u => (
                 <button key={u.id} disabled={opening} onClick={() => startDm(u)}
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "none", border: "none", cursor: opening ? "wait" : "pointer", width: "100%", textAlign: "left", borderRadius: 10 }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
                   onMouseLeave={e => (e.currentTarget.style.background = "none")}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#4b5563", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#4b5563", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16 }}>
                     {u.headshotUrl ? <img src={u.headshotUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (u.name?.[0]?.toUpperCase() || "👤")}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
-                    <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "capitalize" }}>{u.role}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-subtle)", textTransform: "capitalize" }}>{u.role}</div>
                   </div>
                 </button>
               ))}
@@ -325,19 +325,19 @@ export function StormChatViewer() {
         <div onClick={() => setJoinTarget(null)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 400, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", textAlign: "center" }}>
+            style={{ background: "var(--surface-default)", borderRadius: 16, width: "100%", maxWidth: 400, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "#1f2937", marginBottom: 6 }}>Join “{joinTarget.name}”?</div>
-            <div style={{ fontSize: 13.5, color: "#6b7280", marginBottom: 20 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Join “{joinTarget.name}”?</div>
+            <div style={{ fontSize: 13.5, color: "var(--text-muted)", marginBottom: 20 }}>
               This is a private group. Your request will be sent to the group admin — you’ll be added once it’s approved.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setJoinTarget(null)} disabled={joinSending}
-                style={{ flex: 1, padding: "10px 16px", background: "#f3f4f6", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, color: "#374151" }}>
+                style={{ flex: 1, padding: "10px 16px", background: "var(--surface-subtle)", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, color: "var(--text-tertiary)" }}>
                 Cancel
               </button>
               <button onClick={sendJoinRequest} disabled={joinSending}
-                style={{ flex: 1, padding: "10px 16px", background: "#CB0002", color: "#fff", border: "none", borderRadius: 10, cursor: joinSending ? "not-allowed" : "pointer", fontWeight: 600 }}>
+                style={{ flex: 1, padding: "10px 16px", background: "#CB0002", color: "var(--text-inverse)", border: "none", borderRadius: 10, cursor: joinSending ? "not-allowed" : "pointer", fontWeight: 600 }}>
                 {joinSending ? "Sending…" : "Request to Join"}
               </button>
             </div>

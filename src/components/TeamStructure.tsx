@@ -273,14 +273,14 @@ export function TeamStructure() {
     };
   }, [users, query]);
 
-  if (error) return <div style={{ padding: 40, color: "#6b7280" }}>Couldn&apos;t load the team structure. Please try again.</div>;
-  if (!users) return <div style={{ padding: 40, color: "#6b7280" }}>Loading team structure…</div>;
+  if (error) return <div style={{ padding: 40, color: "var(--text-muted)" }}>Couldn&apos;t load the team structure. Please try again.</div>;
+  if (!users) return <div style={{ padding: 40, color: "var(--text-muted)" }}>Loading team structure…</div>;
 
   const stat = (label: string, n: number, color: string) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "8px 14px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "8px 14px" }}>
       <span style={{ width: 9, height: 9, borderRadius: "50%", background: color }} />
-      <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{n}</span>
-      <span style={{ fontSize: 12.5, color: "#6b7280" }}>{label}</span>
+      <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{n}</span>
+      <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{label}</span>
     </div>
   );
 
@@ -303,11 +303,11 @@ export function TeamStructure() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search by name or email…"
-        style={{ width: "100%", maxWidth: 360, padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 14, marginBottom: 22, outline: "none" }}
+        style={{ width: "100%", maxWidth: 360, padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: 10, fontSize: 14, marginBottom: 22, outline: "none" }}
       />
 
       {nothing ? (
-        <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>No matching people.</div>
+        <div style={{ padding: 40, textAlign: "center", color: "var(--text-subtle)" }}>No matching people.</div>
       ) : (
         <div
           className="chart-scroll"
@@ -456,19 +456,19 @@ export function TeamStructure() {
       {/* Node styling (global so nested elements pick it up) */}
       <style jsx global>{`
         .node {
-          width: 168px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+          width: 168px; background: var(--surface-default); border: 1px solid var(--border-default); border-radius: 12px;
           padding: 12px 10px 10px; display: flex; flex-direction: column; align-items: center;
           box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-align: center;
         }
         .node-name {
-          margin-top: 8px; font-size: 13.5px; font-weight: 600; color: #111827;
+          margin-top: 8px; font-size: 13.5px; font-weight: 600; color: var(--text-primary);
           max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
           display: flex; align-items: center; gap: 5px; justify-content: center;
         }
         .you-badge { font-size: 9px; font-weight: 700; border-radius: 5px; padding: 1px 5px; }
         .node-role { margin-top: 5px; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
         .node-email {
-          margin-top: 6px; font-size: 10.5px; color: #9ca3af;
+          margin-top: 6px; font-size: 10.5px; color: var(--text-subtle);
           max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
       `}</style>

@@ -655,8 +655,8 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   if (bots.length === 0) return (
     <div style={centerStyle}>
       <div style={{ fontSize: "48px", marginBottom: "16px" }}>🤖</div>
-      <div style={{ fontSize: "18px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>No bots assigned</div>
-      <div style={{ fontSize: "14px", color: "#9ca3af" }}>Ask your admin to assign a bot to this panel</div>
+      <div style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-tertiary)", marginBottom: "8px" }}>No bots assigned</div>
+      <div style={{ fontSize: "14px", color: "var(--text-subtle)" }}>Ask your admin to assign a bot to this panel</div>
     </div>
   );
 
@@ -681,13 +681,13 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       <div style={{ width: size, height: size, borderRadius: "50%", background: theme, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
         {avatarUrl
           ? <img src={avatarUrl} alt="bot" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <span style={{ fontSize, color: "#fff" }}>🤖</span>}
+          : <span style={{ fontSize, color: "var(--text-inverse)" }}>🤖</span>}
       </div>
     );
   }
 
   return (
-    <div className="bot-chat-widget" style={{ display: "flex", height: "calc(100vh - 120px)", background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", overflow: "hidden", position: "relative" }}>
+    <div className="bot-chat-widget" style={{ display: "flex", height: "calc(100vh - 120px)", background: "var(--surface-default)", borderRadius: "12px", border: "1px solid var(--border-default)", overflow: "hidden", position: "relative" }}>
 
       {/* Mobile backdrop */}
       {!sidebarCollapsed && (
@@ -700,7 +700,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
         style={{ width: "260px", minWidth: "260px", background: sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", transition: "transform 0.25s ease, width 0.2s, min-width 0.2s", flexShrink: 0 }}>
 
         <div style={{ padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <button onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+          <button onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.1)", color: "var(--text-inverse)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "16px" }}>✏️</span> New Chat
           </button>
         </div>
@@ -712,7 +712,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
               <div key={session.chatId} onClick={() => { loadSession(session); setSidebarCollapsed(true); }}
                 style={{ padding: "10px 12px", borderRadius: "8px", cursor: "pointer", marginBottom: "2px", background: currentChatId === session.chatId ? "rgba(255,255,255,0.2)" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", transition: "background 0.15s" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "13px", color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {session.title}</div>
+                  <div style={{ fontSize: "13px", color: "var(--text-inverse)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {session.title}</div>
                   <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "2px" }}>{new Date(session.updatedAt).toLocaleDateString()}</div>
                 </div>
                 <button onClick={e => deleteSession(session.chatId, e)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "14px", padding: "2px 4px", flexShrink: 0 }}>🗑</button>
@@ -728,14 +728,14 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       </div>
 
       {/* ── Main Chat ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#fff" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--surface-default)" }}>
 
         {/* Header — themed */}
         <div style={{ padding: "0 20px", background: theme, display: "flex", alignItems: "center", gap: "12px", flexShrink: 0, minHeight: "56px" }}>
           <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgba(255,255,255,0.8)", padding: "4px" }}>☰</button>
           <AvatarImg size={34} fontSize="16px" />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: "15px", color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
+            <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-inverse)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
             {(() => {
               const t = messages.length > 0 ? (chatSessions.find(s => s.chatId === currentChatId)?.title || "") : "";
               return t && t !== "New Chat"
@@ -745,13 +745,13 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
           </div>
           {recordingUrl && (
             <button onClick={downloadAudio} title="Download the voice recording (audio file)"
-              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "var(--text-inverse)", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
               🎧 Audio
             </button>
           )}
           {messages.length > 0 && (
             <button onClick={downloadConversation} title="Download the transcript (text)"
-              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "var(--text-inverse)", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
               ⬇ Text
             </button>
           )}
@@ -764,13 +764,13 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
               <div className={animClass || undefined} style={{ marginBottom: "16px" }}>
                 <AvatarImg size={iconSize} fontSize={Math.round(iconSize * 0.4) + "px"} />
               </div>
-              <div style={{ fontSize: "22px", fontWeight: 700, color: "#1f2937", marginBottom: "8px" }}>{welcome}</div>
-              {displayMsg && <div style={{ fontSize: "14px", color: "#6b7280", marginBottom: "8px" }}>{displayMsg}</div>}
+              <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "8px" }}>{welcome}</div>
+              {displayMsg && <div style={{ fontSize: "14px", color: "var(--text-muted)", marginBottom: "8px" }}>{displayMsg}</div>}
               {suggestions.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", marginTop: "16px", maxWidth: "500px" }}>
                   {suggestions.map((s, i) => (
                     <button key={i} onClick={() => send(s)}
-                      style={{ padding: "8px 16px", border: `1.5px solid ${theme}`, borderRadius: "20px", fontSize: "13px", color: theme, background: "#fff", cursor: "pointer", fontWeight: 500 }}>
+                      style={{ padding: "8px 16px", border: `1.5px solid ${theme}`, borderRadius: "20px", fontSize: "13px", color: theme, background: "var(--surface-default)", cursor: "pointer", fontWeight: 500 }}>
                       {s}
                     </button>
                   ))}
@@ -781,7 +781,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
             <div style={{ maxWidth: "760px", margin: "0 auto", padding: "0 24px", display: "flex", flexDirection: "column", gap: "24px" }} className="chat-messages-inner">
               {messages.map((m, i) => (
                 <div key={i} style={{ display: "flex", gap: "14px", alignItems: "flex-start", flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: m.role === "user" ? "#1f2937" : theme, color: "#fff", overflow: "hidden" }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: m.role === "user" ? "var(--surface-inverse-raised)" : theme, color: "var(--text-inverse)", overflow: "hidden" }}>
                     {m.role === "user"
                       ? (userHeadshot ? <img src={userHeadshot} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤")
                       : (avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🤖")}
@@ -790,12 +790,12 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
                     {m.attachments && m.attachments.length > 0 && (
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
                         {m.attachments.map((att, ai) => (
-                          <div key={ai} style={{ padding: "6px 12px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px", color: "#374151", display: "flex", alignItems: "center", gap: "6px" }}>📎 {att.name}</div>
+                          <div key={ai} style={{ padding: "6px 12px", background: "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px", color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "6px" }}>📎 {att.name}</div>
                         ))}
                       </div>
                     )}
                     {m.content && (
-                      <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "#1f2937" : "#f9fafb", color: m.role === "user" ? "#fff" : "#1f2937", fontSize: "14px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid #e5e7eb" : "none", whiteSpace: "pre-wrap" }}>
+                      <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "var(--surface-inverse-raised)" : "#f9fafb", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-secondary)", fontSize: "14px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid var(--border-default)" : "none", whiteSpace: "pre-wrap" }}>
                         {m.content}
                       </div>
                     )}
@@ -805,11 +805,11 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
               {loading && (
                 <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
                   <div style={{ width: 36, height: 36, borderRadius: "50%", background: theme, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                    {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "#fff" }}>🤖</span>}
+                    {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "var(--text-inverse)" }}>🤖</span>}
                   </div>
-                  <div style={{ padding: "12px 16px", borderRadius: "18px 18px 18px 4px", background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "12px 16px", borderRadius: "18px 18px 18px 4px", background: "#f9fafb", border: "1px solid var(--border-default)" }}>
                     <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                      {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#9ca3af", animation: `bounce 1.2s ${i*0.2}s infinite` }} />)}
+                      {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--gray-400) /* no semantic: gray-400 as surface */", animation: `bounce 1.2s ${i*0.2}s infinite` }} />)}
                     </div>
                   </div>
                 </div>
@@ -820,11 +820,11 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
         </div>
 
         {/* Input */}
-        <div style={{ padding: "16px 24px", borderTop: "1px solid #f3f4f6", flexShrink: 0 }}>
+        <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border-subtle)", flexShrink: 0 }}>
           {attachments.length > 0 && (
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
               {attachments.map((att, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px" }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px", background: "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px" }}>
                   {att.type.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: "6px" }} /> : <span>📎</span>}
                   <span style={{ maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
                   <button onClick={() => setAttachments(prev => prev.filter((_,idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", padding: 0, lineHeight: 1 }}>×</button>
@@ -836,25 +836,25 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
             {showAttachMenu && (
               <div ref={attachMenuRef} style={{ position: "absolute", bottom: "calc(100% + 10px)", left: 0, background: sidebarBg, borderRadius: "14px", padding: "8px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", zIndex: 100, minWidth: "220px", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <button onClick={() => { fileRef.current?.click(); setShowAttachMenu(false); }}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", background: "none", border: "none", cursor: "pointer", color: "#fff", fontSize: "14px", borderRadius: "8px", textAlign: "left" }}
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", background: "none", border: "none", cursor: "pointer", color: "var(--text-inverse)", fontSize: "14px", borderRadius: "8px", textAlign: "left" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "none")}>
                   <span style={{ fontSize: "20px" }}>🖼️</span> Upload photos & files
                 </button>
               </div>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#f9fafb", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "8px 12px" }}>
-              <button onClick={() => setShowAttachMenu(p => !p)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: showAttachMenu ? "#1f2937" : "#e5e7eb", color: showAttachMenu ? "#fff" : "#374151", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 300, flexShrink: 0, lineHeight: 1, transition: "background 0.15s" }} title="Attach">+</button>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#f9fafb", borderRadius: "14px", border: "1px solid var(--border-default)", padding: "8px 12px" }}>
+              <button onClick={() => setShowAttachMenu(p => !p)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: showAttachMenu ? "var(--surface-inverse-raised)" : "var(--surface-muted)", color: showAttachMenu ? "var(--text-inverse)" : "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 300, flexShrink: 0, lineHeight: 1, transition: "background 0.15s" }} title="Attach">+</button>
               <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFileAttach} />
               <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
-                style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "#1f2937", alignSelf: "center" }} />
+                style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "var(--text-secondary)", alignSelf: "center" }} />
               <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}
-                style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "#e5e7eb" : theme, color: loading || (!input.trim() && attachments.length === 0) ? "#9ca3af" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0, transition: "background 0.15s" }}>↑</button>
+                style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "var(--surface-muted)" : theme, color: loading || (!input.trim() && attachments.length === 0) ? "var(--text-subtle)" : "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0, transition: "background 0.15s" }}>↑</button>
             </div>
             <div style={{ textAlign: "center", fontSize: "11px", color: "#d1d5db", marginTop: "8px" }}>
-              <span>Powered by <strong style={{ color: "#9ca3af" }}>MillerStorm</strong></span>
+              <span>Powered by <strong style={{ color: "var(--text-subtle)" }}>MillerStorm</strong></span>
               {selectedBot?.privacyPolicyEnabled && selectedBot?.privacyLink && (
-                <span> | {selectedBot.privacyActionText || "Read our"} <a href={selectedBot.privacyLink} target="_blank" rel="noopener noreferrer" style={{ color: "#6b7280", textDecoration: "underline" }}>{selectedBot.privacyLinkText || "Privacy Policy"}</a></span>
+                <span> | {selectedBot.privacyActionText || "Read our"} <a href={selectedBot.privacyLink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", textDecoration: "underline" }}>{selectedBot.privacyLinkText || "Privacy Policy"}</a></span>
               )}
             </div>
           </div>
@@ -891,4 +891,4 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   );
 }
 
-const centerStyle: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "400px", textAlign: "center", color: "#9ca3af" };
+const centerStyle: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "400px", textAlign: "center", color: "var(--text-subtle)" };

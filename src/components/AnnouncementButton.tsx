@@ -24,7 +24,7 @@ export function AnnouncementButton() {
         whiteSpace: "nowrap",
         lineHeight: 1,
         background: "#dc2626",
-        color: "#fff",
+        color: "var(--text-inverse)",
         border: "none",
         borderRadius: 6,
         padding: "9px 16px",

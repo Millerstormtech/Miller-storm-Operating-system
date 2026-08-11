@@ -143,7 +143,7 @@ export function TicketButton() {
             whiteSpace: "nowrap",
             lineHeight: 1,
             background: "#dc2626",
-            color: "#fff",
+            color: "var(--text-inverse)",
             border: "none",
             borderRadius: 6,
             padding: "9px 16px",
@@ -157,7 +157,7 @@ export function TicketButton() {
           🎫 <span className="ticket-btn-text">Tickets</span>
           {openCount > 0 && (
             <span style={{
-              position: "absolute", top: -6, right: -6, background: "#111827", color: "#fff",
+              position: "absolute", top: -6, right: -6, background: "var(--surface-inverse)", color: "var(--text-inverse)",
               borderRadius: 999, minWidth: 20, height: 20, fontSize: 11, fontWeight: 700,
               display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px",
             }}>{openCount > 99 ? "99+" : openCount}</span>
@@ -192,11 +192,11 @@ export function TicketButton() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: "#fff", borderRadius: 14, maxWidth: 520, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
+            style={{ background: "var(--surface-default)", borderRadius: 14, maxWidth: 520, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
           >
-            <div style={{ padding: "20px 24px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#111827" }}>🎫 Support</h2>
-              <button type="button" onClick={() => setOpen(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#6b7280" }}>×</button>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>🎫 Support</h2>
+              <button type="button" onClick={() => setOpen(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-muted)" }}>×</button>
             </div>
 
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -244,26 +244,26 @@ export function TicketButton() {
               {toast && <div style={{ fontSize: 13, color: toast.startsWith("✅") ? "#166534" : "#b91c1c", fontWeight: 600 }}>{toast}</div>}
 
               <button type="button" onClick={submit} disabled={submitting}
-                style={{ background: "#111827", color: "#fff", border: "none", borderRadius: 999, padding: "12px", fontWeight: 700, fontSize: 15, cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? 0.6 : 1 }}>
+                style={{ background: "var(--surface-inverse)", color: "var(--text-inverse)", border: "none", borderRadius: 999, padding: "12px", fontWeight: 700, fontSize: 15, cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? 0.6 : 1 }}>
                 {submitting ? "Sending..." : "Send to Admin"}
               </button>
             </div>
 
-            <div style={{ padding: "16px 24px 24px", borderTop: "1px solid #e5e7eb" }}>
-              <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#374151" }}>Your Tickets</h3>
+            <div style={{ padding: "16px 24px 24px", borderTop: "1px solid var(--border-default)" }}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "var(--text-tertiary)" }}>Your Tickets</h3>
               {tickets.length === 0 ? (
-                <p style={{ color: "#9ca3af", fontSize: 13, margin: 0 }}>You haven't raised any tickets yet.</p>
+                <p style={{ color: "var(--text-subtle)", fontSize: 13, margin: 0 }}>You haven't raised any tickets yet.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, overflowY: "auto" }}>
                   {tickets.map((t) => {
                     const c = STATUS_COLOR[t.status] || STATUS_COLOR.open;
                     return (
-                      <div key={t.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 12px" }}>
+                      <div key={t.id} style={{ border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 12px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontWeight: 600, fontSize: 13, color: "#111827" }}>{supportTypeLabel(t.type)}</span>
+                          <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>{supportTypeLabel(t.type)}</span>
                           <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{STATUS_LABEL[t.status]}</span>
                         </div>
-                        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#6b7280", whiteSpace: "pre-wrap" }}>{t.note}</p>
+                        <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{t.note}</p>
                       </div>
                     );
                   })}
@@ -277,5 +277,5 @@ export function TicketButton() {
   );
 }
 
-const lbl: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "#374151" };
-const inp: React.CSSProperties = { padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, fontWeight: 400, color: "#111827", outline: "none" };
+const lbl: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" };
+const inp: React.CSSProperties = { padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, fontWeight: 400, color: "var(--text-primary)", outline: "none" };

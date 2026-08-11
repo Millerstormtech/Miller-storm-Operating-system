@@ -104,8 +104,8 @@ export default function WorldMap({ data }: WorldMapProps) {
             position: "fixed",
             left: tooltip.x + 12,
             top: tooltip.y + 12,
-            background: "#111827",
-            color: "#fff",
+            background: "var(--surface-inverse)",
+            color: "var(--text-inverse)",
             fontSize: "11px",
             padding: "4px 8px",
             borderRadius: "6px",
@@ -135,9 +135,9 @@ export default function WorldMap({ data }: WorldMapProps) {
             title={btn.title}
             style={{
               width: 30, height: 30, borderRadius: "6px",
-              border: "1px solid #e5e7eb", background: "#fff",
+              border: "1px solid var(--border-default)", background: "var(--surface-default)",
               cursor: "pointer", fontSize: btn.label === "⊙" ? "14px" : "18px",
-              fontWeight: 600, color: "#374151", lineHeight: 1,
+              fontWeight: 600, color: "var(--text-tertiary)", lineHeight: 1,
               boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
               display: "flex", alignItems: "center", justifyContent: "center"
             }}
@@ -148,7 +148,7 @@ export default function WorldMap({ data }: WorldMapProps) {
       </div>
 
       {/* Hint */}
-      <div style={{ position: "absolute", bottom: "12px", left: "12px", fontSize: "10px", color: "#9ca3af" }}>
+      <div style={{ position: "absolute", bottom: "12px", left: "12px", fontSize: "10px", color: "var(--text-subtle)" }}>
         Scroll to zoom · Drag to pan
       </div>
     </div>

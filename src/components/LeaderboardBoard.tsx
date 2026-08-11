@@ -191,7 +191,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   const arrow = (key: SortKey) => (key === sortKey ? (sortDir === "asc" ? " ▲" : " ▼") : "");
 
-  const selectStyle = { padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" } as const;
+  const selectStyle = { padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "var(--surface-default)", color: "var(--text-tertiary)", fontWeight: 600, cursor: "pointer" } as const;
 
   // While a real branch filter is active, the numbers are that ONE branch's sales, so a
   // rep's home Branch/Team would only contradict the filter (a Fort Worth rep in the West
@@ -273,7 +273,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           data-tour="your-rank"
           style={{
             display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
-            background: "linear-gradient(135deg,#1e3a8a,#2563eb)", color: "#fff",
+            background: "linear-gradient(135deg,#1e3a8a,#2563eb)", color: "var(--text-inverse)",
             borderRadius: 14, padding: "16px 20px", marginBottom: 16,
             boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
           }}
@@ -313,7 +313,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           data-tour="contract-king"
           style={{
             display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
-            background: "linear-gradient(135deg,#78350f,#b45309)", color: "#fff",
+            background: "linear-gradient(135deg,#78350f,#b45309)", color: "var(--text-inverse)",
             borderRadius: 14, padding: "14px 18px", marginBottom: 16,
             boxShadow: "0 4px 14px rgba(180,83,9,0.35)",
           }}
@@ -334,7 +334,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
       {/* Filters — Period, Branch, Team all as matching dropdowns. */}
       <div data-tour="filters" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
           Period
           <select
             value={isCustom ? "custom" : window}
@@ -345,15 +345,15 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             <option value="custom">Custom range</option>
           </select>
         </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
           From
           <input type="date" value={from} max={to || undefined} onChange={(e) => pickDates(e.target.value, to)} style={selectStyle} />
         </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
           To
           <input type="date" value={to} min={from || undefined} onChange={(e) => pickDates(from, e.target.value)} style={selectStyle} />
         </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
           Branch
           <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} style={selectStyle}>
             <option value={ALL}>All branches</option>
@@ -361,7 +361,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             {branchOptions.hasBlank ? <option value={NONE}>(No branch)</option> : null}
           </select>
         </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
           Team
           <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} style={selectStyle}>
             <option value={ALL}>All teams</option>
@@ -370,7 +370,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           </select>
         </label>
         <label
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", fontWeight: 600, cursor: "pointer" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-tertiary)", fontWeight: 600, cursor: "pointer" }}
           title="Hide reps who are no longer active in RepCard"
         >
           <input type="checkbox" checked={hideFormer} onChange={(e) => setHideFormer(e.target.checked)} />
@@ -384,7 +384,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             <>
               {/* click-outside overlay: closes WITHOUT applying (draft discarded) */}
               <div onClick={() => setRepOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
-              <div style={{ position: "absolute", zIndex: 21, top: "calc(100% + 4px)", left: 0, width: 260, background: "#fff", border: "1px solid #d1d5db", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: 10 }}>
+              <div style={{ position: "absolute", zIndex: 21, top: "calc(100% + 4px)", left: 0, width: 260, background: "var(--surface-default)", border: "1px solid #d1d5db", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: 10 }}>
                 <input
                   value={repSearch}
                   onChange={(e) => setRepSearch(e.target.value)}
@@ -400,8 +400,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                   ))}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <button onClick={() => setDraftReps(new Set())} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontSize: 12, padding: 0 }}>Clear</button>
-                  <button onClick={applyReps} style={{ padding: "6px 12px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                  <button onClick={() => setDraftReps(new Set())} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, padding: 0 }}>Clear</button>
+                  <button onClick={applyReps} style={{ padding: "6px 12px", borderRadius: 6, border: "none", background: "#2563eb", color: "var(--text-inverse)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                     Show Selected ({draftReps.size})
                   </button>
                 </div>
@@ -412,7 +412,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         {(branchFilter || teamFilter || appliedReps.size || hideFormer) ? (
           <button
             onClick={() => { setBranchFilter(ALL); setTeamFilter(ALL); setAppliedReps(new Set()); setHideFormer(false); }}
-            style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", cursor: "pointer", fontWeight: 600 }}
+            style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "var(--surface-default)", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}
           >
             Clear filters
           </button>
@@ -425,7 +425,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           buildDocument={buildExport}
           disabledReason={loading ? "Still loading" : undefined}
         />
-        <span style={{ fontSize: 13, color: "#9ca3af", marginLeft: "auto" }}>
+        <span style={{ fontSize: 13, color: "var(--text-subtle)", marginLeft: "auto" }}>
           {visible.length} rep{visible.length === 1 ? "" : "s"}
         </span>
       </div>
@@ -439,8 +439,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       ) : null}
 
       {/* Collapsible "how to read this board" guide — collapsed by default so it never clutters. */}
-      <details data-tour="board-guide" style={{ marginBottom: 12, background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px" }}>
-        <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#374151" }}>
+      <details data-tour="board-guide" style={{ marginBottom: 12, background: "#f8fafc", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 14px" }}>
+        <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" }}>
           ℹ️ How to read this board
         </summary>
         <ul style={{ margin: "10px 0 2px", paddingLeft: 18, fontSize: 12.5, color: "#4b5563", lineHeight: 1.6 }}>
@@ -451,7 +451,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       </details>
 
       {/* Legend for the flags shown next to a rep's name. */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#6b7280", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "var(--text-muted)", flexWrap: "wrap" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
           No AccuLynx account (rep not set up in AccuLynx)
@@ -463,7 +463,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       </div>
 
       {loading ? (
-        <p style={{ color: "#6b7280" }}>Loading leaderboard…</p>
+        <p style={{ color: "var(--text-muted)" }}>Loading leaderboard…</p>
       ) : (
         <>
         {/* overflow lives in the stylesheet now, not inline: a wrapper with
@@ -482,7 +482,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     style={{
                       padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", userSelect: "none",
                       textAlign: c.type === "text" ? "left" : "center",
-                      color: c.key === sortKey ? "#2563eb" : "#374151",
+                      color: c.key === sortKey ? "#2563eb" : "var(--text-tertiary)",
                       // Frozen header. Needs its own opaque background: <thead>
                       // backgrounds do not paint behind sticky cells.
                       position: "sticky", top: 0, zIndex: 2, background: "#f1f5f9",
@@ -495,11 +495,11 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             </thead>
             <tbody>
               {visible.length === 0 ? (
-                <tr><td colSpan={visibleColumns.length + 1} style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No reps match these filters.</td></tr>
+                <tr><td colSpan={visibleColumns.length + 1} style={{ textAlign: "center", padding: 20, color: "var(--text-subtle)" }}>No reps match these filters.</td></tr>
               ) : visible.map((r, i) => {
                 const isYou = currentUserId && r.repUserId === currentUserId;
                 return (
-                  <tr key={r.id} style={{ borderBottom: "1px solid #e5e7eb", background: isYou ? "#eff6ff" : "#fff" }}>
+                  <tr key={r.id} style={{ borderBottom: "1px solid var(--border-default)", background: isYou ? "#eff6ff" : "var(--surface-default)" }}>
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700 }}>{i + 1}</td>
                     <td style={{ padding: "10px 14px", fontWeight: 600 }}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -520,8 +520,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     </td>
                     {!branchActive ? (
                       <>
-                        <td style={{ padding: "10px 14px", color: "#6b7280" }}>{r.branch || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "#6b7280" }}>{TEAM_LEADS[r.team] || r.team || "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--text-muted)" }}>{r.branch || "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--text-muted)" }}>{TEAM_LEADS[r.team] || r.team || "—"}</td>
                       </>
                     ) : null}
                     <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
@@ -557,33 +557,33 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         {/* Mobile: app-style leaderboard cards (matches the Flutter app). */}
         <div className="leaderboard-cards">
           {visible.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 20, color: "#9ca3af" }}>No reps match these filters.</div>
+            <div style={{ textAlign: "center", padding: 20, color: "var(--text-subtle)" }}>No reps match these filters.</div>
           ) : visible.map((r, i) => {
             const isYou = currentUserId && r.repUserId === currentUserId;
             const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
             const subtitle = [r.branch, TEAM_LEADS[r.team] || r.team].filter(Boolean).join(" · ");
             return (
-              <div key={r.id} style={{ marginBottom: 10, background: isYou ? "#FFF1F1" : "#fff", borderRadius: 14, border: `1px solid ${isYou ? "rgba(203,0,2,0.4)" : "#EEF0F3"}`, boxShadow: "0 3px 10px rgba(0,0,0,0.04)", padding: 12 }}>
+              <div key={r.id} style={{ marginBottom: 10, background: isYou ? "#FFF1F1" : "var(--surface-default)", borderRadius: 14, border: `1px solid ${isYou ? "rgba(203,0,2,0.4)" : "#EEF0F3"}`, boxShadow: "0 3px 10px rgba(0,0,0,0.04)", padding: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 34, textAlign: "center", fontSize: medal ? 24 : 16, fontWeight: 800, color: "#6b7280", flexShrink: 0 }}>
+                  <div style={{ width: 34, textAlign: "center", fontSize: medal ? 24 : 16, fontWeight: 800, color: "var(--text-muted)", flexShrink: 0 }}>
                     {medal || i + 1}
                   </div>
                   <RepAvatar name={r.name} url={r.headshotUrl} size={44} fontSize={18} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
                       {r.source === "repcard" ? <span title="No AccuLynx account" style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }} /> : null}
                       {r.name}{isYou ? " (You)" : ""}
                     </div>
-                    {subtitle ? <div style={{ fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div> : null}
+                    {subtitle ? <div style={{ fontSize: 12, color: "var(--text-subtle)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div> : null}
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 800, color: "#16a34a", flexShrink: 0 }}>{fmtMoney(r.revenue)}</div>
                 </div>
-                <div style={{ height: 1, background: "#f3f4f6", margin: "10px 0 8px" }} />
+                <div style={{ height: 1, background: "var(--surface-subtle)", margin: "10px 0 8px" }} />
                 <div style={{ display: "flex", justifyContent: "space-around" }}>
                   {([["🚪 Knocks", r.verifiedKnocks ?? 0], ["Claims Filed", r.filed ?? 0], ["Contracts", r.won ?? 0]] as [string, number][]).map(([label, value], k) => (
                     <div key={k} style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: "#111827" }}>{value}</div>
-                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>{value}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 2 }}>{label}</div>
                     </div>
                   ))}
                 </div>

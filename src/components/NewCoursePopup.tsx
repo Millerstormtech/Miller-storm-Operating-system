@@ -169,7 +169,7 @@ export function NewCoursePopup() {
         width: 340,
         maxWidth: "calc(100vw - 32px)",
         background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-        color: "#fff",
+        color: "var(--text-inverse)",
         borderRadius: 14,
         boxShadow: "0 18px 45px rgba(220,38,38,0.45)",
         padding: "18px 18px 16px",
@@ -191,7 +191,7 @@ export function NewCoursePopup() {
           right: 8,
           background: "rgba(255,255,255,0.22)",
           border: "none",
-          color: "#fff",
+          color: "var(--text-inverse)",
           borderRadius: 6,
           padding: "3px 10px",
           cursor: "pointer",
@@ -235,7 +235,7 @@ export function NewCoursePopup() {
         onClick={onAction}
         style={{
           width: "100%",
-          background: "#fff",
+          background: "var(--surface-default)",
           color: "#b91c1c",
           border: "none",
           borderRadius: 9,

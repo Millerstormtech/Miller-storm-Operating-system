@@ -204,17 +204,17 @@ export function NotificationBell({ userId }: { userId: string }) {
           maxHeight: 400,
           overflowY: 'auto',
           background: 'white',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border-default)',
           borderRadius: 8,
           boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
           zIndex: 1000,
           marginTop: 8
         }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', fontWeight: 600 }}>
             Notifications
           </div>
           {notifications.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-subtle)', fontSize: 14 }}>
               No notifications
             </div>
           ) : (
@@ -224,7 +224,7 @@ export function NotificationBell({ userId }: { userId: string }) {
                 onClick={() => handleNotificationClick(notif)}
                 style={{
                   padding: '12px 16px',
-                  borderBottom: '1px solid #f3f4f6',
+                  borderBottom: '1px solid var(--border-subtle)',
                   cursor: 'pointer',
                   background: notif.read ? 'white' : '#fef3c7',
                   transition: 'background 0.2s'
@@ -239,10 +239,10 @@ export function NotificationBell({ userId }: { userId: string }) {
                 <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
                   {notif.title}
                 </div>
-                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
                   {notif.message}
                 </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-subtle)' }}>
                   {new Date(notif.createdAt).toLocaleString()}
                 </div>
               </div>

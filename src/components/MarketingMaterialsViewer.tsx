@@ -229,21 +229,21 @@ export function MarketingMaterialsViewer() {
                     </div>
                   )}
                   {material.type === 'document' && (
-                    <div style={{ width: "100%", height: 180, backgroundColor: "#f3f4f6", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <div style={{ width: "100%", height: 180, backgroundColor: "var(--surface-subtle)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
                       <div style={{ fontSize: 48 }}>📄</div>
-                      <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 600 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
                         {material.url.split('.').pop()?.toUpperCase()}
                       </div>
                     </div>
                   )}
                   {material.type === 'url' && (
-                    <div style={{ width: "100%", height: 180, backgroundColor: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: "100%", height: 180, backgroundColor: "var(--surface-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <div style={{ fontSize: 48 }}>🔗</div>
                     </div>
                   )}
                   <div style={{ padding: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, padding: '2px 8px', backgroundColor: '#e5e7eb', borderRadius: 4, fontWeight: 600 }}>
+                      <span style={{ fontSize: 12, padding: '2px 8px', backgroundColor: 'var(--surface-muted)', borderRadius: 4, fontWeight: 600 }}>
                         {material.type === 'url' ? 'LINK' : material.type === 'document' ? 'DOCUMENT' : material.type.toUpperCase()}
                       </span>
                     </div>

@@ -82,13 +82,13 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
                     width: "100%", 
                     height: item.imageHeight ? Math.round(item.imageHeight * 0.8) : 224, 
                     backgroundImage: item.imageUrl && !item.imageUrl.startsWith('blob:') ? `url(${item.imageUrl})` : 'none',
-                    backgroundColor: '#f3f4f6',
+                    backgroundColor: 'var(--surface-subtle)',
                     backgroundSize: "cover", 
                     backgroundPosition: "center",
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#9ca3af',
+                    color: 'var(--text-subtle)',
                     fontSize: 14
                   }}>
                     {(!item.imageUrl || item.imageUrl.startsWith('blob:')) && 'No Image'}
