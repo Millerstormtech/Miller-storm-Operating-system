@@ -305,15 +305,15 @@ export function BusinessPlanPage(props: {
       </div>
 
       <div className="panel-body">
-        <div style={{ marginBottom: 20, fontSize: 13, color: "#6b7280" }}>{scope.helper}</div>
+        <div style={{ marginBottom: 20, fontSize: 13, color: "var(--text-muted)" }}>{scope.helper}</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 320, marginBottom: 32 }}>
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 6 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>
               Monthly Revenue Target
             </label>
             <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-              <span style={{ position: "absolute", left: 8, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+              <span style={{ position: "absolute", left: 8, fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>$</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -325,14 +325,14 @@ export function BusinessPlanPage(props: {
               />
             </div>
             {annualRevenue !== undefined && (
-              <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}>
+              <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-muted)" }}>
                 That is ${annualRevenue.toLocaleString()} per year
               </div>
             )}
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 6 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>
               Monthly Door Knocks Target
             </label>
             <input
@@ -347,7 +347,7 @@ export function BusinessPlanPage(props: {
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 6 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>
               Monthly Claims Target
             </label>
             <input
@@ -362,7 +362,7 @@ export function BusinessPlanPage(props: {
           </div>
         </div>
 
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <div style={{ borderTop: "2px solid var(--border-default)", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {saveError && (
               <span style={{

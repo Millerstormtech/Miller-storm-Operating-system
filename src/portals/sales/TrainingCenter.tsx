@@ -651,7 +651,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
       <div className={`training-center${selectedCourse ? (mobileCourseScreen === 'lesson' ? ' mobile-lesson-active' : ' mobile-overview-active') : ''}`}>
         {/* Always show tabs */}
-      <div data-tour="tabs" style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+      <div data-tour="tabs" style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid var(--border-default)' }}>
         <button
           type="button"
           onClick={() => {
@@ -668,7 +668,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
+            color: activeTab === 'courses' ? '#2563eb' : 'var(--text-muted)',
             fontWeight: activeTab === 'courses' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
@@ -693,7 +693,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'myPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'myPlaylists' ? '#2563eb' : '#6b7280',
+            color: activeTab === 'myPlaylists' ? '#2563eb' : 'var(--text-muted)',
             fontWeight: activeTab === 'myPlaylists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
@@ -724,7 +724,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'assignedPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'assignedPlaylists' ? '#2563eb' : '#6b7280',
+            color: activeTab === 'assignedPlaylists' ? '#2563eb' : 'var(--text-muted)',
             fontWeight: activeTab === 'assignedPlaylists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
@@ -768,7 +768,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-            <div style={{ color: '#6b7280' }}>Loading course...</div>
+            <div style={{ color: 'var(--text-muted)' }}>Loading course...</div>
           </div>
         </div>
       ) : selectedCourse ? (
@@ -800,7 +800,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <div style={{ textAlign: 'center' }}>
                 <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-                <div style={{ color: '#6b7280' }}>Loading courses...</div>
+                <div style={{ color: 'var(--text-muted)' }}>Loading courses...</div>
               </div>
             </div>
           ) : filteredCourses.length > 0 ? (
@@ -883,9 +883,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           </div>
           <div className="panel-body">
             {playlists.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
-                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '8px' }}>
                   No Playlists Yet
                 </h3>
                 <p>Create a playlist by clicking "Make Playlist" when viewing a course</p>
@@ -896,13 +896,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   <div key={playlist.id} className="card playlist-card" style={{ padding: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }} className="playlist-card-content">
                       <div style={{ flex: 1 }} className="playlist-card-info">
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }} className="playlist-card-title">
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
                           {playlist.name}
                         </div>
-                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
                           Course: {playlist.courseName}
                         </div>
-                        <div style={{ fontSize: 14, color: '#6b7280' }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                           {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
                         </div>
                       </div>
@@ -971,9 +971,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           </div>
           <div className="panel-body">
             {assignedPlaylists.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
-                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '8px' }}>
                   No Assigned Playlists
                 </h3>
                 <p>Your Sales Team Lead hasn't assigned any playlists yet</p>
@@ -984,16 +984,16 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   <div key={assignment._id} className="card playlist-card" style={{ padding: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }} className="playlist-card-content">
                       <div style={{ flex: 1 }} className="playlist-card-info">
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }} className="playlist-card-title">
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
                           {assignment.playlistName}
                         </div>
-                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 4 }}>
                           Course: {assignment.courseName}
                         </div>
-                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 4 }}>
                           {assignment.selectedModules.length} module{assignment.selectedModules.length !== 1 ? 's' : ''}
                         </div>
-                        <div style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-subtle)', fontStyle: 'italic' }}>
                           Assigned by: {assignment.managerName}
                         </div>
                       </div>
@@ -1087,20 +1087,20 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       <div className="mobile-course-overview">
         {/* Course title + ⋯ menu */}
         <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>{selectedCourse.title}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{selectedCourse.title}</div>
           <div style={{ position: 'relative' }}>
-            <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', color: '#374151', letterSpacing: 1 }}>⋯</button>
+            <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', color: 'var(--text-tertiary)', letterSpacing: 1 }}>⋯</button>
             {showCourseMenu && (
-              <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ position: 'absolute', top: '110%', right: 0, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {!viewingPlaylist && (
-                  <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
+                  <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
                 )}
-                <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
+                <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 4px' }}>
                   <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
-                    <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                   </div>
-                  <span style={{ fontSize: 13, color: '#374151' }}>Autoplay</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Autoplay</span>
                 </label>
               </div>
             )}
@@ -1108,12 +1108,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         </div>
         {/* Progress */}
         <div style={{ padding: '12px 16px 0' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Course Progress</div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Completed {progress.completed} of {progress.total} lessons</div>
-          <div style={{ height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden', marginBottom: 4 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8 }}>Course Progress</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Completed {progress.completed} of {progress.total} lessons</div>
+          <div style={{ height: 8, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden', marginBottom: 4 }}>
             <div style={{ height: '100%', borderRadius: 999, background: progress.isCompleted ? '#10b981' : '#3b82f6', width: `${pct}%`, transition: 'width 0.3s' }} />
           </div>
-          <div style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{pct}%</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'right' }}>{pct}%</div>
         </div>
         {/* Continue button */}
         <div style={{ padding: '16px 16px 0' }}>
@@ -1134,20 +1134,20 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 setMobileCourseScreen('lesson');
               }
             }}
-            style={{ width: '100%', padding: '14px', borderRadius: 999, border: 'none', background: '#111827', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}
+            style={{ width: '100%', padding: '14px', borderRadius: 999, border: 'none', background: 'var(--surface-inverse)', color: 'var(--text-inverse)', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}
           >
             Continue course
           </button>
         </div>
         {/* Course Content */}
         <div style={{ padding: '24px 16px 8px' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Course Content</div>
-          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Course Content</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
             {totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons
           </div>
         </div>
         {/* Lesson list */}
-        <div style={{ borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ borderTop: '1px solid var(--border-default)' }}>
           {pages.filter(p => !p.folderId).map(page => {
             const unlocked = isPageUnlocked(page.id);
             return (
@@ -1166,13 +1166,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   padding: '14px 16px', 
                   borderBottom: '1px solid #f1f5f9', 
                   cursor: unlocked ? 'pointer' : 'not-allowed', 
-                  background: activePageId === page.id ? '#fef3c7' : '#fff',
+                  background: activePageId === page.id ? '#fef3c7' : 'var(--surface-default)',
                   opacity: unlocked ? 1 : 0.6
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
-                  <span style={{ fontSize: 14, color: '#111827' }}>
+                  <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
                     {!unlocked && "🔒 "}{page.title}
                   </span>
                 </div>
@@ -1190,10 +1190,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     if (isCollapsed) next.delete(folder.id); else next.add(folder.id);
                     setCollapsedFolders(next);
                   }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#f3f4f6', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border-default)', cursor: 'pointer' }}
                 >
-                  <span style={{ fontSize: 13, color: '#6b7280' }}>{isCollapsed ? '∧' : '∨'}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>{folder.title}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{isCollapsed ? '∧' : '∨'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-tertiary)' }}>{folder.title}</span>
                 </div>
                 {!isCollapsed && folderPages.map(page => {
                   const unlocked = isPageUnlocked(page.id);
@@ -1213,13 +1213,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         padding: '14px 16px 14px 32px', 
                         borderBottom: '1px solid #f1f5f9', 
                         cursor: unlocked ? 'pointer' : 'not-allowed', 
-                        background: activePageId === page.id ? '#fef3c7' : '#fff',
+                        background: activePageId === page.id ? '#fef3c7' : 'var(--surface-default)',
                         opacity: unlocked ? 1 : 0.6
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
-                        <span style={{ fontSize: 14, color: '#111827' }}>
+                        <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
                           {!unlocked && "🔒 "}{page.title}
                         </span>
                       </div>
@@ -1402,7 +1402,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         {/* Quiz top-up modal — shown when a quiz is failed (< 80%) */}
         {quizModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}>
-            <div style={{ background: '#fff', borderRadius: 14, maxWidth: 440, width: '100%', padding: '28px 26px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ background: 'var(--surface-default)', borderRadius: 14, maxWidth: 440, width: '100%', padding: '28px 26px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
               <div style={{ fontSize: 44, marginBottom: 8 }}>{quizModal.mode === 'retry' ? '📊' : '📚'}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: '#16202b', marginBottom: 10 }}>
                 {quizModal.mode === 'retry' ? 'Top up your score!' : "Let's revisit the lesson"}
@@ -1439,7 +1439,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             <button
               type="button"
               onClick={() => setMobileCourseScreen('overview')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '12px 16px', fontSize: 14, color: '#374151', fontWeight: 500 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '12px 16px', fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 500 }}
             >
               ← Course Content
             </button>
@@ -1469,10 +1469,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           const showWrong = quizSubmitted && isSelected && quizReview[q.id] === false;
                           return (
                             <div key={optIdx} onClick={() => !quizSubmitted && setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
-                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#e5e7eb') : (isSelected ? '#3b82f6' : '#e5e7eb'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (showCorrect ? '#d1fae5' : showWrong ? '#fee2e2' : '#fff') : (isSelected ? '#eff6ff' : '#fff') }}>
+                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : 'var(--border-default)') : (isSelected ? '#3b82f6' : 'var(--border-default)'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (showCorrect ? '#d1fae5' : showWrong ? '#fee2e2' : 'var(--surface-default)') : (isSelected ? '#eff6ff' : 'var(--surface-default)') }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (showCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />}
+                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (showCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : 'var(--surface-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--surface-default)' }} />}
                                 </div>
                                 <span style={{ fontSize: 14 }}>{option}</span>
                                 {showCorrect && <span style={{ marginLeft: 'auto', color: '#10b981', fontWeight: 700 }}>✓ Correct</span>}
@@ -1546,30 +1546,30 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           {/* Desktop: show all buttons inline */}
           <div className="course-header-desktop-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {!viewingPlaylist && (
-              <button type="button" className="btn-primary btn-small" style={{ backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
+              <button type="button" className="btn-primary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
             )}
-            <button type="button" className="btn-secondary btn-small" style={{ backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>Back to Courses</button>
+            <button type="button" className="btn-secondary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>Back to Courses</button>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
               <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 40, height: 22, borderRadius: 11, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: 3, left: autoPlay ? 21 : 3, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                <div style={{ position: 'absolute', top: 3, left: autoPlay ? 21 : 3, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               </div>
-              <span style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>Autoplay</span>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>Autoplay</span>
             </label>
           </div>
           {/* Mobile/Tablet: ⋯ menu inline with title */}
           <div className="course-header-mobile-actions" style={{ position: 'relative', display: 'none', alignItems: 'center' }}>
-            <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', lineHeight: 1, color: '#374151', letterSpacing: 1 }}>⋯</button>
+            <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', lineHeight: 1, color: 'var(--text-tertiary)', letterSpacing: 1 }}>⋯</button>
             {showCourseMenu && (
-              <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ position: 'absolute', top: '110%', right: 0, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {!viewingPlaylist && (
-                  <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
+                  <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
                 )}
-                <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
+                <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 4px' }}>
                   <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
-                    <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                   </div>
-                  <span style={{ fontSize: 13, color: '#374151' }}>Autoplay</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Autoplay</span>
                 </label>
               </div>
             )}
@@ -1593,7 +1593,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 </label>
                 <div className="field">
                   <span className="field-label">Select Lessons & Quizzes</span>
-                  <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                  <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 8, padding: 12 }}>
                     {/* Pages without folders */}
                     {pages.filter(p => !p.folderId).map((page) => (
                       <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer', marginLeft: 0 }}>
@@ -1625,7 +1625,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                       
                       return (
                         <div key={folder.id} style={{ marginTop: 12 }}>
-                          <label style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer', fontWeight: 600, backgroundColor: '#f3f4f6', paddingLeft: 8, borderRadius: 4 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer', fontWeight: 600, backgroundColor: 'var(--surface-subtle)', paddingLeft: 8, borderRadius: 4 }}>
                             <input
                               type="checkbox"
                               checked={allFolderPagesSelected}
@@ -1751,7 +1751,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             
             {/* Expand/Collapse All Buttons */}
             {folders.length > 0 && (
-              <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border-default)' }}>
                 <button
                   type="button"
                   className="btn-secondary btn-small"
@@ -1862,7 +1862,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             style={{
               width: '4px',
               cursor: 'ew-resize',
-              backgroundColor: isResizing ? '#3b82f6' : '#e5e7eb',
+              backgroundColor: isResizing ? '#3b82f6' : 'var(--surface-muted)',
               transition: isResizing ? 'none' : 'background-color 0.2s',
               flexShrink: 0,
               position: 'relative',
@@ -1872,7 +1872,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               if (!isResizing) e.currentTarget.style.backgroundColor = '#cbd5e1';
             }}
             onMouseLeave={(e) => {
-              if (!isResizing) e.currentTarget.style.backgroundColor = '#e5e7eb';
+              if (!isResizing) e.currentTarget.style.backgroundColor = 'var(--surface-muted)';
             }}
           />
           <div className="course-page-main">
@@ -1929,10 +1929,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                                   padding: "12px 16px",
                                   marginBottom: 12,
                                   border: "2px solid",
-                                  borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#e5e7eb") : (isSelected ? "#3b82f6" : "#e5e7eb"),
+                                  borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "var(--border-default)") : (isSelected ? "#3b82f6" : "var(--border-default)"),
                                   borderRadius: 8,
                                   cursor: quizSubmitted ? "default" : "pointer",
-                                  backgroundColor: showResult ? (showCorrect ? "#d1fae5" : showWrong ? "#fee2e2" : "#fff") : (isSelected ? "#eff6ff" : "#fff")
+                                  backgroundColor: showResult ? (showCorrect ? "#d1fae5" : showWrong ? "#fee2e2" : "var(--surface-default)") : (isSelected ? "#eff6ff" : "var(--surface-default)")
                                 }}
                               >
                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1943,13 +1943,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                                       borderRadius: "50%",
                                       border: "2px solid",
                                       borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#d1d5db") : (isSelected ? "#3b82f6" : "#d1d5db"),
-                                      backgroundColor: isSelected ? (showResult ? (showCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "#fff",
+                                      backgroundColor: isSelected ? (showResult ? (showCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "var(--surface-default)",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center"
                                     }}
                                   >
-                                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#fff" }} />}
+                                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "var(--surface-default)" }} />}
                                   </div>
                                   <span style={{ fontSize: 14 }}>{option}</span>
                                   {showCorrect && <span style={{ marginLeft: "auto", color: "#10b981", fontWeight: 700 }}>✓ Correct</span>}
@@ -1993,12 +1993,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                                 alignItems: "center",
                                 gap: 8,
                                 padding: "8px 12px",
-                                backgroundColor: "#fff",
+                                backgroundColor: "var(--surface-default)",
                                 borderRadius: 6,
                                 textDecoration: "none",
-                                color: "#111827",
+                                color: "var(--text-primary)",
                                 fontSize: 14,
-                                border: "1px solid #e5e7eb"
+                                border: "1px solid var(--border-default)"
                               }}
                             >
                               <span style={{ fontSize: 18 }}>🔗</span>
@@ -2019,12 +2019,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                                   alignItems: "center",
                                   gap: 8,
                                   padding: "8px 12px",
-                                  backgroundColor: "#fff",
+                                  backgroundColor: "var(--surface-default)",
                                   borderRadius: 6,
                                   textDecoration: "none",
-                                  color: "#111827",
+                                  color: "var(--text-primary)",
                                   fontSize: 14,
-                                  border: "1px solid #e5e7eb"
+                                  border: "1px solid var(--border-default)"
                                 }}
                               >
                                 <span style={{ fontSize: 18 }}>📎</span>
@@ -2037,7 +2037,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     )}
                   </div>
                 )}
-                <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ padding: "16px", borderTop: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     {progress.isCompleted && (
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", fontWeight: 600 }}>
@@ -2112,7 +2112,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             style={{
               position: "fixed", bottom: "24px", right: "24px", zIndex: 500,
               width: 52, height: 52, borderRadius: "50%", border: "none",
-              background: "#1f2937", color: "#fff", fontSize: "22px",
+              background: "var(--surface-inverse-raised)", color: "var(--text-inverse)", fontSize: "22px",
               cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
@@ -2126,13 +2126,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         {showAIChat && activePage && (
           <div style={{
             position: "fixed", top: 64, right: 0, bottom: 0, width: "360px", zIndex: 400,
-            background: "#fff", borderLeft: "1px solid #e5e7eb",
+            background: "var(--surface-default)", borderLeft: "1px solid var(--border-default)",
             boxShadow: "-4px 0 20px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column",
             overflow: "hidden"
           }}>
-            <div style={{ padding: "12px 16px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
               <div style={{ fontWeight: 600, fontSize: "14px" }}>🤖 Course AI Assistant</div>
-              <button onClick={() => setShowAIChat(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "18px" }}>✕</button>
+              <button onClick={() => setShowAIChat(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "18px" }}>✕</button>
             </div>
             <div style={{ flex: 1, overflow: "hidden" }}>
               <LessonAIChat
