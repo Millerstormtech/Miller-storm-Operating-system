@@ -131,7 +131,7 @@ const RegisterPage: NextPage = () => {
             <div style={{ fontSize: 24, fontWeight: 600, color: "#16a34a", marginBottom: 12 }}>
               ✓ Request Submitted
             </div>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
+            <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24 }}>
               Your registration request has been sent to administration.
               <br />
               You will receive access within 24 hours.

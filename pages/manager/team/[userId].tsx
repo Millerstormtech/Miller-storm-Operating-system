@@ -48,7 +48,7 @@ const TeamMemberDetailPage: NextPage = () => {
     return (
       <SalesTeamLeadLayout currentView="team">
         <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{ fontSize: '16px', color: '#6b7280' }}>Loading...</div>
+          <div style={{ fontSize: '16px', color: 'var(--text-muted)' }}>Loading...</div>
         </div>
       </SalesTeamLeadLayout>
     );
@@ -58,7 +58,7 @@ const TeamMemberDetailPage: NextPage = () => {
     return (
       <SalesTeamLeadLayout currentView="team">
         <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{ fontSize: '16px', color: '#6b7280' }}>Team member not found</div>
+          <div style={{ fontSize: '16px', color: 'var(--text-muted)' }}>Team member not found</div>
         </div>
       </SalesTeamLeadLayout>
     );

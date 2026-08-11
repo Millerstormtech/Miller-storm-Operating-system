@@ -158,7 +158,7 @@ const CourseManagementPage: NextPage = () => {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-            <div style={{ color: '#6b7280' }}>Loading courses...</div>
+            <div style={{ color: 'var(--text-muted)' }}>Loading courses...</div>
           </div>
         </div>
       </AdminPageWrapper>
@@ -169,12 +169,12 @@ const CourseManagementPage: NextPage = () => {
     <AdminPageWrapper currentView="courseManagement">
       {deleting && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: "14px", padding: "32px 40px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+          <div style={{ background: "var(--surface-default)", borderRadius: "14px", padding: "32px 40px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
             <div style={{ fontSize: "36px", marginBottom: "12px" }}>🗑️</div>
-            <div style={{ fontWeight: 700, fontSize: "16px", color: "#1f2937", marginBottom: "6px" }}>Deleting course...</div>
-            <div style={{ fontSize: "13px", color: "#6b7280" }}>Please wait, do not close this page</div>
+            <div style={{ fontWeight: 700, fontSize: "16px", color: "var(--text-secondary)", marginBottom: "6px" }}>Deleting course...</div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>Please wait, do not close this page</div>
             <div style={{ marginTop: "16px", display: "flex", justifyContent: "center" }}>
-              <div style={{ width: 32, height: 32, border: "3px solid #e5e7eb", borderTop: "3px solid #1f2937", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <div style={{ width: 32, height: 32, border: "3px solid var(--border-default)", borderTop: "3px solid var(--border-strong)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
             </div>
           </div>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
