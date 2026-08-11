@@ -69,7 +69,7 @@ export function AdminPageWrapper({ children, currentView, pageTitle, pageSubtitl
                 aria-label={backLabel || "Back to User Management"}
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  background: "#fff", color: "#374151", border: "1px solid #e5e7eb",
+                  background: "var(--surface-default)", color: "var(--text-tertiary)", border: "1px solid var(--border-default)",
                   borderRadius: 8, width: 40, height: 40, fontSize: 20, lineHeight: 1,
                   cursor: "pointer", marginBottom: 16,
                 }}

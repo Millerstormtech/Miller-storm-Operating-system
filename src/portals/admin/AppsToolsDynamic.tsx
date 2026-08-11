@@ -461,7 +461,7 @@ export function AppsToolManagement() {
                         boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                       }} />
                     </button>
-                    <span style={{ color: category.status === 'published' ? '#16a34a' : '#6b7280', fontWeight: 600, fontSize: 12 }}>
+                    <span style={{ color: category.status === 'published' ? '#16a34a' : 'var(--text-muted)', fontWeight: 600, fontSize: 12 }}>
                       {category.status === 'published' ? 'Published' : 'Draft'}
                     </span>
                   </div>
@@ -478,7 +478,7 @@ export function AppsToolManagement() {
         </div>
         <div className="panel-body">
           {isCreating === category.slug && (
-            <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16, paddingBottom: 16 }}>
+            <div style={{ borderBottom: "1px solid var(--border-default)", marginBottom: 16, paddingBottom: 16 }}>
               <div className="form-grid">
                 <label className="field">
                   <span className="field-label">Title</span>
@@ -501,7 +501,7 @@ export function AppsToolManagement() {
                       <div style={{ 
                         width: previewWidth, 
                         height: previewHeight,
-                        border: '2px solid #e5e7eb',
+                        border: '2px solid var(--border-default)',
                         borderRadius: 8,
                         overflow: 'hidden',
                         position: 'relative',
@@ -538,7 +538,7 @@ export function AppsToolManagement() {
                           ⇲
                         </div>
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280' }}>
+                      <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
                         {previewWidth} × {previewHeight} px (drag corner to resize)
                       </div>
                     </div>
@@ -577,8 +577,8 @@ export function AppsToolManagement() {
             </div>
           )}
           {isEditing && items.some(item => item._id === isEditing) && (
-            <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16, paddingBottom: 16 }}>
-              <h4 style={{ marginBottom: 16, color: "#374151" }}>Edit {category.name.endsWith('s') ? category.name.slice(0, -1) : category.name}</h4>
+            <div style={{ borderBottom: "1px solid var(--border-default)", marginBottom: 16, paddingBottom: 16 }}>
+              <h4 style={{ marginBottom: 16, color: "var(--text-tertiary)" }}>Edit {category.name.endsWith('s') ? category.name.slice(0, -1) : category.name}</h4>
               <div className="form-grid">
                 <label className="field">
                   <span className="field-label">Title</span>
@@ -601,7 +601,7 @@ export function AppsToolManagement() {
                       <div style={{ 
                         width: previewWidth, 
                         height: previewHeight,
-                        border: '2px solid #e5e7eb',
+                        border: '2px solid var(--border-default)',
                         borderRadius: 8,
                         overflow: 'hidden',
                         position: 'relative',
@@ -638,7 +638,7 @@ export function AppsToolManagement() {
                           ⇲
                         </div>
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280' }}>
+                      <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
                         {previewWidth} × {previewHeight} px (drag corner to resize)
                       </div>
                     </div>
@@ -680,13 +680,13 @@ export function AppsToolManagement() {
                     width: "100%", 
                     height: item.imageHeight || 280, 
                     backgroundImage: item.imageUrl && !item.imageUrl.startsWith('blob:') ? `url(${item.imageUrl})` : 'none',
-                    backgroundColor: '#f3f4f6',
+                    backgroundColor: 'var(--surface-subtle)',
                     backgroundSize: "cover", 
                     backgroundPosition: "center",
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#9ca3af',
+                    color: 'var(--text-subtle)',
                     fontSize: 14
                   }}>
                     {(!item.imageUrl || item.imageUrl.startsWith('blob:')) && 'No Image'}
@@ -746,7 +746,7 @@ export function AppsToolManagement() {
                             boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                           }} />
                         </button>
-                        <span style={{ color: item.status === 'published' ? '#16a34a' : '#6b7280', fontWeight: 600, fontSize: 11 }}>
+                        <span style={{ color: item.status === 'published' ? '#16a34a' : 'var(--text-muted)', fontWeight: 600, fontSize: 11 }}>
                           {item.status === 'published' ? 'Published' : 'Draft'}
                         </span>
                       </div>

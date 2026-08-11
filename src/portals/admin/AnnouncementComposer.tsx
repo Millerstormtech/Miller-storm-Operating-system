@@ -57,11 +57,11 @@ export function AnnouncementComposer() {
     <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start", padding: 4 }}>
       {/* Form */}
       <div style={{ flex: "1 1 420px", minWidth: 320, maxWidth: 560 }}>
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 10px 20px rgba(15,23,42,0.04)", padding: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#111827", marginBottom: 4 }}>
+        <div style={{ background: "var(--surface-default)", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 10px 20px rgba(15,23,42,0.04)", padding: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>
             📢 New Announcement
           </div>
-          <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 18 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 18 }}>
             Sent to everyone in Miller Storm — in-app pop-up, the notification bell, and a phone push.
           </div>
 
@@ -93,7 +93,7 @@ export function AnnouncementComposer() {
             placeholder="https://…  (the “click here to know more” destination)"
             style={{ width: "100%", boxSizing: "border-box", marginBottom: 6 }}
           />
-          <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 18 }}>
+          <div style={{ fontSize: 12, color: "var(--text-subtle)", marginBottom: 18 }}>
             Any web address, internal or external. Leave blank for a simple “Got it” message.
           </div>
 
@@ -117,7 +117,7 @@ export function AnnouncementComposer() {
 
       {/* Live preview of the pop-up */}
       <div style={{ flex: "0 1 360px", minWidth: 300 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
           Preview
         </div>
         <div
@@ -125,7 +125,7 @@ export function AnnouncementComposer() {
             width: 340,
             maxWidth: "100%",
             background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-            color: "#fff",
+            color: "var(--text-inverse)",
             borderRadius: 14,
             boxShadow: "0 18px 45px rgba(220,38,38,0.35)",
             padding: "18px 18px 16px",
@@ -138,7 +138,7 @@ export function AnnouncementComposer() {
           <div style={{ fontSize: 13.5, lineHeight: 1.5, opacity: 0.95, marginBottom: 14, whiteSpace: "pre-wrap" }}>
             {message.trim() || "Your message to the whole company will appear here."}
           </div>
-          <div style={{ width: "100%", background: "#fff", color: "#b91c1c", borderRadius: 9, padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "center" }}>
+          <div style={{ width: "100%", background: "var(--surface-default)", color: "#b91c1c", borderRadius: 9, padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "center" }}>
             {link.trim() ? "Learn more" : "Got it"}
           </div>
         </div>
@@ -151,7 +151,7 @@ const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 12,
   fontWeight: 700,
-  color: "#374151",
+  color: "var(--text-tertiary)",
   textTransform: "uppercase",
   letterSpacing: 0.4,
   marginBottom: 6,

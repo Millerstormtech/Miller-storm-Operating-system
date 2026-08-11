@@ -52,7 +52,7 @@ export function AiBotManagement(props: { courses: Course[] }) {
         </div>
       </div>
       {isCreating && (
-        <div className="panel-body" style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16 }}>
+        <div className="panel-body" style={{ borderBottom: "1px solid var(--border-default)", marginBottom: 16 }}>
           <div className="form-grid">
             <label className="field">
               <span className="field-label">Bot Name</span>
@@ -104,7 +104,7 @@ export function AiBotManagement(props: { courses: Course[] }) {
               <div className="field">
                 <span className="field-label">
                   Knowledge Base Upload
-                  <span style={{ marginLeft: 8, cursor: "pointer", color: "#6b7280", fontSize: 12 }} title="Supported formats: PDF, DOCX, TXT, MD, CSV (Max 10MB per file)">ⓘ Info</span>
+                  <span style={{ marginLeft: 8, cursor: "pointer", color: "var(--text-muted)", fontSize: 12 }} title="Supported formats: PDF, DOCX, TXT, MD, CSV (Max 10MB per file)">ⓘ Info</span>
                 </span>
                 <div className="field-inline">
                   <button className="btn-secondary">Upload Files</button>

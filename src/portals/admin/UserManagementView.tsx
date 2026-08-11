@@ -63,32 +63,32 @@ export function UserManagementView() {
 
   return (
     <>
-      <div style={{ marginBottom: 16, borderBottom: "1px solid #e5e7eb" }}>
+      <div style={{ marginBottom: 16, borderBottom: "1px solid var(--border-default)" }}>
         <div style={{ display: "flex", gap: 24, paddingLeft: 24 }}>
           <button
             onClick={() => setActiveTab("users")}
-            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "users" ? "#2563eb" : "#6b7280", borderBottom: activeTab === "users" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer" }}
+            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "users" ? "#2563eb" : "var(--text-muted)", borderBottom: activeTab === "users" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer" }}
           >
             User Management
           </button>
           <button
             onClick={() => setActiveTab("requests")}
-            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "requests" ? "#2563eb" : "#6b7280", borderBottom: activeTab === "requests" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "requests" ? "#2563eb" : "var(--text-muted)", borderBottom: activeTab === "requests" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
           >
             User Requests
             {pendingCount > 0 && (
-              <span style={{ backgroundColor: "#dc2626", color: "#ffffff", fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 12, minWidth: 20, textAlign: "center" }}>
+              <span style={{ backgroundColor: "#dc2626", color: "var(--text-inverse)", fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 12, minWidth: 20, textAlign: "center" }}>
                 {pendingCount}
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveTab("deleted")}
-            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "deleted" ? "#2563eb" : "#6b7280", borderBottom: activeTab === "deleted" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "deleted" ? "#2563eb" : "var(--text-muted)", borderBottom: activeTab === "deleted" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
           >
             🗑️ Deleted Users
             {deletedUsers.length > 0 && (
-              <span style={{ backgroundColor: "#ef4444", color: "#ffffff", fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 12, minWidth: 20, textAlign: "center" }}>
+              <span style={{ backgroundColor: "#ef4444", color: "var(--text-inverse)", fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 12, minWidth: 20, textAlign: "center" }}>
                 {deletedUsers.length}
               </span>
             )}
@@ -108,7 +108,7 @@ export function UserManagementView() {
           <div className="panel-header">Deleted Users</div>
           <div className="panel-body">
             {deletedUsers.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 40, color: "#6b7280" }}>
+              <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>🗑️</div>
                 <div style={{ fontSize: 16, fontWeight: 500 }}>No deleted users</div>
               </div>
@@ -118,11 +118,11 @@ export function UserManagementView() {
                   <div key={user.id} style={{ padding: 16, backgroundColor: "#fef2f2", borderLeft: "3px solid #ef4444", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{user.name}</div>
-                      <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>
+                      <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 4 }}>
                         {(user.roles || [user.role]).map((r) => r.toUpperCase()).join(", ")} • {user.email}
                       </div>
                       {user.deletedAt && (
-                        <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                        <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
                           Deleted: {new Date(user.deletedAt).toLocaleDateString()}
                         </div>
                       )}
@@ -148,7 +148,7 @@ export function UserManagementView() {
                       </button>
                       <button
                         type="button"
-                        style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                        style={{ background: "#ef4444", color: "var(--text-inverse)", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                         onClick={async () => {
                           if (await appConfirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
                             try {

@@ -105,13 +105,13 @@ export function EmailConfig() {
   const active = configs[activeKey];
   const variables = EMAIL_DEFAULTS[activeKey]?.variables || [];
 
-  if (!loaded) return <div style={{ padding: 40, color: "#6b7280", textAlign: "center" }}>Loading...</div>;
+  if (!loaded) return <div style={{ padding: 40, color: "var(--text-muted)", textAlign: "center" }}>Loading...</div>;
 
   return (
     <div style={{ display: "flex", gap: 0, height: "calc(100vh - 80px)", overflow: "hidden" }}>
       {/* Left tab list */}
-      <div style={{ width: 220, borderRight: "1px solid #e5e7eb", overflowY: "auto", flexShrink: 0, background: "#f9fafb" }}>
-        <div style={{ padding: "16px 16px 8px", fontSize: 12, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>
+      <div style={{ width: 220, borderRight: "1px solid var(--border-default)", overflowY: "auto", flexShrink: 0, background: "#f9fafb" }}>
+        <div style={{ padding: "16px 16px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1 }}>
           Email Templates
         </div>
         {Object.keys(EMAIL_DEFAULTS).map(key => (
@@ -124,7 +124,7 @@ export function EmailConfig() {
               border: "none", background: activeKey === key ? "#eff6ff" : "transparent",
               borderLeft: activeKey === key ? "3px solid #2563eb" : "3px solid transparent",
               cursor: "pointer", fontSize: 13, fontWeight: activeKey === key ? 600 : 400,
-              color: activeKey === key ? "#1d4ed8" : "#374151",
+              color: activeKey === key ? "#1d4ed8" : "var(--text-tertiary)",
             }}
           >
             {EMAIL_LABELS[key]}
@@ -136,10 +136,10 @@ export function EmailConfig() {
       <div style={{ flex: 1, overflowY: "auto", padding: 32 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
               {EMAIL_LABELS[activeKey]}
             </div>
-            <div style={{ fontSize: 13, color: "#6b7280" }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
               Edit the subject and body. Use the dynamic fields below in your content.
             </div>
           </div>
@@ -147,7 +147,7 @@ export function EmailConfig() {
             {saveNotice && <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 500 }}>{saveNotice}</span>}
             {/* Draft / Published toggle */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: active?.status !== "published" ? "#1f2937" : "#9ca3af" }}>Draft</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: active?.status !== "published" ? "var(--text-secondary)" : "var(--text-subtle)" }}>Draft</span>
               <div
                 onClick={togglingStatus ? undefined : handleToggleStatus}
                 style={{
@@ -162,16 +162,16 @@ export function EmailConfig() {
                   position: "absolute", top: 2,
                   left: active?.status === "published" ? 20 : 2,
                   width: 18, height: 18, borderRadius: "50%",
-                  background: "#fff", transition: "left 0.2s",
+                  background: "var(--surface-default)", transition: "left 0.2s",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                 }} />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: active?.status === "published" ? "#10b981" : "#9ca3af" }}>Published</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: active?.status === "published" ? "#10b981" : "var(--text-subtle)" }}>Published</span>
             </div>
             <button
               type="button"
               onClick={() => resetToDefault(activeKey)}
-              style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid #d1d5db", background: "#fff", fontSize: 13, cursor: "pointer", color: "#374151" }}
+              style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid #d1d5db", background: "var(--surface-default)", fontSize: 13, cursor: "pointer", color: "var(--text-tertiary)" }}
             >
               Reset to Default
             </button>
@@ -179,7 +179,7 @@ export function EmailConfig() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "#2563eb", color: "var(--text-inverse)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               {saving ? "Saving..." : "Save All Templates"}
             </button>
@@ -203,7 +203,7 @@ export function EmailConfig() {
 
         {/* Subject */}
         <label style={{ display: "block", marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Subject Line</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>Subject Line</div>
           <input
             className="field-input"
             value={active?.subject || ""}
@@ -214,7 +214,7 @@ export function EmailConfig() {
 
         {/* Body */}
         <label style={{ display: "block", marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Email Body</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>Email Body</div>
           <textarea
             className="field-input"
             rows={18}
@@ -226,12 +226,12 @@ export function EmailConfig() {
 
         {/* Live preview */}
         <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 10 }}>Preview</div>
-          <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-            <div style={{ background: "#f3f4f6", padding: "10px 16px", fontSize: 12, color: "#6b7280", borderBottom: "1px solid #e5e7eb" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 10 }}>Preview</div>
+          <div style={{ border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ background: "var(--surface-subtle)", padding: "10px 16px", fontSize: 12, color: "var(--text-muted)", borderBottom: "1px solid var(--border-default)" }}>
               <strong>Subject:</strong> {active?.subject}
             </div>
-            <div style={{ padding: 24, background: "#fff", fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-wrap", fontFamily: "Arial, sans-serif" }}>
+            <div style={{ padding: 24, background: "var(--surface-default)", fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.8, whiteSpace: "pre-wrap", fontFamily: "Arial, sans-serif" }}>
               {active?.body}
             </div>
           </div>

@@ -79,15 +79,15 @@ export function AcculynxSyncPanel({ adminUserId }: { adminUserId: string }) {
   };
 
   return (
-    <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e5e7eb" }}>
+    <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid var(--border-default)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 14, color: "#6b7280" }} title={status?.lastSyncAt ? fmtDate(status.lastSyncAt) : undefined}>
+        <span style={{ fontSize: 14, color: "var(--text-muted)" }} title={status?.lastSyncAt ? fmtDate(status.lastSyncAt) : undefined}>
           {status?.lastSyncAt ? `Last updated ${timeAgo(status.lastSyncAt)}` : "Not updated yet"}
         </span>
         <button
           onClick={refreshNow}
           disabled={busy}
-          style={{ padding: "8px 18px", background: busy ? "#9ca3af" : "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: busy ? "default" : "pointer", fontWeight: 600 }}
+          style={{ padding: "8px 18px", background: busy ? "var(--gray-400) /* no semantic: gray-400 as surface */" : "#2563eb", color: "var(--text-inverse)", border: "none", borderRadius: 6, cursor: busy ? "default" : "pointer", fontWeight: 600 }}
         >
           {busy ? "Updating…" : "Update now"}
         </button>
