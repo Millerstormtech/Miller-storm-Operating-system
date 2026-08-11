@@ -795,7 +795,7 @@ export function ManagerOnlineTrainingPage(props: {
               </label>
               <div className="field">
                 <span className="field-label">Select Lessons & Quizzes</span>
-                <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 8, padding: 12 }}>
                   {/* Pages without folders */}
                   {((selectedCourse.pages ?? []).filter(p => p.status === 'published' && !p.folderId)).map((page) => (
                     <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer', marginLeft: 0 }}>
@@ -827,7 +827,7 @@ export function ManagerOnlineTrainingPage(props: {
                     
                     return (
                       <div key={folder.id} style={{ marginTop: 12 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer', fontWeight: 600, backgroundColor: '#f3f4f6', paddingLeft: 8, borderRadius: 4 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer', fontWeight: 600, backgroundColor: 'var(--surface-subtle)', paddingLeft: 8, borderRadius: 4 }}>
                           <input
                             type="checkbox"
                             checked={allFolderPagesSelected}
@@ -970,7 +970,7 @@ export function ManagerOnlineTrainingPage(props: {
               </label>
               <div className="field">
                 <span className="field-label">Select Modules</span>
-                <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 8, padding: 12 }}>
                   {((selectedCourse.pages ?? []).filter(p => p.status === 'published')).map((page) => {
                     const folder = page.folderId ? (selectedCourse.folders ?? []).find(f => f.id === page.folderId) : null;
                     const folderName = folder?.title || '';
@@ -1087,15 +1087,15 @@ export function ManagerOnlineTrainingPage(props: {
               Manage Playlist Assignments
             </div>
             
-            <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
+            <div style={{ marginBottom: 16, padding: 12, backgroundColor: 'var(--surface-subtle)', borderRadius: 8 }}>
               <strong>Playlist:</strong> {assigningPlaylist.name}
-              <div style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>
+              <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
                 Course: {assigningPlaylist.courseName}
               </div>
             </div>
 
             {/* Tab Buttons */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '2px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '2px solid var(--border-default)' }}>
               <button
                 type="button"
                 onClick={() => setAssignModalTab('assign')}
@@ -1104,7 +1104,7 @@ export function ManagerOnlineTrainingPage(props: {
                   background: 'none',
                   border: 'none',
                   borderBottom: assignModalTab === 'assign' ? '2px solid #2563eb' : '2px solid transparent',
-                  color: assignModalTab === 'assign' ? '#2563eb' : '#6b7280',
+                  color: assignModalTab === 'assign' ? '#2563eb' : 'var(--text-muted)',
                   fontWeight: assignModalTab === 'assign' ? 600 : 400,
                   cursor: 'pointer',
                   marginBottom: '-2px',
@@ -1121,7 +1121,7 @@ export function ManagerOnlineTrainingPage(props: {
                   background: 'none',
                   border: 'none',
                   borderBottom: assignModalTab === 'unassign' ? '2px solid #2563eb' : '2px solid transparent',
-                  color: assignModalTab === 'unassign' ? '#2563eb' : '#6b7280',
+                  color: assignModalTab === 'unassign' ? '#2563eb' : 'var(--text-muted)',
                   fontWeight: assignModalTab === 'unassign' ? 600 : 400,
                   cursor: 'pointer',
                   marginBottom: '-2px',
@@ -1135,19 +1135,19 @@ export function ManagerOnlineTrainingPage(props: {
             {/* Assign Tab */}
             {assignModalTab === 'assign' && (
               <div style={{ padding: '16px 0' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#111827' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: 'var(--text-primary)' }}>
                   Available Users
                 </div>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, minHeight: 300, maxHeight: 400, overflowY: 'auto', marginBottom: 16 }}>
+                <div style={{ border: '1px solid var(--border-default)', borderRadius: 8, padding: 12, minHeight: 300, maxHeight: 400, overflowY: 'auto', marginBottom: 16 }}>
                   {salesUsers.filter(u => !assignedUsers.has(u.id)).length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>
+                    <div style={{ textAlign: 'center', color: 'var(--text-subtle)', padding: 40 }}>
                       <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
                       All users already assigned
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {salesUsers.filter(u => !assignedUsers.has(u.id)).map(user => (
-                        <label key={user.id} style={{ display: 'flex', alignItems: 'center', padding: '12px', cursor: 'pointer', backgroundColor: '#f9fafb', borderRadius: 6, gap: 12, border: '1px solid #e5e7eb', transition: 'all 0.2s' }}>
+                        <label key={user.id} style={{ display: 'flex', alignItems: 'center', padding: '12px', cursor: 'pointer', backgroundColor: '#f9fafb', borderRadius: 6, gap: 12, border: '1px solid var(--border-default)', transition: 'all 0.2s' }}>
                           <input
                             type="checkbox"
                             checked={selectedSalesUser.includes(user.id)}
@@ -1162,7 +1162,7 @@ export function ManagerOnlineTrainingPage(props: {
                           />
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 14, fontWeight: 500 }}>{user.name}</div>
-                            <div style={{ fontSize: 12, color: '#9ca3af' }}>{user.email}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>{user.email}</div>
                           </div>
                         </label>
                       ))}
@@ -1170,8 +1170,8 @@ export function ManagerOnlineTrainingPage(props: {
                   )}
                 </div>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#111827' }}>
-                    Deadline <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>
+                    Deadline <span style={{ fontWeight: 400, color: 'var(--text-subtle)' }}>(optional)</span>
                   </label>
                   <input
                     type="date"
@@ -1179,7 +1179,7 @@ export function ManagerOnlineTrainingPage(props: {
                     onChange={(e) => setAssignDeadline(e.target.value)}
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
                   />
-                  <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 4 }}>
                     You&apos;ll be notified if a user hasn&apos;t finished the videos and quizzes by this date.
                   </div>
                 </div>
@@ -1238,12 +1238,12 @@ export function ManagerOnlineTrainingPage(props: {
             {/* Unassign Tab */}
             {assignModalTab === 'unassign' && (
               <div style={{ padding: '16px 0' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#111827' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: 'var(--text-primary)' }}>
                   Assigned Users
                 </div>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, minHeight: 300, maxHeight: 400, overflowY: 'auto' }}>
+                <div style={{ border: '1px solid var(--border-default)', borderRadius: 8, padding: 12, minHeight: 300, maxHeight: 400, overflowY: 'auto' }}>
                   {Array.from(assignedUsers).length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>
+                    <div style={{ textAlign: 'center', color: 'var(--text-subtle)', padding: 40 }}>
                       <div style={{ fontSize: 48, marginBottom: 8 }}>📭</div>
                       No users assigned yet
                     </div>
@@ -1337,7 +1337,7 @@ export function ManagerOnlineTrainingPage(props: {
       )}
       <div className="training-center">
         {/* Always show tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid var(--border-default)' }}>
           <button
             type="button"
             onClick={() => {
@@ -1354,7 +1354,7 @@ export function ManagerOnlineTrainingPage(props: {
               background: 'none',
               border: 'none',
               borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
+              color: activeTab === 'courses' ? '#2563eb' : 'var(--text-muted)',
               fontWeight: activeTab === 'courses' ? 600 : 400,
               cursor: 'pointer',
               marginBottom: '-2px',
@@ -1379,7 +1379,7 @@ export function ManagerOnlineTrainingPage(props: {
               background: 'none',
               border: 'none',
               borderBottom: activeTab === 'playlists' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'playlists' ? '#2563eb' : '#6b7280',
+              color: activeTab === 'playlists' ? '#2563eb' : 'var(--text-muted)',
               fontWeight: activeTab === 'playlists' ? 600 : 400,
               cursor: 'pointer',
               marginBottom: '-2px',
@@ -1404,7 +1404,7 @@ export function ManagerOnlineTrainingPage(props: {
               background: 'none',
               border: 'none',
               borderBottom: activeTab === 'team' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'team' ? '#2563eb' : '#6b7280',
+              color: activeTab === 'team' ? '#2563eb' : 'var(--text-muted)',
               fontWeight: activeTab === 'team' ? 600 : 400,
               cursor: 'pointer',
               marginBottom: '-2px',
@@ -1419,7 +1419,7 @@ export function ManagerOnlineTrainingPage(props: {
               value={courseSearch}
               onChange={(e) => setCourseSearch(e.target.value)}
               placeholder="Search courses or videos…"
-              style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+              style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
             />
           )}
         </div>
@@ -1638,32 +1638,32 @@ export function ManagerOnlineTrainingPage(props: {
       <div className="mobile-course-overview">
         {/* Course title + ⋯ menu */}
         <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>{selectedCourse.title}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{selectedCourse.title}</div>
           <div style={{ position: 'relative' }}>
-            <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', color: '#374151', letterSpacing: 1 }}>⋯</button>
+            <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', color: 'var(--text-tertiary)', letterSpacing: 1 }}>⋯</button>
             {showCourseMenu && (
-              <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ position: 'absolute', top: '110%', right: 0, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {!viewingPlaylist && (
-                  <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
+                  <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
                 )}
-                <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
+                <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 4px' }}>
                   <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('manager-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
-                    <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                   </div>
-                  <span style={{ fontSize: 13, color: '#374151' }}>Autoplay</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Autoplay</span>
                 </label>
               </div>
             )}
           </div>
         </div>
         <div style={{ padding: '12px 16px 0' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Course Progress</div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Completed {progress.completed} of {progress.total} lessons</div>
-          <div style={{ height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden', marginBottom: 4 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8 }}>Course Progress</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Completed {progress.completed} of {progress.total} lessons</div>
+          <div style={{ height: 8, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden', marginBottom: 4 }}>
             <div style={{ height: '100%', borderRadius: 999, background: progress.isCompleted ? '#10b981' : '#3b82f6', width: `${pct}%`, transition: 'width 0.3s' }} />
           </div>
-          <div style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{pct}%</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'right' }}>{pct}%</div>
         </div>
         <div style={{ padding: '16px 16px 0' }}>
           <button type="button"
@@ -1682,14 +1682,14 @@ export function ManagerOnlineTrainingPage(props: {
                 setMobileCourseScreen('lesson');
               }
             }}
-            style={{ width: '100%', padding: '14px', borderRadius: 999, border: 'none', background: '#111827', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}
+            style={{ width: '100%', padding: '14px', borderRadius: 999, border: 'none', background: 'var(--surface-inverse)', color: 'var(--text-inverse)', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}
           >Continue course</button>
         </div>
         <div style={{ padding: '24px 16px 8px' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Course Content</div>
-          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>{totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Course Content</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons</div>
         </div>
-        <div style={{ borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ borderTop: '1px solid var(--border-default)' }}>
           {pages.filter(p => !p.folderId).map(page => {
             const unlocked = isPageUnlocked(page.id);
             return (
@@ -1706,12 +1706,12 @@ export function ManagerOnlineTrainingPage(props: {
                   padding: '14px 16px', 
                   borderBottom: '1px solid #f1f5f9', 
                   cursor: unlocked ? 'pointer' : 'not-allowed', 
-                  background: activePageId === page.id ? '#fef3c7' : '#fff',
+                  background: activePageId === page.id ? '#fef3c7' : 'var(--surface-default)',
                   opacity: unlocked ? 1 : 0.6
                 }}
               >
                 <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
-                <span style={{ fontSize: 14, color: '#111827' }}>
+                <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
                   {!unlocked && "🔒 "}{page.title}
                 </span>
               </div>
@@ -1723,10 +1723,10 @@ export function ManagerOnlineTrainingPage(props: {
             return (
               <div key={folder.id}>
                 <div onClick={() => { const next = new Set(collapsedFolders); if (isCollapsed) next.delete(folder.id); else next.add(folder.id); setCollapsedFolders(next); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#f3f4f6', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border-default)', cursor: 'pointer' }}
                 >
-                  <span style={{ fontSize: 13, color: '#6b7280' }}>{isCollapsed ? '∧' : '∨'}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>{folder.title}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{isCollapsed ? '∧' : '∨'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-tertiary)' }}>{folder.title}</span>
                 </div>
                 {!isCollapsed && folderPages.map(page => {
                   const unlocked = isPageUnlocked(page.id);
@@ -1744,12 +1744,12 @@ export function ManagerOnlineTrainingPage(props: {
                         padding: '14px 16px 14px 32px', 
                         borderBottom: '1px solid #f1f5f9', 
                         cursor: unlocked ? 'pointer' : 'not-allowed', 
-                        background: activePageId === page.id ? '#fef3c7' : '#fff',
+                        background: activePageId === page.id ? '#fef3c7' : 'var(--surface-default)',
                         opacity: unlocked ? 1 : 0.6
                       }}
                     >
                       <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
-                      <span style={{ fontSize: 14, color: '#111827' }}>
+                      <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
                         {!unlocked && "🔒 "}{page.title}
                       </span>
                     </div>
@@ -1788,7 +1788,7 @@ export function ManagerOnlineTrainingPage(props: {
         {/* Quiz top-up modal — shown when a quiz is failed (< 80%) */}
         {quizModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}>
-            <div style={{ background: '#fff', borderRadius: 14, maxWidth: 440, width: '100%', padding: '28px 26px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ background: 'var(--surface-default)', borderRadius: 14, maxWidth: 440, width: '100%', padding: '28px 26px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
               <div style={{ fontSize: 44, marginBottom: 8 }}>{quizModal.mode === 'retry' ? '📊' : '📚'}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: '#16202b', marginBottom: 10 }}>
                 {quizModal.mode === 'retry' ? 'Top up your score!' : "Let's revisit the lesson"}
@@ -1823,7 +1823,7 @@ export function ManagerOnlineTrainingPage(props: {
         {mobileCourseScreen === 'lesson' && activePage && (
           <div className="mobile-lesson-fullpage">
             <button type="button" onClick={() => setMobileCourseScreen('overview')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '12px 16px', fontSize: 14, color: '#374151', fontWeight: 500 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '12px 16px', fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 500 }}
             >← Course Content</button>
             <div className="course-page-main">
               <div className="course-page-main-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -1853,11 +1853,11 @@ export function ManagerOnlineTrainingPage(props: {
                           const showWrong = quizSubmitted && isSelected && quizReview[q.id] === false;
                           return (
                             <div key={optIdx} onClick={() => !quizSubmitted && setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
-                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#e5e7eb') : (isSelected ? '#3b82f6' : '#e5e7eb'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (showCorrect ? '#d1fae5' : showWrong ? '#fee2e2' : '#fff') : (isSelected ? '#eff6ff' : '#fff') }}
+                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : 'var(--border-default)') : (isSelected ? '#3b82f6' : 'var(--border-default)'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (showCorrect ? '#d1fae5' : showWrong ? '#fee2e2' : 'var(--surface-default)') : (isSelected ? '#eff6ff' : 'var(--surface-default)') }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (showCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />}
+                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (showCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : 'var(--surface-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--surface-default)' }} />}
                                 </div>
                                 <span style={{ fontSize: 14 }}>{option}</span>
                                 {showCorrect && <span style={{ marginLeft: 'auto', color: '#10b981', fontWeight: 700 }}>✓ Correct</span>}
@@ -1930,30 +1930,30 @@ export function ManagerOnlineTrainingPage(props: {
             {/* Desktop: show all buttons inline */}
             <div className="course-header-desktop-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {!viewingPlaylist && (
-                <button type="button" className="btn-primary btn-small" style={{ backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
+                <button type="button" className="btn-primary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
               )}
-              <button type="button" className="btn-secondary btn-small" style={{ backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>Back to Courses</button>
+              <button type="button" className="btn-secondary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>Back to Courses</button>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
                 <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('manager-autoplay', String(next)); }} style={{ width: 40, height: 22, borderRadius: 11, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: 3, left: autoPlay ? 21 : 3, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                  <div style={{ position: 'absolute', top: 3, left: autoPlay ? 21 : 3, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                 </div>
-                <span style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>Autoplay</span>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>Autoplay</span>
               </label>
             </div>
             {/* Mobile/Tablet: ⋯ menu inline with title */}
             <div className="course-header-mobile-actions" style={{ position: 'relative', display: 'none', alignItems: 'center' }}>
-              <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', lineHeight: 1, color: '#374151', letterSpacing: 1 }}>⋯</button>
+              <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', lineHeight: 1, color: 'var(--text-tertiary)', letterSpacing: 1 }}>⋯</button>
               {showCourseMenu && (
-                <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ position: 'absolute', top: '110%', right: 0, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {!viewingPlaylist && (
-                    <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
+                    <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
                   )}
-                  <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
+                  <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 4px' }}>
                     <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('manager-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
-                      <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                      <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                     </div>
-                    <span style={{ fontSize: 13, color: '#374151' }}>Autoplay</span>
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Autoplay</span>
                   </label>
                 </div>
               )}
@@ -1977,18 +1977,18 @@ export function ManagerOnlineTrainingPage(props: {
             </div>
 
             {/* Search videos by title */}
-            <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-default)' }}>
               <input
                 value={lessonSearch}
                 onChange={(e) => setLessonSearch(e.target.value)}
                 placeholder="Search videos by title…"
-                style={{ width: '100%', padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
             {/* Expand/Collapse All Buttons (hidden while searching) */}
             {folders.length > 0 && !lessonSearch.trim() && (
-              <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border-default)' }}>
                 <button
                   type="button"
                   className="btn-secondary btn-small"
@@ -2012,7 +2012,7 @@ export function ManagerOnlineTrainingPage(props: {
                 const q = lessonSearch.trim().toLowerCase();
                 const matches = pages.filter((p) => (p.title || "").toLowerCase().includes(q));
                 if (matches.length === 0) {
-                  return <div style={{ padding: 16, color: "#9ca3af", fontSize: 13 }}>No videos match &ldquo;{lessonSearch}&rdquo;.</div>;
+                  return <div style={{ padding: 16, color: "var(--text-subtle)", fontSize: 13 }}>No videos match &ldquo;{lessonSearch}&rdquo;.</div>;
                 }
                 return matches.map((page) => {
                   const unlocked = isPageUnlocked(page.id);
@@ -2026,7 +2026,7 @@ export function ManagerOnlineTrainingPage(props: {
                     >
                       <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                         <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{folderName ? <span style={{ color: "#9ca3af", fontWeight: 400 }}> · {folderName}</span> : null}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{folderName ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {folderName}</span> : null}</span>
                       </span>
                     </div>
                   );
@@ -2124,7 +2124,7 @@ export function ManagerOnlineTrainingPage(props: {
             style={{
               width: '4px',
               cursor: 'ew-resize',
-              backgroundColor: isResizing ? '#3b82f6' : '#e5e7eb',
+              backgroundColor: isResizing ? '#3b82f6' : 'var(--surface-muted)',
               transition: isResizing ? 'none' : 'background-color 0.2s',
               flexShrink: 0,
               position: 'relative',
@@ -2134,7 +2134,7 @@ export function ManagerOnlineTrainingPage(props: {
               if (!isResizing) e.currentTarget.style.backgroundColor = '#cbd5e1';
             }}
             onMouseLeave={(e) => {
-              if (!isResizing) e.currentTarget.style.backgroundColor = '#e5e7eb';
+              if (!isResizing) e.currentTarget.style.backgroundColor = 'var(--surface-muted)';
             }}
           />
           <div className="course-page-main">
@@ -2191,10 +2191,10 @@ export function ManagerOnlineTrainingPage(props: {
                                   padding: "12px 16px",
                                   marginBottom: 12,
                                   border: "2px solid",
-                                  borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#e5e7eb") : (isSelected ? "#3b82f6" : "#e5e7eb"),
+                                  borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "var(--border-default)") : (isSelected ? "#3b82f6" : "var(--border-default)"),
                                   borderRadius: 8,
                                   cursor: quizSubmitted ? "default" : "pointer",
-                                  backgroundColor: showResult ? (showCorrect ? "#d1fae5" : showWrong ? "#fee2e2" : "#fff") : (isSelected ? "#eff6ff" : "#fff")
+                                  backgroundColor: showResult ? (showCorrect ? "#d1fae5" : showWrong ? "#fee2e2" : "var(--surface-default)") : (isSelected ? "#eff6ff" : "var(--surface-default)")
                                 }}
                               >
                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -2205,13 +2205,13 @@ export function ManagerOnlineTrainingPage(props: {
                                       borderRadius: "50%",
                                       border: "2px solid",
                                       borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#d1d5db") : (isSelected ? "#3b82f6" : "#d1d5db"),
-                                      backgroundColor: isSelected ? (showResult ? (showCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "#fff",
+                                      backgroundColor: isSelected ? (showResult ? (showCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "var(--surface-default)",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center"
                                     }}
                                   >
-                                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#fff" }} />}
+                                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "var(--surface-default)" }} />}
                                   </div>
                                   <span style={{ fontSize: 14 }}>{option}</span>
                                   {showCorrect && <span style={{ marginLeft: "auto", color: "#10b981", fontWeight: 700 }}>✓ Correct</span>}
@@ -2259,12 +2259,12 @@ export function ManagerOnlineTrainingPage(props: {
                                 alignItems: "center",
                                 gap: 8,
                                 padding: "8px 12px",
-                                backgroundColor: "#fff",
+                                backgroundColor: "var(--surface-default)",
                                 borderRadius: 6,
                                 textDecoration: "none",
-                                color: "#111827",
+                                color: "var(--text-primary)",
                                 fontSize: 14,
-                                border: "1px solid #e5e7eb"
+                                border: "1px solid var(--border-default)"
                               }}
                             >
                               <span style={{ fontSize: 18 }}>🔗</span>
@@ -2285,12 +2285,12 @@ export function ManagerOnlineTrainingPage(props: {
                                   alignItems: "center",
                                   gap: 8,
                                   padding: "8px 12px",
-                                  backgroundColor: "#fff",
+                                  backgroundColor: "var(--surface-default)",
                                   borderRadius: 6,
                                   textDecoration: "none",
-                                  color: "#111827",
+                                  color: "var(--text-primary)",
                                   fontSize: 14,
-                                  border: "1px solid #e5e7eb"
+                                  border: "1px solid var(--border-default)"
                                 }}
                               >
                                 <span style={{ fontSize: 18 }}>📎</span>
@@ -2303,7 +2303,7 @@ export function ManagerOnlineTrainingPage(props: {
                     )}
                   </div>
                 )}
-                <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ padding: "16px", borderTop: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     {progress.isCompleted && (
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", fontWeight: 600 }}>
@@ -2371,7 +2371,7 @@ export function ManagerOnlineTrainingPage(props: {
       {renderModals()}
       <div className={`training-center${selectedCourse ? (mobileCourseScreen === 'lesson' ? ' mobile-lesson-active' : ' mobile-overview-active') : ''}`}>
         {/* Always show tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid var(--border-default)' }}>
           <button
             type="button"
             onClick={() => {
@@ -2388,7 +2388,7 @@ export function ManagerOnlineTrainingPage(props: {
               background: 'none',
               border: 'none',
               borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
+              color: activeTab === 'courses' ? '#2563eb' : 'var(--text-muted)',
               fontWeight: activeTab === 'courses' ? 600 : 400,
               cursor: 'pointer',
               marginBottom: '-2px',
@@ -2413,7 +2413,7 @@ export function ManagerOnlineTrainingPage(props: {
               background: 'none',
               border: 'none',
               borderBottom: activeTab === 'playlists' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'playlists' ? '#2563eb' : '#6b7280',
+              color: activeTab === 'playlists' ? '#2563eb' : 'var(--text-muted)',
               fontWeight: activeTab === 'playlists' ? 600 : 400,
               cursor: 'pointer',
               marginBottom: '-2px',
@@ -2438,7 +2438,7 @@ export function ManagerOnlineTrainingPage(props: {
               background: 'none',
               border: 'none',
               borderBottom: activeTab === 'team' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'team' ? '#2563eb' : '#6b7280',
+              color: activeTab === 'team' ? '#2563eb' : 'var(--text-muted)',
               fontWeight: activeTab === 'team' ? 600 : 400,
               cursor: 'pointer',
               marginBottom: '-2px',
@@ -2453,7 +2453,7 @@ export function ManagerOnlineTrainingPage(props: {
               value={courseSearch}
               onChange={(e) => setCourseSearch(e.target.value)}
               placeholder="Search courses or videos…"
-              style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+              style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
             />
           )}
         </div>
@@ -2499,7 +2499,7 @@ export function ManagerOnlineTrainingPage(props: {
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <div style={{ textAlign: 'center' }}>
                 <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-                <div style={{ color: '#6b7280' }}>Loading courses...</div>
+                <div style={{ color: 'var(--text-muted)' }}>Loading courses...</div>
               </div>
             </div>
           ) : publishedCourses.length === 0 ? (
@@ -2583,9 +2583,9 @@ export function ManagerOnlineTrainingPage(props: {
           </div>
           <div className="panel-body">
             {playlists.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
-                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '8px' }}>
                   No Playlists Yet
                 </h3>
                 <p>Create a playlist by clicking "Make Playlist" when viewing a course</p>
@@ -2596,13 +2596,13 @@ export function ManagerOnlineTrainingPage(props: {
                   <div key={playlist.id} className="card playlist-card" style={{ padding: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }} className="playlist-card-content">
                       <div style={{ flex: 1 }} className="playlist-card-info">
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }} className="playlist-card-title">
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
                           {playlist.name}
                         </div>
-                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
                           Course: {playlist.courseName}
                         </div>
-                        <div style={{ fontSize: 14, color: '#6b7280' }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                           {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
                         </div>
                       </div>
@@ -2698,7 +2698,7 @@ export function ManagerOnlineTrainingPage(props: {
         <div className="panel">
           <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Team Training Progress</span>
-            <div style={{ display: 'flex', background: '#f3f4f6', padding: '4px', borderRadius: '8px', gap: '4px' }}>
+            <div style={{ display: 'flex', background: 'var(--surface-subtle)', padding: '4px', borderRadius: '8px', gap: '4px' }}>
               {/* C-Level (companyWide) hides the per-course "Courses Progress"
                   view — it only manages Playlist Progress + Unlock Lesson. */}
               {!props.companyWide && (
@@ -2712,8 +2712,8 @@ export function ManagerOnlineTrainingPage(props: {
                   fontWeight: 600,
                   border: 'none',
                   cursor: 'pointer',
-                  background: teamProgressView === 'courses' ? '#fff' : 'transparent',
-                  color: teamProgressView === 'courses' ? '#111827' : '#6b7280',
+                  background: teamProgressView === 'courses' ? 'var(--surface-default)' : 'transparent',
+                  color: teamProgressView === 'courses' ? 'var(--text-primary)' : 'var(--text-muted)',
                   boxShadow: teamProgressView === 'courses' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   transition: 'all 0.2s'
                 }}
@@ -2731,8 +2731,8 @@ export function ManagerOnlineTrainingPage(props: {
                   fontWeight: 600,
                   border: 'none',
                   cursor: 'pointer',
-                  background: teamProgressView === 'playlists' ? '#fff' : 'transparent',
-                  color: teamProgressView === 'playlists' ? '#111827' : '#6b7280',
+                  background: teamProgressView === 'playlists' ? 'var(--surface-default)' : 'transparent',
+                  color: teamProgressView === 'playlists' ? 'var(--text-primary)' : 'var(--text-muted)',
                   boxShadow: teamProgressView === 'playlists' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   transition: 'all 0.2s'
                 }}
@@ -2752,8 +2752,8 @@ export function ManagerOnlineTrainingPage(props: {
                   fontWeight: 600,
                   border: 'none',
                   cursor: 'pointer',
-                  background: teamProgressView === 'unlock' ? '#fff' : 'transparent',
-                  color: teamProgressView === 'unlock' ? '#111827' : '#6b7280',
+                  background: teamProgressView === 'unlock' ? 'var(--surface-default)' : 'transparent',
+                  color: teamProgressView === 'unlock' ? 'var(--text-primary)' : 'var(--text-muted)',
                   boxShadow: teamProgressView === 'unlock' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   transition: 'all 0.2s'
                 }}
@@ -2768,9 +2768,9 @@ export function ManagerOnlineTrainingPage(props: {
                 view, so its Loading/empty states must NOT block Playlist
                 Progress or Unlock Lesson (which have their own data). */}
             {isLoadingTeam && teamProgressView === 'courses' ? (
-              <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading...</div>
             ) : (teamProgressView === 'courses' && teamProgress.length === 0 && playlists.length === 0) ? (
-              <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No team members or playlists found.</div>
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-subtle)' }}>No team members or playlists found.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
                 {/* Courses Section */}
@@ -2780,18 +2780,18 @@ export function ManagerOnlineTrainingPage(props: {
                       publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).map(course => {
                         const total = (course.pages || []).filter((p: any) => p.status === 'published').length;
                         return (
-                          <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-                            <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
+                          <div key={course.id} style={{ background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
+                            <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid var(--border-default)', fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>
                               {course.title}
-                              <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} item{total !== 1 ? 's' : ''}</span>
+                              <span style={{ fontWeight: 400, fontSize: 13, color: 'var(--text-muted)', marginLeft: 8 }}>{total} item{total !== 1 ? 's' : ''}</span>
                             </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                               <thead>
                                 <tr style={{ background: '#f1f5f9' }}>
-                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
-                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Course Progress</th>
-                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Lessons Completed</th>
-                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>User Name</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>Course Progress</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>Lessons Completed</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>Status</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2800,16 +2800,16 @@ export function ManagerOnlineTrainingPage(props: {
                                   const pct = total > 0 ? Math.round((row.completed / total) * 100) : 0;
                                   return (
                                     <tr key={user.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                      <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{user.name}</td>
+                                      <td style={{ padding: '12px 20px', fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{user.name}</td>
                                       <td style={{ padding: '12px 20px', minWidth: 160 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                          <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                          <div style={{ flex: 1, height: 8, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden' }}>
                                             <div style={{ height: '100%', borderRadius: 999, background: row.isCompleted ? '#10b981' : '#22c55e', width: `${pct}%` }} />
                                           </div>
-                                          <span style={{ fontSize: 13, fontWeight: 600, color: row.isCompleted ? '#10b981' : '#374151', minWidth: 36 }}>{pct}%</span>
+                                          <span style={{ fontSize: 13, fontWeight: 600, color: row.isCompleted ? '#10b981' : 'var(--text-tertiary)', minWidth: 36 }}>{pct}%</span>
                                         </div>
                                       </td>
-                                      <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {total}</td>
+                                      <td style={{ padding: '12px 20px', fontSize: 14, color: 'var(--text-tertiary)' }}>{row.completed} / {total}</td>
                                       <td style={{ padding: '12px 20px' }}>
                                         {row.isCompleted ? (
                                           <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
@@ -2828,7 +2828,7 @@ export function ManagerOnlineTrainingPage(props: {
                         );
                       })
                     ) : (
-                      <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No courses found.</div>
+                      <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>No courses found.</div>
                     )}
                   </div>
                 )}
@@ -2842,37 +2842,37 @@ export function ManagerOnlineTrainingPage(props: {
                         const progressRows = playlistProgressData[playlist.id] || [];
                         
                         return (
-                          <div key={playlist.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-                            <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
+                          <div key={playlist.id} style={{ background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
+                            <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid var(--border-default)', fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>
                               {playlist.name}
-                              <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} module{total !== 1 ? 's' : ''} • Course: {playlist.courseName}</span>
+                              <span style={{ fontWeight: 400, fontSize: 13, color: 'var(--text-muted)', marginLeft: 8 }}>{total} module{total !== 1 ? 's' : ''} • Course: {playlist.courseName}</span>
                             </div>
                             {progressRows.length === 0 ? (
-                              <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>No users assigned to this playlist yet.</div>
+                              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-subtle)', fontSize: 14 }}>No users assigned to this playlist yet.</div>
                             ) : (
                               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
                                   <tr style={{ background: '#f1f5f9' }}>
-                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
-                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Playlist Progress</th>
-                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Modules Completed</th>
-                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
+                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>User Name</th>
+                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>Playlist Progress</th>
+                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>Modules Completed</th>
+                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>Status</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {progressRows.map((row, idx) => {
                                     return (
                                       <tr key={idx} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                        <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{row.user.name}</td>
+                                        <td style={{ padding: '12px 20px', fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{row.user.name}</td>
                                         <td style={{ padding: '12px 20px', minWidth: 160 }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                            <div style={{ flex: 1, height: 8, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden' }}>
                                               <div style={{ height: '100%', borderRadius: 999, background: row.pct === 100 ? '#10b981' : '#3b82f6', width: `${row.pct}%` }} />
                                             </div>
-                                            <span style={{ fontSize: 13, fontWeight: 600, color: row.pct === 100 ? '#10b981' : '#374151', minWidth: 36 }}>{row.pct}%</span>
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: row.pct === 100 ? '#10b981' : 'var(--text-tertiary)', minWidth: 36 }}>{row.pct}%</span>
                                           </div>
                                         </td>
-                                        <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {row.total}</td>
+                                        <td style={{ padding: '12px 20px', fontSize: 14, color: 'var(--text-tertiary)' }}>{row.completed} / {row.total}</td>
                                         <td style={{ padding: '12px 20px' }}>
                                           {row.pct === 100 ? (
                                             <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
@@ -2892,7 +2892,7 @@ export function ManagerOnlineTrainingPage(props: {
                         );
                       })
                     ) : (
-                      <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No playlists found.</div>
+                      <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>No playlists found.</div>
                     )}
                   </div>
                 )}
@@ -3113,11 +3113,11 @@ function UnlockLessonPanel(props: {
   if (!selectedMember) {
     return (
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 12 }}>
           Select a team member to unlock lessons or quizzes for them
         </div>
         {props.teamUsers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No team members found.</div>
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>No team members found.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {props.teamUsers.map(user => (
@@ -3125,10 +3125,10 @@ function UnlockLessonPanel(props: {
                 key={user.id}
                 type="button"
                 onClick={() => setSelectedMemberId(user.id)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}
               >
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{user.name}</span>
-                <span style={{ fontSize: 13, color: '#6b7280' }}>Select →</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{user.name}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Select →</span>
               </button>
             ))}
           </div>
@@ -3144,7 +3144,7 @@ function UnlockLessonPanel(props: {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <button type="button" onClick={() => setSelectedMemberId(null)} style={{ background: 'transparent', border: 'none', color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>← Team members</button>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginTop: 4 }}>{selectedMember.name}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{selectedMember.name}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Allow this rep to fast-forward / freely seek training videos. */}
@@ -3156,7 +3156,7 @@ function UnlockLessonPanel(props: {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 8,
               border: '1px solid ' + (fastForward ? '#16a34a' : '#d1d5db'), cursor: ffBusy ? 'default' : 'pointer',
-              background: fastForward ? '#ecfdf5' : '#fff', color: fastForward ? '#166534' : '#374151',
+              background: fastForward ? '#ecfdf5' : 'var(--surface-default)', color: fastForward ? '#166534' : 'var(--text-tertiary)',
               fontSize: 13, fontWeight: 700,
             }}
           >
@@ -3166,7 +3166,7 @@ function UnlockLessonPanel(props: {
                 background: fastForward ? '#16a34a' : '#cbd5e1', transition: 'background 0.15s',
               }}
             >
-              <span style={{ position: 'absolute', top: 2, left: fastForward ? 18 : 2, width: 14, height: 14, borderRadius: 999, background: '#fff', transition: 'left 0.15s' }} />
+              <span style={{ position: 'absolute', top: 2, left: fastForward ? 18 : 2, width: 14, height: 14, borderRadius: 999, background: 'var(--surface-default)', transition: 'left 0.15s' }} />
             </span>
             ⏩ Fast-forward
           </button>
@@ -3174,7 +3174,7 @@ function UnlockLessonPanel(props: {
             type="button"
             disabled={busy || selected.size === 0}
             onClick={doUnlock}
-            style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: (busy || selected.size === 0) ? 'default' : 'pointer', background: (busy || selected.size === 0) ? '#9ca3af' : '#2563eb', color: '#fff' }}
+            style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: (busy || selected.size === 0) ? 'default' : 'pointer', background: (busy || selected.size === 0) ? 'var(--gray-400) /* no semantic: gray-400 as surface */' : '#2563eb', color: 'var(--text-inverse)' }}
           >
             {busy ? 'Unlocking…' : `🔓 Unlock selected${selected.size ? ` (${selected.size})` : ''}`}
           </button>
@@ -3182,7 +3182,7 @@ function UnlockLessonPanel(props: {
       </div>
 
       <div style={{ position: 'relative', marginBottom: 16 }}>
-        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 15 }}>🔍</span>
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', fontSize: 15 }}>🔍</span>
         <input
           type="text"
           value={search}
@@ -3191,12 +3191,12 @@ function UnlockLessonPanel(props: {
           style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, outline: 'none' }}
         />
         {search && (
-          <button type="button" onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#9ca3af', fontSize: 16, cursor: 'pointer' }}>✕</button>
+          <button type="button" onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-subtle)', fontSize: 16, cursor: 'pointer' }}>✕</button>
         )}
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading…</div>
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading…</div>
       ) : (() => {
         const q = search.trim().toLowerCase();
         const courseBlocks = props.publishedCourses.map(course => {
@@ -3212,7 +3212,7 @@ function UnlockLessonPanel(props: {
 
         if (courseBlocks.length === 0) {
           return (
-            <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>
               {q ? `No lessons or quizzes match “${search}”.` : 'No courses found.'}
             </div>
           );
@@ -3222,9 +3222,9 @@ function UnlockLessonPanel(props: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {courseBlocks.map(({ course, pages }) => {
             return (
-              <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{course.title}</span>
+              <div key={course.id} style={{ background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{course.title}</span>
                   {(() => {
                     const checkable = pages.filter((p: any) => !isCompleted(course.id, p));
                     if (checkable.length === 0) return null;
@@ -3256,15 +3256,15 @@ function UnlockLessonPanel(props: {
                           style={{ width: 16, height: 16, cursor: checkable ? 'pointer' : 'not-allowed' }}
                         />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 11, color: '#9ca3af', marginRight: 6 }}>{p.isQuiz ? 'Quiz' : 'Lesson'}</span>
-                          <span style={{ fontSize: 14, color: '#374151' }}>{p.title}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-subtle)', marginRight: 6 }}>{p.isQuiz ? 'Quiz' : 'Lesson'}</span>
+                          <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>{p.title}</span>
                         </div>
                         {done ? (
                           <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>✓ Completed</span>
                         ) : unlocked ? (
                           <button type="button" onClick={() => toggleUnlockOne(course.id, p.id, false)} style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>🔓 Unlocked ✕</button>
                         ) : (
-                          <span style={{ background: '#f3f4f6', color: '#6b7280', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>🔒 Locked</span>
+                          <span style={{ background: 'var(--surface-subtle)', color: 'var(--text-muted)', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>🔒 Locked</span>
                         )}
                       </div>
                     );

@@ -173,8 +173,8 @@ export function TeamTrainingProgressPage(props: {
                   fontWeight: 600,
                   marginBottom: 8,
                   padding: "4px 0",
-                  borderBottom: "1px solid #e5e7eb",
-                  color: "#6b7280"
+                  borderBottom: "1px solid var(--border-default)",
+                  color: "var(--text-muted)"
                 }}
               >
                 <div>Team Member</div>
@@ -193,17 +193,17 @@ export function TeamTrainingProgressPage(props: {
                     padding: "8px 0",
                     borderTop:
                       rowIndex === 0
-                        ? "1px solid #e5e7eb"
+                        ? "1px solid var(--border-default)"
                         : "1px solid #f1f5f9",
                     backgroundColor:
-                      rowIndex % 2 === 0 ? "#ffffff" : "#f9fafb"
+                      rowIndex % 2 === 0 ? "var(--surface-default)" : "#f9fafb"
                   }}
                 >
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500 }}>
                       {entry.member.name}
                     </div>
-                    <div style={{ fontSize: 11, color: "#6b7280" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
                       {entry.member.role.toUpperCase()} •{" "}
                       {entry.member.territory ?? "No territory"}
                     </div>
@@ -229,7 +229,7 @@ export function TeamTrainingProgressPage(props: {
                       <div
                         style={{
                           fontSize: 12,
-                          color: "#6b7280",
+                          color: "var(--text-muted)",
                           minWidth: 32
                         }}
                       >
@@ -246,7 +246,7 @@ export function TeamTrainingProgressPage(props: {
                       style={{
                         marginTop: 2,
                         fontSize: 11,
-                        color: "#9ca3af"
+                        color: "var(--text-subtle)"
                       }}
                     >
                       Click to view per-course breakdown
@@ -267,7 +267,7 @@ export function TeamTrainingProgressPage(props: {
             <div
               style={{
                 fontSize: 13,
-                color: "#6b7280",
+                color: "var(--text-muted)",
                 marginBottom: 12
               }}
             >
@@ -307,7 +307,7 @@ export function TeamTrainingProgressPage(props: {
                       <div
                         style={{
                           fontSize: 12,
-                          color: "#6b7280",
+                          color: "var(--text-muted)",
                           minWidth: 32
                         }}
                       >
