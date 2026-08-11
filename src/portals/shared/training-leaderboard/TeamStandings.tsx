@@ -46,7 +46,7 @@ export function TeamStandings({
                 flexShrink: 0,
                 fontSize: s.rank <= 3 ? 14 : 12,
                 fontWeight: 700,
-                color: "#9ca3af",
+                color: "var(--text-subtle)",
               }}
             >
               {s.rank <= 3 ? MEDALS[s.rank - 1] : s.rank}
@@ -56,7 +56,7 @@ export function TeamStandings({
                 style={{
                   fontSize: 12,
                   fontWeight: 700,
-                  color: "#111827",
+                  color: "var(--text-primary)",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -75,9 +75,9 @@ export function TeamStandings({
                     }}
                   />
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#111827" }}>{s.avgPct}%</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)" }}>{s.avgPct}%</span>
               </div>
-              <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: "var(--text-subtle)", marginTop: 2 }}>
                 {s.size} rep{s.size === 1 ? "" : "s"}
               </div>
             </div>
@@ -96,8 +96,8 @@ export function TeamStandings({
       <div
         data-tour="clb-standings"
         style={{
-          background: "#fff",
-          border: "1px solid #e5e7eb",
+          background: "var(--surface-default)",
+          border: "1px solid var(--border-default)",
           borderRadius: 12,
           padding: "12px 10px",
           boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
@@ -107,7 +107,7 @@ export function TeamStandings({
           style={{
             fontSize: 11,
             fontWeight: 700,
-            color: "#6b7280",
+            color: "var(--text-muted)",
             textTransform: "uppercase",
             letterSpacing: 0.5,
             margin: "0 8px 8px",
@@ -124,8 +124,8 @@ export function TeamStandings({
     <div
       data-tour="clb-standings"
       style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
+        background: "var(--surface-default)",
+        border: "1px solid var(--border-default)",
         borderRadius: 12,
         padding: open ? "10px 10px" : 0,
         marginBottom: 14,
@@ -146,7 +146,7 @@ export function TeamStandings({
           cursor: "pointer",
           fontSize: 12,
           fontWeight: 600,
-          color: "#374151",
+          color: "var(--text-tertiary)",
         }}
       >
         <span>🏆 Team standings</span>

@@ -61,7 +61,7 @@ export function AddTaskModal({ onClose, onCreate }: AddTaskModalProps) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: "#fff", borderRadius: 10, padding: 20, width: 460, maxWidth: "92vw" }}
+        style={{ background: "var(--surface-default)", borderRadius: 10, padding: 20, width: 460, maxWidth: "92vw" }}
       >
         <h3 style={{ marginTop: 0 }}>Add a task</h3>
 

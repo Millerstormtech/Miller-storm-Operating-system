@@ -21,9 +21,9 @@ export function AdminMenu({ onOverride, onHide }: { onOverride: () => void; onHi
     textAlign: "left",
     padding: "9px 14px",
     border: "none",
-    background: "#fff",
+    background: "var(--surface-default)",
     fontSize: 13,
-    color: "#111827",
+    color: "var(--text-primary)",
     cursor: "pointer",
   };
   return (
@@ -32,11 +32,11 @@ export function AdminMenu({ onOverride, onHide }: { onOverride: () => void; onHi
         onClick={() => setOpen((p) => !p)}
         aria-label="Admin tools"
         style={{
-          border: "1px solid #e5e7eb",
+          border: "1px solid var(--border-default)",
           borderRadius: 8,
           padding: "6px 11px",
-          background: "#fff",
-          color: "#374151",
+          background: "var(--surface-default)",
+          color: "var(--text-tertiary)",
           fontSize: 14,
           fontWeight: 700,
           cursor: "pointer",
@@ -51,8 +51,8 @@ export function AdminMenu({ onOverride, onHide }: { onOverride: () => void; onHi
             right: 0,
             top: "calc(100% + 6px)",
             width: 200,
-            background: "#fff",
-            border: "1px solid #e5e7eb",
+            background: "var(--surface-default)",
+            border: "1px solid var(--border-default)",
             borderRadius: 10,
             boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
             zIndex: 200,
@@ -62,7 +62,7 @@ export function AdminMenu({ onOverride, onHide }: { onOverride: () => void; onHi
           <button style={item} onClick={() => { setOpen(false); onOverride(); }}>
             ⚙ Override progress…
           </button>
-          <button style={{ ...item, borderTop: "1px solid #f3f4f6" }} onClick={() => { setOpen(false); onHide(); }}>
+          <button style={{ ...item, borderTop: "1px solid var(--border-subtle)" }} onClick={() => { setOpen(false); onHide(); }}>
             👁 Hide or unhide users…
           </button>
         </div>

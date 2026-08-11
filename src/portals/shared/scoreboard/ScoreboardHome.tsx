@@ -82,8 +82,8 @@ const WINDOW_OPTIONS: Array<{ value: ToggleWindow; label: string }> = [
 ];
 
 const CARD = {
-  background: "#fff",
-  border: "1px solid #e5e7eb",
+  background: "var(--surface-default)",
+  border: "1px solid var(--border-default)",
   borderRadius: 12,
 };
 
@@ -163,7 +163,7 @@ export function ScoreboardHome(): JSX.Element {
   // is nothing on screen yet to preserve. No zeros, no placeholder frame.
   if (!hasData && loading) {
     return (
-      <div style={{ padding: 24, color: "#6b7280", fontSize: 14 }}>Loading your scoreboard…</div>
+      <div style={{ padding: 24, color: "var(--text-muted)", fontSize: 14 }}>Loading your scoreboard…</div>
     );
   }
 
@@ -173,7 +173,7 @@ export function ScoreboardHome(): JSX.Element {
   // reload) by bumping retryNonce.
   if (!hasData) {
     return (
-      <div style={{ padding: 24, color: "#6b7280", fontSize: 14 }}>
+      <div style={{ padding: 24, color: "var(--text-muted)", fontSize: 14 }}>
         Couldn't load your scoreboard.{" "}
         <button
           type="button"
@@ -213,8 +213,8 @@ export function ScoreboardHome(): JSX.Element {
     }
     return (
       <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, color: "#111827" }}>Hi, {firstName}</div>
-        <div style={{ fontSize: 14, color: "#6b7280" }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>Hi, {firstName}</div>
+        <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
           Admin accounts don't have scoreboard metrics of their own to show.
         </div>
       </div>
@@ -252,7 +252,7 @@ export function ScoreboardHome(): JSX.Element {
   let dataRegion: JSX.Element;
   if (scopeUnresolved) {
     dataRegion = (
-      <div style={{ fontSize: 14, color: "#6b7280" }}>
+      <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
         {unresolvedScopeMessage(board.scope.level === "team" ? "team" : "branch")}
       </div>
     );
@@ -262,11 +262,11 @@ export function ScoreboardHome(): JSX.Element {
     // (a stale "vs last month" trend under a freshly-clicked "Year" tab would
     // be a real mislabel) -- but ALSO never blank the whole screen for it.
     dataRegion = (
-      <div style={{ padding: 16, color: "#9ca3af", fontSize: 13 }}>Updating your numbers…</div>
+      <div style={{ padding: 16, color: "var(--text-subtle)", fontSize: 13 }}>Updating your numbers…</div>
     );
   } else if (error) {
     dataRegion = (
-      <div style={{ padding: 16, color: "#6b7280", fontSize: 13 }}>
+      <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>
         Couldn't update your numbers.{" "}
         <button
           type="button"
@@ -353,7 +353,7 @@ export function ScoreboardHome(): JSX.Element {
               style={{
                 fontSize: 12,
                 fontWeight: 700,
-                color: "#6b7280",
+                color: "var(--text-muted)",
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
               }}
@@ -368,7 +368,7 @@ export function ScoreboardHome(): JSX.Element {
           </div>
         )}
 
-        <div style={{ fontSize: 12, color: "#9ca3af" }}>{formatSyncedAt(board.syncedAt, new Date())}</div>
+        <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>{formatSyncedAt(board.syncedAt, new Date())}</div>
 
         {leaderboardHref && (
           <button
@@ -395,7 +395,7 @@ export function ScoreboardHome(): JSX.Element {
 
   return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: "#111827" }}>Hi, {firstName}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>Hi, {firstName}</div>
 
       <RankStrip rank={board.rank} scopeLevel={board.scope.level} />
 
@@ -411,9 +411,9 @@ export function ScoreboardHome(): JSX.Element {
               style={{
                 padding: "6px 16px",
                 borderRadius: 999,
-                border: `1px solid ${active ? "#111827" : "#e5e7eb"}`,
-                background: active ? "#111827" : "#fff",
-                color: active ? "#fff" : "#374151",
+                border: `1px solid ${active ? "var(--gray-900) /* no semantic: gray-900 as border */" : "var(--border-default)"}`,
+                background: active ? "var(--surface-inverse)" : "var(--surface-default)",
+                color: active ? "var(--text-inverse)" : "var(--text-tertiary)",
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -425,7 +425,7 @@ export function ScoreboardHome(): JSX.Element {
         })}
       </div>
 
-      {!scopeUnresolved && scopeText && <div style={{ fontSize: 13, color: "#6b7280" }}>{scopeText}</div>}
+      {!scopeUnresolved && scopeText && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{scopeText}</div>}
 
       {dataRegion}
     </div>
@@ -435,8 +435,8 @@ export function ScoreboardHome(): JSX.Element {
 function PersonalNumber(props: { label: string; value: string }): JSX.Element {
   return (
     <div>
-      <div style={{ fontSize: 11, color: "#9ca3af" }}>{props.label}</div>
-      <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>{props.value}</div>
+      <div style={{ fontSize: 11, color: "var(--text-subtle)" }}>{props.label}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>{props.value}</div>
     </div>
   );
 }

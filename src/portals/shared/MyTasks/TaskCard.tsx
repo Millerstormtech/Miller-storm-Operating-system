@@ -61,7 +61,7 @@ export function TaskCard({ task, assignerName, onChange, readOnly }: TaskCardPro
         borderRadius: 8,
         padding: 14,
         marginBottom: 10,
-        background: "#fff"
+        background: "var(--surface-default)"
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>

@@ -85,7 +85,7 @@ export function AssignTaskModal({ onClose, onAssigned }: AssignTaskModalProps) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff",
+          background: "var(--surface-default)",
           borderRadius: 10,
           padding: 20,
           width: 520,

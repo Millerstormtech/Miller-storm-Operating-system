@@ -157,10 +157,10 @@ export function CourseView({
         style={{
           width: "100%",
           padding: "9px 10px",
-          border: "1px solid #e5e7eb",
+          border: "1px solid var(--border-default)",
           borderRadius: 10,
           fontSize: 13,
-          background: "#fff",
+          background: "var(--surface-default)",
           marginBottom: 6,
         }}
       >
@@ -172,9 +172,9 @@ export function CourseView({
       </select>
 
       {loading ? (
-        <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: "center", color: "var(--text-subtle)", fontSize: 13 }}>Loading…</div>
       ) : loadError ? (
-        <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+        <div style={{ padding: 32, textAlign: "center", color: "var(--text-subtle)", fontSize: 13 }}>
           Couldn't load this course.{" "}
           <button
             onClick={() => setRetryNonce((n) => n + 1)}
@@ -188,8 +188,8 @@ export function CourseView({
           {course && (
             <div
               style={{
-                background: "#fff",
-                border: "1px solid #e5e7eb",
+                background: "var(--surface-default)",
+                border: "1px solid var(--border-default)",
                 borderRadius: 12,
                 padding: isNarrow ? "10px 11px" : "11px 14px",
                 marginBottom: 8,
@@ -202,7 +202,7 @@ export function CourseView({
                   flexWrap: "wrap",
                   gap: isNarrow ? 8 : 14,
                   fontSize: isNarrow ? 11 : 12,
-                  color: "#374151",
+                  color: "var(--text-tertiary)",
                 }}
               >
                 <span>🎬 {course.videos} videos</span>
@@ -217,7 +217,7 @@ export function CourseView({
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "#6b7280",
+                    color: "var(--text-muted)",
                     textTransform: "uppercase",
                     letterSpacing: 0.5,
                     marginBottom: 5,
@@ -226,7 +226,7 @@ export function CourseView({
                   Finishers
                 </div>
                 {finishers.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "#9ca3af", fontStyle: "italic" }}>No finishers yet.</div>
+                  <div style={{ fontSize: 12, color: "var(--text-subtle)", fontStyle: "italic" }}>No finishers yet.</div>
                 ) : (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {finishers.map((f) => (
@@ -266,7 +266,7 @@ export function CourseView({
             />
           ))}
           {started.length === 0 && (
-            <div style={{ padding: 24, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+            <div style={{ padding: 24, textAlign: "center", color: "var(--text-subtle)", fontSize: 13 }}>
               Nobody has started this course yet.
             </div>
           )}

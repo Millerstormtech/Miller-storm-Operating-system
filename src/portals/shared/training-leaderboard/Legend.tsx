@@ -47,7 +47,7 @@ export function Legend({ totalCourses }: { totalCourses: number }) {
       </button>
       {open && (
         <>
-          <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16, rowGap: 6, fontSize: 12, color: "#374151" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16, rowGap: 6, fontSize: 12, color: "var(--text-tertiary)" }}>
             {Object.values(BADGE_META).map((m) => (
               <span key={m.label}>
                 {m.emoji} {m.label}: {m.meaning}

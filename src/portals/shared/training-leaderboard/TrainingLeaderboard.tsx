@@ -213,7 +213,7 @@ export function TrainingLeaderboard() {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
         {data && (
-          <div style={{ fontSize: isNarrow ? 11 : 12, color: "#6b7280" }}>
+          <div style={{ fontSize: isNarrow ? 11 : 12, color: "var(--text-muted)" }}>
             Ranked across all {data.totalCourses} courses · {data.totalItems} lessons &amp; quizzes
           </div>
         )}
@@ -261,11 +261,11 @@ export function TrainingLeaderboard() {
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
           <div style={{ textAlign: "center" }}>
             <div className="spinner" style={{ margin: "0 auto 12px" }} />
-            <div style={{ color: "#6b7280", fontSize: 13 }}>Loading leaderboard…</div>
+            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Loading leaderboard…</div>
           </div>
         </div>
       ) : error || !data ? (
-        <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+        <div style={{ padding: 32, textAlign: "center", color: "var(--text-subtle)", fontSize: 13 }}>
           Couldn't load the leaderboard.{" "}
           <button
             onClick={loadBoard}

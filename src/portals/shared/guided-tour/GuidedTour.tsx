@@ -265,7 +265,7 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
         tabIndex={-1}
         style={{
           ...cardStyle,
-          background: "#fff",
+          background: "var(--surface-default)",
           borderRadius: 12,
           boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
           padding: 16,
@@ -274,8 +274,8 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{step.title}</div>
-          <div style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0, paddingTop: 2 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{step.title}</div>
+          <div style={{ fontSize: 11, color: "var(--text-subtle)", flexShrink: 0, paddingTop: 2 }}>
             {counter.current} of {counter.total}
           </div>
         </div>
@@ -283,7 +283,7 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
           <ul
             style={{
               fontSize: 13,
-              color: "#6b7280",
+              color: "var(--text-muted)",
               margin: "6px 0 0",
               paddingLeft: 17,
               lineHeight: 1.45,
@@ -296,14 +296,14 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
             ))}
           </ul>
         ) : (
-          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{step.body}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>{step.body}</div>
         )}
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 14 }}>
           <button
             type="button"
             onClick={finish}
-            style={{ background: "none", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", padding: 0 }}
+            style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", padding: 0 }}
           >
             Skip tour
           </button>
@@ -314,7 +314,7 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
                 key={i}
                 style={{
                   width: 6, height: 6, borderRadius: "50%",
-                  background: i === index ? "#6366f1" : "#e5e7eb",
+                  background: i === index ? "#6366f1" : "var(--surface-muted)",
                   display: "inline-block",
                 }}
               />
@@ -326,7 +326,7 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
               <button
                 type="button"
                 onClick={goBack}
-                style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "var(--surface-default)", color: "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Back
               </button>
@@ -334,7 +334,7 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
             <button
               type="button"
               onClick={goNext}
-              style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#6366f1", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#6366f1", color: "var(--text-inverse)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               {last ? "Done" : "Next"}
             </button>

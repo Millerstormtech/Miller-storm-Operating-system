@@ -66,8 +66,8 @@ export function MetricTile(props: {
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
+        background: "var(--surface-default)",
+        border: "1px solid var(--border-default)",
         borderRadius: 12,
         padding: "14px 16px",
         minWidth: 0,
@@ -77,7 +77,7 @@ export function MetricTile(props: {
         style={{
           fontSize: 12,
           fontWeight: 700,
-          color: "#6b7280",
+          color: "var(--text-muted)",
           textTransform: "uppercase",
           letterSpacing: 0.5,
         }}
@@ -86,7 +86,7 @@ export function MetricTile(props: {
       </div>
 
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: "#111827" }}>{formattedValue}</div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>{formattedValue}</div>
         {/* No arrow at all when dir is null: an absent prior period is not a flat or green trend. */}
         {trendArrow !== null && trendText !== null && (
           <span style={{ fontSize: 12, fontWeight: 700, color: trendColor }}>
@@ -95,7 +95,7 @@ export function MetricTile(props: {
         )}
       </div>
 
-      {subtitle && <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{subtitle}</div>}
+      {subtitle && <div style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 2 }}>{subtitle}</div>}
 
       {goal !== null && fill !== null && notch !== null && (
         <div style={{ marginTop: 10 }}>
@@ -139,7 +139,7 @@ export function MetricTile(props: {
               }}
             />
           </div>
-          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 4 }}>
             {Math.round(fill * 100)}% of {fmt(goal)} goal
           </div>
         </div>
@@ -157,7 +157,7 @@ export function MetricTile(props: {
             font: "inherit",
             fontSize: 12,
             fontWeight: 600,
-            color: "#6b7280",
+            color: "var(--text-muted)",
             textDecoration: "underline",
             cursor: "pointer",
           }}

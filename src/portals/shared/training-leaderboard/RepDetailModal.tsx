@@ -108,7 +108,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
     >
       <div
         style={{
-          background: "#fff",
+          background: "var(--surface-default)",
           borderRadius: 14,
           width: "100%",
           maxWidth: 560,
@@ -122,14 +122,14 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
         <div
           style={{
             padding: "14px 20px",
-            borderBottom: "1px solid #e5e7eb",
+            borderBottom: "1px solid var(--border-default)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             background: "#f8fafc",
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }}>Rep detail</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>Rep detail</div>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -138,7 +138,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
               border: "none",
               cursor: "pointer",
               fontSize: 20,
-              color: "#9ca3af",
+              color: "var(--text-subtle)",
               lineHeight: 1,
               padding: 4,
             }}
@@ -149,9 +149,9 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
 
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
           {loading ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>Loading…</div>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-subtle)", fontSize: 13 }}>Loading…</div>
           ) : loadError || !data ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-subtle)", fontSize: 13 }}>
               Couldn't load this rep.{" "}
               <button
                 onClick={() => setRetryNonce((n) => n + 1)}
@@ -172,7 +172,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Avatar name={data.name} headshotUrl={data.headshotUrl} size={48} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "#111827" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
                     {data.name}{" "}
                     {tier && (
                       <span
@@ -195,7 +195,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                       </Tooltip>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
                     {[
                       [data.branch, data.team && `Team ${data.team}`].filter(Boolean).join(" · "),
                       data.rank !== null
@@ -205,7 +205,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                       .filter(Boolean)
                       .join(" · ")}
                   </div>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 2 }}>
                     {data.itemsCompleted} of {data.totalItems} items · {data.coursesCompleted} of{" "}
                     {data.totalCourses} courses finished
                   </div>
@@ -228,9 +228,9 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                           borderRadius: 999,
                           fontSize: 12,
                           fontWeight: 600,
-                          background: earned ? "#f0fdf4" : "#f3f4f6",
-                          color: earned ? "#166534" : "#9ca3af",
-                          border: earned ? "1px solid #bbf7d0" : "1px solid #e5e7eb",
+                          background: earned ? "#f0fdf4" : "var(--surface-subtle)",
+                          color: earned ? "#166534" : "var(--text-subtle)",
+                          border: earned ? "1px solid #bbf7d0" : "1px solid var(--border-default)",
                           opacity: earned ? 1 : 0.6,
                         }}
                       >
@@ -248,12 +248,12 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                     style={{ padding: "9px 11px", background: "#f0fdf4", borderRadius: 8, marginBottom: 4 }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: "#111827" }}>🏁 {c.title}</span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>🏁 {c.title}</span>
                       <span style={{ fontWeight: 700, fontSize: 12, color: "#059669", flexShrink: 0 }}>
                         Complete
                       </span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
                       🎬 {c.videosWatched}/{c.videosTotal} videos · ✅ {c.quizzesPassed}/{c.quizzesTotal} quizzes
                     </div>
                   </div>
@@ -263,12 +263,12 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                     style={{ padding: "9px 11px", background: "#fafafa", borderRadius: 8, marginBottom: 4 }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: "#111827" }}>▶ {c.title}</span>
-                      <span style={{ fontWeight: 700, fontSize: 12, color: "#374151", flexShrink: 0 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>▶ {c.title}</span>
+                      <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-tertiary)", flexShrink: 0 }}>
                         {c.pct}%
                       </span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
                       🎬 {c.videosWatched}/{c.videosTotal} videos · ✅ {c.quizzesPassed}/{c.quizzesTotal} quizzes
                     </div>
                     <div style={{ height: 5, background: RING_TRACK, borderRadius: 3, marginTop: 6 }}>
@@ -285,7 +285,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                 ) : (
                   <div
                     key={c.id}
-                    style={{ padding: "9px 11px", borderRadius: 8, marginBottom: 4, color: "#9ca3af", fontSize: 13 }}
+                    style={{ padding: "9px 11px", borderRadius: 8, marginBottom: 4, color: "var(--text-subtle)", fontSize: 13 }}
                   >
                     {c.title} · Not started
                   </div>
