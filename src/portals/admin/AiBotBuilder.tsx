@@ -859,10 +859,10 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {/* Header */}
           <div style={{ padding: "0 20px", background: theme, display: "flex", alignItems: "center", gap: "12px", flexShrink: 0, minHeight: "54px" }}>
-            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgba(255,255,255,0.8)", padding: "4px" }}>☰</button>
+            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgb(var(--white-rgb) / 0.8)", padding: "4px" }}>☰</button>
             <AvatarImg size={32} fontSize="15px" />
             <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-inverse)", flex: 1 }}>{botTitle}</div>
-            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: "12px" }}>Admin</span>
+            <span style={{ fontSize: "12px", color: "rgb(var(--white-rgb) / 0.7)", background: "rgb(var(--white-rgb) / 0.15)", padding: "3px 10px", borderRadius: "12px" }}>Admin</span>
           </div>
 
           {/* Messages */}
@@ -890,7 +890,7 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
                       {(m as any).attachments?.length > 0 && (
                         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
                           {(m as any).attachments.map((att: any, ai: number) => (
-                            <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgba(31,41,55,0.1)" : "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px", color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "5px" }}>
+                            <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgb(var(--gray-800-rgb) / 0.1)" : "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px", color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "5px" }}>
                               {att.type?.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
                               <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
                             </div>
@@ -2025,7 +2025,7 @@ function TestPanel({ bot }: { bot: AiBot }) {
       <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
         <div style={{ width: "100%", maxWidth: "520px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid var(--border-default)", background: "var(--surface-default)", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: "600px" }}>
           <div style={{ background: color, padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>{avatar}</div>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgb(var(--white-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>{avatar}</div>
             <span style={{ color: "var(--text-inverse)", fontWeight: 600, fontSize: "15px", flex: 1 }}>{(bot as any).botTitle || bot.name}</span>
           </div>
 
@@ -2039,7 +2039,7 @@ function TestPanel({ bot }: { bot: AiBot }) {
                   {m.attachments && m.attachments.length > 0 && (
                     <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
                       {m.attachments.map((att, ai) => (
-                        <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgba(255,255,255,0.2)" : "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "5px" }}>
+                        <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgb(var(--white-rgb) / 0.2)" : "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "5px" }}>
                           {att.type.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
                           <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
                         </div>
@@ -2155,13 +2155,13 @@ function ChatPreview({ botTitle, welcomeMessage, suggestions, placeholder, color
       <div style={{ width: "300px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--border-default)", background: "var(--surface-default)", display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ background: colorTheme, padding: "14px 16px", display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgb(var(--white-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
             {avatar}
           </div>
           <div style={{ color: "var(--text-inverse)", fontWeight: 700, fontSize: "14px", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {botTitle || "My Bot"}
           </div>
-          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "18px", cursor: "pointer" }}>✕</div>
+          <div style={{ color: "rgb(var(--white-rgb) / 0.7)", fontSize: "18px", cursor: "pointer" }}>✕</div>
         </div>
 
         {/* Messages area */}

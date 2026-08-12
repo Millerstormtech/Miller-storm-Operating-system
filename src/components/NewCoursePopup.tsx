@@ -189,7 +189,7 @@ export function NewCoursePopup() {
           position: "absolute",
           top: 8,
           right: 8,
-          background: "rgba(255,255,255,0.22)",
+          background: "rgb(var(--white-rgb) / 0.22)",
           border: "none",
           color: "var(--text-inverse)",
           borderRadius: 6,
@@ -220,7 +220,7 @@ export function NewCoursePopup() {
           style={{
             fontSize: 13,
             fontWeight: 700,
-            background: "rgba(255,255,255,0.18)",
+            background: "rgb(var(--white-rgb) / 0.18)",
             borderRadius: 8,
             padding: "6px 10px",
             marginBottom: 14,

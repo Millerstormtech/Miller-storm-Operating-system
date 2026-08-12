@@ -59,8 +59,8 @@ export function ViewAsBanner() {
         type="button"
         onClick={exitViewAs}
         style={{
-          border: "1px solid rgba(255,255,255,0.6)",
-          background: "rgba(255,255,255,0.15)",
+          border: "1px solid rgb(var(--white-rgb) / 0.6)",
+          background: "rgb(var(--white-rgb) / 0.15)",
           color: "var(--text-inverse)",
           borderRadius: 999,
           padding: "4px 14px",

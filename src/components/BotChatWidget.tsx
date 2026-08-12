@@ -699,31 +699,31 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       <div className={`chat-sidebar${sidebarCollapsed ? " chat-sidebar-hidden" : ""}`}
         style={{ width: "260px", minWidth: "260px", background: sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", transition: "transform 0.25s ease, width 0.2s, min-width 0.2s", flexShrink: 0 }}>
 
-        <div style={{ padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <button onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.1)", color: "var(--text-inverse)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ padding: "16px", borderBottom: "1px solid rgb(var(--white-rgb) / 0.1)" }}>
+          <button onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "rgb(var(--white-rgb) / 0.1)", color: "var(--text-inverse)", border: "1px solid rgb(var(--white-rgb) / 0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "16px" }}>✏️</span> New Chat
           </button>
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
           {chatSessions.length === 0
-            ? <div style={{ padding: "20px 12px", color: "rgba(255,255,255,0.4)", fontSize: "12px", textAlign: "center" }}>No chats yet</div>
+            ? <div style={{ padding: "20px 12px", color: "rgb(var(--white-rgb) / 0.4)", fontSize: "12px", textAlign: "center" }}>No chats yet</div>
             : chatSessions.map(session => (
               <div key={session.chatId} onClick={() => { loadSession(session); setSidebarCollapsed(true); }}
-                style={{ padding: "10px 12px", borderRadius: "8px", cursor: "pointer", marginBottom: "2px", background: currentChatId === session.chatId ? "rgba(255,255,255,0.2)" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", transition: "background 0.15s" }}>
+                style={{ padding: "10px 12px", borderRadius: "8px", cursor: "pointer", marginBottom: "2px", background: currentChatId === session.chatId ? "rgb(var(--white-rgb) / 0.2)" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", transition: "background 0.15s" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "13px", color: "var(--text-inverse)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {session.title}</div>
-                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "2px" }}>{new Date(session.updatedAt).toLocaleDateString()}</div>
+                  <div style={{ fontSize: "11px", color: "rgb(var(--white-rgb) / 0.4)", marginTop: "2px" }}>{new Date(session.updatedAt).toLocaleDateString()}</div>
                 </div>
-                <button onClick={e => deleteSession(session.chatId, e)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "14px", padding: "2px 4px", flexShrink: 0 }}>🗑</button>
+                <button onClick={e => deleteSession(session.chatId, e)} style={{ background: "none", border: "none", color: "rgb(var(--white-rgb) / 0.3)", cursor: "pointer", fontSize: "14px", padding: "2px 4px", flexShrink: 0 }}>🗑</button>
               </div>
             ))
           }
         </div>
 
-        <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ padding: "12px 16px", borderTop: "1px solid rgb(var(--white-rgb) / 0.1)", display: "flex", alignItems: "center", gap: "10px" }}>
           <AvatarImg size={28} fontSize="13px" />
-          <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
+          <div style={{ fontSize: "12px", color: "rgb(var(--white-rgb) / 0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
         </div>
       </div>
 
@@ -732,26 +732,26 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
 
         {/* Header — themed */}
         <div style={{ padding: "0 20px", background: theme, display: "flex", alignItems: "center", gap: "12px", flexShrink: 0, minHeight: "56px" }}>
-          <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgba(255,255,255,0.8)", padding: "4px" }}>☰</button>
+          <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgb(var(--white-rgb) / 0.8)", padding: "4px" }}>☰</button>
           <AvatarImg size={34} fontSize="16px" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-inverse)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
             {(() => {
               const t = messages.length > 0 ? (chatSessions.find(s => s.chatId === currentChatId)?.title || "") : "";
               return t && t !== "New Chat"
-                ? <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t}</div>
+                ? <div style={{ fontSize: "12px", color: "rgb(var(--white-rgb) / 0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t}</div>
                 : null;
             })()}
           </div>
           {recordingUrl && (
             <button onClick={downloadAudio} title="Download the voice recording (audio file)"
-              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "var(--text-inverse)", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+              style={{ background: "rgb(var(--white-rgb) / 0.15)", border: "none", color: "var(--text-inverse)", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
               🎧 Audio
             </button>
           )}
           {messages.length > 0 && (
             <button onClick={downloadConversation} title="Download the transcript (text)"
-              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "var(--text-inverse)", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+              style={{ background: "rgb(var(--white-rgb) / 0.15)", border: "none", color: "var(--text-inverse)", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
               ⬇ Text
             </button>
           )}
@@ -834,10 +834,10 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
           )}
           <div style={{ maxWidth: "760px", margin: "0 auto", position: "relative" }} className="chat-input-inner">
             {showAttachMenu && (
-              <div ref={attachMenuRef} style={{ position: "absolute", bottom: "calc(100% + 10px)", left: 0, background: sidebarBg, borderRadius: "14px", padding: "8px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", zIndex: 100, minWidth: "220px", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <div ref={attachMenuRef} style={{ position: "absolute", bottom: "calc(100% + 10px)", left: 0, background: sidebarBg, borderRadius: "14px", padding: "8px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", zIndex: 100, minWidth: "220px", border: "1px solid rgb(var(--white-rgb) / 0.1)" }}>
                 <button onClick={() => { fileRef.current?.click(); setShowAttachMenu(false); }}
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", background: "none", border: "none", cursor: "pointer", color: "var(--text-inverse)", fontSize: "14px", borderRadius: "8px", textAlign: "left" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgb(var(--white-rgb) / 0.1)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "none")}>
                   <span style={{ fontSize: "20px" }}>🖼️</span> Upload photos & files
                 </button>

@@ -286,7 +286,7 @@ export function Messaging() {
                       <>
                         <span
                           className="sms-spin"
-                          style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "var(--white) /* no semantic: white as border */", borderRadius: "50%", display: "inline-block", flexShrink: 0 }}
+                          style={{ width: 14, height: 14, border: "2px solid rgb(var(--white-rgb) / 0.35)", borderTopColor: "var(--white) /* no semantic: white as border */", borderRadius: "50%", display: "inline-block", flexShrink: 0 }}
                         />
                         Saving...
                       </>

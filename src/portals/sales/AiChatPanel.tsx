@@ -531,7 +531,7 @@ export function AiChatPanel() {
                           {att.type === 'document' && (
                             <div style={{
                               padding: '8px 12px',
-                              backgroundColor: message.role === "user" ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)',
+                              backgroundColor: message.role === "user" ? 'rgb(var(--white-rgb) / 0.2)' : 'rgba(0,0,0,0.05)',
                               borderRadius: '8px',
                               display: 'flex',
                               alignItems: 'center',

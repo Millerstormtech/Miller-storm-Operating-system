@@ -1007,7 +1007,7 @@ export function SocialMediaMetrics() {
                         )}
                       </td>
                       {allVisibleColumns.map(col => (
-                        <td key={col.id} style={{ padding: "12px 16px", textAlign: "center", backgroundColor: isEditing ? "rgba(243, 244, 246, 0.5)" : "transparent", minWidth: 150 }}>
+                        <td key={col.id} style={{ padding: "12px 16px", textAlign: "center", backgroundColor: isEditing ? "rgb(var(--gray-100-rgb) / 0.5)" : "transparent", minWidth: 150 }}>
                           {isEditing ? (
                             col.datatype === "boolean" ? (
                               <select

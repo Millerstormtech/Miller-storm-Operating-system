@@ -893,10 +893,10 @@ function CourseLiveChatPanel({ bot }: { bot: CourseBot }) {
         {/* Main chat */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "0 16px", background: theme, display: "flex", alignItems: "center", gap: 10, minHeight: 52, flexShrink: 0 }}>
-            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "rgba(255,255,255,0.8)", padding: 4 }}>☰</button>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎓</div>
+            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "rgb(var(--white-rgb) / 0.8)", padding: 4 }}>☰</button>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgb(var(--white-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎓</div>
             <span style={{ color: "var(--text-inverse)", fontWeight: 700, fontSize: 14, flex: 1 }}>{bot.botTitle || bot.name}</span>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 12 }}>Admin</span>
+            <span style={{ fontSize: 11, color: "rgb(var(--white-rgb) / 0.7)", background: "rgb(var(--white-rgb) / 0.15)", padding: "3px 10px", borderRadius: 12 }}>Admin</span>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
             {messages.length === 0 && (
@@ -967,7 +967,7 @@ function CourseTestPanel({ bot }: { bot: CourseBot }) {
       <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
         <div style={{ width: "100%", maxWidth: 520, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid var(--border-default)", background: "var(--surface-default)", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: 500 }}>
           <div style={{ background: color, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎓</div>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgb(var(--white-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎓</div>
             <span style={{ color: "var(--text-inverse)", fontWeight: 700, fontSize: 15, flex: 1 }}>{bot.botTitle || bot.name}</span>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 12, background: "#f8fafc" }}>

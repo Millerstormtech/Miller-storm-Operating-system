@@ -644,7 +644,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     const mentionRegex = names.length ? new RegExp(`(@(?:${names.map(esc).join('|')}))`, 'g') : null;
     const onColoredBubble = textColor === '#fff';
     const mentionColor = onColoredBubble ? 'var(--text-inverse)' : '#1d4ed8';
-    const mentionBg = onColoredBubble ? 'rgba(255,255,255,0.25)' : 'rgba(37,99,235,0.12)';
+    const mentionBg = onColoredBubble ? 'rgb(var(--white-rgb) / 0.25)' : 'rgba(37,99,235,0.12)';
 
     const out: React.ReactNode[] = [];
     text.split(urlRegex).forEach((part, index) => {
@@ -850,7 +850,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     <button
                       onClick={() => deleteMessage(msg._id)}
                       title="Delete poll"
-                      style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: '50%', border: 'none', background: isMyMessage ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: 'inherit', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: '50%', border: 'none', background: isMyMessage ? 'rgb(var(--white-rgb) / 0.25)' : 'rgba(0,0,0,0.08)', color: 'inherit', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       🗑
                     </button>
@@ -862,8 +862,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     const voted = (opt.votes || []).includes(myId);
                     return (
                       <button key={i} type="button" onClick={() => votePoll(msg._id, i)}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', position: 'relative', border: `1px solid ${isMyMessage ? 'rgba(255,255,255,0.4)' : 'var(--border-default)'}`, background: 'transparent', borderRadius: 8, padding: '8px 10px', marginBottom: 6, cursor: 'pointer', overflow: 'hidden', color: 'inherit' }}>
-                        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`, background: isMyMessage ? 'rgba(255,255,255,0.2)' : 'rgba(37,99,235,0.12)' }} />
+                        style={{ display: 'block', width: '100%', textAlign: 'left', position: 'relative', border: `1px solid ${isMyMessage ? 'rgb(var(--white-rgb) / 0.4)' : 'var(--border-default)'}`, background: 'transparent', borderRadius: 8, padding: '8px 10px', marginBottom: 6, cursor: 'pointer', overflow: 'hidden', color: 'inherit' }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`, background: isMyMessage ? 'rgb(var(--white-rgb) / 0.2)' : 'rgba(37,99,235,0.12)' }} />
                         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, fontWeight: voted ? 700 : 500 }}>
                           <span>{voted ? '✓ ' : ''}{opt.text}</span>
                           <span style={{ whiteSpace: 'nowrap' }}>{votes} · {pct}%</span>
@@ -1033,7 +1033,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     style={{
                       marginBottom: 6,
                       padding: 8,
-                      backgroundColor: isMyMessage ? 'rgba(255, 255, 255, 0.2)' : 'var(--surface-default)',
+                      backgroundColor: isMyMessage ? 'rgb(var(--white-rgb) / 0.2)' : 'var(--surface-default)',
                       borderRadius: 8,
                       borderLeft: `3px solid ${isMyMessage ? 'var(--white) /* no semantic: white as border */' : '#DC2626'}`,
                       cursor: 'pointer'
@@ -1049,7 +1049,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     </div>
                     <div style={{
                       fontSize: 12,
-                      color: isMyMessage ? 'rgba(255, 255, 255, 0.8)' : 'var(--text-muted)',
+                      color: isMyMessage ? 'rgb(var(--white-rgb) / 0.8)' : 'var(--text-muted)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
@@ -1064,7 +1064,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   </div>
                   <div style={{ 
                     fontSize: 10, 
-                    color: isMyMessage ? 'rgba(255, 255, 255, 0.7)' : 'var(--text-subtle)',
+                    color: isMyMessage ? 'rgb(var(--white-rgb) / 0.7)' : 'var(--text-subtle)',
                     whiteSpace: 'nowrap',
                     alignSelf: 'flex-end'
                   }}>
@@ -1623,12 +1623,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <button
               onClick={(e) => { e.stopPropagation(); downloadMedia(viewerImage); }}
               title="Save"
-              style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'rgb(var(--white-rgb) / 0.15)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
             >⬇ Save</button>
             <button
               onClick={() => setViewerImage(null)}
               title="Close"
-              style={{ width: 38, height: 38, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}
+              style={{ width: 38, height: 38, borderRadius: 8, border: 'none', background: 'rgb(var(--white-rgb) / 0.15)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}
             >×</button>
           </div>
           <img
