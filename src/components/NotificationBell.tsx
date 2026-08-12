@@ -203,14 +203,14 @@ export function NotificationBell({ userId }: { userId: string }) {
           width: 350,
           maxHeight: 400,
           overflowY: 'auto',
-          background: 'white',
+          background: 'var(--surface-default)',
           border: '1px solid var(--border-default)',
           borderRadius: 8,
           boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
           zIndex: 1000,
           marginTop: 8
         }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', fontWeight: 600 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', fontWeight: 700, color: 'var(--text-primary)' }}>
             Notifications
           </div>
           {notifications.length === 0 ? (
@@ -226,17 +226,17 @@ export function NotificationBell({ userId }: { userId: string }) {
                   padding: '12px 16px',
                   borderBottom: '1px solid var(--border-subtle)',
                   cursor: 'pointer',
-                  background: notif.read ? 'white' : '#fef3c7',
+                  background: notif.read ? 'transparent' : 'rgba(241,195,60,0.12)',
                   transition: 'background 0.2s'
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = notif.read ? '#f9fafb' : '#fde68a';
+                  (e.currentTarget as HTMLElement).style.background = notif.read ? 'var(--surface-muted)' : 'rgba(241,195,60,0.22)';
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = notif.read ? 'white' : '#fef3c7';
+                  (e.currentTarget as HTMLElement).style.background = notif.read ? 'transparent' : 'rgba(241,195,60,0.12)';
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: 'var(--text-primary)' }}>
                   {notif.title}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
