@@ -61,10 +61,10 @@ body {
   display: flex;
   justify-content: center;
   width: 100%;
-  padding: 4px 0 2px;
+  padding: 2px 0 0;
 }
 .sidebar-brand-logo {
-  width: 152px;
+  width: 118px;
   height: auto;
   object-fit: contain;
 }
@@ -82,14 +82,14 @@ body {
 .sidebar {
   display: flex;
   flex-direction: column;
-  padding: 18px 10px;
+  padding: 10px 8px;
   width: 100%;
   height: 100%;
   overflow-y: auto;
 }
 
 .sidebar-header {
-  margin-bottom: 10px;
+  margin-bottom: 2px;
 }
 
 .sidebar-header-row {
@@ -160,18 +160,18 @@ body {
 /* Section header, e.g. COMPETE / LEARN / MANAGE. */
 .sidebar-group-label {
   text-align: center;
-  font-size: 11.5px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--sb-muted);
-  padding: 6px 8px 8px;
+  padding: 4px 8px 3px;
 }
 
 .sidebar-divider {
   height: 1px;
   background: var(--sb-border);
-  margin: 8px 14px 4px;
+  margin: 4px 14px 2px;
 }
 
 .sidebar-item {
@@ -179,13 +179,13 @@ body {
   background: transparent;
   color: var(--sb-text);
   text-align: center;
-  padding: 11px 8px;
-  border-radius: 12px;
-  font-size: 14px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  font-size: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   cursor: pointer;
   transition: background 0.14s ease, color 0.14s ease;
 }
@@ -204,14 +204,14 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   color: var(--sb-icon);
 }
 
 .sidebar-nav-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
 }
 
 .sidebar-item.active .sidebar-nav-icon {
