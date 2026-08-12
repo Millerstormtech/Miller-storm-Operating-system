@@ -161,6 +161,7 @@ export function CourseView({
           borderRadius: 10,
           fontSize: 13,
           background: "var(--surface-default)",
+          color: "var(--text-primary)",
           marginBottom: 6,
         }}
       >

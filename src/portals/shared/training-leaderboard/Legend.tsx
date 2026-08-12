@@ -17,8 +17,8 @@ export function Legend({ totalCourses }: { totalCourses: number }) {
     <div
       data-tour="clb-legend"
       style={{
-        background: "#fffbeb",
-        border: "1px solid #fde68a",
+        background: "rgba(245, 158, 11, 0.12)",
+        border: "1px solid rgba(245, 158, 11, 0.4)",
         borderRadius: 12,
         padding: open ? "12px 13px" : 0,
         marginBottom: 14,
@@ -39,7 +39,7 @@ export function Legend({ totalCourses }: { totalCourses: number }) {
           cursor: "pointer",
           fontSize: 12,
           fontWeight: 600,
-          color: "#92400e",
+          color: "#d99a1c",
         }}
       >
         <span>ⓘ What the icons and ranks mean</span>
@@ -58,7 +58,7 @@ export function Legend({ totalCourses }: { totalCourses: number }) {
             </span>
             <span>▲▼ Rank change: since last week</span>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: 0.5, margin: "12px 0 8px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#d99a1c", textTransform: "uppercase", letterSpacing: 0.5, margin: "12px 0 8px" }}>
             Ranks (by courses finished)
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
