@@ -1,8 +1,7 @@
 import type { NextPage } from "next";
 import { useState, FormEvent } from "react";
-import Image from "next/image";
 import { useRouter } from "next/router";
-import logoImage from "../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
+import { AuthShell } from "../src/components/AuthShell";
 
 const ForgotPasswordPage: NextPage = () => {
   const router = useRouter();
@@ -15,16 +14,13 @@ const ForgotPasswordPage: NextPage = () => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
     try {
       const res = await fetch("/api/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
       });
-
       const data = await res.json();
-
       if (res.ok) {
         setSuccess(true);
       } else {
@@ -39,88 +35,57 @@ const ForgotPasswordPage: NextPage = () => {
 
   if (success) {
     return (
-      <div className="login-root">
-        <div className="login-card">
-          <div className="login-logo">
-            <Image
-              src={logoImage}
-              alt="Miller Storm logo"
-              width={180}
-              height={96}
-            />
+      <AuthShell>
+        <div className="ms-auth__success">
+          <div className="ms-auth__success-emoji">📧</div>
+          <div className="ms-auth__success-title">Check Your Email</div>
+          <div className="ms-auth__success-text">
+            If an account exists with <strong>{email}</strong>, you&apos;ll receive a password
+            reset link shortly.
+            <br />
+            <br />
+            Please check your inbox and spam folder.
           </div>
-          <div style={{ textAlign: "center", padding: "32px 0" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
-            <div style={{ fontSize: 24, fontWeight: 600, color: "#16a34a", marginBottom: 12 }}>
-              Check Your Email
-            </div>
-            <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.6 }}>
-              If an account exists with <strong>{email}</strong>, you will receive a password reset link shortly.
-              <br /><br />
-              Please check your inbox and spam folder.
-            </div>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => router.push("/login")}
-            >
-              Back to Login
-            </button>
-          </div>
+          <button type="button" className="ms-auth__submit" onClick={() => router.push("/login")}>
+            Back to Sign In
+          </button>
         </div>
-        <div className="login-footer">
-          © 2026-2027 Miller Storm. All Rights Reserved.
-        </div>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="login-root">
-      <div className="login-card">
-        <div className="login-logo">
-          <Image
-            src={logoImage}
-            alt="Miller Storm logo"
-            width={180}
-            height={96}
+    <AuthShell>
+      <h1 className="ms-auth__title">Reset Password</h1>
+      <p className="ms-auth__subtitle">
+        Enter your email and we&apos;ll send you a link to reset your password.
+      </p>
+
+      <form className="ms-auth__form" onSubmit={handleSubmit}>
+        {error && <div className="ms-auth__error">{error}</div>}
+
+        <label className="ms-auth__field">
+          <span className="ms-auth__label">Work Email</span>
+          <input
+            className="ms-auth__input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            autoComplete="email"
+            required
           />
-        </div>
-        <div className="login-title">
-          The Miller Storm Operating System
-        </div>
-        <div className="login-subtitle">Reset Your Password</div>
-        <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24, textAlign: "center" }}>
-          Enter your email address and we'll send you a link to reset your password.
-        </div>
-        <form className="login-form" onSubmit={handleSubmit}>
-          {error && <div className="form-error">{error}</div>}
-          
-          <label className="field">
-            <span className="field-label">Work Email</span>
-            <input
-              className="field-input"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-              required
-            />
-          </label>
+        </label>
 
-          <button className="btn-primary" type="submit" disabled={isLoading}>
-            {isLoading ? "Sending..." : "Send Reset Link"}
-          </button>
+        <button className="ms-auth__submit" type="submit" disabled={isLoading}>
+          {isLoading ? "Sending…" : "Send Reset Link"}
+        </button>
 
-          <div className="login-links" style={{marginTop: '12px'}}>
-            <a href="/login" className="login-link">Back to Login</a>
-          </div>
-        </form>
-      </div>
-      <div className="login-footer">
-        © 2026-2027 Miller Storm. All Rights Reserved.
-      </div>
-    </div>
+        <div className="ms-auth__foot-link">
+          <a href="/login">Back to Sign In</a>
+        </div>
+      </form>
+    </AuthShell>
   );
 };
 
