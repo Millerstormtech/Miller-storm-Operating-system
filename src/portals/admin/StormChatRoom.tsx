@@ -1244,9 +1244,6 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <div key={pm._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderTop: '1px solid rgba(241,195,60,0.2)' }}>
               <span style={{ fontSize: 14 }}>📌</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                  Pinned{pm.pinnedByName ? ` · ${pm.pinnedByName}` : ''}
-                </div>
                 <div style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   <strong>{pm.senderName}: </strong>
                   {pm.messageType === 'image' ? '📷 Photo'
