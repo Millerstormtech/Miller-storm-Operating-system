@@ -31,16 +31,22 @@ export type CourseItems = {
 };
 
 /**
- * The pages of a course that actually count toward progress: published, and
- * either unfoldered or inside a published folder. A page in a draft folder is
- * invisible to reps, so it must not inflate the denominator.
+ * The pages of a course that actually count toward progress: published, and NOT
+ * inside a folder the admin explicitly marked "draft".
+ *
+ * The learner UI shows a folder's published pages regardless of the folder's own
+ * status, so a folder with NO status set (legacy / imported courses) is visible
+ * to reps AND its watched lessons must count — otherwise a rep sees a green tick
+ * on a video but 0% progress (the tick reads completedPages, the % read this
+ * function, and they disagreed). Only an EXPLICITLY draft folder is hidden from
+ * reps, so only its pages are excluded here.
  */
 export function publishedItems(course: CourseLike): CourseItems {
-  const publishedFolders = new Set(
-    (course.folders || []).filter((f) => f.status === "published").map((f) => f.id)
+  const draftFolders = new Set(
+    (course.folders || []).filter((f) => f.status === "draft").map((f) => f.id)
   );
   const visible = (course.pages || []).filter(
-    (p) => p.status === "published" && (!p.folderId || publishedFolders.has(p.folderId))
+    (p) => p.status === "published" && (!p.folderId || !draftFolders.has(p.folderId))
   );
   const quizzes = visible.filter((p) => p.isQuiz);
   const final = quizzes.find((p) => p.isFinalTest === true);
