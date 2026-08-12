@@ -394,9 +394,11 @@ export function ScoreboardHome(): JSX.Element {
   }
 
   return (
-    <div style={{ position: "relative", maxWidth: 1100, margin: 0 }}>
-      {/* Faded brand watermark behind the scoreboard. */}
-      <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "url(/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png)", backgroundRepeat: "no-repeat", backgroundPosition: "center 20%", backgroundSize: "min(760px, 70%)", opacity: 0.05, pointerEvents: "none", zIndex: 0 }} />
+    <div style={{ position: "relative", maxWidth: 1100, margin: 0, minHeight: "calc(100vh - 220px)" }}>
+      {/* Faded brand watermark behind the scoreboard. The min-height above keeps
+          the board tall enough that the full logo shows even on the short
+          empty-state (e.g. the "no branch matched" message). */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "url(/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png)", backgroundRepeat: "no-repeat", backgroundPosition: "68% center", backgroundSize: "min(620px, 54%)", opacity: 0.05, pointerEvents: "none", zIndex: 0 }} />
 
       <div style={{ position: "relative", zIndex: 1, padding: "8px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
