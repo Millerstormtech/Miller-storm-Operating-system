@@ -8,7 +8,7 @@ const CLevelTeamStructurePage: NextPage = () => (
     pageTitle="Organization Chart"
       pageSubtitle="Built automatically from registered users and their roles"
   >
-    <div style={{ padding: "0 24px 24px" }}>
+    <div style={{ padding: 24 }}>
       <TeamStructure />
     </div>
   </CLevelLayout>
