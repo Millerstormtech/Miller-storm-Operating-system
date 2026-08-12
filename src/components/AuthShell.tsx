@@ -106,7 +106,7 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           filter: brightness(1.12);
         }
         html[data-theme="dark"] .ms-auth--wide .ms-auth__logo--dark {
-          height: 78px;
+          height: 110px;
         }
 
         .ms-auth__title {
@@ -137,7 +137,7 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           padding: 30px 40px 26px;
         }
         .ms-auth--wide .ms-auth__logo {
-          height: 80px;
+          height: 94px;
           margin-bottom: 12px;
         }
         .ms-auth--wide .ms-auth__title {
