@@ -718,7 +718,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               position: 'absolute', bottom: '100%', marginBottom: 6,
               ...(isMyMessage ? { right: 0 } : { left: 0 }),
               background: 'var(--surface-default)', borderRadius: 22,
-              boxShadow: '0 6px 20px rgba(0,0,0,0.18)', border: '1px solid #eee',
+              boxShadow: '0 6px 20px rgba(0,0,0,0.18)', border: '1px solid var(--border-default)',
               padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 2, zIndex: 1200,
             }}
           >
@@ -845,7 +845,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               const votersCount = voterSet.size;
               const myId = user?._id || user?.id || '';
               return (
-                <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-subtle)', color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
+                <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)', color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
                   {(isMyMessage || (isAdmin && !isDirect)) && (
                     <button
                       onClick={() => deleteMessage(msg._id)}
@@ -878,7 +878,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             {msg.messageType === 'text' && (
               <div
                 style={{
-                  backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-subtle)',
+                  backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)',
                   color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
                   padding: '10px 14px',
                   borderRadius: 16,
@@ -1113,7 +1113,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             
             {msg.messageType === 'file' && msg.mediaUrl && (
               <div style={{ 
-                backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-subtle)',
+                backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)',
                 color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
                 padding: '10px 14px',
                 borderRadius: 16,
@@ -1193,16 +1193,17 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#f9fafb'
+        backgroundColor: 'var(--surface-subtle)'
       }}>
         <button 
           onClick={onBack}
-          style={{ 
+          style={{
             background: 'none',
             border: 'none',
             fontSize: 20,
             cursor: 'pointer',
-            padding: 4
+            padding: 4,
+            color: 'var(--text-primary)'
           }}
         >
           ←
@@ -1238,12 +1239,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
 
       {/* Pinned messages banner — every pinned message, scrolls if many. */}
       {pinnedMessages.length > 0 && (
-        <div style={{ maxHeight: 168, overflowY: 'auto', background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
+        <div style={{ maxHeight: 168, overflowY: 'auto', background: 'rgba(241,195,60,0.1)', borderBottom: '1px solid rgba(241,195,60,0.3)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', padding: '7px 16px 3px' }}>
             📌 {pinnedMessages.length} Pinned message{pinnedMessages.length === 1 ? '' : 's'}
           </div>
           {pinnedMessages.map((pm) => (
-            <div key={pm._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderTop: '1px solid #fef3c7' }}>
+            <div key={pm._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderTop: '1px solid rgba(241,195,60,0.25)' }}>
               <span style={{ fontSize: 14 }}>📌</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>
@@ -1279,7 +1280,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
           flex: 1,
           overflowY: 'auto',
           padding: 16,
-          backgroundColor: '#fafafa'
+          backgroundColor: 'var(--surface-subtle)'
         }}
       >
         {loading ? (
@@ -1307,7 +1308,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
           <div style={{ 
             textAlign: 'center',
             padding: 12,
-            backgroundColor: '#fef2f2',
+            backgroundColor: 'rgba(202,0,2,0.1)',
             borderRadius: 8,
             color: '#dc2626',
             fontSize: 14
@@ -1585,7 +1586,10 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 resize: 'none',
                 minHeight: 44,
                 maxHeight: 120,
-                fontFamily: 'inherit'
+                fontFamily: 'inherit',
+                backgroundColor: 'var(--surface-subtle)',
+                color: 'var(--text-primary)',
+                outline: 'none'
               }}
               rows={1}
             />
