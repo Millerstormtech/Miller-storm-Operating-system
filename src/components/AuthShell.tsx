@@ -19,7 +19,10 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
     <div className={`ms-auth${wide ? " ms-auth--wide" : ""}`}>
       <img className="ms-auth__watermark" src={LOGO_SRC} alt="" aria-hidden="true" />
       <div className="ms-auth__card">
-        <img className="ms-auth__logo" src={logoMark.src} alt="Miller Storm" />
+        {/* Light: the crisp logo on its own white ground. Dark: the transparent
+            logo so there's no white box behind it on the dark card. */}
+        <img className="ms-auth__logo ms-auth__logo--light" src={logoMark.src} alt="Miller Storm" />
+        <img className="ms-auth__logo ms-auth__logo--dark" src={LOGO_SRC} alt="Miller Storm" aria-hidden="true" />
         {children}
       </div>
       <div className="ms-auth__footer">© 2026–2027 Miller Storm. All Rights Reserved.</div>
@@ -82,9 +85,8 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           -webkit-backdrop-filter: blur(var(--ms-glass-blur));
         }
 
-        /* Crisp logo that reads the same in dark and light. Its own white ground
-           keeps the dark wordmark legible on the glass card; rounded corners
-           soften that ground so it doesn't read as a hard box. */
+        /* Light: crisp logo on its own white ground (rounded so it isn't a box).
+           Dark: transparent logo, no white background behind it. */
         .ms-auth__logo {
           display: block;
           height: 96px;
@@ -92,6 +94,19 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           margin: 0 auto 18px;
           object-fit: contain;
           border-radius: 14px;
+        }
+        .ms-auth__logo--dark { display: none; }
+        html[data-theme="dark"] .ms-auth__logo--light { display: none; }
+        /* The transparent logo has more empty margin than the light JPEG, so it
+           renders taller to match the light logo's visible size. */
+        html[data-theme="dark"] .ms-auth__logo--dark {
+          display: block;
+          border-radius: 0;
+          height: 112px;
+          filter: brightness(1.12);
+        }
+        html[data-theme="dark"] .ms-auth--wide .ms-auth__logo--dark {
+          height: 78px;
         }
 
         .ms-auth__title {
