@@ -667,8 +667,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             padding: '16px 32px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'courses' ? '#2563eb' : 'var(--text-muted)',
+            borderBottom: activeTab === 'courses' ? '2px solid #e01418' : '2px solid transparent',
+            color: activeTab === 'courses' ? '#e01418' : 'var(--text-muted)',
             fontWeight: activeTab === 'courses' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
@@ -692,8 +692,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             padding: '16px 32px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'myPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'myPlaylists' ? '#2563eb' : 'var(--text-muted)',
+            borderBottom: activeTab === 'myPlaylists' ? '2px solid #e01418' : '2px solid transparent',
+            color: activeTab === 'myPlaylists' ? '#e01418' : 'var(--text-muted)',
             fontWeight: activeTab === 'myPlaylists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
@@ -723,8 +723,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             padding: '16px 32px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'assignedPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'assignedPlaylists' ? '#2563eb' : 'var(--text-muted)',
+            borderBottom: activeTab === 'assignedPlaylists' ? '2px solid #e01418' : '2px solid transparent',
+            color: activeTab === 'assignedPlaylists' ? '#e01418' : 'var(--text-muted)',
             fontWeight: activeTab === 'assignedPlaylists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
@@ -1097,7 +1097,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 )}
                 <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 4px' }}>
-                  <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
+                  <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#e01418' : 'var(--border-default)', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
                     <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                   </div>
                   <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Autoplay</span>
@@ -1111,7 +1111,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8 }}>Course Progress</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Completed {progress.completed} of {progress.total} lessons</div>
           <div style={{ height: 8, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden', marginBottom: 4 }}>
-            <div style={{ height: '100%', borderRadius: 999, background: progress.isCompleted ? '#10b981' : '#3b82f6', width: `${pct}%`, transition: 'width 0.3s' }} />
+            <div style={{ height: '100%', borderRadius: 999, background: progress.isCompleted ? '#10b981' : '#e01418', width: `${pct}%`, transition: 'width 0.3s' }} />
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'right' }}>{pct}%</div>
         </div>
@@ -1469,9 +1469,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           const showWrong = quizSubmitted && isSelected && quizReview[q.id] === false;
                           return (
                             <div key={optIdx} onClick={() => !quizSubmitted && setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
-                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : 'var(--border-default)') : (isSelected ? '#3b82f6' : 'var(--border-default)'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (showCorrect ? '#d1fae5' : showWrong ? '#fee2e2' : 'var(--surface-default)') : (isSelected ? '#eff6ff' : 'var(--surface-default)') }}>
+                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : 'var(--border-default)') : (isSelected ? '#e01418' : 'var(--border-default)'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (showCorrect ? '#d1fae5' : showWrong ? '#fee2e2' : 'var(--surface-default)') : (isSelected ? 'rgba(202,0,2,0.08)' : 'var(--surface-default)') }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (showCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : 'var(--surface-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (showCorrect ? '#10b981' : showWrong ? '#ef4444' : 'var(--border-default)') : (isSelected ? '#e01418' : 'var(--border-default)'), backgroundColor: isSelected ? (quizSubmitted ? (showCorrect ? '#10b981' : '#ef4444') : '#e01418') : 'var(--surface-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--surface-default)' }} />}
                                 </div>
                                 <span style={{ fontSize: 14 }}>{option}</span>
@@ -1550,7 +1550,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             )}
             <button type="button" className="btn-secondary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>Back to Courses</button>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
-              <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 40, height: 22, borderRadius: 11, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
+              <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 40, height: 22, borderRadius: 11, backgroundColor: autoPlay ? '#e01418' : 'var(--border-default)', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
                 <div style={{ position: 'absolute', top: 3, left: autoPlay ? 21 : 3, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               </div>
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>Autoplay</span>
@@ -1566,7 +1566,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 )}
                 <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left', backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 4px' }}>
-                  <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
+                  <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#e01418' : 'var(--border-default)', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
                     <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                   </div>
                   <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Autoplay</span>
@@ -1862,7 +1862,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             style={{
               width: '4px',
               cursor: 'ew-resize',
-              backgroundColor: isResizing ? '#3b82f6' : 'var(--surface-muted)',
+              backgroundColor: isResizing ? '#e01418' : 'var(--surface-muted)',
               transition: isResizing ? 'none' : 'background-color 0.2s',
               flexShrink: 0,
               position: 'relative',
@@ -1929,10 +1929,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                                   padding: "12px 16px",
                                   marginBottom: 12,
                                   border: "2px solid",
-                                  borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "var(--border-default)") : (isSelected ? "#3b82f6" : "var(--border-default)"),
+                                  borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "var(--border-default)") : (isSelected ? "#e01418" : "var(--border-default)"),
                                   borderRadius: 8,
                                   cursor: quizSubmitted ? "default" : "pointer",
-                                  backgroundColor: showResult ? (showCorrect ? "#d1fae5" : showWrong ? "#fee2e2" : "var(--surface-default)") : (isSelected ? "#eff6ff" : "var(--surface-default)")
+                                  backgroundColor: showResult ? (showCorrect ? "#d1fae5" : showWrong ? "#fee2e2" : "var(--surface-default)") : (isSelected ? "rgba(202,0,2,0.08)" : "var(--surface-default)")
                                 }}
                               >
                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1942,8 +1942,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                                       height: 20,
                                       borderRadius: "50%",
                                       border: "2px solid",
-                                      borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "#d1d5db") : (isSelected ? "#3b82f6" : "#d1d5db"),
-                                      backgroundColor: isSelected ? (showResult ? (showCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "var(--surface-default)",
+                                      borderColor: showResult ? (showCorrect ? "#10b981" : showWrong ? "#ef4444" : "var(--border-default)") : (isSelected ? "#e01418" : "var(--border-default)"),
+                                      backgroundColor: isSelected ? (showResult ? (showCorrect ? "#10b981" : "#ef4444") : "#e01418") : "var(--surface-default)",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center"
@@ -1979,7 +1979,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     />
                     
                     {((activePage.resourceLinks && activePage.resourceLinks.length > 0) || (activePage.fileUrls && activePage.fileUrls.length > 0)) && (
-                      <div style={{ marginTop: 24, padding: "16px", backgroundColor: "#f9fafb", borderRadius: 8 }}>
+                      <div style={{ marginTop: 24, padding: "16px", backgroundColor: "var(--surface-subtle)", borderRadius: 8 }}>
                         <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Resources</h3>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {activePage.resourceLinks?.map((link, idx) => (
@@ -2130,7 +2130,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             boxShadow: "-4px 0 20px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column",
             overflow: "hidden"
           }}>
-            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface-subtle)" }}>
               <div style={{ fontWeight: 600, fontSize: "14px" }}>🤖 Course AI Assistant</div>
               <button onClick={() => setShowAIChat(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "18px" }}>✕</button>
             </div>
