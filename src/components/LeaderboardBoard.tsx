@@ -1,5 +1,5 @@
 // src/components/LeaderboardBoard.tsx
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { BRANCHES } from "../lib/repcard/branches";
 import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
@@ -94,6 +94,43 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   }, []);
 
   useEffect(() => { load(query); }, [query, load]);
+
+  // Follow the app-wide light/dark theme (the header toggle sets data-theme on
+  // <html>). Mirror it into state so styled-jsx can restyle via a class, and
+  // observe the attribute so the toggle switches this board live.
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  useEffect(() => {
+    const read = () =>
+      setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light");
+    read();
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
+
+  // The board now shows its OWN heading (mockup style) inside the card, so hide
+  // the layout's duplicate page-title band on this page. Self-contained: find
+  // the band as the element right before the page content and restore it on
+  // unmount. Kept out of the layout files on purpose.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let el: HTMLElement | null = rootRef.current;
+    let band: HTMLElement | null = null;
+    while (el && el.parentElement) {
+      const prev = el.previousElementSibling as HTMLElement | null;
+      const h1 = prev?.querySelector("h1");
+      if (prev && h1 && /leaderboard/i.test(h1.textContent || "") && !prev.querySelector("table, form, input")) {
+        band = prev;
+        break;
+      }
+      el = el.parentElement;
+    }
+    if (band) {
+      const prevDisplay = band.style.display;
+      band.style.display = "none";
+      return () => { band!.style.display = prevDisplay; };
+    }
+  }, []);
 
   // Quick view selected -> exit custom mode and refetch by window.
   const pickWindow = (w: Window) => { setWindow(w); setIsCustom(false); setShowCustom(false); setQuery(`window=${w}`); };
@@ -251,29 +288,44 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     });
   };
 
+  // Board subtitle mirrors the selected period, like the mockup.
+  const nowD = new Date();
+  const headSub = isCustom
+    ? (from && to ? `${from} → ${to}` : "Custom range")
+    : window === "day" ? "Today"
+    : window === "week" ? "This week to date"
+    : window === "month" ? `${nowD.toLocaleString("en-US", { month: "long" })} ${nowD.getFullYear()}, month to date`
+    : `${nowD.getFullYear()}, year to date`;
+
   return (
-    <div className="sl">
+    <div className={`sl sl--${theme}`} ref={rootRef}>
       <GuidedTour tour={SALES_LEADERBOARD_TOUR} ready={!loading} />
 
-      {/* Period pills — the mockup's top-right toggle. */}
-      <div className="sl__periods">
-        {WINDOWS.map((w) => (
+      {/* Title + period pills, inside the board — like the mockup. */}
+      <div className="sl__head">
+        <div className="sl__head-titles">
+          <h1 className="sl__head-title">Sales Leaderboard</h1>
+          <p className="sl__head-sub">{headSub}</p>
+        </div>
+        <div className="sl__periods">
+          {WINDOWS.map((w) => (
+            <button
+              key={w.key}
+              type="button"
+              className={`sl__pill${!isCustom && window === w.key ? " sl__pill--on" : ""}`}
+              onClick={() => pickWindow(w.key)}
+            >
+              {w.label}
+            </button>
+          ))}
           <button
-            key={w.key}
             type="button"
-            className={`sl__pill${!isCustom && window === w.key ? " sl__pill--on" : ""}`}
-            onClick={() => pickWindow(w.key)}
+            className={`sl__pill${isCustom ? " sl__pill--on" : ""}`}
+            onClick={() => setShowCustom((s) => !s)}
           >
-            {w.label}
+            Custom
           </button>
-        ))}
-        <button
-          type="button"
-          className={`sl__pill${isCustom ? " sl__pill--on" : ""}`}
-          onClick={() => setShowCustom((s) => !s)}
-        >
-          Custom
-        </button>
+        </div>
       </div>
 
       {showCustom && (
@@ -558,8 +610,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           color: var(--text);
           overflow: hidden;
         }
-        /* Light theme — set by the header's toggle (data-theme on <html>). */
-        :global(html[data-theme="light"]) .sl {
+        /* Light theme — applied via a class the component sets from data-theme. */
+        .sl.sl--light {
           --bg: transparent;
           --card-border: transparent;
           --text: #14161a;
@@ -600,7 +652,22 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         }
         .sl > * { position: relative; z-index: 1; }
 
-        .sl__periods { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 18px; }
+        /* Board heading (mockup: big condensed title + period subtitle, pills right) */
+        .sl__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+        .sl__head-titles { min-width: 0; }
+        .sl__head-title {
+          margin: 0;
+          font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+          font-size: clamp(30px, 3.6vw, 44px);
+          line-height: 1;
+          font-weight: 800;
+          letter-spacing: 0.01em;
+          text-transform: uppercase;
+          color: var(--text);
+        }
+        .sl__head-sub { margin: 8px 0 0; font-size: 15px; color: var(--muted); }
+
+        .sl__periods { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
         .sl__pill { padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--pill-text); background: transparent; border: 1px solid var(--pill-border); transition: background 0.15s, color 0.15s, border-color 0.15s; }
         .sl__pill:hover { color: var(--text); }
         .sl__pill--on { background: linear-gradient(90deg, #b30002, #e01418); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(202, 0, 2, 0.35); }
