@@ -91,11 +91,8 @@ export function FiltersBar({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {/* data-tour wraps BOTH toggles so the spotlight covers the pair, not one button. */}
-        <div data-tour="clb-views" style={{ display: "flex", background: "var(--surface-subtle)", borderRadius: 8, padding: 2, flex: isNarrow ? "1 1 100%" : undefined }}>
-          {toggle("overall", "Overall")}
-          {toggle("course", "By Course")}
-        </div>
+        {/* The Overall / By course toggle now lives in the board header, so it's
+            not duplicated here. */}
         <input
           value={filters.search}
           onChange={(e) => onFilters({ ...filters, search: e.target.value })}
@@ -103,7 +100,8 @@ export function FiltersBar({
           style={{
             flex: 1,
             minWidth: 120,
-            background: "#f9fafb",
+            background: "var(--surface-subtle)",
+            color: "var(--text-primary)",
             border: "1px solid var(--border-default)",
             borderRadius: 8,
             padding: "6px 10px",

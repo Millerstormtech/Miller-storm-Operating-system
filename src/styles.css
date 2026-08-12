@@ -6,7 +6,8 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Segoe UI", sans-serif;
-  background-color: #f4f4f5;
+  /* Token so the page ground flips with the theme (light ≈ #f4f4f5, dark). */
+  background-color: var(--surface-subtle);
   color: var(--text-primary);
 }
 
