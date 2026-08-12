@@ -379,7 +379,7 @@ export function TrainingLeaderboard() {
         .clb-title {
           margin: 0;
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-          font-size: clamp(26px, 3.2vw, 38px);
+          font-size: clamp(22px, 2.6vw, 30px);
           line-height: 1;
           font-weight: 800;
           letter-spacing: 0.01em;
