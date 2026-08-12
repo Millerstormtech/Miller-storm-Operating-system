@@ -20,6 +20,26 @@ export function Header(props: HeaderProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // App-wide light/dark theme. Stored in localStorage and applied as
+  // data-theme on <html>; pages that are theme-aware (e.g. the Sales
+  // Leaderboard) restyle themselves from that attribute via CSS.
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  useEffect(() => {
+    const saved = (typeof window !== "undefined" && localStorage.getItem("ms-theme")) as
+      | "light"
+      | "dark"
+      | null;
+    const initial = saved === "dark" ? "dark" : "light";
+    setTheme(initial);
+    document.documentElement.setAttribute("data-theme", initial);
+  }, []);
+  function toggleTheme() {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    try { localStorage.setItem("ms-theme", next); } catch { /* ignore */ }
+    document.documentElement.setAttribute("data-theme", next);
+  }
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -94,6 +114,29 @@ export function Header(props: HeaderProps) {
             </div>
           )}
         </div>
+        <button
+          type="button"
+          className="header-theme-toggle"
+          onClick={toggleTheme}
+          title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          aria-label="Toggle dark mode"
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: "50%",
+            border: "1px solid #e0e0e0",
+            background: "transparent",
+            cursor: "pointer",
+            fontSize: 16,
+            lineHeight: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {theme === "light" ? "🌙" : "☀️"}
+        </button>
         <button className="header-logout" onClick={props.onLogout}>
           Logout
         </button>

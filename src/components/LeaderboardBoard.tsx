@@ -22,17 +22,6 @@ const WINDOWS: { key: Window; label: string }[] = [
   { key: "month", label: "Month to Date" },
   { key: "year", label: "Year to Date" },
 ];
-// One sticky Sum cell. Background and top border sit on the CELL, not the row:
-// a position:sticky cell paints itself and does not inherit the <tr>'s.
-const stickyFootCell: React.CSSProperties = {
-  padding: "10px 14px",
-  textAlign: "center",
-  position: "sticky",
-  bottom: 0,
-  zIndex: 2,
-  background: "#f1f5f9",
-  borderTop: "2px solid #cbd5e1",
-};
 
 const fmtMoney = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
@@ -85,6 +74,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const [draftReps, setDraftReps] = useState<Set<string>>(new Set());
   const [repOpen, setRepOpen] = useState(false);
   const [repSearch, setRepSearch] = useState("");
+  // Custom date range is tucked behind a toggle so the period pills stay clean.
+  const [showCustom, setShowCustom] = useState(false);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -105,7 +96,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   useEffect(() => { load(query); }, [query, load]);
 
   // Quick view selected -> exit custom mode and refetch by window.
-  const pickWindow = (w: Window) => { setWindow(w); setIsCustom(false); setQuery(`window=${w}`); };
+  const pickWindow = (w: Window) => { setWindow(w); setIsCustom(false); setShowCustom(false); setQuery(`window=${w}`); };
   // A date edited -> custom mode; refetch once both ends are set.
   const pickDates = (f: string, t: string) => { setFrom(f); setTo(t); if (f && t) { setIsCustom(true); setQuery(`from=${f}&to=${t}`); } };
 
@@ -191,8 +182,6 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   const arrow = (key: SortKey) => (key === sortKey ? (sortDir === "asc" ? " ▲" : " ▼") : "");
 
-  const selectStyle = { padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "var(--surface-default)", color: "var(--text-tertiary)", fontWeight: 600, cursor: "pointer" } as const;
-
   // While a real branch filter is active, the numbers are that ONE branch's sales, so a
   // rep's home Branch/Team would only contradict the filter (a Fort Worth rep in the West
   // Texas list). Hide those two columns to remove the confusion; the banner explains why.
@@ -263,230 +252,177 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   };
 
   return (
-    <div>
+    <div className="sl">
       <GuidedTour tour={SALES_LEADERBOARD_TOUR} ready={!loading} />
 
-      {/* "Your rank" pop-out — shown to any user who is on the board (sales rep,
-          sales team lead, branch manager, etc.) with their own standing. */}
-      {me && (
-        <div
-          data-tour="your-rank"
-          style={{
-            display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
-            background: "linear-gradient(135deg,#1e3a8a,#2563eb)", color: "var(--text-inverse)",
-            borderRadius: 14, padding: "16px 20px", marginBottom: 16,
-            boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
-          }}
+      {/* Period pills — the mockup's top-right toggle. */}
+      <div className="sl__periods">
+        {WINDOWS.map((w) => (
+          <button
+            key={w.key}
+            type="button"
+            className={`sl__pill${!isCustom && window === w.key ? " sl__pill--on" : ""}`}
+            onClick={() => pickWindow(w.key)}
+          >
+            {w.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={`sl__pill${isCustom ? " sl__pill--on" : ""}`}
+          onClick={() => setShowCustom((s) => !s)}
         >
-          <div style={{ fontSize: 34, lineHeight: 1 }}>🏆</div>
-          <div style={{ flex: 1, minWidth: 160 }}>
-            <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 700, letterSpacing: 0.4 }}>
+          Custom
+        </button>
+      </div>
+
+      {showCustom && (
+        <div className="sl__custom">
+          <label>From <input type="date" value={from} max={to || undefined} onChange={(e) => pickDates(e.target.value, to)} className="sl__date" /></label>
+          <label>To <input type="date" value={to} min={from || undefined} onChange={(e) => pickDates(from, e.target.value)} className="sl__date" /></label>
+        </div>
+      )}
+
+      {/* "Your rank" pop-out — any user on the board sees their own standing. */}
+      {me && (
+        <div className="sl__banner sl__banner--rank" data-tour="your-rank">
+          <div className="sl__banner-emoji">🏆</div>
+          <div className="sl__banner-main">
+            <div className="sl__banner-eyebrow">
               YOUR RANK · {isCustom ? "Custom range" : WINDOWS.find((w) => w.key === window)?.label}
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>
+            <div className="sl__banner-title">
               #{me.rank}
-              <span style={{ fontSize: 15, fontWeight: 600, opacity: 0.85 }}> of {rows.length}</span>
+              <span className="sl__banner-sub"> of {rows.length}</span>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 22, textAlign: "right" }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>{fmtMoney(me.revenue)}</div>
-              <div style={{ fontSize: 11, opacity: 0.8 }}>Contract Amount</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>{me.won ?? 0}</div>
-              <div style={{ fontSize: 11, opacity: 0.8 }}>Contracts</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>{me.verifiedKnocks ?? 0}</div>
-              <div style={{ fontSize: 11, opacity: 0.8 }}>Knocks</div>
-            </div>
+          <div className="sl__banner-stats">
+            <div><div className="sl__stat-val">{fmtMoney(me.revenue)}</div><div className="sl__stat-lbl">Contract Amount</div></div>
+            <div><div className="sl__stat-val">{me.won ?? 0}</div><div className="sl__stat-lbl">Contracts</div></div>
+            <div><div className="sl__stat-val">{me.verifiedKnocks ?? 0}</div><div className="sl__stat-lbl">Knocks</div></div>
           </div>
         </div>
       )}
 
-      {/* Contract King: this calendar month's top rep by Contract Amount.
-          Hidden entirely until someone has signed something this month, which
-          is the normal state in the first days of a new month. */}
+      {/* Contract King: this month's top rep by Contract Amount. */}
       {contractKing && (
-        <div
-          data-tour="contract-king"
-          style={{
-            display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
-            background: "linear-gradient(135deg,#78350f,#b45309)", color: "var(--text-inverse)",
-            borderRadius: 14, padding: "14px 18px", marginBottom: 16,
-            boxShadow: "0 4px 14px rgba(180,83,9,0.35)",
-          }}
-        >
-          <RepAvatar name={contractKing.name} url={contractKing.headshotUrl} size={52} fontSize={22} />
-          <div style={{ flex: 1, minWidth: 160 }}>
-            <div style={{ fontSize: 12, opacity: 0.9, fontWeight: 700, letterSpacing: 0.4 }}>
-              👑 {contractKing.monthLabel.toUpperCase()} CONTRACT KING
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>{contractKing.name}</div>
+        <div className="sl__king" data-tour="contract-king">
+          <div className="sl__king-medal">
+            <RepAvatar name={contractKing.name} url={contractKing.headshotUrl} size={54} fontSize={22} />
+            <span className="sl__king-crown">1</span>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>{fmtMoney(contractKing.revenue)}</div>
-            <div style={{ fontSize: 11, opacity: 0.85 }}>Contract Amount this month</div>
+          <div className="sl__king-main">
+            <div className="sl__king-eyebrow">👑 {contractKing.monthLabel.toUpperCase()} CONTRACT KING</div>
+            <div className="sl__king-name">{contractKing.name}</div>
           </div>
+          <div className="sl__king-amount">{fmtMoney(contractKing.revenue)}</div>
         </div>
       )}
 
-      {/* Filters — Period, Branch, Team all as matching dropdowns. */}
-      <div data-tour="filters" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
-          Period
-          <select
-            value={isCustom ? "custom" : window}
-            onChange={(e) => { const v = e.target.value; if (v === "custom") pickDates(from, to); else pickWindow(v as Window); }}
-            style={selectStyle}
-          >
-            {WINDOWS.map((w) => <option key={w.key} value={w.key}>{w.label}</option>)}
-            <option value="custom">Custom range</option>
-          </select>
-        </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
-          From
-          <input type="date" value={from} max={to || undefined} onChange={(e) => pickDates(e.target.value, to)} style={selectStyle} />
-        </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
-          To
-          <input type="date" value={to} min={from || undefined} onChange={(e) => pickDates(from, e.target.value)} style={selectStyle} />
-        </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
-          Branch
-          <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} style={selectStyle}>
-            <option value={ALL}>All branches</option>
+      {/* Filters row — pills. */}
+      <div className="sl__filters" data-tour="filters">
+        <label className="sl__field">
+          <span>Branch</span>
+          <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="sl__select">
+            <option value={ALL}>All</option>
             {branchOptions.list.map((b) => <option key={b} value={b}>{b}</option>)}
             {branchOptions.hasBlank ? <option value={NONE}>(No branch)</option> : null}
           </select>
         </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
-          Team
-          <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} style={selectStyle}>
-            <option value={ALL}>All teams</option>
+        <label className="sl__field">
+          <span>Team</span>
+          <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} className="sl__select">
+            <option value={ALL}>All</option>
             {teamOptions.list.map((t) => <option key={t} value={t}>{TEAM_LEADS[t] || t}</option>)}
             {teamOptions.hasNone ? <option value={NONE}>(No team)</option> : null}
           </select>
         </label>
-        <label
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-tertiary)", fontWeight: 600, cursor: "pointer" }}
-          title="Hide reps who are no longer active in RepCard"
-        >
-          <input type="checkbox" checked={hideFormer} onChange={(e) => setHideFormer(e.target.checked)} />
-          Hide former reps
-        </label>
-        <div style={{ position: "relative", display: "inline-block" }}>
-          <button onClick={() => (repOpen ? setRepOpen(false) : openRepPanel())} style={selectStyle}>
-            Rep: {appliedReps.size ? `${appliedReps.size} selected` : "All reps"} ▾
+
+        <div className="sl__rep-wrap">
+          <button type="button" className="sl__chip" onClick={() => (repOpen ? setRepOpen(false) : openRepPanel())}>
+            {appliedReps.size ? `${appliedReps.size} reps selected` : "Search reps"} ▾
           </button>
           {repOpen ? (
             <>
-              {/* click-outside overlay: closes WITHOUT applying (draft discarded) */}
-              <div onClick={() => setRepOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
-              <div style={{ position: "absolute", zIndex: 21, top: "calc(100% + 4px)", left: 0, width: 260, background: "var(--surface-default)", border: "1px solid #d1d5db", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: 10 }}>
-                <input
-                  value={repSearch}
-                  onChange={(e) => setRepSearch(e.target.value)}
-                  placeholder="Search reps…"
-                  style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #d1d5db", marginBottom: 8, boxSizing: "border-box", fontSize: 13 }}
-                />
-                <div style={{ maxHeight: 220, overflowY: "auto", marginBottom: 8 }}>
+              <div onClick={() => setRepOpen(false)} className="sl__overlay" />
+              <div className="sl__rep-panel">
+                <input value={repSearch} onChange={(e) => setRepSearch(e.target.value)} placeholder="Search reps…" className="sl__rep-search" />
+                <div className="sl__rep-list">
                   {repList.filter((rp) => rp.name.toLowerCase().includes(repSearch.toLowerCase())).map((rp) => (
-                    <label key={rp.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 2px", fontSize: 13, cursor: "pointer" }}>
+                    <label key={rp.id} className="sl__rep-item">
                       <input type="checkbox" checked={draftReps.has(rp.id)} onChange={() => toggleDraftRep(rp.id)} />
                       {rp.name}
                     </label>
                   ))}
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <button onClick={() => setDraftReps(new Set())} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, padding: 0 }}>Clear</button>
-                  <button onClick={applyReps} style={{ padding: "6px 12px", borderRadius: 6, border: "none", background: "#2563eb", color: "var(--text-inverse)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                    Show Selected ({draftReps.size})
-                  </button>
+                <div className="sl__rep-actions">
+                  <button onClick={() => setDraftReps(new Set())} className="sl__link">Clear</button>
+                  <button onClick={applyReps} className="sl__apply">Show Selected ({draftReps.size})</button>
                 </div>
               </div>
             </>
           ) : null}
         </div>
+
+        <label className="sl__toggle" title="Hide reps who are no longer active in RepCard">
+          <input type="checkbox" checked={hideFormer} onChange={(e) => setHideFormer(e.target.checked)} />
+          Hide former reps
+        </label>
+
         {(branchFilter || teamFilter || appliedReps.size || hideFormer) ? (
-          <button
-            onClick={() => { setBranchFilter(ALL); setTeamFilter(ALL); setAppliedReps(new Set()); setHideFormer(false); }}
-            style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "var(--surface-default)", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}
-          >
+          <button className="sl__chip" onClick={() => { setBranchFilter(ALL); setTeamFilter(ALL); setAppliedReps(new Set()); setHideFormer(false); }}>
             Clear filters
           </button>
         ) : null}
-        <ExportReportButton
-          viewCount={visible.length}
-          boardCount={boardRows.length}
-          defaultTitle={(scope) => salesDefaultTitle(exportContext(scope))}
-          fieldsFor={(scope) => salesFields(exportContext(scope))}
-          buildDocument={buildExport}
-          disabledReason={loading ? "Still loading" : undefined}
-        />
-        <span style={{ fontSize: 13, color: "var(--text-subtle)", marginLeft: "auto" }}>
-          {visible.length} rep{visible.length === 1 ? "" : "s"}
-        </span>
+
+        <div className="sl__export">
+          <ExportReportButton
+            viewCount={visible.length}
+            boardCount={boardRows.length}
+            defaultTitle={(scope) => salesDefaultTitle(exportContext(scope))}
+            fieldsFor={(scope) => salesFields(exportContext(scope))}
+            buildDocument={buildExport}
+            disabledReason={loading ? "Still loading" : undefined}
+          />
+        </div>
+        <span className="sl__count">{visible.length} rep{visible.length === 1 ? "" : "s"}</span>
       </div>
 
-      {/* Contextual banner — only while a real branch filter is active, right where
-          the "why is this rep here?" confusion happens. */}
       {branchFilter && branchFilter !== NONE ? (
-        <div style={{ marginBottom: 12, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: "#1e40af" }}>
+        <div className="sl__note">
           Showing <strong>{branchFilter}</strong> sales. Numbers are for this branch only. Branch and Team columns are hidden while a branch filter is on, because a rep based in another branch can appear here for their {branchFilter} sales.
         </div>
       ) : null}
 
-      {/* Collapsible "how to read this board" guide — collapsed by default so it never clutters. */}
-      <details data-tour="board-guide" style={{ marginBottom: 12, background: "#f8fafc", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 14px" }}>
-        <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" }}>
-          ℹ️ How to read this board
-        </summary>
-        <ul style={{ margin: "10px 0 2px", paddingLeft: 18, fontSize: 12.5, color: "#4b5563", lineHeight: 1.6 }}>
+      <details className="sl__guide" data-tour="board-guide">
+        <summary>ℹ️ How to read this board</summary>
+        <ul>
           <li><strong>Who&apos;s listed here:</strong> every active sales rep.</li>
           <li>A rep can sell in more than one branch (for example, when storm-chasing away from home). Filtering by branch shows only the sales made in that branch. In this case each row shows only that rep&apos;s sales data for the filtered branch. Remove the branch filter to see their full total across every branch.</li>
           <li>However, <strong>Verified Door Knocks</strong> is the only data point that always counts under a rep&apos;s home branch. So if you filter to another branch where the rep made sales, you&apos;ll see those sales (as mentioned in the previous point) but their knocks show as 0 there.</li>
         </ul>
       </details>
 
-      {/* Legend for the flags shown next to a rep's name. */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "var(--text-muted)", flexWrap: "wrap" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-          No AccuLynx account (rep not set up in AccuLynx)
-        </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <span aria-hidden="true">❌</span>
-          Former rep (deactivated in RepCard)
-        </span>
+      <div className="sl__legend">
+        <span><span className="sl__dot" /> No AccuLynx account (rep not set up in AccuLynx)</span>
+        <span><span aria-hidden="true">❌</span> Former rep (deactivated in RepCard)</span>
       </div>
 
       {loading ? (
-        <p style={{ color: "var(--text-muted)" }}>Loading leaderboard…</p>
+        <p className="sl__loading">Loading leaderboard…</p>
       ) : (
         <>
-        {/* overflow lives in the stylesheet now, not inline: a wrapper with
-            overflow-x also becomes a vertical scroll container, which stops the
-            sticky header pinning to .app-content. See styles.css. */}
-        <div className="leaderboard-table-wrap">
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+        <div className="leaderboard-table-wrap sl__table-wrap">
+          <table className="sl__table" style={{ minWidth: 720 }}>
             <thead data-tour="columns">
-              <tr style={{ background: "#f1f5f9" }}>
-                <th style={{ padding: "10px 14px", textAlign: "center", fontSize: 13, fontWeight: 600, position: "sticky", top: 0, zIndex: 2, background: "#f1f5f9" }}>#</th>
+              <tr>
+                <th className="sl__th sl__th--rank">#</th>
                 {visibleColumns.map((c) => (
                   <th
                     key={c.key}
                     onClick={() => onSort(c.key)}
                     title="Click to sort"
-                    style={{
-                      padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", userSelect: "none",
-                      textAlign: c.type === "text" ? "left" : "center",
-                      color: c.key === sortKey ? "#2563eb" : "var(--text-tertiary)",
-                      // Frozen header. Needs its own opaque background: <thead>
-                      // backgrounds do not paint behind sticky cells.
-                      position: "sticky", top: 0, zIndex: 2, background: "#f1f5f9",
-                    }}
+                    className={`sl__th${c.type !== "text" ? " sl__th--num" : ""}${c.key === sortKey ? " sl__th--active" : ""}`}
                   >
                     {c.label}{arrow(c.key)}
                   </th>
@@ -495,95 +431,82 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             </thead>
             <tbody>
               {visible.length === 0 ? (
-                <tr><td colSpan={visibleColumns.length + 1} style={{ textAlign: "center", padding: 20, color: "var(--text-subtle)" }}>No reps match these filters.</td></tr>
+                <tr><td colSpan={visibleColumns.length + 1} className="sl__empty">No reps match these filters.</td></tr>
               ) : visible.map((r, i) => {
                 const isYou = currentUserId && r.repUserId === currentUserId;
                 return (
-                  <tr key={r.id} style={{ borderBottom: "1px solid var(--border-default)", background: isYou ? "#eff6ff" : "var(--surface-default)" }}>
-                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700 }}>{i + 1}</td>
-                    <td style={{ padding: "10px 14px", fontWeight: 600 }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <RepAvatar name={r.name} url={r.headshotUrl} size={24} />
-                        {r.source === "repcard" ? (
-                          <span
-                            title="No AccuLynx account"
-                            style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }}
-                          />
-                        ) : null}
-                        <span>{r.name}{isYou ? " (You)" : ""}</span>
+                  <tr key={r.id} className={`sl__row${i === 0 ? " sl__row--top" : ""}${isYou ? " sl__row--you" : ""}`}>
+                    <td className={`sl__rank${i === 0 ? " sl__rank--gold" : ""}`}>{i + 1}</td>
+                    <td className="sl__rep">
+                      <span className="sl__rep-inner">
+                        <RepAvatar name={r.name} url={r.headshotUrl} size={26} />
+                        {r.source === "repcard" ? <span title="No AccuLynx account" className="sl__dot" /> : null}
+                        <span className="sl__rep-name">{r.name}{isYou ? " (You)" : ""}</span>
                         {contractKing && r.id === contractKing.id ? (
-                          <span title={`Top Contract Amount this month (${contractKing.monthLabel})`} style={{ fontSize: 15 }}>
-                            👑
-                          </span>
+                          <span title={`Top Contract Amount this month (${contractKing.monthLabel})`}>👑</span>
                         ) : null}
                       </span>
                     </td>
                     {!branchActive ? (
                       <>
-                        <td style={{ padding: "10px 14px", color: "var(--text-muted)" }}>{r.branch || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "var(--text-muted)" }}>{TEAM_LEADS[r.team] || r.team || "—"}</td>
+                        <td className="sl__muted">{r.branch || "—"}</td>
+                        <td className="sl__muted">{TEAM_LEADS[r.team] || r.team || "—"}</td>
                       </>
                     ) : null}
-                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.verifiedKnocks ?? 0}</td>
-                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.leadsCreated ?? 0}</td>
-                    <td style={{ padding: "10px 14px", textAlign: "center" }}>{r.filed}</td>
-                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{r.won}</td>
-                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#16a34a" }}>{fmtMoney(r.revenue)}</td>
+                    <td className="sl__num">{r.verifiedKnocks ?? 0}</td>
+                    <td className="sl__num">{r.leadsCreated ?? 0}</td>
+                    <td className="sl__num">{r.filed}</td>
+                    <td className="sl__num">{r.won}</td>
+                    <td className="sl__amount">{fmtMoney(r.revenue)}</td>
                   </tr>
                 );
               })}
             </tbody>
             {visible.length > 0 ? (
               <tfoot>
-                {/* Totals stay in view while scrolling a long roster. Same
-                    technique as the header: each cell sticks, and each carries
-                    its own opaque background and border because a sticky cell
-                    does not inherit the row's. */}
-                <tr style={{ fontWeight: 700 }}>
-                  <td colSpan={branchActive ? 2 : 4} style={{ ...stickyFootCell, textAlign: "left" }}>
+                <tr className="sl__foot">
+                  <td colSpan={branchActive ? 2 : 4} className="sl__foot-label">
                     Sum ({visible.length} rep{visible.length === 1 ? "" : "s"})
                   </td>
-                  <td style={stickyFootCell}>{totals.verifiedKnocks}</td>
-                  <td style={stickyFootCell}>{totals.leadsCreated}</td>
-                  <td style={stickyFootCell}>{totals.filed}</td>
-                  <td style={stickyFootCell}>{totals.won}</td>
-                  <td style={{ ...stickyFootCell, color: "#16a34a" }}>{fmtMoney(totals.revenue)}</td>
+                  <td className="sl__num">{totals.verifiedKnocks}</td>
+                  <td className="sl__num">{totals.leadsCreated}</td>
+                  <td className="sl__num">{totals.filed}</td>
+                  <td className="sl__num">{totals.won}</td>
+                  <td className="sl__amount">{fmtMoney(totals.revenue)}</td>
                 </tr>
               </tfoot>
             ) : null}
           </table>
         </div>
 
-        {/* Mobile: app-style leaderboard cards (matches the Flutter app). */}
-        <div className="leaderboard-cards">
+        {/* Mobile: app-style leaderboard cards. */}
+        <div className="leaderboard-cards sl__cards">
           {visible.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 20, color: "var(--text-subtle)" }}>No reps match these filters.</div>
+            <div className="sl__empty">No reps match these filters.</div>
           ) : visible.map((r, i) => {
             const isYou = currentUserId && r.repUserId === currentUserId;
             const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
             const subtitle = [r.branch, TEAM_LEADS[r.team] || r.team].filter(Boolean).join(" · ");
             return (
-              <div key={r.id} style={{ marginBottom: 10, background: isYou ? "#FFF1F1" : "var(--surface-default)", borderRadius: 14, border: `1px solid ${isYou ? "rgba(203,0,2,0.4)" : "#EEF0F3"}`, boxShadow: "0 3px 10px rgba(0,0,0,0.04)", padding: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 34, textAlign: "center", fontSize: medal ? 24 : 16, fontWeight: 800, color: "var(--text-muted)", flexShrink: 0 }}>
-                    {medal || i + 1}
-                  </div>
+              <div key={r.id} className={`sl__card${i === 0 ? " sl__card--top" : ""}${isYou ? " sl__card--you" : ""}`}>
+                <div className="sl__card-head">
+                  <div className={`sl__card-rank${i === 0 ? " sl__rank--gold" : ""}`}>{medal || i + 1}</div>
                   <RepAvatar name={r.name} url={r.headshotUrl} size={44} fontSize={18} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
-                      {r.source === "repcard" ? <span title="No AccuLynx account" style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }} /> : null}
+                  <div className="sl__card-id">
+                    <div className="sl__card-name">
+                      {r.source === "repcard" ? <span title="No AccuLynx account" className="sl__dot" /> : null}
                       {r.name}{isYou ? " (You)" : ""}
                     </div>
-                    {subtitle ? <div style={{ fontSize: 12, color: "var(--text-subtle)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div> : null}
+                    {subtitle ? <div className="sl__card-sub">{subtitle}</div> : null}
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "#16a34a", flexShrink: 0 }}>{fmtMoney(r.revenue)}</div>
+                  <div className="sl__card-amount">{fmtMoney(r.revenue)}</div>
                 </div>
-                <div style={{ height: 1, background: "var(--surface-subtle)", margin: "10px 0 8px" }} />
-                <div style={{ display: "flex", justifyContent: "space-around" }}>
+                <div className="sl__card-div" />
+                <div className="sl__card-stats">
                   {([["🚪 Knocks", r.verifiedKnocks ?? 0], ["Claims Filed", r.filed ?? 0], ["Contracts", r.won ?? 0]] as [string, number][]).map(([label, value], k) => (
-                    <div key={k} style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>{value}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 2 }}>{label}</div>
+                    <div key={k} className="sl__card-stat">
+                      <div className="sl__card-stat-val">{value}</div>
+                      <div className="sl__card-stat-lbl">{label}</div>
                     </div>
                   ))}
                 </div>
@@ -593,6 +516,180 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
         </>
       )}
+
+      <style jsx>{`
+        .sl {
+          /* Dark theme (default) */
+          --bg: #0d0d0f;
+          --card-border: rgba(255, 255, 255, 0.06);
+          --text: #f4f4f6;
+          --muted: #9aa0a6;
+          --subtle: #7f858c;
+          --line: rgba(255, 255, 255, 0.06);
+          --th: #8b9096;
+          --th-bg: #0d0d0f;
+          --th-active: #ff5a5c;
+          --chip-bg: rgba(255, 255, 255, 0.04);
+          --chip-border: rgba(255, 255, 255, 0.14);
+          --chip-text: #e7e8ea;
+          --pill-text: #c7c9ce;
+          --pill-border: rgba(255, 255, 255, 0.14);
+          --num: #e7e8ea;
+          --amount: #ffffff;
+          --rank: #6b7075;
+          --gold: #f1c33c;
+          --panel: #141416;
+          --panel-line: rgba(255, 255, 255, 0.12);
+          --hover: rgba(255, 255, 255, 0.03);
+          --you: rgba(202, 0, 2, 0.1);
+          --top-grad: linear-gradient(90deg, rgba(202, 0, 2, 0.28), rgba(202, 0, 2, 0.04) 70%, transparent);
+          --wm-op: 0.05;
+          --note-bg: rgba(37, 99, 235, 0.12);
+          --note-border: rgba(37, 99, 235, 0.35);
+          --note-text: #bcd0ff;
+          --guide-bg: rgba(255, 255, 255, 0.03);
+          --rep-panel-bg: #1a1a1d;
+
+          position: relative;
+          background: var(--bg);
+          border: 1px solid var(--card-border);
+          border-radius: 18px;
+          padding: 22px 22px 8px;
+          color: var(--text);
+          overflow: hidden;
+        }
+        /* Light theme — set by the header's toggle (data-theme on <html>). */
+        :global(html[data-theme="light"]) .sl {
+          --bg: transparent;
+          --card-border: transparent;
+          --text: #14161a;
+          --muted: #6b7280;
+          --subtle: #9aa3ad;
+          --line: #eceef1;
+          --th: #6b7280;
+          --th-bg: #f6f7f9;
+          --th-active: #ca0002;
+          --chip-bg: #ffffff;
+          --chip-border: #d8dbdf;
+          --chip-text: #374151;
+          --pill-text: #4b5563;
+          --pill-border: #d8dbdf;
+          --num: #1f2937;
+          --amount: #111827;
+          --rank: #9aa3ad;
+          --gold: #cf9412;
+          --panel: #ffffff;
+          --panel-line: #e5e7eb;
+          --hover: #f6f7f9;
+          --you: rgba(202, 0, 2, 0.05);
+          --top-grad: linear-gradient(90deg, rgba(202, 0, 2, 0.1), rgba(202, 0, 2, 0.02) 70%, transparent);
+          --wm-op: 0.05;
+          --note-bg: #eff6ff;
+          --note-border: #bfdbfe;
+          --note-text: #1e40af;
+          --guide-bg: #f8fafc;
+          --rep-panel-bg: #ffffff;
+        }
+        .sl::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png") center 40% / min(680px, 80%) no-repeat;
+          opacity: var(--wm-op);
+          pointer-events: none;
+        }
+        .sl > * { position: relative; z-index: 1; }
+
+        .sl__periods { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 18px; }
+        .sl__pill { padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--pill-text); background: transparent; border: 1px solid var(--pill-border); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+        .sl__pill:hover { color: var(--text); }
+        .sl__pill--on { background: linear-gradient(90deg, #b30002, #e01418); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(202, 0, 2, 0.35); }
+
+        .sl__custom { display: flex; gap: 16px; margin-bottom: 16px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+        .sl__date { margin-left: 6px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--text); }
+
+        .sl__banner { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; }
+        .sl__banner--rank { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; box-shadow: 0 8px 24px rgba(37, 99, 235, 0.28); }
+        .sl__banner-emoji { font-size: 34px; line-height: 1; }
+        .sl__banner-main { flex: 1; min-width: 160px; }
+        .sl__banner-eyebrow { font-size: 12px; opacity: 0.85; font-weight: 700; letter-spacing: 0.4px; }
+        .sl__banner-title { font-size: 26px; font-weight: 800; margin-top: 2px; }
+        .sl__banner-sub { font-size: 15px; font-weight: 600; opacity: 0.85; }
+        .sl__banner-stats { display: flex; gap: 22px; text-align: right; }
+        .sl__stat-val { font-size: 18px; font-weight: 800; }
+        .sl__stat-lbl { font-size: 11px; opacity: 0.8; }
+
+        .sl__king { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; background: linear-gradient(100deg, #7a0d10 0%, #b31217 55%, #7a0d10 100%); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px 22px; margin-bottom: 18px; color: #fff; box-shadow: 0 10px 30px rgba(150, 10, 14, 0.35); }
+        .sl__king-medal { position: relative; flex-shrink: 0; }
+        .sl__king-crown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; color: #3a2400; background: radial-gradient(circle at 50% 35%, #ffe27a, #e8b923 55%, #a9800f); border-radius: 50%; border: 3px solid #f6d976; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+        .sl__king-main { flex: 1; min-width: 160px; }
+        .sl__king-eyebrow { font-size: 12px; letter-spacing: 1.5px; font-weight: 700; opacity: 0.9; text-transform: uppercase; }
+        .sl__king-name { font-size: 24px; font-weight: 800; margin-top: 3px; }
+        .sl__king-amount { font-size: 34px; font-weight: 900; letter-spacing: -0.5px; margin-left: auto; }
+
+        .sl__filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .sl__field { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+        .sl__select, .sl__chip { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--chip-text); font-weight: 600; font-size: 13px; cursor: pointer; }
+        .sl__toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--pill-text); font-weight: 600; cursor: pointer; }
+        .sl__rep-wrap { position: relative; display: inline-block; }
+        .sl__overlay { position: fixed; inset: 0; z-index: 20; }
+        .sl__rep-panel { position: absolute; z-index: 21; top: calc(100% + 6px); left: 0; width: 260px; background: var(--rep-panel-bg); border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25); padding: 10px; }
+        .sl__rep-search { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--text); margin-bottom: 8px; box-sizing: border-box; font-size: 13px; }
+        .sl__rep-list { max-height: 220px; overflow-y: auto; margin-bottom: 8px; }
+        .sl__rep-item { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 13px; cursor: pointer; color: var(--text); }
+        .sl__rep-actions { display: flex; justify-content: space-between; align-items: center; }
+        .sl__link { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0; }
+        .sl__apply { padding: 7px 14px; border-radius: 8px; border: none; background: linear-gradient(90deg, #b30002, #e01418); color: #fff; font-weight: 700; cursor: pointer; font-size: 13px; }
+        .sl__export :global(button) { border-radius: 999px !important; }
+        .sl__count { font-size: 13px; color: var(--subtle); margin-left: auto; }
+
+        .sl__note { margin-bottom: 12px; background: var(--note-bg); border: 1px solid var(--note-border); border-radius: 10px; padding: 9px 14px; font-size: 12.5px; color: var(--note-text); }
+        .sl__guide { margin-bottom: 12px; background: var(--guide-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+        .sl__guide summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--pill-text); }
+        .sl__guide ul { margin: 10px 0 2px; padding-left: 18px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+        .sl__legend { display: flex; gap: 16px; margin-bottom: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+        .sl__legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .sl__dot { width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; display: inline-block; flex-shrink: 0; }
+        .sl__loading { color: var(--muted); }
+        .sl__empty { text-align: center; padding: 22px; color: var(--subtle); }
+
+        .sl__table-wrap { border-radius: 14px; }
+        .sl__table { width: 100%; border-collapse: collapse; }
+        .sl__th { padding: 12px 16px; font-size: 12px; font-weight: 700; cursor: pointer; user-select: none; text-transform: uppercase; letter-spacing: 0.6px; text-align: left; color: var(--th); background: var(--th-bg); position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--line); }
+        .sl__th--num { text-align: center; }
+        .sl__th--rank { text-align: center; width: 64px; }
+        .sl__th--active { color: var(--th-active); }
+
+        .sl__row { border-bottom: 1px solid var(--line); transition: background 0.12s; }
+        .sl__row:hover { background: var(--hover); }
+        .sl__row--you { background: var(--you); }
+        .sl__row--top { background: var(--top-grad); box-shadow: inset 3px 0 0 #ca0002; }
+        .sl__rank { padding: 14px 16px; text-align: center; font-weight: 800; font-size: 22px; color: var(--rank); width: 64px; }
+        .sl__rank--gold { color: var(--gold); }
+        .sl__rep { padding: 12px 16px; font-weight: 700; }
+        .sl__rep-inner { display: inline-flex; align-items: center; gap: 10px; }
+        .sl__rep-name { color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; font-size: 14px; }
+        .sl__muted { padding: 12px 16px; color: var(--muted); font-size: 14px; }
+        .sl__num { padding: 12px 16px; text-align: center; font-weight: 600; color: var(--num); font-variant-numeric: tabular-nums; font-size: 15px; }
+        .sl__amount { padding: 12px 16px; text-align: right; font-weight: 800; color: var(--amount); font-variant-numeric: tabular-nums; font-size: 17px; white-space: nowrap; }
+        .sl__foot td { position: sticky; bottom: 0; z-index: 2; background: var(--panel); border-top: 2px solid var(--panel-line); padding: 12px 16px; font-weight: 800; }
+        .sl__foot-label { text-align: left; color: var(--pill-text); }
+
+        .sl__card { margin-bottom: 10px; background: var(--panel); border-radius: 14px; border: 1px solid var(--line); padding: 12px; }
+        .sl__card--you { border-color: rgba(202, 0, 2, 0.5); background: var(--you); }
+        .sl__card--top { border-color: rgba(241, 195, 60, 0.5); background: var(--top-grad); }
+        .sl__card-head { display: flex; align-items: center; gap: 10px; }
+        .sl__card-rank { width: 34px; text-align: center; font-size: 18px; font-weight: 800; color: var(--muted); flex-shrink: 0; }
+        .sl__card-id { flex: 1; min-width: 0; }
+        .sl__card-name { font-size: 15px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+        .sl__card-sub { font-size: 12px; color: var(--subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sl__card-amount { font-size: 16px; font-weight: 800; color: var(--amount); flex-shrink: 0; }
+        .sl__card-div { height: 1px; background: var(--line); margin: 10px 0 8px; }
+        .sl__card-stats { display: flex; justify-content: space-around; }
+        .sl__card-stat { text-align: center; }
+        .sl__card-stat-val { font-size: 15px; font-weight: 800; color: var(--text); }
+        .sl__card-stat-lbl { font-size: 11px; color: var(--subtle); margin-top: 2px; }
+      `}</style>
     </div>
   );
 }
