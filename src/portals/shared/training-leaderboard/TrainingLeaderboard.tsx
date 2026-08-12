@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isRankedRole } from "../../../lib/training/scoring";
 import type { BoardFilters, OverallResponse, OverallRow } from "../../../lib/training/board";
@@ -207,17 +207,48 @@ export function TrainingLeaderboard() {
     return courseOverallFields(scope === "view" && filtersActive(filters));
   }
 
+  // The board shows its own title, so hide the layout's duplicate page-title
+  // band on this page (restored on unmount). Self-contained — no layout edits.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let el: HTMLElement | null = rootRef.current;
+    let band: HTMLElement | null = null;
+    while (el && el.parentElement) {
+      const prev = el.previousElementSibling as HTMLElement | null;
+      const h1 = prev?.querySelector("h1");
+      if (prev && h1 && /leaderboard/i.test(h1.textContent || "") && !prev.querySelector("table, form, input")) {
+        band = prev;
+        break;
+      }
+      el = el.parentElement;
+    }
+    if (band) {
+      const d = band.style.display;
+      band.style.display = "none";
+      return () => { band!.style.display = d; };
+    }
+  }, []);
+
   if (!user) return null;
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        {data && (
-          <div style={{ fontSize: isNarrow ? 11 : 12, color: "var(--text-muted)" }}>
-            Ranked across all {data.totalCourses} courses · {data.totalItems} lessons &amp; quizzes
-          </div>
-        )}
+    <div className="clb" ref={rootRef}>
+      {/* Board heading + view toggle — the board shows its own title (mockup). */}
+      <div className="clb-head">
+        <div className="clb-head-titles">
+          <h1 className="clb-title">Course Leaderboard</h1>
+          <p className="clb-sub">Training progress across every team</p>
+        </div>
+        <div className="clb-views" data-tour="clb-views-2">
+          <button type="button" className={`clb-view${view === "overall" ? " on" : ""}`} onClick={() => setView("overall")}>Overall</button>
+          <button type="button" className={`clb-view${view === "course" ? " on" : ""}`} onClick={() => setView("course")}>By course</button>
+        </div>
       </div>
+      {data && (
+        <div className="clb-meta">
+          Ranked across all {data.totalCourses} courses · {data.totalItems} lessons &amp; quizzes
+        </div>
+      )}
 
       <FiltersBar
         view={view}
@@ -277,30 +308,27 @@ export function TrainingLeaderboard() {
       ) : (
         <>
           {view === "overall" ? (
-            <div style={{ display: isNarrow ? "block" : "flex", gap: 16, alignItems: "flex-start" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {isNarrow && (
-                  <TeamStandings standings={visibleStandings} activeTeam={filters.team} isNarrow />
-                )}
-                {youRow && (
-                  <YourRankStrip row={youRow} totalCourses={data.totalCourses} isNarrow={isNarrow} onClick={() => setDetailRepId(user.id)} />
-                )}
-                {myTeam && <MyTeamSummary summary={myTeam} isNarrow={isNarrow} />}
-                <RosterGrid
-                  rows={startedRows}
-                  notStartedRows={notStartedRows}
-                  filters={filters}
-                  isNarrow={isNarrow}
-                  youId={user.id}
-                  onOpenRep={setDetailRepId}
-                />
-              </div>
-              {!isNarrow && visibleStandings.length > 0 && (
-                <div style={{ width: 250, flexShrink: 0, position: "sticky", top: 12 }}>
-                  <TeamStandings standings={visibleStandings} activeTeam={filters.team} isNarrow={false} />
-                </div>
+            <>
+              {visibleStandings.length > 0 && (
+                <>
+                  <div className="clb-section">Team standings</div>
+                  <TeamStandings standings={visibleStandings} activeTeam={filters.team} />
+                </>
               )}
-            </div>
+              {youRow && (
+                <YourRankStrip row={youRow} totalCourses={data.totalCourses} isNarrow={isNarrow} onClick={() => setDetailRepId(user.id)} />
+              )}
+              {myTeam && <MyTeamSummary summary={myTeam} isNarrow={isNarrow} />}
+              <div className="clb-section">Reps</div>
+              <RosterGrid
+                rows={startedRows}
+                notStartedRows={notStartedRows}
+                filters={filters}
+                isNarrow={isNarrow}
+                youId={user.id}
+                onOpenRep={setDetailRepId}
+              />
+            </>
           ) : (
             <CourseView
               courses={data.courses}
@@ -335,6 +363,69 @@ export function TrainingLeaderboard() {
           ready gates auto-start until board data lands, so the roster, rank
           strip and legend all exist before any step is measured. */}
       <GuidedTour tour={COURSE_LEADERBOARD_TOUR} ready={!loading} />
+
+      <style jsx>{`
+        .clb {
+          position: relative;
+        }
+        .clb-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-bottom: 6px;
+        }
+        .clb-title {
+          margin: 0;
+          font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+          font-size: clamp(26px, 3.2vw, 38px);
+          line-height: 1;
+          font-weight: 800;
+          letter-spacing: 0.01em;
+          text-transform: uppercase;
+          color: var(--text-primary);
+        }
+        .clb-sub {
+          margin: 8px 0 0;
+          font-size: 15px;
+          color: var(--text-muted);
+        }
+        .clb-views {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .clb-view {
+          padding: 9px 18px;
+          border-radius: 999px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-muted);
+          background: transparent;
+          border: 1px solid var(--border-default);
+          transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .clb-view:hover { color: var(--text-primary); }
+        .clb-view.on {
+          background: linear-gradient(90deg, #b30002, #e01418);
+          color: #fff;
+          border-color: transparent;
+          box-shadow: 0 6px 18px rgba(202, 0, 2, 0.3);
+        }
+        .clb-meta {
+          font-size: 12px;
+          color: var(--text-muted);
+          margin: 10px 0 16px;
+        }
+        .clb-section {
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--text-primary);
+          margin: 20px 0 12px;
+        }
+      `}</style>
     </div>
   );
 }

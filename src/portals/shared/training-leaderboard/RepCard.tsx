@@ -4,9 +4,6 @@ import type { BadgeId, RankTitle } from "../../../lib/training/scoring";
 import {
   BADGE_META,
   PODIUM,
-  TIER_COLORS,
-  MEDALS,
-  MEDAL_EDGE,
   GREEN,
   RING_TRACK,
   DELTA_DOWN,
@@ -129,30 +126,10 @@ export function RepCard({
   containerStyle?: CSSProperties;
   onClick?: () => void;
 }) {
-  const tier = TIER_COLORS[row.rankTitle];
-  const showMedal = medal && primaryRank !== null && primaryRank >= 1 && primaryRank <= 3;
-  const avatarSize = isNarrow ? 40 : 44;
-  const ringSize = isNarrow ? 46 : 52;
-
-  const badgeIcons =
-    row.badges.length > 0 ? (
-      <span style={{ fontSize: isNarrow ? 13 : 14, letterSpacing: 2 }}>
-        {row.badges.map((b) => (
-          <Tooltip key={b} text={`${BADGE_META[b].label}: ${BADGE_META[b].meaning}`}>
-            <span>{BADGE_META[b].emoji}</span>
-          </Tooltip>
-        ))}
-      </span>
-    ) : (
-      <span style={{ fontSize: 11, color: "var(--text-subtle)", fontStyle: "italic" }}>
-        No badges yet
-        {typeof row.videosWatched === "number" &&
-        row.videosWatched > 0 &&
-        row.quizzesPassed === 0
-          ? ` (${row.videosWatched} videos, 0 quizzes passed)`
-          : ""}
-      </span>
-    );
+  const isLeader = medal && primaryRank === 1;
+  const avatarSize = isNarrow ? 40 : 46;
+  const pct = Math.min(100, Math.max(0, row.pct));
+  const cond = '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif';
 
   return (
     <div
@@ -169,115 +146,108 @@ export function RepCard({
             }
           : undefined
       }
+      title={`${row.rankTitle}${typeof coRank === "number" ? ` · co.#${coRank}` : ""}${milestone ? ` · next: ${milestone}` : ""}`}
       style={{
         display: "flex",
         alignItems: "center",
-        gap: isNarrow ? 9 : 12,
-        background: "var(--surface-default)",
-        border: "1px solid var(--border-default)",
-        borderLeft: showMedal ? `4px solid ${MEDAL_EDGE[primaryRank! - 1]}` : "1px solid var(--border-default)",
-        borderRadius: 12,
-        padding: isNarrow ? "10px 11px" : "11px 14px",
-        marginBottom: 8,
-        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+        gap: isNarrow ? 10 : 14,
+        background: isLeader
+          ? "linear-gradient(90deg, rgba(202,0,2,0.16), var(--surface-default) 72%)"
+          : "var(--surface-default)",
+        border: `1px solid ${isLeader ? "rgba(202,0,2,0.4)" : "var(--border-default)"}`,
+        borderRadius: 14,
+        padding: isNarrow ? "10px 12px" : "12px 16px",
+        marginBottom: 10,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
         cursor: onClick ? "pointer" : "default",
         ...containerStyle,
       }}
     >
-      {/* Rank cell: medal, or number, or nothing for unranked */}
-      <div style={{ width: isNarrow ? 22 : 30, textAlign: "center", flexShrink: 0 }}>
-        {showMedal ? (
-          <span style={{ fontSize: isNarrow ? 15 : 18 }}>{MEDALS[primaryRank! - 1]}</span>
-        ) : primaryRank !== null ? (
-          <span style={{ fontWeight: 800, fontSize: isNarrow ? 15 : 17, color: "var(--text-subtle)" }}>{primaryRank}</span>
-        ) : (
-          <span style={{ color: "#d1d5db" }}>·</span>
-        )}
-      </div>
-
       <Avatar name={row.name} headshotUrl={row.headshotUrl} size={avatarSize} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontWeight: 700,
-            fontSize: isNarrow ? 13 : 14,
+            fontFamily: cond,
+            fontWeight: 800,
+            fontSize: isNarrow ? 15 : 17,
+            letterSpacing: 0.3,
+            textTransform: "uppercase",
             color: "var(--text-primary)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
           {row.name}
           {row.isPodium && (
             <Tooltip text={`${PODIUM.label}: ${PODIUM.meaning}`}>
-              <span style={{ fontSize: isNarrow ? 12 : 13, marginLeft: 5 }}>{PODIUM.emoji}</span>
+              <span style={{ fontSize: isNarrow ? 12 : 13 }}>{PODIUM.emoji}</span>
             </Tooltip>
+          )}
+          {typeof row.rankDelta === "number" && row.rankDelta !== 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: row.rankDelta > 0 ? GREEN : DELTA_DOWN }}>
+              {row.rankDelta > 0 ? `▲${row.rankDelta}` : `▼${-row.rankDelta}`}
+            </span>
           )}
           {youTag && (
             <span
               style={{
-                background: "#4f46e5",
-                color: "var(--text-inverse)",
+                background: "#ca0002",
+                color: "#fff",
                 fontSize: 9,
                 fontWeight: 700,
                 padding: "1px 6px",
                 borderRadius: 999,
-                marginLeft: 6,
-                verticalAlign: "middle",
               }}
             >
               YOU
             </span>
           )}
         </div>
-        <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <Tooltip text={`Rank: ${row.rankTitle} (by courses finished)`}>
-            <span
-              style={{
-                background: tier.bg,
-                color: tier.fg,
-                padding: "1px 8px",
-                borderRadius: 999,
-                fontSize: isNarrow ? 10 : 11,
-                fontWeight: 600,
-              }}
-            >
-              {row.rankTitle}
-            </span>
-          </Tooltip>
-          {typeof row.rankDelta === "number" && row.rankDelta !== 0 && (
-            <Tooltip text="Rank change: since last week (company-wide)">
-              <span
-                style={{
-                  fontSize: isNarrow ? 10 : 11,
-                  fontWeight: 700,
-                  color: row.rankDelta > 0 ? GREEN : DELTA_DOWN,
-                }}
-              >
-                {row.rankDelta > 0 ? `▲${row.rankDelta}` : `▼${-row.rankDelta}`}
-              </span>
-            </Tooltip>
-          )}
-          {typeof coRank === "number" && (
-            <span style={{ fontSize: isNarrow ? 10 : 11, color: "var(--text-muted)", fontWeight: 600 }}>co.#{coRank}</span>
-          )}
-          {!isNarrow && (row.branch || row.team) && (
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-              {[row.branch, row.team && `Team ${row.team}`].filter(Boolean).join(" · ")}
-            </span>
-          )}
-          {isNarrow && badgeIcons}
-        </div>
-        {!isNarrow && <div style={{ marginTop: 4 }}>{badgeIcons}</div>}
-        {milestone && (
-          <div style={{ marginTop: 3, fontSize: 11, color: "var(--text-muted)" }}>
-            next: <b>{milestone}</b>
+        {(row.branch || row.team) && (
+          <div style={{ marginTop: 2, fontSize: 12.5, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {[row.branch, row.team && `Team ${row.team}`].filter(Boolean).join(" · ")}
           </div>
         )}
       </div>
 
-      <ProgressRing pct={row.pct} size={ringSize} holeBg={containerStyle?.background ? String(containerStyle.background) : "var(--surface-default)"} />
+      {/* Horizontal progress + percentage */}
+      {!isNarrow && (
+        <div style={{ width: 220, flexShrink: 0, height: 8, borderRadius: 5, background: "var(--surface-muted)", overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", borderRadius: 5, background: "linear-gradient(90deg, #b30002, #e01418)" }} />
+        </div>
+      )}
+      <span style={{ fontFamily: cond, fontSize: isNarrow ? 17 : 20, fontWeight: 800, color: "var(--text-primary)", minWidth: isNarrow ? 44 : 56, textAlign: "right", flexShrink: 0 }}>
+        {Math.round(pct)}%
+      </span>
+
+      {/* Achievement badges */}
+      {row.badges.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+          {row.badges.map((b) => (
+            <Tooltip key={b} text={`${BADGE_META[b].label}: ${BADGE_META[b].meaning}`}>
+              <span
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: "50%",
+                  background: "var(--surface-muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 13,
+                }}
+              >
+                {BADGE_META[b].emoji}
+              </span>
+            </Tooltip>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,158 +1,104 @@
-import { useState } from "react";
 import type { TeamStanding } from "../../../lib/training/board";
-import { GREEN, MEDALS, RING_TRACK } from "./constants";
+
+const COND = '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif';
 
 /**
- * Team vs Team (spec 2026-07-23 §2): display-only standings, ranked by
- * average completion % (zeros included; the whole roster counts). Desktop:
- * a card pinned in the side rail. Narrow: a collapsed tap-to-open bar, the
- * same interaction as the legend. Ranks are always company-wide: a branch
- * filter may HIDE rows but never renumbers them or re-mints medals.
+ * Team vs Team (spec 2026-07-23 §2): display-only standings, ranked by average
+ * completion % (zeros included; the whole roster counts). Full-width ranked
+ * cards; #1 gets the red + gold treatment. Ranks are always company-wide: a
+ * branch filter may HIDE rows but never renumbers them or re-mints medals.
+ * Colours come from the semantic tokens (surface/text) plus fixed brand red +
+ * gold, so the card themes itself in dark and light automatically.
  */
 export function TeamStandings({
   standings,
   activeTeam,
-  isNarrow,
 }: {
   standings: TeamStanding[];
   activeTeam: string;
-  isNarrow: boolean;
+  isNarrow?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   if (standings.length === 0) return null;
 
-  const list = (
-    <div>
+  return (
+    <div data-tour="clb-standings">
       {standings.map((s) => {
-        const highlight = !!activeTeam && s.team === activeTeam;
+        const top = s.rank === 1;
+        const active = !!activeTeam && s.team === activeTeam;
+        const pct = Math.min(100, Math.max(0, s.avgPct));
         return (
           <div
             key={s.team}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              padding: "7px 8px",
-              borderRadius: 8,
-              background: highlight ? "#eef2ff" : "transparent",
-              border: highlight ? "1px solid #c7d2fe" : "1px solid transparent",
-              marginBottom: 2,
+              gap: 18,
+              borderRadius: 16,
+              padding: "18px 24px",
+              marginBottom: 12,
+              color: top ? "#fff" : "var(--text-primary)",
+              background: top
+                ? "linear-gradient(100deg, #7a0d10 0%, #b31217 60%, #7a0d10 100%)"
+                : "var(--surface-default)",
+              border: `1px solid ${top ? "transparent" : active ? "rgba(202,0,2,0.5)" : "var(--border-default)"}`,
+              boxShadow: top
+                ? "0 12px 34px rgba(150,10,14,0.38)"
+                : "0 1px 3px rgba(0,0,0,0.06)",
             }}
           >
-            <span
+            <div
               style={{
-                width: 22,
-                textAlign: "center",
+                width: 40,
                 flexShrink: 0,
-                fontSize: s.rank <= 3 ? 14 : 12,
-                fontWeight: 700,
-                color: "var(--text-subtle)",
+                fontFamily: COND,
+                fontSize: 30,
+                fontWeight: 800,
+                color: top ? "#f1c33c" : "var(--text-subtle)",
               }}
             >
-              {s.rank <= 3 ? MEDALS[s.rank - 1] : s.rank}
-            </span>
+              {s.rank}
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+                <span
+                  title={`${s.size} rep${s.size === 1 ? "" : "s"}`}
+                  style={{
+                    fontFamily: COND,
+                    fontSize: 20,
+                    fontWeight: 800,
+                    letterSpacing: 0.5,
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  Team {s.team}
+                </span>
+                <span style={{ fontFamily: COND, fontSize: 30, fontWeight: 800, flexShrink: 0 }}>{s.avgPct}%</span>
+              </div>
               <div
                 style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "var(--text-primary)",
-                  whiteSpace: "nowrap",
+                  marginTop: 12,
+                  height: 8,
+                  borderRadius: 5,
+                  background: top ? "rgba(255,255,255,0.24)" : "var(--surface-muted)",
                   overflow: "hidden",
-                  textOverflow: "ellipsis",
                 }}
               >
-                Team {s.team}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                <div style={{ flex: 1, height: 5, background: RING_TRACK, borderRadius: 3 }}>
-                  <div
-                    style={{
-                      width: `${Math.min(100, Math.max(0, s.avgPct))}%`,
-                      height: 5,
-                      background: GREEN,
-                      borderRadius: 3,
-                    }}
-                  />
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)" }}>{s.avgPct}%</span>
-              </div>
-              <div style={{ fontSize: 10, color: "var(--text-subtle)", marginTop: 2 }}>
-                {s.size} rep{s.size === 1 ? "" : "s"}
+                <div
+                  style={{
+                    width: `${pct}%`,
+                    height: "100%",
+                    borderRadius: 5,
+                    background: top ? "#ffffff" : "linear-gradient(90deg, #b30002, #e01418)",
+                  }}
+                />
               </div>
             </div>
           </div>
         );
       })}
-    </div>
-  );
-
-  if (!isNarrow) {
-    return (
-      // Both variants carry data-tour="clb-standings": this panel renders as a
-      // sticky right column on wide screens and as a collapsible block at the
-      // top of the content on narrow ones. The tour measures whichever is on
-      // screen and skips the other, which is zero-size or absent.
-      <div
-        data-tour="clb-standings"
-        style={{
-          background: "var(--surface-default)",
-          border: "1px solid var(--border-default)",
-          borderRadius: 12,
-          padding: "12px 10px",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: "var(--text-muted)",
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-            margin: "0 8px 8px",
-          }}
-        >
-          🏆 Team standings
-        </div>
-        {list}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      data-tour="clb-standings"
-      style={{
-        background: "var(--surface-default)",
-        border: "1px solid var(--border-default)",
-        borderRadius: 12,
-        padding: open ? "10px 10px" : 0,
-        marginBottom: 14,
-        overflow: "hidden",
-      }}
-    >
-      <button
-        onClick={() => setOpen((p) => !p)}
-        aria-expanded={open}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          border: "none",
-          background: "transparent",
-          padding: open ? "0 2px 8px" : "9px 11px",
-          cursor: "pointer",
-          fontSize: 12,
-          fontWeight: 600,
-          color: "var(--text-tertiary)",
-        }}
-      >
-        <span>🏆 Team standings</span>
-        <span>{open ? "▴" : "▸"}</span>
-      </button>
-      {open && list}
     </div>
   );
 }
