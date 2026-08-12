@@ -600,7 +600,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --hover: rgba(255, 255, 255, 0.03);
           --you: rgba(202, 0, 2, 0.1);
           --top-grad: linear-gradient(90deg, rgba(202, 0, 2, 0.28), rgba(202, 0, 2, 0.04) 70%, transparent);
-          --wm-op: 0.05;
+          --wm-op: 0.09;
           --note-bg: rgba(37, 99, 235, 0.12);
           --note-border: rgba(37, 99, 235, 0.35);
           --note-text: #bcd0ff;
@@ -640,7 +640,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --hover: #f6f7f9;
           --you: rgba(202, 0, 2, 0.05);
           --top-grad: linear-gradient(90deg, rgba(202, 0, 2, 0.1), rgba(202, 0, 2, 0.02) 70%, transparent);
-          --wm-op: 0.05;
+          --wm-op: 0.09;
           --note-bg: #eff6ff;
           --note-border: #bfdbfe;
           --note-text: #1e40af;

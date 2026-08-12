@@ -366,6 +366,17 @@ export function TrainingLeaderboard() {
       <style jsx>{`
         .clb {
           position: relative;
+          isolation: isolate;
+        }
+        /* Faded brand logo behind the board (matches the Sales Leaderboard). */
+        .clb::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png") center 32% / min(640px, 62%) no-repeat;
+          opacity: 0.09;
+          pointer-events: none;
         }
         .clb-head {
           display: flex;
