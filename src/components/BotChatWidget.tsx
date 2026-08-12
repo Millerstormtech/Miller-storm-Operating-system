@@ -687,7 +687,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   }
 
   return (
-    <div className="bot-chat-widget" style={{ display: "flex", height: "calc(100vh - 120px)", background: "var(--surface-default)", borderRadius: "12px", border: "1px solid var(--border-default)", overflow: "hidden", position: "relative" }}>
+    <div className="bot-chat-widget" style={{ display: "flex", height: "calc(100vh - 172px)", background: "var(--surface-default)", borderRadius: "12px", border: "1px solid var(--border-default)", overflow: "hidden", position: "relative" }}>
 
       {/* Mobile backdrop */}
       {!sidebarCollapsed && (
