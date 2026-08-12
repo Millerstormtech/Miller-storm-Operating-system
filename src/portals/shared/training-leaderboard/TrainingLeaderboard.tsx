@@ -396,7 +396,7 @@ export function TrainingLeaderboard() {
           line-height: 1;
           font-weight: 900;
           letter-spacing: 0.01em;
-          text-transform: uppercase;
+          text-transform: capitalize;
           color: var(--text-primary);
         }
         .clb-sub {

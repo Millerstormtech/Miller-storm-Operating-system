@@ -611,7 +611,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           background: var(--bg);
           border: 1px solid var(--card-border);
           border-radius: 18px;
-          padding: 2px 22px 8px;
+          padding: 4px 24px 8px;
           color: var(--text);
           overflow: hidden;
         }
@@ -659,7 +659,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
         /* Board heading (mockup: big condensed title + period subtitle, pills right) */
         .sl__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-        .sl__head-titles { min-width: 0; margin-left: 16px; }
+        .sl__head-titles { min-width: 0; }
         .sl__head-title {
           margin: 0;
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
@@ -667,7 +667,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           line-height: 1;
           font-weight: 900;
           letter-spacing: 0.01em;
-          text-transform: uppercase;
+          text-transform: capitalize;
           color: var(--text);
         }
         .sl__head-sub { margin: 8px 0 0; font-size: 15px; color: var(--muted); }
