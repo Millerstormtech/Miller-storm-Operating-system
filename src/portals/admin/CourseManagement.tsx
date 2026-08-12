@@ -1342,7 +1342,7 @@ export function CourseManagement(props: CourseEditorProps) {
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, color: 'var(--text-tertiary)' }}>
                       <span>{completedLessons} / {totalLessons} items</span>
-                      <span style={{ fontWeight: 600, color: courseCompleted ? '#10b981' : '#2563eb' }}>
+                      <span style={{ fontWeight: 600, color: courseCompleted ? '#10b981' : '#e01418' }}>
                         {courseCompleted ? '✓ Completed' : `${pct}%`}
                       </span>
                     </div>
@@ -1444,32 +1444,6 @@ export function CourseManagement(props: CourseEditorProps) {
                           {course.description.length > 50 ? course.description.substring(0, 50) + "..." : course.description}
                         </div>
                       )}
-                      <button
-                        type="button"
-                        className="btn-secondary btn-small"
-                        style={{ marginTop: 10, width: '100%', fontSize: 12 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProgressCourseId(course.id);
-                          setProgressData([]);
-                          setProgressUsers([]);
-                          setProgressSearch('');
-                          setProgressRoleFilter('all');
-                          setIsLoadingProgress(true);
-                          setViewMode("progress");
-                          // Load progress data
-                          Promise.all([
-                            fetch(`/api/admin/course-progress?courseId=${course.id}`).then(r => r.json()),
-                            fetch(`/api/users`).then(r => r.json())
-                          ]).then(([prog, users]) => {
-                            setProgressData(prog);
-                            setProgressUsers(users.filter((u: any) => !u.deleted));
-                          }).catch(console.error)
-                            .finally(() => setIsLoadingProgress(false));
-                        }}
-                      >
-                        📊 Track Progress
-                      </button>
                     </div>
                   </button>
                 ))}
@@ -1567,7 +1541,7 @@ export function CourseManagement(props: CourseEditorProps) {
                             </label>
                             <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                               {listItems.map(item => (
-                                <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: deleteSelectedIds.has(item.id) ? '#fef2f2' : '#f9fafb', border: `1px solid ${deleteSelectedIds.has(item.id) ? '#fecaca' : 'var(--border-default)'}` }}>
+                                <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: deleteSelectedIds.has(item.id) ? 'rgba(202, 0, 2, 0.12)' : 'var(--surface-subtle)', border: `1px solid ${deleteSelectedIds.has(item.id) ? 'rgba(202, 0, 2, 0.35)' : 'var(--border-default)'}` }}>
                                   <input type="checkbox" checked={deleteSelectedIds.has(item.id)} onChange={() => {
                                     const next = new Set(deleteSelectedIds);
                                     if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
@@ -2761,7 +2735,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                       type="button"
                                       className="btn-secondary btn-small"
                                       onClick={() => setCollapsedFolders(new Set())}
-                                      style={{ flex: 1, fontSize: '12px', padding: '4px 8px' }}
+                                      style={{ flex: 1, fontSize: '13px', padding: '5px 8px' }}
                                     >
                                       Expand All
                                     </button>
@@ -2769,7 +2743,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                       type="button"
                                       className="btn-secondary btn-small"
                                       onClick={() => setCollapsedFolders(new Set(folders.map(f => f.id)))}
-                                      style={{ flex: 1, fontSize: '12px', padding: '4px 8px' }}
+                                      style={{ flex: 1, fontSize: '13px', padding: '5px 8px' }}
                                     >
                                       Collapse All
                                     </button>
@@ -3304,7 +3278,7 @@ export function CourseManagement(props: CourseEditorProps) {
                               style={{
                                 width: '4px',
                                 cursor: 'ew-resize',
-                                backgroundColor: isResizing ? '#3b82f6' : 'var(--surface-muted)',
+                                backgroundColor: isResizing ? '#e01418' : 'var(--surface-muted)',
                                 transition: isResizing ? 'none' : 'background-color 0.2s',
                                 flexShrink: 0,
                                 position: 'relative',
@@ -3356,7 +3330,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 (<code>A.</code> <code>B.</code> …) with a <code>Correct Answer: C</code> line, or use
                                                 <code>{" * "}</code> to mark the right one. Optional <code>{"Show: N"}</code> sets how many to show.
                                               </div>
-                                              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, background: "#f9fafb", border: "1px solid var(--border-default)", borderRadius: 8, padding: "8px 10px" }}>
+                                              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, background: "var(--surface-subtle)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "8px 10px" }}>
                                                 <strong>Excel (.xlsx):</strong> columns <code>Question</code>,
                                                 <code> Option A</code>, <code>Option B</code>, <code>Option C</code>, <code>Option D</code>,
                                                 <code> Correct</code> (A/B/C/D), optional <code>Show</code>.
@@ -3721,7 +3695,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 alignItems: "center",
                                                 gap: 8,
                                                 padding: "8px 12px",
-                                                backgroundColor: "#f9fafb",
+                                                backgroundColor: "var(--surface-subtle)",
                                                 borderRadius: 6,
                                                 position: "relative"
                                               }}
@@ -3813,7 +3787,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 alignItems: "center",
                                                 gap: 8,
                                                 padding: "8px 12px",
-                                                backgroundColor: "#f9fafb",
+                                                backgroundColor: "var(--surface-subtle)",
                                                 borderRadius: 6,
                                                 position: "relative"
                                               }}
@@ -4007,7 +3981,7 @@ export function CourseManagement(props: CourseEditorProps) {
           zIndex: 9999
         }}>
           <div style={{
-            backgroundColor: 'white',
+            backgroundColor: 'var(--surface-default)',
             borderRadius: 12,
             padding: '32px 48px',
             display: 'flex',
@@ -4020,7 +3994,7 @@ export function CourseManagement(props: CourseEditorProps) {
               width: 48,
               height: 48,
               border: '4px solid var(--border-subtle)',
-              borderTop: '4px solid #3b82f6',
+              borderTop: '4px solid #e01418',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite'
             }} />
