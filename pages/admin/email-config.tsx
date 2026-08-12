@@ -4,7 +4,7 @@ import { EmailConfig } from "../../src/portals/admin/EmailConfig";
 
 const EmailConfigPage: NextPage = () => {
   return (
-    <AdminPageWrapper currentView="emailConfig">
+    <AdminPageWrapper currentView="emailConfig" pageTitle="">
       <EmailConfig />
     </AdminPageWrapper>
   );
