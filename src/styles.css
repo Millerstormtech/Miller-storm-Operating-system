@@ -498,7 +498,7 @@ body {
   padding: 7px 12px;
   font-size: 12px;
   font-weight: 500;
-  background-color: #f9fafb;
+  background-color: var(--surface-subtle);
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -538,9 +538,9 @@ body {
 }
 
 .btn-primary.btn-success {
-  background: #dcfce7;
-  border-color: #22c55e;
-  color: #166534;
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #ffffff;
 }
 
 .btn-primary.btn-success.solid {
