@@ -16,32 +16,6 @@ export function SalesTeamLeadProfilePage(props: {
   const [isTerritoryOpen, setIsTerritoryOpen] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const saveNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [activeTab, setActiveTab] = useState<'profile' | 'training'>('profile');
-  const [trainingData, setTrainingData] = useState<{ course: any; completed: number; total: number; isCompleted: boolean }[]>([]);
-  const [isLoadingTraining, setIsLoadingTraining] = useState(false);
-
-  useEffect(() => {
-    if (activeTab !== 'training' || !profile.id) return;
-    setIsLoadingTraining(true);
-    Promise.all([
-      fetch('/api/courses').then(r => r.json()),
-    ]).then(async ([courses]) => {
-      const published = (courses || []).filter((c: any) => c.status === 'published');
-      if (!published.length) { setTrainingData([]); setIsLoadingTraining(false); return; }
-      const courseIds = published.map((c: any) => c.id).join(',');
-      const progRes = await fetch(`/api/course-progress?userId=${profile.id}&courseIds=${courseIds}`);
-      const progData = progRes.ok ? await progRes.json() : {};
-      const rows = published.map((course: any) => {
-        const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
-        const total = lessonPages.length;
-        const lessonIds = new Set(lessonPages.map((p: any) => p.id));
-        const rec = progData[course.id] || {};
-        const completed = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
-        return { course, completed, total, isCompleted: rec.courseCompleted || false };
-      }).filter((r: any) => r.total > 0);
-      setTrainingData(rows);
-    }).catch(console.error).finally(() => setIsLoadingTraining(false));
-  }, [activeTab, profile.id]);
 
   function update(next: Partial<UserProfile>) {
     props.onProfileChange({ ...profile, ...next });
@@ -49,36 +23,20 @@ export function SalesTeamLeadProfilePage(props: {
 
   function handlePhotoSelected(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files && event.target.files[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
     const objectUrl = URL.createObjectURL(file);
     update({ headshotUrl: objectUrl });
-    
+
     const formData = new FormData();
-    formData.append('file', file);
-    
-    fetch('/api/upload-image', {
-      method: 'POST',
-      body: formData,
-    })
+    formData.append("file", file);
+    fetch("/api/upload-image", { method: "POST", body: formData })
       .then((res) => res.json())
-      .then((data) => {
-        if (data.url) {
-          update({ headshotUrl: data.url });
-        }
-      })
-      .catch((error) => {
-        console.error('Upload failed:', error);
-      });
+      .then((data) => { if (data.url) update({ headshotUrl: data.url }); })
+      .catch((error) => console.error("Upload failed:", error));
   }
 
   // Real branches (same list the admin User Management "Branch" field uses).
-  const territoryOptions = [
-    "Dallas",
-    "West Texas",
-    "Fort Worth"
-  ];
+  const territoryOptions = ["Dallas", "West Texas", "Fort Worth"];
 
   const selectedTerritories =
     profile.territory && profile.territory.length > 0
@@ -86,263 +44,175 @@ export function SalesTeamLeadProfilePage(props: {
           .split("·")
           .map((t) => t.trim())
           .filter((t) => t.length > 0)
-          // Drop stale/legacy values (old territories) so only real branches show.
           .filter((t) => territoryOptions.includes(t))
       : [];
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
-      if (!territoryRef.current) {
-        return;
-      }
-      if (!territoryRef.current.contains(event.target as Node)) {
-        setIsTerritoryOpen(false);
-      }
+      if (!territoryRef.current) return;
+      if (!territoryRef.current.contains(event.target as Node)) setIsTerritoryOpen(false);
     }
-
     function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsTerritoryOpen(false);
-      }
+      if (event.key === "Escape") setIsTerritoryOpen(false);
     }
-
     document.addEventListener("mousedown", handleOutsideClick);
     document.addEventListener("keydown", handleKeydown);
-
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleKeydown);
     };
   }, []);
 
+  function save() {
+    props.onProfileChange(profile);
+    setSaveNotice("✓ Saved!");
+    if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
+    saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
+  }
+
   return (
-    <div className="profile-page">
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid var(--border-default)' }}>
-        {(['profile', 'training'] as const).map(tab => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '12px 28px', background: 'none', border: 'none',
-              borderBottom: activeTab === tab ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === tab ? '#2563eb' : 'var(--text-muted)',
-              fontWeight: activeTab === tab ? 600 : 400,
-              cursor: 'pointer', marginBottom: '-2px', fontSize: 16, textTransform: 'capitalize'
-            }}
-          >
-            {tab === 'profile' ? 'Profile' : 'Training Progress'}
+    <div className="pf-page">
+      {/* Faded brand watermark. */}
+      <div aria-hidden className="pf-watermark" />
+
+      <div className="pf-grid">
+        {/* Photo card */}
+        <div className="pf-card pf-photo-card">
+          <div className="pf-photo-title">Profile Photo</div>
+          <div className="pf-avatar">
+            {profile.headshotUrl ? (
+              <img src={profile.headshotUrl} alt={profile.name} />
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
+          <button type="button" className="pf-upload" onClick={() => fileInputRef.current?.click()}>
+            Upload a new photo
           </button>
-        ))}
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoSelected} />
+          <div className="pf-hint">Square images work best. This is the photo that shows on the leaderboard.</div>
+        </div>
+
+        {/* Details card */}
+        <div className="pf-card pf-form-card">
+          <div className="pf-fields">
+            <label className="pf-field">
+              <span className="pf-label">Full Name</span>
+              <input className="pf-input" value={profile.name} onChange={(e) => update({ name: e.target.value })} placeholder="Your name" />
+            </label>
+            <label className="pf-field">
+              <span className="pf-label">Email</span>
+              <input className="pf-input pf-input--disabled" value={profile.email} disabled />
+              <span className="pf-help">Email cannot be changed</span>
+            </label>
+            <label className="pf-field">
+              <span className="pf-label">Phone</span>
+              <input className="pf-input" value={profile.phone ?? ""} onChange={(e) => update({ phone: e.target.value })} placeholder="Your mobile number" />
+            </label>
+
+            {/* Branch — multi-select picker */}
+            <div
+              className="pf-field territory-field"
+              ref={territoryRef}
+              onBlur={(event) => {
+                const nextTarget = event.relatedTarget as Node | null;
+                if (nextTarget && territoryRef.current?.contains(nextTarget)) return;
+                setIsTerritoryOpen(false);
+              }}
+            >
+              <span className="pf-label">Branch</span>
+              <button
+                type="button"
+                className={`pf-input territory-trigger${isTerritoryOpen ? " territory-trigger-open" : ""}`}
+                aria-haspopup="listbox"
+                aria-expanded={isTerritoryOpen}
+                onClick={() => setIsTerritoryOpen((prev) => !prev)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
+              >
+                <span className={selectedTerritories.length > 0 ? "territory-trigger-value" : "territory-trigger-placeholder"}>
+                  {selectedTerritories.length > 0 ? selectedTerritories.join(", ") : "Select branch"}
+                </span>
+                <span className="territory-trigger-icon">▾</span>
+              </button>
+              {isTerritoryOpen && (
+                <div className="territory-dropdown" role="listbox" aria-multiselectable="true">
+                  {territoryOptions.map((option) => {
+                    const checked = selectedTerritories.includes(option);
+                    return (
+                      <label key={option} className={checked ? "territory-option territory-option-active" : "territory-option"}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...selectedTerritories, option]
+                              : selectedTerritories.filter((item) => item !== option);
+                            update({ territory: next.join(" · "), branches: next });
+                          }}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pf-save-row">
+            <button type="button" className="pf-save" onClick={save}>Save</button>
+            {saveNotice && <span className="pf-notice">{saveNotice}</span>}
+          </div>
+        </div>
       </div>
 
-      {activeTab === 'training' ? (
-        <div>
-          {isLoadingTraining ? (
-            <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading...</div>
-          ) : trainingData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-subtle)' }}>No courses available.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {trainingData.map(({ course, completed, total, isCompleted }) => {
-                const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-                return (
-                  <div key={course.id} style={{
-                    background: 'var(--surface-default)', border: '1px solid var(--border-default)',
-                    borderRadius: 12, padding: '20px 24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                  }}>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', marginBottom: 4 }}>
-                      {course.title}
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>Training Center Progress</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>
-                      <span style={{ color: 'var(--text-tertiary)' }}>Lessons Completed: <strong>{completed} / {total}</strong></span>
-                      <span style={{ fontWeight: 700, color: isCompleted ? '#10b981' : '#2563eb' }}>
-                        {isCompleted ? '✓ Completed' : `Course Completion: ${pct}%`}
-                      </span>
-                    </div>
-                    <div style={{ height: 10, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 999,
-                        background: isCompleted ? '#10b981' : '#22c55e',
-                        width: `${pct}%`, transition: 'width 0.4s'
-                      }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-      <>
-      <div className="profile-card">
-        <div className="profile-header-row">
-          <div>
-            <div className="profile-title">Profile</div>
-            <div className="profile-subtitle">Your profile information</div>
-          </div>
-        </div>
-        <div className="profile-photo-row">
-          <div className="profile-photo-wrapper">
-            {profile.headshotUrl ? (
-              <img
-                src={profile.headshotUrl}
-                alt={profile.name}
-                className="profile-photo-image"
-              />
-            ) : (
-              <div className="profile-photo-initials">{initials}</div>
-            )}
-          </div>
-          <div className="profile-photo-text">
-            <div className="profile-photo-title">Profile Photo</div>
-            <button
-              type="button"
-              className="profile-photo-upload"
-              onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            >
-              Click to upload
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={handlePhotoSelected}
-            />
-            <div className="profile-photo-hint">JPG, PNG · Max 100MB</div>
-          </div>
-        </div>
-        <div className="profile-body-grid">
-          <label className="field">
-            <span className="field-label">Full Name</span>
-            <input
-              className="field-input"
-              value={profile.name}
-              onChange={(e) => update({ name: e.target.value })}
-              placeholder="Your name"
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">Email</span>
-            <input
-              className="field-input field-input-disabled"
-              value={profile.email}
-              disabled
-            />
-            <span className="field-help">Email cannot be changed</span>
-          </label>
-          <label className="field">
-            <span className="field-label">Phone</span>
-            <input
-              className="field-input"
-              value={profile.phone ?? ""}
-              onChange={(e) => update({ phone: e.target.value })}
-              placeholder="Your mobile number"
-            />
-          </label>
-          <div
-            className="field territory-field"
-            ref={territoryRef}
-            onBlur={(event) => {
-              const nextTarget = event.relatedTarget as Node | null;
-              if (nextTarget && territoryRef.current?.contains(nextTarget)) {
-                return;
-              }
-              setIsTerritoryOpen(false);
-            }}
-          >
-            <span className="field-label">Branch</span>
-            <button
-              type="button"
-              className={
-                isTerritoryOpen
-                  ? "field-input territory-trigger territory-trigger-open"
-                  : "field-input territory-trigger"
-              }
-              aria-haspopup="listbox"
-              aria-expanded={isTerritoryOpen}
-              onClick={() => setIsTerritoryOpen((prev) => !prev)}
-            >
-              <span
-                className={
-                  selectedTerritories.length > 0
-                    ? "territory-trigger-value"
-                    : "territory-trigger-placeholder"
-                }
-              >
-                {selectedTerritories.length > 0
-                  ? selectedTerritories.join(", ")
-                  : "Select branch"}
-              </span>
-              <span className="territory-trigger-icon">▾</span>
-            </button>
-            {isTerritoryOpen && (
-              <div
-                className="territory-dropdown"
-                role="listbox"
-                aria-multiselectable="true"
-              >
-                {territoryOptions.map((option) => {
-                  const checked = selectedTerritories.includes(option);
-                  return (
-                    <label
-                      key={option}
-                      className={
-                        checked
-                          ? "territory-option territory-option-active"
-                          : "territory-option"
-                      }
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          const next = e.target.checked
-                            ? [...selectedTerritories, option]
-                            : selectedTerritories.filter(
-                                (item) => item !== option
-                              );
-                          update({ territory: next.join(" · "), branches: next });
-                        }}
-                      />
-                      <span>{option}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="profile-save-row">
-        <button
-          type="button"
-          className="btn-primary btn-success"
-          onClick={() => {
-            props.onProfileChange(profile);
-            setSaveNotice("✓ Profile saved successfully!");
-            if (saveNoticeTimeout.current) {
-              clearTimeout(saveNoticeTimeout.current);
-            }
-            saveNoticeTimeout.current = setTimeout(() => {
-              setSaveNotice("");
-            }, 2000);
-          }}
-        >
-          Save Profile
-        </button>
-        {saveNotice && (
-          <span style={{ fontSize: 12, color: "#16a34a", marginLeft: 8 }}>
-            {saveNotice}
-          </span>
-        )}
-      </div>
-      </>
-      )}
+      <style jsx>{`
+        .pf-page { position: relative; max-width: 1180px; }
+        .pf-watermark {
+          position: absolute; inset: 0; z-index: 0; pointer-events: none;
+          background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png") center 24% / min(700px, 62%) no-repeat;
+          opacity: 0.05;
+        }
+        .pf-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
+        @media (max-width: 820px) { .pf-grid { grid-template-columns: 1fr; } }
+        .pf-card { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: 18px; padding: 24px; }
+        .pf-photo-card { display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .pf-photo-title { align-self: flex-start; font-size: 15px; font-weight: 800; color: var(--text-primary); margin-bottom: 18px; }
+        .pf-avatar {
+          width: 150px; height: 150px; border-radius: 50%; overflow: hidden;
+          background: linear-gradient(150deg, #e01418, #9a0002);
+          display: flex; align-items: center; justify-content: center;
+          color: #fff; font-size: 46px; font-weight: 800; letter-spacing: 0.02em;
+          box-shadow: 0 10px 28px rgba(202,0,2,0.3);
+        }
+        .pf-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .pf-upload {
+          margin-top: 20px; padding: 11px 22px; border-radius: 999px;
+          background: var(--surface-muted); color: var(--text-primary);
+          border: 1px solid var(--border-default); font-size: 14px; font-weight: 700; cursor: pointer;
+          transition: background 0.15s, border-color 0.15s;
+        }
+        .pf-upload:hover { background: var(--surface-subtle); border-color: var(--border-strong); }
+        .pf-hint { margin-top: 16px; font-size: 13px; color: var(--text-muted); line-height: 1.5; max-width: 260px; }
+        .pf-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 22px; }
+        .pf-field { display: flex; flex-direction: column; position: relative; }
+        .pf-label { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+        .pf-input {
+          padding: 13px 16px; border-radius: 10px; font-size: 15px;
+          background: var(--surface-subtle); color: var(--text-primary);
+          border: 1px solid var(--border-default); outline: none;
+        }
+        .pf-input:focus { border-color: rgba(224,20,24,0.6); }
+        .pf-input--disabled { color: var(--text-muted); cursor: not-allowed; }
+        .pf-help { margin-top: 7px; font-size: 12.5px; color: var(--text-muted); }
+        .pf-save-row { margin-top: 24px; display: flex; align-items: center; gap: 12px; }
+        .pf-save {
+          padding: 14px 34px; border-radius: 12px; border: none; cursor: pointer;
+          background: linear-gradient(90deg, #b30002, #e01418); color: #fff;
+          font-size: 15px; font-weight: 800; box-shadow: 0 4px 14px rgba(202,0,2,0.3);
+        }
+        .pf-notice { font-size: 13px; color: #10b981; font-weight: 600; }
+      `}</style>
     </div>
   );
 }

@@ -768,10 +768,10 @@ export function AppsToolManagement() {
   return (
     <div>
       {/* Category Management Section */}
-      <div className="panel" style={{ marginBottom: 24, background: '#f9fafb' }}>
+      <div className="panel" style={{ marginBottom: 24, background: 'var(--surface-subtle)' }}>
         <div className="panel-header">
           <div className="panel-header-row">
-            <span style={{ fontWeight: 600, fontSize: 16 }}>📁 Category Management</span>
+            <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>📁 Category Management</span>
             <button type="button" className="btn-primary btn-success" onClick={() => setIsCreatingCategory(true)}>
               + Create Category
             </button>

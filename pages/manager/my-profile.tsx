@@ -41,7 +41,7 @@ const MyProfilePage: NextPage = () => {
 
   if (!profile || !user) {
     return (
-      <SalesTeamLeadLayout currentView="my-profile" pageTitle="Profile">
+      <SalesTeamLeadLayout currentView="my-profile" pageTitle="Profile" pageSubtitle="How you appear across Miller Storm">
         <div style={{ padding: 24, textAlign: 'center' }}>Loading...</div>
       </SalesTeamLeadLayout>
     );

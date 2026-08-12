@@ -2140,7 +2140,9 @@ body {
 }
 .field-input {
   border-radius: 8px;
-  border: 1px solid #d4d4d8;
+  border: 1px solid var(--border-default);
+  background-color: var(--surface-subtle);
+  color: var(--text-primary);
   padding: 8px 10px;
   font-size: 14px;
   font-family: inherit;
@@ -2230,7 +2232,7 @@ body {
 }
 
 .territory-option-active {
-  background-color: #fef2f2;
+  background-color: rgba(202, 0, 2, 0.12);
 }
 
 .field-inline {
