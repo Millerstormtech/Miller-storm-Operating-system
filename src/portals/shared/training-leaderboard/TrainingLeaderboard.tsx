@@ -374,8 +374,8 @@ export function TrainingLeaderboard() {
           position: absolute;
           inset: 0;
           z-index: -1;
-          background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png") center 32% / min(640px, 62%) no-repeat;
-          opacity: 0.09;
+          background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png") center 50% / min(860px, 70%) no-repeat;
+          opacity: 0.08;
           pointer-events: none;
         }
         .clb-head {

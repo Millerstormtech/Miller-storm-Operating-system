@@ -655,17 +655,18 @@ export function UserManagement(props: UserEditorProps) {
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
           letter-spacing: 0.02em;
         }
-        /* Faded brand logo centred in the page background. */
-        .admin-user-management .panel-right { position: relative; }
-        .admin-user-management .panel-right > * { position: relative; z-index: 1; }
-        .admin-user-management .panel-right::after {
+        /* Faded brand logo centred on the WHOLE page. The panels are opaque
+           cards, so a behind-content watermark would be hidden — instead this is
+           a very-low-opacity overlay centred on the page content area. */
+        .admin-user-management { position: relative; }
+        .admin-user-management::after {
           content: "";
           position: absolute;
           inset: 0;
-          z-index: 0;
+          z-index: 4;
           background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png")
-            center 50% / min(520px, 52%) no-repeat;
-          opacity: 0.07;
+            center 50% / min(820px, 58%) no-repeat;
+          opacity: 0.06;
           pointer-events: none;
         }
       `}</style>
