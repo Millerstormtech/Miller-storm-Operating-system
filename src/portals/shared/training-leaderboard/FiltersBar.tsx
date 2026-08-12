@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { BoardFilters } from "../../../lib/training/board";
 
 const selectStyle: React.CSSProperties = {
-  background: "#f9fafb",
+  background: "var(--surface-subtle)",
   border: "1px solid var(--border-default)",
   borderRadius: 8,
   padding: "6px 10px",
