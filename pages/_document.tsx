@@ -6,6 +6,14 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        {/* Apply the saved light/dark theme BEFORE first paint, on every page
+            (login included), so there's no flash and the choice is global. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('ms-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){}",
+          }}
+        />
         {/* PWA manifest (installability, icons, name, theme) */}
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#CB0002" />

@@ -334,32 +334,28 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           margin-bottom: 24px;
         }
 
-        /* Dark theme — follows the viewer's system setting */
-        @media (prefers-color-scheme: dark) {
-          .ms-auth {
-            --ms-bg: #0a0a0b;
-            --ms-glow: rgba(202, 0, 2, 0.22);
-            --ms-card: rgba(26, 26, 28, 0.55);
-            --ms-card-border: rgba(255, 255, 255, 0.08);
-            --ms-card-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
-            --ms-text: #f5f5f7;
-            --ms-muted: #9aa0a6;
-            --ms-input-bg: rgba(0, 0, 0, 0.35);
-            --ms-input-border: rgba(255, 255, 255, 0.1);
-            --ms-input-text: #f5f5f7;
-            --ms-placeholder: #6b7280;
-            --ms-wm-opacity: 0.14;
-            --ms-glass-blur: 22px;
-            --ms-good: #34d399;
-          }
-          /* Logo keeps its white chip in dark mode too, so it looks identical to
-             light mode — no inversion. */
-          .ms-auth__watermark {
-            filter: saturate(1.4);
-          }
-          .ms-auth__select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239aa0a6' d='M6 8 0 0h12z'/%3E%3C/svg%3E");
-          }
+        /* Dark theme — follows the app-wide toggle (data-theme on <html>). */
+        html[data-theme="dark"] .ms-auth {
+          --ms-bg: #0a0a0b;
+          --ms-glow: rgba(202, 0, 2, 0.22);
+          --ms-card: rgba(26, 26, 28, 0.55);
+          --ms-card-border: rgba(255, 255, 255, 0.08);
+          --ms-card-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+          --ms-text: #f5f5f7;
+          --ms-muted: #9aa0a6;
+          --ms-input-bg: rgba(0, 0, 0, 0.35);
+          --ms-input-border: rgba(255, 255, 255, 0.1);
+          --ms-input-text: #f5f5f7;
+          --ms-placeholder: #6b7280;
+          --ms-wm-opacity: 0.14;
+          --ms-glass-blur: 22px;
+          --ms-good: #34d399;
+        }
+        html[data-theme="dark"] .ms-auth__watermark {
+          filter: saturate(1.4);
+        }
+        html[data-theme="dark"] .ms-auth__select {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239aa0a6' d='M6 8 0 0h12z'/%3E%3C/svg%3E");
         }
 
         @media (prefers-reduced-motion: reduce) {

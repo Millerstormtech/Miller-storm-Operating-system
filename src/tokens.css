@@ -69,3 +69,40 @@
   --border-subtle:  var(--gray-100);  /* (26) */
   --border-strong:  var(--gray-800);  /* (18) */
 }
+
+/* =============================================================================
+   DARK THEME — activated app-wide by the header toggle (data-theme="dark" on
+   <html>, persisted in localStorage and set early in _document). Only the
+   SEMANTIC jobs are re-pointed, so every component built on the tokens flips
+   together. The light block above (bare :root) is untouched, so light mode is
+   exactly as before.
+   ============================================================================= */
+:root[data-theme="dark"] {
+  /* Text — the darkness scale inverts for a dark ground. */
+  --text-primary:   #f4f5f7;
+  --text-secondary: #e6e8ec;
+  --text-tertiary:  #ccd1d7;
+  --text-muted:     #9aa1a8;
+  --text-subtle:    #6c7278;
+  --text-inverse:   #ffffff;  /* text on a dark surface (e.g. sidebar) — stays light */
+
+  /* Surfaces */
+  --surface-default:        #17181b;  /* cards, panels */
+  --surface-subtle:         #0e0f11;  /* page ground, zebra rows */
+  --surface-muted:          #24262b;  /* wells, inactive chips */
+  --surface-inverse:        #050506;  /* dark sidebar — darker still */
+  --surface-inverse-raised: #1d1f23;
+
+  /* Borders */
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-subtle:  rgba(255, 255, 255, 0.06);
+  --border-strong:  rgba(255, 255, 255, 0.24);
+
+  /* Channel forms used with slash-alpha — re-pointed so translucent fills read
+     on a dark ground. */
+  --gray-100-rgb: 23 24 27;
+  --gray-500-rgb: 154 161 168;
+  --gray-800-rgb: 36 38 43;
+  --gray-900-rgb: 14 15 17;
+  --white-rgb:    23 24 27;
+}
