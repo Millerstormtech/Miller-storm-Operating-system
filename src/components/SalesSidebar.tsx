@@ -61,7 +61,7 @@ export function SalesSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesS
               negative bottom margin pulls the menu up under it, so without
               pointer-events:none the invisible overlap swallows clicks meant for
               the first menu item. */}
-          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40, pointerEvents: 'none' }} />
+          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40, pointerEvents: 'none', filter: 'brightness(0.82)' }} />
         </div>
       }
       items={sidebarItems}
