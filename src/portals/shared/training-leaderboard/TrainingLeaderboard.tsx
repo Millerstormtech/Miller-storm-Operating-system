@@ -373,6 +373,9 @@ export function TrainingLeaderboard() {
           justify-content: space-between;
           gap: 16px;
           flex-wrap: wrap;
+          /* Match the standard page-title band (PageHeader: 20px 24px 0) so this
+             title sits in the same spot as e.g. User Management. */
+          padding: 20px 24px 0;
           margin-bottom: 6px;
         }
         .clb-title {
@@ -416,7 +419,8 @@ export function TrainingLeaderboard() {
         .clb-meta {
           font-size: 12px;
           color: var(--text-muted);
-          margin: 10px 0 16px;
+          padding-left: 24px;
+          margin: 6px 0 16px;
         }
         .clb-section {
           font-size: 15px;
