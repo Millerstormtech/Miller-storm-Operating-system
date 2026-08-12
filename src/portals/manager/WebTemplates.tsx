@@ -71,7 +71,7 @@ export function WebTemplatesPage(props: {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 720 }}>
               <thead>
-                <tr style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>
+                <tr style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>
                   <th style={{ padding: "8px 12px", textAlign: "left" }}>Rep</th>
                   <th style={{ padding: "8px 12px", textAlign: "left" }}>Web Page URL</th>
                   <th style={{ padding: "8px 12px", textAlign: "center" }}>Status</th>
@@ -90,13 +90,13 @@ export function WebTemplatesPage(props: {
                     <tr
                       key={rep.id}
                       style={{
-                        borderTop: index === 0 ? "1px solid #e5e7eb" : "none",
-                        borderBottom: "1px solid #e5e7eb"
+                        borderTop: index === 0 ? "1px solid var(--border-default)" : "none",
+                        borderBottom: "1px solid var(--border-default)"
                       }}
                     >
                       <td style={{ padding: "10px 12px", fontSize: 13 }}>
                         <div style={{ fontWeight: 600 }}>{rep.name}</div>
-                        <div style={{ fontSize: 12, color: "#6b7280" }}>{rep.email}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rep.email}</div>
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12 }}>
                         <a 

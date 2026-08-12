@@ -262,19 +262,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 10001, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
           onClick={() => setBioPrompt(false)}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, maxWidth: 360, width: "100%", padding: "28px 24px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface-default)", borderRadius: 16, maxWidth: 360, width: "100%", padding: "28px 24px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
             <div style={{ fontSize: 44, marginBottom: 10 }}>🔐</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
               Enable {biometricLabel()} login?
             </div>
-            <div style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.55, marginBottom: 22 }}>
+            <div style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.55, marginBottom: 22 }}>
               Sign in faster next time with your {biometricLabel().toLowerCase()} — no password needed. You can turn this off anytime.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setBioPrompt(false)}
-                style={{ flex: 1, padding: "12px", borderRadius: 999, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+                style={{ flex: 1, padding: "12px", borderRadius: 999, border: "1px solid var(--border-default)", background: "var(--surface-default)", color: "var(--text-tertiary)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
               >
                 Not now
               </button>
@@ -290,7 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     );
                   }
                 }}
-                style={{ flex: 1, padding: "12px", borderRadius: 999, border: "none", background: "#CB0002", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                style={{ flex: 1, padding: "12px", borderRadius: 999, border: "none", background: "#CB0002", color: "var(--text-inverse)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
               >
                 Enable
               </button>

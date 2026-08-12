@@ -81,7 +81,7 @@ export function AppDialogs() {
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 10,
-                background: "#fff",
+                background: "var(--surface-default)",
                 borderRadius: 12,
                 padding: "12px 14px",
                 borderLeft: `4px solid ${tone.bar}`,
@@ -96,7 +96,7 @@ export function AppDialogs() {
                   height: 20,
                   borderRadius: 999,
                   background: tone.bar,
-                  color: "#fff",
+                  color: "var(--text-inverse)",
                   fontSize: 13,
                   fontWeight: 800,
                   display: "flex",
@@ -107,7 +107,7 @@ export function AppDialogs() {
               >
                 {tone.icon}
               </span>
-              <span style={{ fontSize: 14, color: "#111827", lineHeight: 1.4, whiteSpace: "pre-line" }}>
+              <span style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.4, whiteSpace: "pre-line" }}>
                 {t.message}
               </span>
             </div>
@@ -124,7 +124,7 @@ export function AppDialogs() {
             position: "fixed",
             inset: 0,
             zIndex: 100001,
-            background: "rgba(17,24,39,0.55)",
+            background: "rgb(var(--gray-900-rgb) / 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -137,14 +137,14 @@ export function AppDialogs() {
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "min(94vw, 420px)",
-              background: "#fff",
+              background: "var(--surface-default)",
               borderRadius: 16,
               boxShadow: "0 24px 60px rgba(0,0,0,0.28)",
               padding: 24,
               animation: "msos-pop-in 160ms cubic-bezier(0.2,0.9,0.3,1.2)",
             }}
           >
-            <div style={{ fontSize: 15, color: "#111827", lineHeight: 1.5, whiteSpace: "pre-line", fontWeight: 500 }}>
+            <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.5, whiteSpace: "pre-line", fontWeight: 500 }}>
               {confirmState.message}
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
@@ -155,8 +155,8 @@ export function AppDialogs() {
                   padding: "9px 18px",
                   borderRadius: 24,
                   border: "1px solid #d1d5db",
-                  background: "#fff",
-                  color: "#374151",
+                  background: "var(--surface-default)",
+                  color: "var(--text-tertiary)",
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -173,7 +173,7 @@ export function AppDialogs() {
                   borderRadius: 24,
                   border: "none",
                   background: "#CB0002",
-                  color: "#fff",
+                  color: "var(--text-inverse)",
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: "pointer",

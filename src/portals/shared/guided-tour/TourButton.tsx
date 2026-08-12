@@ -19,7 +19,7 @@ export function TourButton() {
         borderRadius: "50%",
         border: "none",
         background: "#6366f1",
-        color: "#fff",
+        color: "var(--text-inverse)",
         fontSize: 15,
         fontWeight: 700,
         lineHeight: 1,

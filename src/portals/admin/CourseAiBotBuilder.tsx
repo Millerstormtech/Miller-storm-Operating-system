@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { appConfirm } from "../../lib/appDialogs";
 import dynamic from "next/dynamic";
 
-const WorldMap = dynamic(() => import("../../components/WorldMap"), { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "#f3f4f6", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: "13px" }}>Loading map...</div> });
+const WorldMap = dynamic(() => import("../../components/WorldMap"), { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "var(--surface-subtle)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-subtle)", fontSize: "13px" }}>Loading map...</div> });
 
 type Course = {
   id: string; title: string;
@@ -28,11 +28,11 @@ type CourseBot = {
 
 type CourseBotView = "overview" | "chat-history" | "live-chat" | "courses" | "tune" | "test" | "appearance" | "settings";
 
-const card: React.CSSProperties = { background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "20px 24px" };
+const card: React.CSSProperties = { background: "var(--surface-default)", borderRadius: "12px", border: "1px solid var(--border-default)", padding: "20px 24px" };
 const btn: React.CSSProperties = { padding: "9px 18px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 600 };
-const btnPrimary: React.CSSProperties = { ...btn, background: "#1f2937", color: "#fff" };
-const btnSecondary: React.CSSProperties = { ...btn, background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", outline: "none", boxSizing: "border-box", marginBottom: "12px" };
+const btnPrimary: React.CSSProperties = { ...btn, background: "var(--surface-inverse-raised)", color: "var(--text-inverse)" };
+const btnSecondary: React.CSSProperties = { ...btn, background: "var(--surface-subtle)", color: "var(--text-tertiary)", border: "1px solid var(--border-default)" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid var(--border-default)", borderRadius: "8px", fontSize: "13px", outline: "none", boxSizing: "border-box", marginBottom: "12px" };
 
 function useSaved() {
   const [saved, setSaved] = useState(false);
@@ -75,8 +75,8 @@ function EditableBotName({ bot, onSave }: { bot: CourseBot; onSave: (u: Partial<
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: "12px" }}>
-      <div style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937", flex: 1 }}>{bot.botTitle || bot.name}</div>
-      <button onClick={() => { setDraft(bot.botTitle || bot.name); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#6b7280" }} title="Edit name">✏️</button>
+      <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-secondary)", flex: 1 }}>{bot.botTitle || bot.name}</div>
+      <button onClick={() => { setDraft(bot.botTitle || bot.name); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-muted)" }} title="Edit name">✏️</button>
     </div>
   );
 }
@@ -150,32 +150,32 @@ export function CourseAiBotBuilder() {
     return (
       <div style={{ display: "flex", height: "calc(100vh - 64px)", overflow: "hidden" }}>
         {/* Sidebar */}
-        <div style={{ width: 240, background: "#fff", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
-            <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>← All Bots</button>
+        <div style={{ width: 240, background: "var(--surface-default)", borderRight: "1px solid var(--border-default)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-default)" }}>
+            <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>← All Bots</button>
             <EditableBotName bot={selected} onSave={saveBot} />
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: (selected.status || 'draft') === 'draft' ? '#1f2937' : '#9ca3af' }}>Draft</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: (selected.status || 'draft') === 'draft' ? 'var(--text-secondary)' : 'var(--text-subtle)' }}>Draft</span>
               <div onClick={() => saveBot({ status: (selected.status || 'draft') === 'published' ? 'draft' : 'published' })}
                 style={{ width: 44, height: 24, borderRadius: 12, cursor: "pointer", background: (selected.status || 'draft') === 'published' ? '#10b981' : '#d1d5db', position: "relative", transition: "all 0.3s" }}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: (selected.status || 'draft') === 'published' ? 22 : 2, transition: "all 0.3s", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }} />
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--surface-default)", position: "absolute", top: 2, left: (selected.status || 'draft') === 'published' ? 22 : 2, transition: "all 0.3s", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }} />
               </div>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: (selected.status || 'draft') === 'published' ? '#10b981' : '#9ca3af' }}>Published</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: (selected.status || 'draft') === 'published' ? '#10b981' : 'var(--text-subtle)' }}>Published</span>
             </div>
           </div>
           <nav style={{ padding: "8px 0", flex: 1, overflowY: "auto" }}>
             {navItems.map(item => (
               <div key={item.id}>
-                {item.section && <div style={{ padding: "14px 20px 6px", fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.1em" }}>{item.section}</div>}
+                {item.section && <div style={{ padding: "14px 20px 6px", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", letterSpacing: "0.1em" }}>{item.section}</div>}
                 <button onClick={() => setActiveTab(item.id)}
-                  style={{ width: "100%", textAlign: "left", padding: "11px 20px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: activeTab === item.id ? 600 : 500, background: activeTab === item.id ? "#f3f4f6" : "transparent", color: activeTab === item.id ? "#1f2937" : "#4b5563", borderLeft: activeTab === item.id ? "3px solid #1f2937" : "3px solid transparent", display: "flex", alignItems: "center", gap: "10px" }}>
+                  style={{ width: "100%", textAlign: "left", padding: "11px 20px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: activeTab === item.id ? 600 : 500, background: activeTab === item.id ? "var(--surface-subtle)" : "transparent", color: activeTab === item.id ? "var(--text-secondary)" : "#4b5563", borderLeft: activeTab === item.id ? "3px solid var(--border-strong)" : "3px solid transparent", display: "flex", alignItems: "center", gap: "10px" }}>
                   <span style={{ fontSize: 17 }}>{item.icon}</span>{item.label}
                 </button>
               </div>
             ))}
           </nav>
-          <div style={{ padding: "16px 20px", borderTop: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: "12px", color: "#9ca3af" }}>{selected.totalMessages || 0} messages</div>
+          <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border-default)" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-subtle)" }}>{selected.totalMessages || 0} messages</div>
           </div>
         </div>
 
@@ -199,15 +199,15 @@ export function CourseAiBotBuilder() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
           <h2 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>Course Bots</h2>
-          <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: "14px" }}>Bots trained on your course content</p>
+          <p style={{ color: "var(--text-muted)", margin: "4px 0 0", fontSize: "14px" }}>Bots trained on your course content</p>
         </div>
         <button onClick={() => setShowCreate(true)} style={btnPrimary}>+ Create Bot</button>
       </div>
 
       {bots.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 20px", color: "#9ca3af" }}>
+        <div style={{ textAlign: "center", padding: "80px 20px", color: "var(--text-subtle)" }}>
           <div style={{ fontSize: "56px", marginBottom: "16px" }}>🎓</div>
-          <div style={{ fontSize: "18px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>No course bots yet</div>
+          <div style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-tertiary)", marginBottom: "8px" }}>No course bots yet</div>
           <div style={{ fontSize: "14px", marginBottom: "24px" }}>Create a bot and train it with your course content</div>
           <button onClick={() => setShowCreate(true)} style={btnPrimary}>Create Bot</button>
         </div>
@@ -215,15 +215,15 @@ export function CourseAiBotBuilder() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
           {bots.map(bot => (
             <div key={bot.id} onClick={() => { setSelected(bot); setActiveTab("courses"); }}
-              style={{ background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "20px", cursor: "pointer", position: "relative" }}
+              style={{ background: "var(--surface-default)", borderRadius: "12px", border: "1px solid var(--border-default)", padding: "20px", cursor: "pointer", position: "relative" }}
               onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)")}
               onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: bot.colorTheme || "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "18px" }}>🎓</div>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: bot.colorTheme || "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-inverse)", fontSize: "18px" }}>🎓</div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: "15px" }}>{bot.botTitle || bot.name}</div>
-                    <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>{bot.selectedPages?.length || 0} lessons · {bot.totalMessages || 0} messages</div>
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>{bot.selectedPages?.length || 0} lessons · {bot.totalMessages || 0} messages</div>
                   </div>
                 </div>
                 <button onClick={e => { e.stopPropagation(); deleteBot(bot.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px" }}>🗑</button>
@@ -248,9 +248,9 @@ export function CourseAiBotBuilder() {
 
       {showCreate && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: "14px", padding: "28px", width: "400px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+          <div style={{ background: "var(--surface-default)", borderRadius: "14px", padding: "28px", width: "400px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <h3 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>Create Course Bot</h3>
-            <p style={{ margin: "0 0 20px", color: "#6b7280", fontSize: "14px" }}>Give your course bot a name</p>
+            <p style={{ margin: "0 0 20px", color: "var(--text-muted)", fontSize: "14px" }}>Give your course bot a name</p>
             <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && createBot()} placeholder="e.g. Sales Training Bot" style={inputStyle} />
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px" }}>
               <button onClick={() => { setShowCreate(false); setNewName(""); }} style={btnSecondary}>Cancel</button>
@@ -333,10 +333,10 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Add Courses</h2>
-          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Select lessons to train this bot. The bot will only answer questions based on selected content.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "14px", margin: 0 }}>Select lessons to train this bot. The bot will only answer questions based on selected content.</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {totalSelected > 0 && <span style={{ fontSize: "13px", color: "#6b7280" }}>{totalSelected} lesson{totalSelected !== 1 ? "s" : ""} selected</span>}
+          {totalSelected > 0 && <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>{totalSelected} lesson{totalSelected !== 1 ? "s" : ""} selected</span>}
           <button onClick={save} disabled={saving || trainStatus === "saving"}
             style={{ ...btnPrimary, opacity: saving || trainStatus === "saving" ? 0.7 : 1 }}>
             {trainStatus === "saving" || saving ? "Training..." : trainStatus === "done" ? "✓ Trained!" : "Save & Train"}
@@ -362,9 +362,9 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
       )}
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#9ca3af" }}>Loading courses...</div>
+        <div style={{ textAlign: "center", padding: "60px", color: "var(--text-subtle)" }}>Loading courses...</div>
       ) : courses.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "60px", color: "#9ca3af" }}>No courses found. Create courses first in Course Management.</div>
+        <div style={{ ...card, textAlign: "center", padding: "60px", color: "var(--text-subtle)" }}>No courses found. Create courses first in Course Management.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {courses.map(course => {
@@ -377,7 +377,7 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
             return (
               <div key={course.id} style={{ ...card, padding: 0, overflow: "hidden", opacity: hasNoPages ? 0.6 : 1 }}>
                 {/* Course header */}
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 20px", background: "#f8fafc", borderBottom: isExpanded ? "1px solid #e5e7eb" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 20px", background: "#f8fafc", borderBottom: isExpanded ? "1px solid var(--border-default)" : "none" }}>
                   <input type="checkbox" checked={isCourseChecked} onChange={() => !hasNoPages && toggleCourse(course.id, course)}
                     disabled={hasNoPages}
                     style={{ width: 16, height: 16, accentColor: "#3b82f6", cursor: hasNoPages ? "not-allowed" : "pointer", flexShrink: 0 }} />
@@ -385,12 +385,12 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
                     disabled={hasNoPages}
                     style={{ background: "none", border: "none", cursor: hasNoPages ? "default" : "pointer", flex: 1, textAlign: "left", display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ fontSize: "18px" }}>📚</span>
-                    <span style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937" }}>{course.title}</span>
+                    <span style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-secondary)" }}>{course.title}</span>
                     {hasNoPages
                       ? <span style={{ fontSize: "11px", color: "#f59e0b", marginLeft: "auto", background: "#fef3c7", padding: "2px 8px", borderRadius: 6 }}>No lessons</span>
-                      : <span style={{ fontSize: "12px", color: selectedInCourse > 0 ? "#3b82f6" : "#9ca3af", marginLeft: "auto", fontWeight: selectedInCourse > 0 ? 600 : 400 }}>{selectedInCourse}/{coursePageCount} lessons</span>
+                      : <span style={{ fontSize: "12px", color: selectedInCourse > 0 ? "#3b82f6" : "var(--text-subtle)", marginLeft: "auto", fontWeight: selectedInCourse > 0 ? 600 : 400 }}>{selectedInCourse}/{coursePageCount} lessons</span>
                     }
-                    {!hasNoPages && <span style={{ color: "#9ca3af", fontSize: "12px" }}>{isExpanded ? "▲" : "▼"}</span>}
+                    {!hasNoPages && <span style={{ color: "var(--text-subtle)", fontSize: "12px" }}>{isExpanded ? "▲" : "▼"}</span>}
                   </button>
                 </div>
 
@@ -404,7 +404,7 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
                         <input type="checkbox" checked={selectedPages.has(page.id)} onChange={() => togglePage(page.id)}
                           style={{ width: 14, height: 14, accentColor: "#3b82f6", cursor: "pointer" }} />
                         <span style={{ fontSize: "14px" }}>📄</span>
-                        <span style={{ fontSize: "13px", color: "#374151" }}>{page.title}</span>
+                        <span style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>{page.title}</span>
                         {page.transcript && <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "auto" }}>✓ transcript</span>}
                       </label>
                     ))}
@@ -417,8 +417,8 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
                             <input type="checkbox" checked={isFolderChecked} onChange={() => toggleFolder(folder.id, course)}
                               style={{ width: 15, height: 15, accentColor: "#3b82f6", cursor: "pointer" }} />
                             <span style={{ fontSize: "15px" }}>📁</span>
-                            <span style={{ fontWeight: 600, fontSize: "13px", color: "#374151" }}>{folder.title}</span>
-                            <span style={{ fontSize: "11px", color: "#9ca3af" }}>({folderPages.filter(p => selectedPages.has(p.id)).length}/{folderPages.length})</span>
+                            <span style={{ fontWeight: 600, fontSize: "13px", color: "var(--text-tertiary)" }}>{folder.title}</span>
+                            <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>({folderPages.filter(p => selectedPages.has(p.id)).length}/{folderPages.length})</span>
                           </div>
                           {folderPages.map(page => (
                             <label key={page.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "7px 20px 7px 60px", cursor: "pointer" }}
@@ -427,7 +427,7 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
                               <input type="checkbox" checked={selectedPages.has(page.id)} onChange={() => togglePage(page.id)}
                                 style={{ width: 14, height: 14, accentColor: "#3b82f6", cursor: "pointer" }} />
                               <span style={{ fontSize: "13px" }}>📄</span>
-                              <span style={{ fontSize: "13px", color: "#374151" }}>{page.title}</span>
+                              <span style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>{page.title}</span>
                               {page.transcript && <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "auto" }}>✓ transcript</span>}
                             </label>
                           ))}
@@ -468,16 +468,16 @@ function TunePanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: Partia
 
       <div style={{ ...card, marginBottom: "20px" }}>
         <div style={{ fontWeight: 600, marginBottom: "4px" }}>AI Creativity</div>
-        <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "12px" }}>Lower = more focused, Higher = more creative</p>
-        <input type="range" min={0} max={100} value={creativity} onChange={e => setCreativity(Number(e.target.value))} style={{ width: "100%", accentColor: "#1f2937" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
-          <span>0%</span><span style={{ fontWeight: 600, color: "#1f2937" }}>{creativity}%</span><span>100%</span>
+        <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "12px" }}>Lower = more focused, Higher = more creative</p>
+        <input type="range" min={0} max={100} value={creativity} onChange={e => setCreativity(Number(e.target.value))} style={{ width: "100%", accentColor: "var(--gray-800) /* no semantic: gray-800 as accent-color (no MAP category) */" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
+          <span>0%</span><span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>{creativity}%</span><span>100%</span>
         </div>
       </div>
 
       <div style={card}>
         <div style={{ fontWeight: 600, marginBottom: "4px" }}>AI Instruction Prompt</div>
-        <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "12px" }}>Define how the bot should behave with course content</p>
+        <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "12px" }}>Define how the bot should behave with course content</p>
         <textarea value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)}
           placeholder="e.g. You are a helpful course assistant. Only answer questions related to the course content provided."
           style={{ ...inputStyle, minHeight: "160px", resize: "vertical" } as any} />
@@ -505,24 +505,24 @@ function AppearancePanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
     <div style={{ padding: "32px" }}>
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "24px" }}>Appearance</h2>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "#e5e7eb", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb", marginBottom: "20px" }}>
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "var(--surface-muted)", borderRadius: "12px", overflow: "hidden", border: "1px solid var(--border-default)", marginBottom: "20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={{ fontWeight: 600, marginBottom: "8px" }}>Bot Title</div>
           <input value={botTitle} onChange={e => setBotTitle(e.target.value)} style={inputStyle} placeholder="Course AI Assistant" />
         </div>
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={{ fontWeight: 600, marginBottom: "8px" }}>Welcome Message</div>
           <input value={welcomeMessage} onChange={e => setWelcomeMessage(e.target.value)} style={inputStyle} placeholder="Hi! Ask me anything about this course." />
         </div>
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={{ fontWeight: 600, marginBottom: "8px" }}>Input Placeholder</div>
           <input value={placeholder} onChange={e => setPlaceholder(e.target.value)} style={inputStyle} placeholder="Ask about the course..." />
         </div>
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={{ fontWeight: 600, marginBottom: "12px" }}>Color Theme</div>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             {COLOR_THEMES.map(c => (
-              <button key={c} onClick={() => setColorTheme(c)} style={{ width: 36, height: 36, borderRadius: "50%", background: c, border: "none", cursor: "pointer", boxShadow: colorTheme === c ? `0 0 0 2px #fff, 0 0 0 4px ${c}` : "none" }} />
+              <button key={c} onClick={() => setColorTheme(c)} style={{ width: 36, height: 36, borderRadius: "50%", background: c, border: "none", cursor: "pointer", boxShadow: colorTheme === c ? `0 0 0 2px var(--white) /* no semantic: white as border (box-shadow ring) */, 0 0 0 4px ${c}` : "none" }} />
             ))}
           </div>
         </div>
@@ -576,22 +576,22 @@ function CourseOverviewPanel({ bot }: { bot: CourseBot }) {
 
   return (
     <div style={{ padding: "32px" }}>
-      <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "24px", color: "#1f2937" }}>Overview</h2>
+      <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "24px", color: "var(--text-secondary)" }}>Overview</h2>
 
       {/* 3 stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "20px" }}>
         {statCards.map((c, i) => (
-          <div key={i} style={{ background: "#fff", borderRadius: "14px", padding: "22px 24px", border: "1px solid #e5e7eb", position: "relative", minHeight: "120px" }}>
+          <div key={i} style={{ background: "var(--surface-default)", borderRadius: "14px", padding: "22px 24px", border: "1px solid var(--border-default)", position: "relative", minHeight: "120px" }}>
             {c.corner && <div style={{ position: "absolute", top: "16px", right: "16px", fontSize: "18px", color: "#d1d5db" }}>{c.corner}</div>}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>{c.icon}</div>
-              <span style={{ fontSize: "13px", color: "#9ca3af" }}>{c.label}</span>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>{c.icon}</div>
+              <span style={{ fontSize: "13px", color: "var(--text-subtle)" }}>{c.label}</span>
             </div>
             <div style={{ display: "flex", gap: "32px" }}>
               {c.values.map((v, vi) => (
                 <div key={vi}>
-                  <div style={{ fontSize: "28px", fontWeight: 700, color: "#1f2937", lineHeight: 1 }}>{v.num}</div>
-                  <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>{v.sub}</div>
+                  <div style={{ fontSize: "28px", fontWeight: 700, color: "var(--text-secondary)", lineHeight: 1 }}>{v.num}</div>
+                  <div style={{ fontSize: "12px", color: "var(--text-subtle)", marginTop: "4px" }}>{v.sub}</div>
                 </div>
               ))}
             </div>
@@ -600,11 +600,11 @@ function CourseOverviewPanel({ bot }: { bot: CourseBot }) {
       </div>
 
       {/* World map card */}
-      <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "22px 24px", overflow: "hidden" }}>
+      <div style={{ background: "var(--surface-default)", borderRadius: "14px", border: "1px solid var(--border-default)", padding: "22px 24px", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>🌐</div>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>🌐</div>
           <div>
-            <div style={{ fontSize: "13px", color: "#9ca3af" }}>Popular Countries</div>
+            <div style={{ fontSize: "13px", color: "var(--text-subtle)" }}>Popular Countries</div>
             <div style={{ fontSize: "11px", color: "#d1d5db" }}>Last 28 days</div>
           </div>
         </div>
@@ -612,9 +612,9 @@ function CourseOverviewPanel({ bot }: { bot: CourseBot }) {
           <WorldMap />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
-          <span style={{ fontSize: "10px", color: "#9ca3af" }}>0</span>
+          <span style={{ fontSize: "10px", color: "var(--text-subtle)" }}>0</span>
           <div style={{ flex: 1, height: "5px", borderRadius: "3px", background: "linear-gradient(to right, #e0f2fe, #38bdf8, #818cf8, #f472b6, #fb923c, #4ade80)" }} />
-          <span style={{ fontSize: "10px", color: "#9ca3af" }}>∞</span>
+          <span style={{ fontSize: "10px", color: "var(--text-subtle)" }}>∞</span>
         </div>
       </div>
     </div>
@@ -624,7 +624,7 @@ function CourseOverviewPanel({ bot }: { bot: CourseBot }) {
 // ─── Chat History Panel ───────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
-  admin:   { bg: "#e5e7eb", color: "#1f2937" },
+  admin:   { bg: "#e5e7eb", color: "var(--text-secondary)" },
   sales:   { bg: "#dbeafe", color: "#1d4ed8" },
   "sales-team-lead": { bg: "#ede9fe", color: "#6d28d9" },
   marketing: { bg: "#fce7f3", color: "#be185d" },
@@ -632,7 +632,7 @@ const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
 
 function RoleBadge({ role }: { role: string }) {
   const r = role?.toLowerCase() || "";
-  const style = ROLE_COLORS[r] || { bg: "#f3f4f6", color: "#374151" };
+  const style = ROLE_COLORS[r] || { bg: "#f3f4f6", color: "var(--text-tertiary)" };
   return (
     <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: style.bg, color: style.color, textTransform: "capitalize" }}>
       {role || "—"}
@@ -690,11 +690,11 @@ function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
   // ── View single chat ──
   if (selected) return (
     <div style={{ padding: 32 }}>
-      <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 6 }}>← Back to Chat History</button>
+      <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 6 }}>← Back to Chat History</button>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{selected.title || "Untitled"}</div>
-          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
             {selected.userName} {selected.userEmail ? `· ${selected.userEmail}` : ""}
           </div>
         </div>
@@ -703,7 +703,7 @@ function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 700 }}>
         {(selected.messages || []).map((m: any, i: number) => (
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-            <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, fontSize: 14, lineHeight: 1.6, background: m.role === "user" ? "#1f2937" : "#f3f4f6", color: m.role === "user" ? "#fff" : "#1f2937", whiteSpace: "pre-wrap" }}>
+            <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, fontSize: 14, lineHeight: 1.6, background: m.role === "user" ? "var(--surface-inverse-raised)" : "var(--surface-subtle)", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
               {m.content}
             </div>
           </div>
@@ -713,28 +713,28 @@ function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
   );
 
   // ── Table view ──
-  const thStyle: React.CSSProperties = { padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.05em", textTransform: "uppercase", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" };
-  const tdStyle: React.CSSProperties = { padding: "14px 16px", fontSize: 13, color: "#374151", borderBottom: "1px solid #f3f4f6", verticalAlign: "middle" };
+  const thStyle: React.CSSProperties = { padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-subtle)", letterSpacing: "0.05em", textTransform: "uppercase", borderBottom: "1px solid var(--border-default)", whiteSpace: "nowrap" };
+  const tdStyle: React.CSSProperties = { padding: "14px 16px", fontSize: 13, color: "var(--text-tertiary)", borderBottom: "1px solid var(--border-subtle)", verticalAlign: "middle" };
 
   return (
     <div style={{ padding: 32 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Chat History</h2>
-          <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>All user conversations with this course bot</p>
+          <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>All user conversations with this course bot</p>
         </div>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search user or title..." style={{ ...inputStyle, maxWidth: 240, marginBottom: 0 }} />
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: 60, color: "#9ca3af" }}>Loading...</div>
+        <div style={{ textAlign: "center", padding: 60, color: "var(--text-subtle)" }}>Loading...</div>
       ) : filtered.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: 60, color: "#9ca3af" }}>
+        <div style={{ ...card, textAlign: "center", padding: 60, color: "var(--text-subtle)" }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
-          <div style={{ fontSize: 15, fontWeight: 500, color: "#374151" }}>No conversations yet</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: "var(--text-tertiary)" }}>No conversations yet</div>
         </div>
       ) : (
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden" }}>
+        <div style={{ background: "var(--surface-default)", borderRadius: 12, border: "1px solid var(--border-default)", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead style={{ background: "#f9fafb" }}>
               <tr>
@@ -757,21 +757,21 @@ function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
                 return (
                   <tr key={chat.chatId}
                     onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                    onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-default)")}>
                     <td style={tdStyle}>
                       <input type="checkbox" checked={checked.has(chat.chatId)} onChange={() => toggleOne(chat.chatId)} style={{ cursor: "pointer" }} />
                     </td>
                     <td style={tdStyle}>
                       <div style={{ fontWeight: 500 }}>{date}</div>
-                      <div style={{ fontSize: 12, color: "#9ca3af" }}>{time}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>{time}</div>
                     </td>
-                    <td style={{ ...tdStyle, maxWidth: 260, color: "#6b7280" }}>{lastMsg(chat)}</td>
+                    <td style={{ ...tdStyle, maxWidth: 260, color: "var(--text-muted)" }}>{lastMsg(chat)}</td>
                     <td style={tdStyle}>
                       <div style={{ fontWeight: 600 }}>{chat.userName || "—"}</div>
-                      {chat.userEmail && <div style={{ fontSize: 12, color: "#9ca3af" }}>{chat.userEmail}</div>}
+                      {chat.userEmail && <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>{chat.userEmail}</div>}
                     </td>
                     <td style={tdStyle}><RoleBadge role={chat.userRole} /></td>
-                    <td style={{ ...tdStyle, color: "#6b7280" }}>English</td>
+                    <td style={{ ...tdStyle, color: "var(--text-muted)" }}>English</td>
                     <td style={tdStyle}>
                       <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                         <span>🤖</span>
@@ -781,9 +781,9 @@ function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
                     <td style={{ ...tdStyle, textAlign: "center" }}>{chat.messages?.length || 0}</td>
                     <td style={tdStyle}>
                       <button onClick={() => setSelected(chat)}
-                        style={{ padding: "5px 14px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", fontSize: 13, cursor: "pointer", fontWeight: 500 }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "#f3f4f6")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                        style={{ padding: "5px 14px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--surface-default)", fontSize: 13, cursor: "pointer", fontWeight: 500 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-subtle)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-default)")}>
                         View
                       </button>
                     </td>
@@ -792,7 +792,7 @@ function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
               })}
             </tbody>
           </table>
-          <div style={{ padding: "10px 16px", fontSize: 12, color: "#9ca3af", borderTop: "1px solid #f3f4f6" }}>
+          <div style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-subtle)", borderTop: "1px solid var(--border-subtle)" }}>
             {filtered.length} conversation{filtered.length !== 1 ? "s" : ""}
           </div>
         </div>
@@ -864,24 +864,24 @@ function CourseLiveChatPanel({ bot }: { bot: CourseBot }) {
     <div style={{ padding: 32, height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Live Chat</h2>
-        <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>Chat with the course bot — conversations are saved to Chat History</p>
+        <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>Chat with the course bot — conversations are saved to Chat History</p>
       </div>
-      <div style={{ flex: 1, display: "flex", background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", minHeight: 500 }}>
+      <div style={{ flex: 1, display: "flex", background: "var(--surface-default)", borderRadius: 12, border: "1px solid var(--border-default)", overflow: "hidden", minHeight: 500 }}>
 
         {/* Sidebar */}
-        <div style={{ width: sidebarCollapsed ? 0 : 220, minWidth: sidebarCollapsed ? 0 : 220, borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s", flexShrink: 0 }}>
-          <div style={{ padding: 12, borderBottom: "1px solid #e5e7eb" }}>
-            <button onClick={startNewChat} style={{ width: "100%", padding: "8px 12px", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>✏️ New Chat</button>
+        <div style={{ width: sidebarCollapsed ? 0 : 220, minWidth: sidebarCollapsed ? 0 : 220, borderRight: "1px solid var(--border-default)", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s", flexShrink: 0 }}>
+          <div style={{ padding: 12, borderBottom: "1px solid var(--border-default)" }}>
+            <button onClick={startNewChat} style={{ width: "100%", padding: "8px 12px", background: "var(--surface-subtle)", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>✏️ New Chat</button>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
             {adminSessions.length === 0
-              ? <div style={{ padding: "16px 12px", color: "#9ca3af", fontSize: 12, textAlign: "center" }}>No chats yet</div>
+              ? <div style={{ padding: "16px 12px", color: "var(--text-subtle)", fontSize: 12, textAlign: "center" }}>No chats yet</div>
               : adminSessions.map(s => (
                 <div key={s.chatId} onClick={() => loadSession(s)}
-                  style={{ padding: "9px 10px", borderRadius: 8, cursor: "pointer", marginBottom: 2, background: currentChatId === s.chatId ? "#f3f4f6" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                  style={{ padding: "9px 10px", borderRadius: 8, cursor: "pointer", marginBottom: 2, background: currentChatId === s.chatId ? "var(--surface-subtle)" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {s.title || "Untitled"}</div>
-                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{new Date(s.updatedAt).toLocaleDateString()}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {s.title || "Untitled"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 2 }}>{new Date(s.updatedAt).toLocaleDateString()}</div>
                   </div>
                   <button onClick={e => deleteSession(s.chatId, e)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 13, padding: "2px 4px", flexShrink: 0 }}>🗑</button>
                 </div>
@@ -893,27 +893,27 @@ function CourseLiveChatPanel({ bot }: { bot: CourseBot }) {
         {/* Main chat */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "0 16px", background: theme, display: "flex", alignItems: "center", gap: 10, minHeight: 52, flexShrink: 0 }}>
-            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "rgba(255,255,255,0.8)", padding: 4 }}>☰</button>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎓</div>
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, flex: 1 }}>{bot.botTitle || bot.name}</span>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 12 }}>Admin</span>
+            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "rgb(var(--white-rgb) / 0.8)", padding: 4 }}>☰</button>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgb(var(--white-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎓</div>
+            <span style={{ color: "var(--text-inverse)", fontWeight: 700, fontSize: 14, flex: 1 }}>{bot.botTitle || bot.name}</span>
+            <span style={{ fontSize: 11, color: "rgb(var(--white-rgb) / 0.7)", background: "rgb(var(--white-rgb) / 0.15)", padding: "3px 10px", borderRadius: 12 }}>Admin</span>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
             {messages.length === 0 && (
-              <div style={{ textAlign: "center", color: "#9ca3af", marginTop: 40 }}>
+              <div style={{ textAlign: "center", color: "var(--text-subtle)", marginTop: 40 }}>
                 <div style={{ fontSize: 40, marginBottom: 8 }}>🎓</div>
                 <div style={{ fontSize: 15 }}>{bot.welcomeMessage || "Hi! Ask me anything about this course."}</div>
               </div>
             )}
             {messages.map((m, i) => (
               <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-                <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "#1f2937" : "#f3f4f6", color: m.role === "user" ? "#fff" : "#1f2937", fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{m.content}</div>
+                <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "var(--surface-inverse-raised)" : "var(--surface-subtle)", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-secondary)", fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{m.content}</div>
               </div>
             ))}
-            {loading && <div style={{ display: "flex" }}><div style={{ padding: "10px 14px", borderRadius: "18px 18px 18px 4px", background: "#f3f4f6", color: "#9ca3af", fontSize: 14 }}>Thinking...</div></div>}
+            {loading && <div style={{ display: "flex" }}><div style={{ padding: "10px 14px", borderRadius: "18px 18px 18px 4px", background: "var(--surface-subtle)", color: "var(--text-subtle)", fontSize: 14 }}>Thinking...</div></div>}
             <div ref={bottomRef} />
           </div>
-          <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border-default)", display: "flex", gap: 8 }}>
             <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()}
               placeholder={bot.placeholder || "Ask about the course..."}
               style={{ ...inputStyle, flex: 1, marginBottom: 0 }} />
@@ -960,33 +960,33 @@ function CourseTestPanel({ bot }: { bot: CourseBot }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Test Your Bot</h2>
-          <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>Test how your course bot responds</p>
+          <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>Test how your course bot responds</p>
         </div>
         <button onClick={() => setMessages([{ role: "assistant", content: bot.welcomeMessage || "Hi! Ask me anything about this course." }])} style={btnSecondary}>Clear</button>
       </div>
       <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-        <div style={{ width: "100%", maxWidth: 520, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: 500 }}>
+        <div style={{ width: "100%", maxWidth: 520, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid var(--border-default)", background: "var(--surface-default)", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: 500 }}>
           <div style={{ background: color, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎓</div>
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: 15, flex: 1 }}>{bot.botTitle || bot.name}</span>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgb(var(--white-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎓</div>
+            <span style={{ color: "var(--text-inverse)", fontWeight: 700, fontSize: 15, flex: 1 }}>{bot.botTitle || bot.name}</span>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 12, background: "#f8fafc" }}>
             {messages.map((m, i) => (
               <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8 }}>
                 {m.role === "assistant" && <div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>🎓</div>}
-                <div style={{ padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.6, background: m.role === "user" ? color : "#fff", color: m.role === "user" ? "#fff" : "#1f2937", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", maxWidth: "72%" }}>{m.content}</div>
+                <div style={{ padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.6, background: m.role === "user" ? color : "var(--surface-default)", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-secondary)", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", maxWidth: "72%" }}>{m.content}</div>
               </div>
             ))}
-            {loading && <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}><div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🎓</div><div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", background: "#fff", color: "#6b7280", fontSize: 14 }}>Thinking...</div></div>}
+            {loading && <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}><div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🎓</div><div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", background: "var(--surface-default)", color: "var(--text-muted)", fontSize: 14 }}>Thinking...</div></div>}
             <div ref={bottomRef} />
           </div>
-          <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8, background: "#fff" }}>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border-default)", display: "flex", gap: 8, background: "var(--surface-default)" }}>
             <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()}
               placeholder={bot.placeholder || "Ask about the course..."}
               style={{ ...inputStyle, flex: 1, marginBottom: 0, borderRadius: 20, padding: "10px 16px" }} />
             <button onClick={send} disabled={loading || !input.trim()}
               style={{ width: 40, height: 40, borderRadius: "50%", background: color, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: loading || !input.trim() ? 0.5 : 1, flexShrink: 0 }}>
-              <span style={{ color: "#fff", fontSize: 16 }}>➤</span>
+              <span style={{ color: "var(--text-inverse)", fontSize: 16 }}>➤</span>
             </button>
           </div>
         </div>
@@ -1040,37 +1040,37 @@ function CourseSettingsPanel({ bot, onSave, saving, onDelete }: { bot: CourseBot
   return (
     <div style={{ padding: 32 }}>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Settings</h2>
-      <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 28 }}>Manage team members and delete this bot.</p>
+      <p style={{ color: "var(--text-muted)", fontSize: 14, marginBottom: 28 }}>Manage team members and delete this bot.</p>
 
       <div style={{ ...card, marginBottom: 20 }}>
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>👥 Team Members</div>
-        <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>Add users who can access this course bot.</p>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Add users who can access this course bot.</p>
         <div style={{ position: "relative", marginBottom: 16 }} ref={dropdownRef}>
           <input value={userSearch} onChange={e => { setUserSearch(e.target.value); setShowDropdown(true); }} onFocus={() => setShowDropdown(true)}
             placeholder="Search users..." style={{ ...inputStyle, marginBottom: 0 }} />
           {showDropdown && filteredUsers.length > 0 && (
-            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, maxHeight: 200, overflowY: "auto" }}>
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, maxHeight: 200, overflowY: "auto" }}>
               {filteredUsers.map(u => (
-                <div key={u.id} onClick={() => addMember(u)} style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}
+                <div key={u.id} onClick={() => addMember(u)} style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid var(--border-subtle)" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
-                  <span style={{ fontWeight: 600 }}>{u.name || u.email}</span> <span style={{ color: "#9ca3af" }}>· {u.role}</span>
+                  onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-default)")}>
+                  <span style={{ fontWeight: 600 }}>{u.name || u.email}</span> <span style={{ color: "var(--text-subtle)" }}>· {u.role}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
         {teamMembers.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "24px", color: "#9ca3af", background: "#f9fafb", borderRadius: 8, fontSize: 13 }}>No team members added yet</div>
+          <div style={{ textAlign: "center", padding: "24px", color: "var(--text-subtle)", background: "#f9fafb", borderRadius: 8, fontSize: 13 }}>No team members added yet</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {teamMembers.map(id => {
               const u = allUsers.find(u => u.id === id);
               return (
-                <div key={id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                <div key={id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f9fafb", borderRadius: 8, border: "1px solid var(--border-default)" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{u?.name || u?.email || id}</div>
-                    <div style={{ fontSize: 11, color: "#9ca3af" }}>{u?.email} · {u?.role}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-subtle)" }}>{u?.email} · {u?.role}</div>
                   </div>
                   <button onClick={() => removeMember(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 14 }}>🗑</button>
                 </div>
@@ -1082,13 +1082,13 @@ function CourseSettingsPanel({ bot, onSave, saving, onDelete }: { bot: CourseBot
 
       <div style={{ ...card, border: "1px solid #fecaca" }}>
         <div style={{ fontWeight: 700, fontSize: 15, color: "#dc2626", marginBottom: 8 }}>🗑️ Delete Bot</div>
-        <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>This is permanent and cannot be undone.</p>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>This is permanent and cannot be undone.</p>
         <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 16, fontSize: 13 }}>
           <input type="checkbox" checked={confirmDelete} onChange={e => setConfirmDelete(e.target.checked)} style={{ accentColor: "#dc2626" }} />
           Yes, I want to permanently delete this bot.
         </label>
         <button onClick={handleDelete} disabled={!confirmDelete || deleting}
-          style={{ ...btnPrimary, background: confirmDelete ? "#dc2626" : "#e5e7eb", color: confirmDelete ? "#fff" : "#9ca3af", cursor: confirmDelete ? "pointer" : "not-allowed" }}>
+          style={{ ...btnPrimary, background: confirmDelete ? "#dc2626" : "var(--surface-muted)", color: confirmDelete ? "var(--text-inverse)" : "var(--text-subtle)", cursor: confirmDelete ? "pointer" : "not-allowed" }}>
           {deleting ? "Deleting..." : "Delete"}
         </button>
       </div>

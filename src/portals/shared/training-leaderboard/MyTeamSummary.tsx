@@ -38,10 +38,10 @@ export function MyTeamSummary({
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: isNarrow ? 13 : 14, color: "#111827" }}>
+          <div style={{ fontWeight: 700, fontSize: isNarrow ? 13 : 14, color: "var(--text-primary)" }}>
             Team {summary.team}
           </div>
-          <div style={{ marginTop: 3, fontSize: isNarrow ? 11 : 12, color: "#374151" }}>
+          <div style={{ marginTop: 3, fontSize: isNarrow ? 11 : 12, color: "var(--text-tertiary)" }}>
             {summary.size} rep{summary.size === 1 ? "" : "s"} · team average {summary.avgPct}% · rank #{summary.rank} of {summary.teamCount} teams
           </div>
         </div>

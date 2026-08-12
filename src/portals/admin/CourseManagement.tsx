@@ -1306,13 +1306,13 @@ export function CourseManagement(props: CourseEditorProps) {
               ))}
             </select>
           </div>
-          <div style={{ marginBottom: 16, color: '#6b7280', fontSize: 14 }}>
+          <div style={{ marginBottom: 16, color: 'var(--text-muted)', fontSize: 14 }}>
             {totalLessons} item{totalLessons !== 1 ? 's' : ''} (lessons + quizzes) · {rows.length}{rows.length !== allRows.length ? ` of ${allRows.length}` : ''} users
           </div>
           {isLoadingProgress ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
+            <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading...</div>
           ) : rows.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>
+            <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-subtle)' }}>
               {allRows.length === 0 ? 'No users found.' : 'No users match your search.'}
             </div>
           ) : (
@@ -1320,8 +1320,8 @@ export function CourseManagement(props: CourseEditorProps) {
               {rows.map(({ user, completedLessons, pct, courseCompleted }) => (
                 <div key={user.id} style={{
                   display: 'flex', alignItems: 'center', gap: 16,
-                  padding: '14px 18px', background: '#fff',
-                  border: '1px solid #e5e7eb', borderRadius: 10,
+                  padding: '14px 18px', background: 'var(--surface-default)',
+                  border: '1px solid var(--border-default)', borderRadius: 10,
                   boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
                 }}>
                   {/* Avatar */}
@@ -1335,18 +1335,18 @@ export function CourseManagement(props: CourseEditorProps) {
                   </div>
                   {/* Name + role */}
                   <div style={{ minWidth: 160, flexShrink: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>{user.name}</div>
-                    <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{user.role}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{user.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-subtle)', textTransform: 'capitalize' }}>{user.role}</div>
                   </div>
                   {/* Progress bar */}
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, color: '#374151' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, color: 'var(--text-tertiary)' }}>
                       <span>{completedLessons} / {totalLessons} items</span>
                       <span style={{ fontWeight: 600, color: courseCompleted ? '#10b981' : '#2563eb' }}>
                         {courseCompleted ? '✓ Completed' : `${pct}%`}
                       </span>
                     </div>
-                    <div style={{ height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                    <div style={{ height: 8, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', borderRadius: 999,
                         background: courseCompleted ? '#10b981' : '#22c55e',
@@ -1376,7 +1376,7 @@ export function CourseManagement(props: CourseEditorProps) {
                 placeholder="Search courses or videos…"
                 style={{
                   marginLeft: 'auto', padding: '8px 12px', border: '1px solid #d1d5db',
-                  borderRadius: 8, fontSize: 14, minWidth: 240, background: '#fff',
+                  borderRadius: 8, fontSize: 14, minWidth: 240, background: 'var(--surface-default)',
                 }}
               />
             )}
@@ -1436,11 +1436,11 @@ export function CourseManagement(props: CourseEditorProps) {
                       </div>
                     </div>
                     <div className="training-card-body">
-                      <div className="training-card-title" style={{ color: course.status === "draft" ? "#9ca3af" : undefined }}>
+                      <div className="training-card-title" style={{ color: course.status === "draft" ? "var(--text-subtle)" : undefined }}>
                         {course.title}
                       </div>
                       {course.description && (
-                        <div style={{ fontSize: "12px", color: course.status === "draft" ? "#d1d5db" : "#6b7280", marginTop: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: "12px", color: course.status === "draft" ? "#d1d5db" : "var(--text-muted)", marginTop: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {course.description.length > 50 ? course.description.substring(0, 50) + "..." : course.description}
                         </div>
                       )}
@@ -1506,7 +1506,7 @@ export function CourseManagement(props: CourseEditorProps) {
                   Delete Content
                 </div>
                 <div style={{ padding: '16px 0' }}>
-                  <p style={{ margin: '0 0 16px', fontSize: 14, color: '#374151' }}>What would you like to delete from <strong>{selectedCourse.title}</strong>?</p>
+                  <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--text-tertiary)' }}>What would you like to delete from <strong>{selectedCourse.title}</strong>?</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {(['lesson', 'module', 'course'] as DeleteTarget[]).map(t => (
                       <button
@@ -1518,9 +1518,9 @@ export function CourseManagement(props: CourseEditorProps) {
                           setDeleteStep(t === 'course' ? 'confirm' : 'select');
                         }}
                         style={{
-                          padding: '14px 16px', border: '2px solid #e5e7eb', borderRadius: 8,
-                          background: '#fff', cursor: 'pointer', textAlign: 'left',
-                          fontSize: 14, fontWeight: 500, color: '#111827',
+                          padding: '14px 16px', border: '2px solid var(--border-default)', borderRadius: 8,
+                          background: 'var(--surface-default)', cursor: 'pointer', textAlign: 'left',
+                          fontSize: 14, fontWeight: 500, color: 'var(--text-primary)',
                           display: 'flex', alignItems: 'center', gap: 10
                         }}
                       >
@@ -1555,10 +1555,10 @@ export function CourseManagement(props: CourseEditorProps) {
                     return (
                       <>
                         {listItems.length === 0 ? (
-                          <p style={{ color: '#6b7280', fontSize: 14 }}>No {deleteTarget === 'lesson' ? 'lessons' : 'modules'} found.</p>
+                          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No {deleteTarget === 'lesson' ? 'lessons' : 'modules'} found.</p>
                         ) : (
                           <>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #e5e7eb', marginBottom: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--border-default)', marginBottom: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)' }}>
                               <input type="checkbox" checked={allSelected} onChange={() => {
                                 if (allSelected) setDeleteSelectedIds(new Set());
                                 else setDeleteSelectedIds(new Set(listItems.map(i => i.id)));
@@ -1567,15 +1567,15 @@ export function CourseManagement(props: CourseEditorProps) {
                             </label>
                             <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                               {listItems.map(item => (
-                                <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: deleteSelectedIds.has(item.id) ? '#fef2f2' : '#f9fafb', border: `1px solid ${deleteSelectedIds.has(item.id) ? '#fecaca' : '#e5e7eb'}` }}>
+                                <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: deleteSelectedIds.has(item.id) ? '#fef2f2' : '#f9fafb', border: `1px solid ${deleteSelectedIds.has(item.id) ? '#fecaca' : 'var(--border-default)'}` }}>
                                   <input type="checkbox" checked={deleteSelectedIds.has(item.id)} onChange={() => {
                                     const next = new Set(deleteSelectedIds);
                                     if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
                                     setDeleteSelectedIds(next);
                                   }} />
                                   <div>
-                                    <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.label}</div>
-                                    {item.sub && <div style={{ fontSize: 11, color: '#6b7280' }}>{item.sub}</div>}
+                                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{item.label}</div>
+                                    {item.sub && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.sub}</div>}
                                   </div>
                                 </label>
                               ))}
@@ -1608,7 +1608,7 @@ export function CourseManagement(props: CourseEditorProps) {
                   Confirm Delete
                 </div>
                 <div style={{ padding: '16px 0' }}>
-                  <p style={{ margin: '0 0 12px', fontSize: 14, color: '#374151', fontWeight: 500 }}>
+                  <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 500 }}>
                     Are you sure you want to delete {deleteTarget === 'course' ? 'this entire course' : deleteTarget === 'lesson' ? `${deleteSelectedIds.size} lesson${deleteSelectedIds.size !== 1 ? 's' : ''}` : `${deleteSelectedIds.size} module${deleteSelectedIds.size !== 1 ? 's' : ''}`}?
                   </p>
                   <div style={{ padding: 12, backgroundColor: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca', marginBottom: 12 }}>
@@ -1627,7 +1627,7 @@ export function CourseManagement(props: CourseEditorProps) {
                       </ul>
                     )}
                   </div>
-                  <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>⚠️ This action cannot be undone.</p>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>⚠️ This action cannot be undone.</p>
                 </div>
                 <div className="dialog-actions">
                   <button type="button" className="btn-secondary" onClick={deleteTarget === 'course' ? closeDeleteModal : () => setDeleteStep('select')}>Cancel</button>
@@ -1698,11 +1698,11 @@ export function CourseManagement(props: CourseEditorProps) {
       )}
       {isSavingModule && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: "14px", padding: "32px 40px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <div style={{ fontWeight: 700, fontSize: "16px", color: "#1f2937", marginBottom: "6px" }}>Saving module...</div>
-            <div style={{ fontSize: "13px", color: "#6b7280" }}>Please wait, do not close this page</div>
+          <div style={{ background: "var(--surface-default)", borderRadius: "14px", padding: "32px 40px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            <div style={{ fontWeight: 700, fontSize: "16px", color: "var(--text-secondary)", marginBottom: "6px" }}>Saving module...</div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>Please wait, do not close this page</div>
             <div style={{ marginTop: "16px", display: "flex", justifyContent: "center" }}>
-              <div style={{ width: 32, height: 32, border: "3px solid #e5e7eb", borderTop: "3px solid #1f2937", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <div style={{ width: 32, height: 32, border: "3px solid var(--border-default)", borderTop: "3px solid var(--border-strong)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
             </div>
           </div>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -2399,7 +2399,7 @@ export function CourseManagement(props: CourseEditorProps) {
                       OFF = only C-Level / Branch Manager / Sales Team Lead. */}
                   <label
                     title="When on, every lesson & quiz is unlocked for ALL users. When off, only leadership roles (C-Level, Branch Manager, Sales Team Lead)."
-                    style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: selectedCourse.unlockAll ? "#16a34a" : "#6b7280", cursor: "pointer", userSelect: "none", marginRight: 6 }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: selectedCourse.unlockAll ? "#16a34a" : "var(--text-muted)", cursor: "pointer", userSelect: "none", marginRight: 6 }}
                   >
                     <input
                       type="checkbox"
@@ -2407,7 +2407,7 @@ export function CourseManagement(props: CourseEditorProps) {
                       onChange={(e) => handleUnlockAllToggle(e.target.checked)}
                       style={{ width: 15, height: 15, cursor: "pointer" }}
                     />
-                    🔓 Unlock all <span style={{ fontWeight: 400, color: "#9ca3af", fontSize: 11 }}>(saves automatically)</span>
+                    🔓 Unlock all <span style={{ fontWeight: 400, color: "var(--text-subtle)", fontSize: 11 }}>(saves automatically)</span>
                   </label>
                   <button type="button" className="btn-ghost btn-small" onClick={() => setViewMode("grid")}>
                     Back to courses
@@ -2756,7 +2756,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                 </div>
                                 {/* Expand/Collapse All Buttons */}
                                 {folders.length > 0 && (
-                                  <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+                                  <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border-default)' }}>
                                     <button
                                       type="button"
                                       className="btn-secondary btn-small"
@@ -2892,7 +2892,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                         userSelect: "none",
                                         WebkitUserSelect: "none",
                                         fontSize: "16px",
-                                        color: "#9ca3af"
+                                        color: "var(--text-subtle)"
                                       }}
                                       title="Drag to reorder"
                                     >
@@ -2900,7 +2900,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                     </span>
                                     <span className="course-pages-item-title">
                                       {page.title}
-                                      {page.status === "draft" && <span style={{ color: "#9ca3af", fontSize: "12px", marginLeft: "6px" }}>(Draft)</span>}
+                                      {page.status === "draft" && <span style={{ color: "var(--text-subtle)", fontSize: "12px", marginLeft: "6px" }}>(Draft)</span>}
                                     </span>
                                     <button
                                       type="button"
@@ -3034,7 +3034,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                             userSelect: "none",
                                             WebkitUserSelect: "none",
                                             fontSize: "16px",
-                                            color: "#9ca3af"
+                                            color: "var(--text-subtle)"
                                           }}
                                           title="Drag to reorder module"
                                         >
@@ -3228,7 +3228,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                               userSelect: "none",
                                               WebkitUserSelect: "none",
                                               fontSize: "16px",
-                                              color: "#9ca3af"
+                                              color: "var(--text-subtle)"
                                             }}
                                             title="Drag to reorder"
                                           >
@@ -3236,7 +3236,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           </span>
                                           <span className="course-pages-item-title">
                                             {page.title}
-                                            {page.status === "draft" && <span style={{ color: "#9ca3af", fontSize: "12px", marginLeft: "6px" }}>(Draft)</span>}
+                                            {page.status === "draft" && <span style={{ color: "var(--text-subtle)", fontSize: "12px", marginLeft: "6px" }}>(Draft)</span>}
                                           </span>
                                           <button
                                             type="button"
@@ -3304,7 +3304,7 @@ export function CourseManagement(props: CourseEditorProps) {
                               style={{
                                 width: '4px',
                                 cursor: 'ew-resize',
-                                backgroundColor: isResizing ? '#3b82f6' : '#e5e7eb',
+                                backgroundColor: isResizing ? '#3b82f6' : 'var(--surface-muted)',
                                 transition: isResizing ? 'none' : 'background-color 0.2s',
                                 flexShrink: 0,
                                 position: 'relative',
@@ -3314,7 +3314,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                 if (!isResizing) e.currentTarget.style.backgroundColor = '#cbd5e1';
                               }}
                               onMouseLeave={(e) => {
-                                if (!isResizing) e.currentTarget.style.backgroundColor = '#e5e7eb';
+                                if (!isResizing) e.currentTarget.style.backgroundColor = 'var(--surface-muted)';
                               }}
                             />
                               <div className="course-page-main">
@@ -3335,7 +3335,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <button
                                             type="button"
                                             className="btn-secondary btn-small"
-                                            style={{ whiteSpace: "nowrap", backgroundColor: "#111827", color: "#ffffff", border: "none" }}
+                                            style={{ whiteSpace: "nowrap", backgroundColor: "var(--surface-inverse)", color: "var(--text-inverse)", border: "none" }}
                                             onClick={() => {
                                               setImportDocText("");
                                               setImportReport(null);
@@ -3350,13 +3350,13 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <div className="overlay" style={{ zIndex: 9998 }}>
                                             <div className="dialog" style={{ maxWidth: 720, width: "92%" }}>
                                               <div className="dialog-title">Import questions into “{activePage.title}”</div>
-                                              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 10, lineHeight: 1.5 }}>
+                                              <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10, lineHeight: 1.5 }}>
                                                 Paste your questions below or upload a file. No course or lesson name needed —
                                                 everything goes into <strong>this</strong> quiz. Options can be lettered
                                                 (<code>A.</code> <code>B.</code> …) with a <code>Correct Answer: C</code> line, or use
                                                 <code>{" * "}</code> to mark the right one. Optional <code>{"Show: N"}</code> sets how many to show.
                                               </div>
-                                              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 10, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px" }}>
+                                              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, background: "#f9fafb", border: "1px solid var(--border-default)", borderRadius: 8, padding: "8px 10px" }}>
                                                 <strong>Excel (.xlsx):</strong> columns <code>Question</code>,
                                                 <code> Option A</code>, <code>Option B</code>, <code>Option C</code>, <code>Option D</code>,
                                                 <code> Correct</code> (A/B/C/D), optional <code>Show</code>.
@@ -3413,7 +3413,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           </div>
                                         )}
                                         <div className="course-page-editor-body" key="quiz-editor-body">
-                                          <div className="field" style={{ marginBottom: 24, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8, display: "block" }}>
+                                          <div className="field" style={{ marginBottom: 24, padding: 16, border: "1px solid var(--border-default)", borderRadius: 8, display: "block" }}>
                                             <span className="field-label">Questions to show the user</span>
                                             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                                               <input
@@ -3440,12 +3440,12 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 {isSavingLesson ? "Saving…" : "Save"}
                                               </button>
                                             </div>
-                                            <span className="field-hint" style={{ display: "block", marginTop: 6, fontSize: 12, color: "#6b7280" }}>
+                                            <span className="field-hint" style={{ display: "block", marginTop: 6, fontSize: 12, color: "var(--text-muted)" }}>
                                               Each attempt randomly picks this many questions out of the {(activePage.quizQuestions || []).length} below. Leave blank to show all.
                                             </span>
                                           </div>
                                           {(activePage.quizQuestions || []).map((q, qIdx) => (
-                                            <div key={q.id} style={{ marginBottom: 24, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8 }}>
+                                            <div key={q.id} style={{ marginBottom: 24, padding: 16, border: "1px solid var(--border-default)", borderRadius: 8 }}>
                                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                                                 <span style={{ fontWeight: 600 }}>Question {qIdx + 1}</span>
                                                 <button
@@ -3727,7 +3727,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                               }}
                                             >
                                               <div style={{ width: 24, height: 24, backgroundColor: "#ef4444", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16 }}>{getResourceIcon(link.href)}</div>
-                                              <a href={link.href} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: "none", color: "#111827", fontSize: 14 }}>{link.label}</a>
+                                              <a href={link.href} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: "none", color: "var(--text-primary)", fontSize: 14 }}>{link.label}</a>
                                               {editingLessonId === activePage.id && (
                                                 <button
                                                   type="button"
@@ -3819,7 +3819,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                               }}
                                             >
                                               <div style={{ width: 24, height: 24, backgroundColor: "#ef4444", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16 }}>{getResourceIcon(fileData.href)}</div>
-                                              <a href={fileData.href} target="_blank" rel="noopener noreferrer" download style={{ flex: 1, textDecoration: "none", color: "#111827", fontSize: 14 }}>{fileData.label}</a>
+                                              <a href={fileData.href} target="_blank" rel="noopener noreferrer" download style={{ flex: 1, textDecoration: "none", color: "var(--text-primary)", fontSize: 14 }}>{fileData.label}</a>
                                               {editingLessonId === activePage.id && (
                                                 <button
                                                   type="button"
@@ -4019,7 +4019,7 @@ export function CourseManagement(props: CourseEditorProps) {
             <div style={{
               width: 48,
               height: 48,
-              border: '4px solid #f3f4f6',
+              border: '4px solid var(--border-subtle)',
               borderTop: '4px solid #3b82f6',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite'
@@ -4027,7 +4027,7 @@ export function CourseManagement(props: CourseEditorProps) {
             <div style={{
               fontSize: 18,
               fontWeight: 600,
-              color: '#111827'
+              color: 'var(--text-primary)'
             }}>
               {savingMessage}
             </div>

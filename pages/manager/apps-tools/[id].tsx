@@ -77,11 +77,11 @@ const ManagerAppToolDetailPage: NextPage = () => {
               </div>
             )}
             <div style={{ flex: 1 }}>
-              <h2 style={{ marginBottom: 16, color: '#374151', fontSize: 24 }}>{item.title}</h2>
+              <h2 style={{ marginBottom: 16, color: 'var(--text-tertiary)', fontSize: 24 }}>{item.title}</h2>
               {item.description && (
                 <div>
-                  <h3 style={{ marginBottom: 8, fontSize: 16, color: '#6b7280' }}>Description</h3>
-                  <p style={{ lineHeight: 1.6, color: '#374151', fontSize: 16 }}>{item.description}</p>
+                  <h3 style={{ marginBottom: 8, fontSize: 16, color: 'var(--text-muted)' }}>Description</h3>
+                  <p style={{ lineHeight: 1.6, color: 'var(--text-tertiary)', fontSize: 16 }}>{item.description}</p>
                 </div>
               )}
             </div>

@@ -140,12 +140,12 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "8px 16px", fontSize: 13, fontWeight: 500, borderRadius: 6,
                   border: `1px solid ${getColumnColor(index)}`,
-                  color: selectedColumnId === col.id ? "#fff" : getColumnColor(index),
-                  backgroundColor: selectedColumnId === col.id ? getColumnColor(index) : "#fff",
+                  color: selectedColumnId === col.id ? "var(--text-inverse)" : getColumnColor(index),
+                  backgroundColor: selectedColumnId === col.id ? getColumnColor(index) : "var(--surface-default)",
                   whiteSpace: "nowrap", cursor: "pointer"
                 }}
               >
-                <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: selectedColumnId === col.id ? "#fff" : getColumnColor(index), display: "inline-block" }} />
+                <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: selectedColumnId === col.id ? "var(--surface-default)" : getColumnColor(index), display: "inline-block" }} />
                 {col.name}
               </span>
             ))}
@@ -154,7 +154,7 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
         <button
           type="button"
           onClick={() => setIsChartVisible(!isChartVisible)}
-          style={{ padding: "8px 16px", fontSize: 13, fontWeight: 500, borderRadius: 6, border: "1px solid #e5e7eb", backgroundColor: "#dc2626", color: "#ffffff", cursor: "pointer" }}
+          style={{ padding: "8px 16px", fontSize: 13, fontWeight: 500, borderRadius: 6, border: "1px solid var(--border-default)", backgroundColor: "#dc2626", color: "var(--text-inverse)", cursor: "pointer" }}
         >
           {isChartVisible ? "Hide Chart" : "Show Chart"}
         </button>
@@ -165,7 +165,7 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
         <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
           {/* Left: Pie Chart */}
           <div style={{ flex: 0.4 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 16 }}>{chartTitle}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>{chartTitle}</div>
             <div style={{ position: "relative", width: 440, height: 440, maxWidth: "100%" }}>
               <svg width="100%" height="100%" viewBox="-80 -80 460 460" style={{ overflow: "visible" }}>
                 {drawPieSlices()}
@@ -185,12 +185,12 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
                   const percentage = total > 0 ? (value / total) * 100 : 0;
                   const color = getColumnColor(index);
                   return (
-                    <div key={platform.id} style={{ padding: "12px 16px", borderRadius: 8, border: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
+                    <div key={platform.id} style={{ padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border-default)", backgroundColor: "#f9fafb" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{platform.platformName}</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{value.toLocaleString()} ({percentage.toFixed(1)}%)</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{platform.platformName}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{value.toLocaleString()} ({percentage.toFixed(1)}%)</span>
                       </div>
-                      <div style={{ width: "100%", height: 8, backgroundColor: "#e5e7eb", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ width: "100%", height: 8, backgroundColor: "var(--surface-muted)", borderRadius: 4, overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${percentage}%`, backgroundColor: color, borderRadius: 4, transition: "width 0.3s ease" }} />
                       </div>
                     </div>
@@ -202,12 +202,12 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
                     key={platform.id}
                     onClick={() => { setSelectedPlatformId(platform.id); setSelectedColumnId(null); }}
                     style={{
-                      padding: "12px 16px", borderRadius: 8, border: "1px solid #e5e7eb",
+                      padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border-default)",
                       backgroundColor: selectedPlatformId === platform.id && !selectedColumnId ? "#eff6ff" : "#f9fafb",
                       borderLeft: selectedPlatformId === platform.id && !selectedColumnId ? "4px solid #2563eb" : "4px solid transparent",
                       cursor: "pointer", fontSize: 14,
                       fontWeight: selectedPlatformId === platform.id && !selectedColumnId ? 600 : 400,
-                      color: selectedPlatformId === platform.id && !selectedColumnId ? "#2563eb" : "#374151",
+                      color: selectedPlatformId === platform.id && !selectedColumnId ? "#2563eb" : "var(--text-tertiary)",
                       transition: "all 0.2s ease"
                     }}
                   >

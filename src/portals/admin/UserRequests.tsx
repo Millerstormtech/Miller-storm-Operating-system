@@ -158,13 +158,13 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
         </div>
       </div>
 
-      <div style={{ borderBottom: "1px solid #e5e7eb", padding: "0 24px" }}>
+      <div style={{ borderBottom: "1px solid var(--border-default)", padding: "0 24px" }}>
         <div style={{ display: "flex", gap: 24 }}>
           <button
             onClick={() => switchTab("pending")}
             style={{
               padding: "12px 0", fontSize: 14, fontWeight: 500,
-              color: activeTab === "pending" ? "#2563eb" : "#6b7280",
+              color: activeTab === "pending" ? "#2563eb" : "var(--text-muted)",
               borderBottom: activeTab === "pending" ? "2px solid #2563eb" : "2px solid transparent",
               background: "none", border: "none", cursor: "pointer"
             }}
@@ -175,7 +175,7 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
             onClick={() => switchTab("approved")}
             style={{
               padding: "12px 0", fontSize: 14, fontWeight: 500,
-              color: activeTab === "approved" ? "#2563eb" : "#6b7280",
+              color: activeTab === "approved" ? "#2563eb" : "var(--text-muted)",
               borderBottom: activeTab === "approved" ? "2px solid #2563eb" : "2px solid transparent",
               background: "none", border: "none", cursor: "pointer"
             }}
@@ -186,7 +186,7 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
             onClick={() => switchTab("rejected")}
             style={{
               padding: "12px 0", fontSize: 14, fontWeight: 500,
-              color: activeTab === "rejected" ? "#2563eb" : "#6b7280",
+              color: activeTab === "rejected" ? "#2563eb" : "var(--text-muted)",
               borderBottom: activeTab === "rejected" ? "2px solid #2563eb" : "2px solid transparent",
               background: "none", border: "none", cursor: "pointer"
             }}
@@ -202,8 +202,8 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Select All + Delete Bar */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid #e5e7eb" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#374151" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid var(--border-default)" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" }}>
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -216,7 +216,7 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
                 <button
                   onClick={handleDeleteSelected}
                   disabled={processing}
-                  style={{ padding: "6px 14px", backgroundColor: "#dc2626", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  style={{ padding: "6px 14px", backgroundColor: "#dc2626", color: "var(--text-inverse)", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                 >
                   Delete Selected ({selectedIds.size})
                 </button>
@@ -228,9 +228,9 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
                 key={request.id}
                 style={{
                   padding: 16,
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid var(--border-default)",
                   borderRadius: 8,
-                  backgroundColor: selectedIds.has(request.id) ? "#eff6ff" : "#ffffff",
+                  backgroundColor: selectedIds.has(request.id) ? "#eff6ff" : "var(--surface-default)",
                   display: "flex",
                   alignItems: "flex-start",
                   gap: 12
@@ -245,13 +245,13 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: "#111827", marginBottom: 4 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
                         {request.name}
                       </div>
-                      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>
                         {request.email}
                       </div>
-                      <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#6b7280" }}>
+                      <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--text-muted)" }}>
                         <span><strong>Role:</strong> <span style={{ textTransform: "capitalize" }}>{request.role}</span></span>
                         <span><strong>Requested:</strong> {new Date(request.requestedAt).toLocaleDateString()}</span>
                         {request.reviewedAt && (
@@ -304,7 +304,7 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
           <div className="dialog" style={{ width: 500, maxWidth: "90vw" }}>
             <div className="dialog-title">Reject Registration Request</div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>
+              <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 12 }}>
                 Rejecting request from <strong>{selectedRequest.name}</strong> ({selectedRequest.email})
               </div>
               <label className="field">

@@ -4,6 +4,7 @@ import { AuthProvider } from "../src/contexts/AuthContext";
 import { AppDialogs } from "../src/components/AppDialogs";
 import { ViewAsBanner } from "../src/components/ViewAsBanner";
 import { NewCoursePopup } from "../src/components/NewCoursePopup";
+import "../src/tokens.css";
 import "../src/styles.css";
 
 export default function MyApp({ Component, pageProps }: AppProps) {

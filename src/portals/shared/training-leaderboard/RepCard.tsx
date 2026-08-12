@@ -31,7 +31,7 @@ export type RepCardData = {
   rankDelta?: number | null;
 };
 
-export function ProgressRing({ pct, size = 52, holeBg = "#fff" }: { pct: number; size?: number; holeBg?: string }) {
+export function ProgressRing({ pct, size = 52, holeBg = "var(--surface-default)" }: { pct: number; size?: number; holeBg?: string }) {
   const clamped = Math.min(100, Math.max(0, pct));
   const deg = Math.round((clamped / 100) * 360);
   return (
@@ -60,7 +60,7 @@ export function ProgressRing({ pct, size = 52, holeBg = "#fff" }: { pct: number;
             justifyContent: "center",
             fontWeight: 700,
             fontSize: Math.round(size * 0.23),
-            color: "#111827",
+            color: "var(--text-primary)",
           }}
         >
           {Math.round(clamped)}%
@@ -89,7 +89,7 @@ export function Avatar({ name, headshotUrl, size }: { name: string; headshotUrl:
         height: size,
         borderRadius: "50%",
         background: avatarColor(name),
-        color: "#fff",
+        color: "var(--text-inverse)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -144,7 +144,7 @@ export function RepCard({
         ))}
       </span>
     ) : (
-      <span style={{ fontSize: 11, color: "#9ca3af", fontStyle: "italic" }}>
+      <span style={{ fontSize: 11, color: "var(--text-subtle)", fontStyle: "italic" }}>
         No badges yet
         {typeof row.videosWatched === "number" &&
         row.videosWatched > 0 &&
@@ -173,9 +173,9 @@ export function RepCard({
         display: "flex",
         alignItems: "center",
         gap: isNarrow ? 9 : 12,
-        background: "#fff",
-        border: "1px solid #e5e7eb",
-        borderLeft: showMedal ? `4px solid ${MEDAL_EDGE[primaryRank! - 1]}` : "1px solid #e5e7eb",
+        background: "var(--surface-default)",
+        border: "1px solid var(--border-default)",
+        borderLeft: showMedal ? `4px solid ${MEDAL_EDGE[primaryRank! - 1]}` : "1px solid var(--border-default)",
         borderRadius: 12,
         padding: isNarrow ? "10px 11px" : "11px 14px",
         marginBottom: 8,
@@ -189,7 +189,7 @@ export function RepCard({
         {showMedal ? (
           <span style={{ fontSize: isNarrow ? 15 : 18 }}>{MEDALS[primaryRank! - 1]}</span>
         ) : primaryRank !== null ? (
-          <span style={{ fontWeight: 800, fontSize: isNarrow ? 15 : 17, color: "#9ca3af" }}>{primaryRank}</span>
+          <span style={{ fontWeight: 800, fontSize: isNarrow ? 15 : 17, color: "var(--text-subtle)" }}>{primaryRank}</span>
         ) : (
           <span style={{ color: "#d1d5db" }}>·</span>
         )}
@@ -202,7 +202,7 @@ export function RepCard({
           style={{
             fontWeight: 700,
             fontSize: isNarrow ? 13 : 14,
-            color: "#111827",
+            color: "var(--text-primary)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -218,7 +218,7 @@ export function RepCard({
             <span
               style={{
                 background: "#4f46e5",
-                color: "#fff",
+                color: "var(--text-inverse)",
                 fontSize: 9,
                 fontWeight: 700,
                 padding: "1px 6px",
@@ -260,10 +260,10 @@ export function RepCard({
             </Tooltip>
           )}
           {typeof coRank === "number" && (
-            <span style={{ fontSize: isNarrow ? 10 : 11, color: "#6b7280", fontWeight: 600 }}>co.#{coRank}</span>
+            <span style={{ fontSize: isNarrow ? 10 : 11, color: "var(--text-muted)", fontWeight: 600 }}>co.#{coRank}</span>
           )}
           {!isNarrow && (row.branch || row.team) && (
-            <span style={{ fontSize: 11, color: "#6b7280" }}>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
               {[row.branch, row.team && `Team ${row.team}`].filter(Boolean).join(" · ")}
             </span>
           )}
@@ -271,13 +271,13 @@ export function RepCard({
         </div>
         {!isNarrow && <div style={{ marginTop: 4 }}>{badgeIcons}</div>}
         {milestone && (
-          <div style={{ marginTop: 3, fontSize: 11, color: "#6b7280" }}>
+          <div style={{ marginTop: 3, fontSize: 11, color: "var(--text-muted)" }}>
             next: <b>{milestone}</b>
           </div>
         )}
       </div>
 
-      <ProgressRing pct={row.pct} size={ringSize} holeBg={containerStyle?.background ? String(containerStyle.background) : "#fff"} />
+      <ProgressRing pct={row.pct} size={ringSize} holeBg={containerStyle?.background ? String(containerStyle.background) : "var(--surface-default)"} />
     </div>
   );
 }

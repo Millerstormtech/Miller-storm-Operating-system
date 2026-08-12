@@ -40,13 +40,13 @@ export function RankStrip(props: {
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
+        background: "var(--surface-default)",
+        border: "1px solid var(--border-default)",
         borderRadius: 12,
         padding: "10px 16px",
         fontSize: 14,
         fontWeight: 700,
-        color: "#111827",
+        color: "var(--text-primary)",
       }}
     >
       {text}

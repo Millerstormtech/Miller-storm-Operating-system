@@ -15,9 +15,9 @@ const JaysAiClonePage: NextPage = () => {
           {bots.map(b => (
             <button key={b.id} onClick={() => selectFn?.(b)} style={{
               padding: "6px 14px", borderRadius: "20px", border: "1px solid",
-              borderColor: selectedBot?.id === b.id ? "#1f2937" : "#d1d5db",
-              background: selectedBot?.id === b.id ? "#1f2937" : "#fff",
-              color: selectedBot?.id === b.id ? "#fff" : "#374151",
+              borderColor: selectedBot?.id === b.id ? "var(--border-strong)" : "#d1d5db",
+              background: selectedBot?.id === b.id ? "var(--surface-inverse-raised)" : "var(--surface-default)",
+              color: selectedBot?.id === b.id ? "var(--text-inverse)" : "var(--text-tertiary)",
               fontSize: "13px", fontWeight: 500, cursor: "pointer"
             }}>
               {b.botTitle || b.name}

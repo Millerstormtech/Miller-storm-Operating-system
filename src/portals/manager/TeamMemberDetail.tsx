@@ -110,8 +110,8 @@ export function TeamMemberDetail(props: {
                         maxWidth: '70%',
                         padding: '12px 16px',
                         borderRadius: '18px',
-                        backgroundColor: role === 'user' ? '#1f2937' : '#f3f4f6',
-                        color: role === 'user' ? '#ffffff' : '#1f2937',
+                        backgroundColor: role === 'user' ? 'var(--surface-inverse-raised)' : 'var(--surface-subtle)',
+                        color: role === 'user' ? 'var(--text-inverse)' : 'var(--text-secondary)',
                         fontSize: '15px',
                         lineHeight: '1.5'
                       }}
@@ -173,7 +173,7 @@ export function TeamMemberDetail(props: {
                       className="field-input"
                       value={props.member.name}
                       disabled
-                      style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+                      style={{ backgroundColor: 'var(--surface-subtle)', cursor: 'not-allowed' }}
                     />
                   </label>
                   <label className="field">
@@ -182,7 +182,7 @@ export function TeamMemberDetail(props: {
                       className="field-input"
                       value={props.member.email}
                       disabled
-                      style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+                      style={{ backgroundColor: 'var(--surface-subtle)', cursor: 'not-allowed' }}
                     />
                   </label>
                   <label className="field">
@@ -191,7 +191,7 @@ export function TeamMemberDetail(props: {
                       className="field-input"
                       value={props.member.territory ?? ""}
                       disabled
-                      style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+                      style={{ backgroundColor: 'var(--surface-subtle)', cursor: 'not-allowed' }}
                     />
                   </label>
                 </div>
@@ -201,7 +201,7 @@ export function TeamMemberDetail(props: {
             <div className="panel-body" style={{ padding: '24px' }}>
               {loadingChats ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <div style={{ fontSize: '16px', color: '#6b7280' }}>Loading chats...</div>
+                  <div style={{ fontSize: '16px', color: 'var(--text-muted)' }}>Loading chats...</div>
                 </div>
               ) : (
                 <>
@@ -222,7 +222,7 @@ export function TeamMemberDetail(props: {
                         style={{
                           width: '100%',
                           padding: '12px 16px 12px 40px',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border-default)',
                           borderRadius: '10px',
                           fontSize: '14px',
                           outline: 'none'
@@ -244,7 +244,7 @@ export function TeamMemberDetail(props: {
                       onChange={(e) => setChatTypeFilter(e.target.value)}
                       style={{
                         padding: '12px 16px',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border-default)',
                         borderRadius: '10px',
                         fontSize: '14px',
                         backgroundColor: 'white',
@@ -265,10 +265,10 @@ export function TeamMemberDetail(props: {
                         }}
                         style={{
                           padding: '12px 16px',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border-default)',
                           borderRadius: '10px',
                           fontSize: '14px',
-                          backgroundColor: '#f3f4f6',
+                          backgroundColor: 'var(--surface-subtle)',
                           cursor: 'pointer',
                           fontWeight: 500
                         }}
@@ -290,7 +290,7 @@ export function TeamMemberDetail(props: {
                         backgroundColor: '#f9fafb',
                         borderRadius: '12px',
                         padding: '20px',
-                        border: '1px solid #e5e7eb'
+                        border: '1px solid var(--border-default)'
                       }}>
                         <div style={{
                           display: 'flex',
@@ -298,13 +298,13 @@ export function TeamMemberDetail(props: {
                           justifyContent: 'space-between',
                           marginBottom: '20px',
                           paddingBottom: '12px',
-                          borderBottom: '2px solid #1f2937'
+                          borderBottom: '2px solid var(--border-strong)'
                         }}>
-                          <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#1f2937' }}>
+                          <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-secondary)' }}>
                             💬 AI Chat History
                           </h3>
                           <span style={{
-                            backgroundColor: '#1f2937',
+                            backgroundColor: 'var(--surface-inverse-raised)',
                             color: 'white',
                             padding: '4px 12px',
                             borderRadius: '12px',
@@ -324,7 +324,7 @@ export function TeamMemberDetail(props: {
                           paddingRight: '8px'
                         }}>
                           {aiChats.filter(chat => chat.title.toLowerCase().includes(chatSearchQuery.toLowerCase())).length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '14px' }}>
+                            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-subtle)', fontSize: '14px' }}>
                               <div style={{ fontSize: '48px', marginBottom: '12px' }}>💭</div>
                               {chatSearchQuery ? 'No matching AI chats' : 'No AI chats yet'}
                             </div>
@@ -335,18 +335,18 @@ export function TeamMemberDetail(props: {
                                 onClick={() => viewChat(chat, 'ai')}
                                 style={{
                                   padding: '16px',
-                                  backgroundColor: '#ffffff',
+                                  backgroundColor: 'var(--surface-default)',
                                   borderRadius: '10px',
                                   cursor: 'pointer',
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid var(--border-default)',
                                   transition: 'all 0.2s',
                                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                                 }}
                               >
-                                <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: '#1f2937' }}>
+                                <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: 'var(--text-secondary)' }}>
                                   {chat.title}
                                 </div>
-                                <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span>💬 {chat.messages.length} messages</span>
                                   <span>•</span>
                                   <span>📅 {new Date(chat.updatedAt).toLocaleDateString()}</span>
@@ -363,7 +363,7 @@ export function TeamMemberDetail(props: {
                         backgroundColor: '#f9fafb',
                         borderRadius: '12px',
                         padding: '20px',
-                        border: '1px solid #e5e7eb'
+                        border: '1px solid var(--border-default)'
                       }}>
                         <div style={{
                           display: 'flex',
@@ -371,13 +371,13 @@ export function TeamMemberDetail(props: {
                           justifyContent: 'space-between',
                           marginBottom: '20px',
                           paddingBottom: '12px',
-                          borderBottom: '2px solid #1f2937'
+                          borderBottom: '2px solid var(--border-strong)'
                         }}>
-                          <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#1f2937' }}>
+                          <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-secondary)' }}>
                             📚 Course Training Chats
                           </h3>
                           <span style={{
-                            backgroundColor: '#1f2937',
+                            backgroundColor: 'var(--surface-inverse-raised)',
                             color: 'white',
                             padding: '4px 12px',
                             borderRadius: '12px',
@@ -403,7 +403,7 @@ export function TeamMemberDetail(props: {
                             chat.title.toLowerCase().includes(chatSearchQuery.toLowerCase()) ||
                             chat.lessonTitle.toLowerCase().includes(chatSearchQuery.toLowerCase())
                           ).length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '14px' }}>
+                            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-subtle)', fontSize: '14px' }}>
                               <div style={{ fontSize: '48px', marginBottom: '12px' }}>📖</div>
                               {chatSearchQuery ? 'No matching lesson chats' : 'No lesson chats yet'}
                             </div>
@@ -417,21 +417,21 @@ export function TeamMemberDetail(props: {
                                 onClick={() => viewChat(chat, 'lesson')}
                                 style={{
                                   padding: '16px',
-                                  backgroundColor: '#ffffff',
+                                  backgroundColor: 'var(--surface-default)',
                                   borderRadius: '10px',
                                   cursor: 'pointer',
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid var(--border-default)',
                                   transition: 'all 0.2s',
                                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                                 }}
                               >
-                                <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: '#1f2937' }}>
+                                <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: 'var(--text-secondary)' }}>
                                   {chat.title}
                                 </div>
                                 <div style={{
                                   fontSize: '11px',
-                                  color: '#6b7280',
-                                  backgroundColor: '#f3f4f6',
+                                  color: 'var(--text-muted)',
+                                  backgroundColor: 'var(--surface-subtle)',
                                   padding: '4px 8px',
                                   borderRadius: '6px',
                                   marginBottom: '8px',
@@ -439,7 +439,7 @@ export function TeamMemberDetail(props: {
                                 }}>
                                   📖 {chat.lessonTitle}
                                 </div>
-                                <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span>💬 {chat.messages.length} messages</span>
                                   <span>•</span>
                                   <span>📅 {new Date(chat.updatedAt).toLocaleDateString()}</span>

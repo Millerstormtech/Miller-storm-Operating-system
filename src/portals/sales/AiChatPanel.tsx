@@ -24,7 +24,7 @@ type ChatHistory = {
 // headshot, or the bot's icon) when present, otherwise a fallback glyph/initial.
 function MsgAvatar({ url, fallback }: { url?: string; fallback: string }) {
   return (
-    <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: '#374151', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>
+    <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: 'var(--gray-700) /* no semantic: gray-700 as surface */', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -297,14 +297,14 @@ export function AiChatPanel() {
     <div style={{
       height: 'calc(100vh - 60px)',
       display: 'flex',
-      backgroundColor: '#ffffff',
+      backgroundColor: 'var(--surface-default)',
       maxWidth: '100%',
       margin: '0 auto'
     }}>
       {/* Chat History Sidebar */}
       <div style={{
         width: showHistory ? '280px' : '0',
-        borderRight: showHistory ? '1px solid #e5e7eb' : 'none',
+        borderRight: showHistory ? '1px solid var(--border-default)' : 'none',
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: '#f9fafb',
@@ -313,7 +313,7 @@ export function AiChatPanel() {
       }}>
         <div style={{
           padding: '16px',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--border-default)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -323,7 +323,7 @@ export function AiChatPanel() {
             onClick={startNewChat}
             style={{
               padding: '6px 12px',
-              backgroundColor: '#1f2937',
+              backgroundColor: 'var(--surface-inverse-raised)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -347,10 +347,10 @@ export function AiChatPanel() {
               style={{
                 padding: '10px',
                 marginBottom: '6px',
-                backgroundColor: chat.chatId === currentChatId ? '#ffffff' : 'transparent',
+                backgroundColor: chat.chatId === currentChatId ? 'var(--surface-default)' : 'transparent',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                border: chat.chatId === currentChatId ? '1px solid #1f2937' : '1px solid transparent',
+                border: chat.chatId === currentChatId ? '1px solid var(--border-strong)' : '1px solid transparent',
                 transition: 'all 0.2s',
                 position: 'relative',
                 display: 'flex',
@@ -364,7 +364,7 @@ export function AiChatPanel() {
                 <div style={{
                   fontSize: '13px',
                   fontWeight: 500,
-                  color: '#1f2937',
+                  color: 'var(--text-secondary)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap'
@@ -373,7 +373,7 @@ export function AiChatPanel() {
                 </div>
                 <div style={{
                   fontSize: '11px',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   marginTop: '2px'
                 }}>
                   {chat.messages.length} messages
@@ -410,7 +410,7 @@ export function AiChatPanel() {
         {/* Toggle History Button */}
         <div style={{
           padding: '12px 24px',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--border-default)',
           display: 'flex',
           alignItems: 'center',
           gap: '12px'
@@ -419,7 +419,7 @@ export function AiChatPanel() {
             onClick={() => setShowHistory(!showHistory)}
             style={{
               background: 'none',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border-default)',
               borderRadius: '8px',
               padding: '6px 12px',
               cursor: 'pointer',
@@ -452,13 +452,13 @@ export function AiChatPanel() {
             justifyContent: 'center',
             alignItems: 'center',
             textAlign: 'center',
-            color: '#6b7280'
+            color: 'var(--text-muted)'
           }}>
             <div style={{
               width: '120px',
               height: '120px',
               borderRadius: '30px',
-              backgroundColor: '#f3f4f6',
+              backgroundColor: 'var(--surface-subtle)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -467,10 +467,10 @@ export function AiChatPanel() {
             }}>
               🤖
             </div>
-            <div style={{fontSize: '32px', fontWeight: 600, marginBottom: '16px', color: '#1f2937'}}>
+            <div style={{fontSize: '32px', fontWeight: 600, marginBottom: '16px', color: 'var(--text-secondary)'}}>
               How can I help you today?
             </div>
-            <div style={{fontSize: '16px', maxWidth: '600px', lineHeight: '1.6', color: '#6b7280'}}>
+            <div style={{fontSize: '16px', maxWidth: '600px', lineHeight: '1.6', color: 'var(--text-muted)'}}>
               Your intelligent co-pilot for strategy, content, and growth.<br />
               Ask anything or use a tool to get started.
             </div>
@@ -494,8 +494,8 @@ export function AiChatPanel() {
                     maxWidth: '65%',
                     padding: '12px 16px',
                     borderRadius: '18px',
-                    backgroundColor: message.role === "user" ? '#1f2937' : '#f3f4f6',
-                    color: message.role === "user" ? '#ffffff' : '#1f2937',
+                    backgroundColor: message.role === "user" ? 'var(--surface-inverse-raised)' : 'var(--surface-subtle)',
+                    color: message.role === "user" ? 'var(--text-inverse)' : 'var(--text-secondary)',
                     wordWrap: 'break-word',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                     fontSize: '15px',
@@ -531,7 +531,7 @@ export function AiChatPanel() {
                           {att.type === 'document' && (
                             <div style={{
                               padding: '8px 12px',
-                              backgroundColor: message.role === "user" ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)',
+                              backgroundColor: message.role === "user" ? 'rgb(var(--white-rgb) / 0.2)' : 'rgba(0,0,0,0.05)',
                               borderRadius: '8px',
                               display: 'flex',
                               alignItems: 'center',
@@ -564,8 +564,8 @@ export function AiChatPanel() {
                 <div style={{
                   padding: '12px 16px',
                   borderRadius: '18px',
-                  backgroundColor: '#f3f4f6',
-                  color: '#6b7280',
+                  backgroundColor: 'var(--surface-subtle)',
+                  color: 'var(--text-muted)',
                   fontSize: '15px'
                 }}>
                   Thinking...
@@ -579,9 +579,9 @@ export function AiChatPanel() {
 
       {/* Input Area */}
       <div style={{
-        borderTop: '1px solid #e5e7eb',
+        borderTop: '1px solid var(--border-default)',
         padding: '16px 24px',
-        backgroundColor: '#ffffff'
+        backgroundColor: 'var(--surface-default)'
       }}>
         {/* Attachments Preview */}
         {attachments.length > 0 && (
@@ -597,7 +597,7 @@ export function AiChatPanel() {
               <div key={idx} style={{
                 position: 'relative',
                 padding: '8px 12px',
-                backgroundColor: '#f3f4f6',
+                backgroundColor: 'var(--surface-subtle)',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -620,7 +620,7 @@ export function AiChatPanel() {
                     cursor: 'pointer',
                     padding: '0 4px',
                     fontSize: '16px',
-                    color: '#6b7280'
+                    color: 'var(--text-muted)'
                   }}
                 >
                   ×
@@ -640,7 +640,7 @@ export function AiChatPanel() {
           backgroundColor: '#f9fafb',
           borderRadius: '24px',
           padding: '8px 16px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--border-default)'
         }}>
           {/* Attachment Button */}
           <div style={{ position: 'relative' }}>
@@ -654,7 +654,7 @@ export function AiChatPanel() {
                 borderRadius: '50%',
                 border: 'none',
                 backgroundColor: 'transparent',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 cursor: isLoading ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -674,7 +674,7 @@ export function AiChatPanel() {
                 left: '0',
                 marginBottom: '8px',
                 backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border-default)',
                 borderRadius: '12px',
                 padding: '8px',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -697,7 +697,7 @@ export function AiChatPanel() {
                     fontSize: '14px',
                     transition: 'background 0.2s'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-subtle)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <span>🖼️</span>
@@ -719,7 +719,7 @@ export function AiChatPanel() {
                     fontSize: '14px',
                     transition: 'background 0.2s'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-subtle)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <span>🎥</span>
@@ -741,7 +741,7 @@ export function AiChatPanel() {
                     fontSize: '14px',
                     transition: 'background 0.2s'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-subtle)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <span>📄</span>
@@ -781,8 +781,8 @@ export function AiChatPanel() {
               height: '36px',
               borderRadius: '50%',
               border: 'none',
-              backgroundColor: (input.trim() || attachments.length > 0) && !isLoading ? '#1f2937' : '#d1d5db',
-              color: '#ffffff',
+              backgroundColor: (input.trim() || attachments.length > 0) && !isLoading ? 'var(--surface-inverse-raised)' : '#d1d5db',
+              color: 'var(--text-inverse)',
               cursor: (input.trim() || attachments.length > 0) && !isLoading ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',

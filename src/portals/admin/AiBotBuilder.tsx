@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { useAuth } from "../../contexts/AuthContext";
 
-const WorldMap = dynamic(() => import("../../components/WorldMap"), { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "#f3f4f6", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: "13px" }}>Loading map...</div> });
+const WorldMap = dynamic(() => import("../../components/WorldMap"), { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "var(--surface-subtle)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-subtle)", fontSize: "13px" }}>Loading map...</div> });
 
 type TrainingLink = {
   id: string;
@@ -250,7 +250,7 @@ export function AiBotBuilder() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
         <div>
           <h2 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>My Bots</h2>
-          <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: "14px" }}>Build and manage your AI chatbots</p>
+          <p style={{ color: "var(--text-muted)", margin: "4px 0 0", fontSize: "14px" }}>Build and manage your AI chatbots</p>
         </div>
         {isAdmin && (
           <button onClick={() => setShowCreateModal(true)} style={btnPrimary}>
@@ -260,17 +260,17 @@ export function AiBotBuilder() {
       </div>
 
       {bots.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 20px", color: "#9ca3af" }}>
+        <div style={{ textAlign: "center", padding: "80px 20px", color: "var(--text-subtle)" }}>
           <div style={{ fontSize: "56px", marginBottom: "16px" }}>🤖</div>
           {isAdmin ? (
             <>
-              <div style={{ fontSize: "18px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>No bots yet</div>
+              <div style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-tertiary)", marginBottom: "8px" }}>No bots yet</div>
               <div style={{ fontSize: "14px", marginBottom: "24px" }}>Create your first AI bot to get started</div>
               <button onClick={() => setShowCreateModal(true)} style={btnPrimary}>Create New Bot</button>
             </>
           ) : (
             <>
-              <div style={{ fontSize: "18px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>No bots assigned</div>
+              <div style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-tertiary)", marginBottom: "8px" }}>No bots assigned</div>
               <div style={{ fontSize: "14px" }}>Ask your admin to assign you to a bot</div>
             </>
           )}
@@ -304,14 +304,14 @@ export function AiBotBuilder() {
               onClick={() => { selectBot(bot, "links"); }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "18px", overflow: "hidden", flexShrink: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--surface-inverse-raised)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "18px", overflow: "hidden", flexShrink: 0 }}>
                     {bot.botAvatarUrl
                       ? <img src={bot.botAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       : "🤖"}
                   </div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: "15px" }}>{bot.botTitle || bot.name}</div>
-                    <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
                       {bot.trainingLinks?.length || 0} sources · {bot.totalMessages || 0} messages
                     </div>
                   </div>
@@ -326,7 +326,7 @@ export function AiBotBuilder() {
               <div style={{ marginTop: "16px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   {(bot.assignedRoles || []).map(r => (
-                    <span key={r} style={{ fontSize: "11px", padding: "2px 8px", background: "#f3f4f6", borderRadius: "12px", color: "#374151", textTransform: "capitalize" }}>{r}</span>
+                    <span key={r} style={{ fontSize: "11px", padding: "2px 8px", background: "var(--surface-subtle)", borderRadius: "12px", color: "var(--text-tertiary)", textTransform: "capitalize" }}>{r}</span>
                   ))}
                 </div>
                 {/* Status Badge */}
@@ -346,7 +346,7 @@ export function AiBotBuilder() {
           ))}
           <div style={{ ...botCard, border: "2px dashed #d1d5db", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", minHeight: "120px" }}
             onClick={() => setShowCreateModal(true)}>
-            <div style={{ textAlign: "center", color: "#9ca3af" }}>
+            <div style={{ textAlign: "center", color: "var(--text-subtle)" }}>
               <div style={{ fontSize: "28px" }}>+</div>
               <div style={{ fontSize: "13px", marginTop: "4px" }}>Create New Bot</div>
             </div>
@@ -357,7 +357,7 @@ export function AiBotBuilder() {
       {showCreateModal && (
         <Modal onClose={() => { setShowCreateModal(false); setNewBotName(""); }}>
           <h3 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>Create New Bot</h3>
-          <p style={{ margin: "0 0 20px", color: "#6b7280", fontSize: "14px" }}>Give your chatbot a name to easily identify it</p>
+          <p style={{ margin: "0 0 20px", color: "var(--text-muted)", fontSize: "14px" }}>Give your chatbot a name to easily identify it</p>
           <input
             autoFocus
             value={newBotName}
@@ -415,12 +415,12 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
 
   const sidebarContent = (
     <>
-      <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #e5e7eb" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "15px", padding: 0, display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px", fontWeight: 500 }}>
+      <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border-default)" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "15px", padding: 0, display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px", fontWeight: 500 }}>
           ← All Bots
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "20px", flexShrink: 0, overflow: "hidden" }}>
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--surface-inverse-raised)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "20px", flexShrink: 0, overflow: "hidden" }}>
             {bot.botAvatarUrl
               ? <img src={bot.botAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : "🤖"}
@@ -431,12 +431,12 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
         </div>
         {/* Published/Draft Toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "8px" }}>
-          <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>Status:</span>
+          <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 500 }}>Status:</span>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ 
               fontSize: "12px", 
               fontWeight: 600,
-              color: (bot.status || 'draft') === 'draft' ? '#1f2937' : '#9ca3af'
+              color: (bot.status || 'draft') === 'draft' ? 'var(--text-secondary)' : 'var(--text-subtle)'
             }}>
               Draft
             </span>
@@ -461,7 +461,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
                 width: "20px",
                 height: "20px",
                 borderRadius: "50%",
-                background: "#fff",
+                background: "var(--surface-default)",
                 position: "absolute",
                 top: "2px",
                 left: (bot.status || 'draft') === 'published' ? "22px" : "2px",
@@ -472,7 +472,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
             <span style={{ 
               fontSize: "12px", 
               fontWeight: 600,
-              color: (bot.status || 'draft') === 'published' ? '#10b981' : '#9ca3af'
+              color: (bot.status || 'draft') === 'published' ? '#10b981' : 'var(--text-subtle)'
             }}>
               Published
             </span>
@@ -483,16 +483,16 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
         {navItems.map(item => (
           <div key={item.id}>
             {item.section && (
-              <div style={{ padding: "14px 20px 6px", fontSize: "12px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.1em" }}>{item.section}</div>
+              <div style={{ padding: "14px 20px 6px", fontSize: "12px", fontWeight: 700, color: "var(--text-subtle)", letterSpacing: "0.1em" }}>{item.section}</div>
             )}
             <button
               onClick={() => handleNavSelect(item.id)}
               style={{
                 width: "100%", textAlign: "left", padding: "11px 20px", border: "none", cursor: "pointer",
                 fontSize: "15px", fontWeight: activeView === item.id ? 600 : 500,
-                background: activeView === item.id ? "#f3f4f6" : "transparent",
-                color: activeView === item.id ? "#1f2937" : "#4b5563",
-                borderLeft: activeView === item.id ? "3px solid #1f2937" : "3px solid transparent",
+                background: activeView === item.id ? "var(--surface-subtle)" : "transparent",
+                color: activeView === item.id ? "var(--text-secondary)" : "#4b5563",
+                borderLeft: activeView === item.id ? "3px solid var(--border-strong)" : "3px solid transparent",
                 display: "flex", alignItems: "center", gap: "10px",
                 transition: "background 0.15s"
               }}
@@ -510,7 +510,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
     <div style={{ display: "flex", height: "calc(100vh - 64px)", overflow: "hidden", position: "relative" }}>
 
       {/* ── Desktop Sidebar ── */}
-      <div style={{ width: "260px", minWidth: "260px", background: "#fff", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column" }} className="bot-sidebar-desktop">
+      <div style={{ width: "260px", minWidth: "260px", background: "var(--surface-default)", borderRight: "1px solid var(--border-default)", display: "flex", flexDirection: "column" }} className="bot-sidebar-desktop">
         {sidebarContent}
       </div>
 
@@ -525,12 +525,12 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
       {/* ── Mobile Drawer ── */}
       <div style={{
         position: "fixed", top: 0, left: 0, bottom: 0, width: "280px",
-        background: "#fff", zIndex: 201, display: "flex", flexDirection: "column",
+        background: "var(--surface-default)", zIndex: 201, display: "flex", flexDirection: "column",
         transform: mobileNavOpen ? "translateX(0)" : "translateX(-100%)",
         transition: "transform 0.25s ease", boxShadow: "4px 0 24px rgba(0,0,0,0.15)"
       }} className="bot-sidebar-mobile">
         <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 16px" }}>
-          <button onClick={() => setMobileNavOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "22px", color: "#6b7280" }}>✕</button>
+          <button onClick={() => setMobileNavOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "22px", color: "var(--text-muted)" }}>✕</button>
         </div>
         {sidebarContent}
       </div>
@@ -539,14 +539,14 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
       <div style={{ flex: 1, overflowY: "auto", background: "#f9fafb", display: "flex", flexDirection: "column" }}>
 
         {/* Mobile top bar */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", background: "#fff", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }} className="bot-mobile-topbar">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", background: "var(--surface-default)", borderBottom: "1px solid var(--border-default)", flexShrink: 0 }} className="bot-mobile-topbar">
           <button
             onClick={() => setMobileNavOpen(true)}
-            style={{ background: "none", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer", padding: "8px 10px", fontSize: "18px", color: "#374151", display: "flex", alignItems: "center", gap: "6px" }}
+            style={{ background: "none", border: "1px solid var(--border-default)", borderRadius: "8px", cursor: "pointer", padding: "8px 10px", fontSize: "18px", color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "6px" }}
           >
             ☰ <span style={{ fontSize: "13px", fontWeight: 600 }}>{activeItem?.label}</span>
           </button>
-          <div style={{ fontSize: "13px", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🤖 {bot.name}</div>
+          <div style={{ fontSize: "13px", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🤖 {bot.name}</div>
         </div>
 
         <div style={{ flex: 1 }}>
@@ -612,11 +612,11 @@ function WorldMapCard({ botId }: { botId?: string }) {
     .slice(0, 5);
 
   return (
-    <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "22px 24px", overflow: "hidden" }}>
+    <div style={{ background: "var(--surface-default)", borderRadius: "14px", border: "1px solid var(--border-default)", padding: "22px 24px", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>🌐</div>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>🌐</div>
         <div>
-          <div style={{ fontSize: "13px", color: "#9ca3af" }}>Popular Countries</div>
+          <div style={{ fontSize: "13px", color: "var(--text-subtle)" }}>Popular Countries</div>
           <div style={{ fontSize: "11px", color: "#d1d5db" }}>Last 28 days · {total} user{total === 1 ? "" : "s"}</div>
         </div>
       </div>
@@ -626,14 +626,14 @@ function WorldMapCard({ botId }: { botId?: string }) {
       {top.length > 0 ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
           {top.map(([code, v]) => (
-            <div key={code} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#374151", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: "999px", padding: "3px 10px" }}>
+            <div key={code} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-tertiary)", background: "#f8fafc", border: "1px solid var(--border-default)", borderRadius: "999px", padding: "3px 10px" }}>
               <span style={{ fontWeight: 600 }}>{v.name}</span>
               <span style={{ color: "#0369a1", fontWeight: 700 }}>{v.count}</span>
             </div>
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "12px", textAlign: "center" }}>
+        <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "12px", textAlign: "center" }}>
           No location data yet — the map fills in as people chat with this bot.
         </div>
       )}
@@ -679,27 +679,27 @@ function OverviewPanel({ bot }: { bot: AiBot }) {
 
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
-      <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "24px", color: "#1f2937" }}>Overview</h2>
+      <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "24px", color: "var(--text-secondary)" }}>Overview</h2>
 
       {/* 3 stat cards in one row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "20px" }}>
         {statCards.map((card, ci) => (
-          <div key={ci} style={{ background: "#fff", borderRadius: "14px", padding: "22px 24px", border: "1px solid #e5e7eb", position: "relative", minHeight: "120px" }}>
+          <div key={ci} style={{ background: "var(--surface-default)", borderRadius: "14px", padding: "22px 24px", border: "1px solid var(--border-default)", position: "relative", minHeight: "120px" }}>
             {/* corner icon */}
             {card.corner && (
               <div style={{ position: "absolute", top: "16px", right: "16px", fontSize: "18px", color: "#d1d5db" }}>{card.corner}</div>
             )}
             {/* top icon + label */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>{card.icon}</div>
-              <span style={{ fontSize: "13px", color: "#9ca3af" }}>{card.label}</span>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>{card.icon}</div>
+              <span style={{ fontSize: "13px", color: "var(--text-subtle)" }}>{card.label}</span>
             </div>
             {/* values row */}
             <div style={{ display: "flex", gap: "32px" }}>
               {card.values.map((v, vi) => (
                 <div key={vi}>
-                  <div style={{ fontSize: "28px", fontWeight: 700, color: "#1f2937", lineHeight: 1 }}>{v.num}</div>
-                  <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>{v.sub}</div>
+                  <div style={{ fontSize: "28px", fontWeight: 700, color: "var(--text-secondary)", lineHeight: 1 }}>{v.num}</div>
+                  <div style={{ fontSize: "12px", color: "var(--text-subtle)", marginTop: "4px" }}>{v.sub}</div>
                 </div>
               ))}
             </div>
@@ -812,7 +812,7 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
   function AvatarImg({ size, fontSize }: { size: number; fontSize: string }) {
     return (
       <div style={{ width: size, height: size, borderRadius: "50%", background: theme, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-        {avatarUrl ? <img src={avatarUrl} alt="bot" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize, color: "#fff" }}>🤖</span>}
+        {avatarUrl ? <img src={avatarUrl} alt="bot" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize, color: "var(--text-inverse)" }}>🤖</span>}
       </div>
     );
   }
@@ -821,37 +821,37 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
     <div style={{ padding: "32px", height: "100%", display: "flex", flexDirection: "column" }} className="bot-panel-padding">
       <div style={{ marginBottom: "20px" }}>
         <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Live Chat</h2>
-        <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Chat with the bot — conversations are saved to Chat History</p>
+        <p style={{ color: "var(--text-muted)", fontSize: "14px", margin: 0 }}>Chat with the bot — conversations are saved to Chat History</p>
       </div>
 
-      <div style={{ flex: 1, display: "flex", background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", overflow: "hidden", minHeight: "500px" }}>
+      <div style={{ flex: 1, display: "flex", background: "var(--surface-default)", borderRadius: "12px", border: "1px solid var(--border-default)", overflow: "hidden", minHeight: "500px" }}>
 
         {/* Sidebar */}
         <div className={`lchat-sidebar${sidebarCollapsed ? " lchat-sidebar-hidden" : ""}`}
-          style={{ width: "240px", minWidth: "240px", background: "#fff", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s", flexShrink: 0 }}>
-          <div style={{ padding: "14px", borderBottom: "1px solid #e5e7eb" }}>
-            <button onClick={startNewChat} style={{ width: "100%", padding: "9px 12px", background: "#f3f4f6", color: "#1f2937", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+          style={{ width: "240px", minWidth: "240px", background: "var(--surface-default)", borderRight: "1px solid var(--border-default)", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s", flexShrink: 0 }}>
+          <div style={{ padding: "14px", borderBottom: "1px solid var(--border-default)" }}>
+            <button onClick={startNewChat} style={{ width: "100%", padding: "9px 12px", background: "var(--surface-subtle)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
               <span>✏️</span> New Chat
             </button>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
             {chatSessions.length === 0
-              ? <div style={{ padding: "20px 12px", color: "#9ca3af", fontSize: "12px", textAlign: "center" }}>No chats yet</div>
+              ? <div style={{ padding: "20px 12px", color: "var(--text-subtle)", fontSize: "12px", textAlign: "center" }}>No chats yet</div>
               : chatSessions.filter(s => s.userId === "admin").map(session => (
                 <div key={session.chatId} onClick={() => loadSession(session)}
-                  style={{ padding: "10px 12px", borderRadius: "8px", cursor: "pointer", marginBottom: "2px", background: currentChatId === session.chatId ? "#f3f4f6" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                  style={{ padding: "10px 12px", borderRadius: "8px", cursor: "pointer", marginBottom: "2px", background: currentChatId === session.chatId ? "var(--surface-subtle)" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "13px", color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {session.title}</div>
-                    <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "2px" }}>{new Date(session.updatedAt).toLocaleDateString()}</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {session.title}</div>
+                    <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "2px" }}>{new Date(session.updatedAt).toLocaleDateString()}</div>
                   </div>
                   <button onClick={e => deleteSession(session.chatId, e)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "14px", padding: "2px 4px", flexShrink: 0 }}>🗑</button>
                 </div>
               ))
             }
           </div>
-          <div style={{ padding: "12px 14px", borderTop: "1px solid #e5e7eb", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: "8px" }}>
             <AvatarImg size={26} fontSize="12px" />
-            <div style={{ fontSize: "12px", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
+            <div style={{ fontSize: "12px", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
           </div>
         </div>
 
@@ -859,10 +859,10 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {/* Header */}
           <div style={{ padding: "0 20px", background: theme, display: "flex", alignItems: "center", gap: "12px", flexShrink: 0, minHeight: "54px" }}>
-            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgba(255,255,255,0.8)", padding: "4px" }}>☰</button>
+            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgb(var(--white-rgb) / 0.8)", padding: "4px" }}>☰</button>
             <AvatarImg size={32} fontSize="15px" />
-            <div style={{ fontWeight: 700, fontSize: "15px", color: "#fff", flex: 1 }}>{botTitle}</div>
-            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: "12px" }}>Admin</span>
+            <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-inverse)", flex: 1 }}>{botTitle}</div>
+            <span style={{ fontSize: "12px", color: "rgb(var(--white-rgb) / 0.7)", background: "rgb(var(--white-rgb) / 0.15)", padding: "3px 10px", borderRadius: "12px" }}>Admin</span>
           </div>
 
           {/* Messages */}
@@ -870,11 +870,11 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
             {isNewChat ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center", padding: "40px" }}>
                 <div style={{ marginBottom: "16px" }}><AvatarImg size={64} fontSize="28px" /></div>
-                <div style={{ fontSize: "20px", fontWeight: 700, color: "#1f2937", marginBottom: "8px" }}>{welcome}</div>
+                <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "8px" }}>{welcome}</div>
                 {suggestions.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", marginTop: "16px", maxWidth: "500px" }}>
                     {suggestions.map((s: string, i: number) => (
-                      <button key={i} onClick={() => send(s)} style={{ padding: "8px 16px", border: `1.5px solid ${theme}`, borderRadius: "20px", fontSize: "13px", color: theme, background: "#fff", cursor: "pointer", fontWeight: 500 }}>{s}</button>
+                      <button key={i} onClick={() => send(s)} style={{ padding: "8px 16px", border: `1.5px solid ${theme}`, borderRadius: "20px", fontSize: "13px", color: theme, background: "var(--surface-default)", cursor: "pointer", fontWeight: 500 }}>{s}</button>
                     ))}
                   </div>
                 )}
@@ -883,14 +883,14 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
               <div style={{ maxWidth: "760px", margin: "0 auto", padding: "0 24px", display: "flex", flexDirection: "column", gap: "24px" }}>
                 {messages.map((m, i) => (
                   <div key={i} style={{ display: "flex", gap: "14px", alignItems: "flex-start", flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: m.role === "user" ? "#1f2937" : theme, color: "#fff", overflow: "hidden" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: m.role === "user" ? "var(--surface-inverse-raised)" : theme, color: "var(--text-inverse)", overflow: "hidden" }}>
                       {m.role === "user" ? "👤" : (avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🤖")}
                     </div>
                     <div style={{ flex: 1, maxWidth: "85%", display: "flex", flexDirection: "column", gap: "6px", alignItems: m.role === "user" ? "flex-end" : "flex-start" }}>
                       {(m as any).attachments?.length > 0 && (
                         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
                           {(m as any).attachments.map((att: any, ai: number) => (
-                            <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgba(31,41,55,0.1)" : "#f3f4f6", borderRadius: "8px", fontSize: "12px", color: "#374151", display: "flex", alignItems: "center", gap: "5px" }}>
+                            <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgb(var(--gray-800-rgb) / 0.1)" : "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px", color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "5px" }}>
                               {att.type?.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
                               <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
                             </div>
@@ -898,7 +898,7 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
                         </div>
                       )}
                       {m.content && (
-                        <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "#1f2937" : "#f9fafb", color: m.role === "user" ? "#fff" : "#1f2937", fontSize: "15px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid #e5e7eb" : "none", whiteSpace: "pre-wrap" }}>
+                        <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "var(--surface-inverse-raised)" : "#f9fafb", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-secondary)", fontSize: "15px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid var(--border-default)" : "none", whiteSpace: "pre-wrap" }}>
                           {m.content}
                         </div>
                       )}
@@ -908,11 +908,11 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
                 {loading && (
                   <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: theme, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                      {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "#fff" }}>🤖</span>}
+                      {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "var(--text-inverse)" }}>🤖</span>}
                     </div>
-                    <div style={{ padding: "12px 16px", borderRadius: "18px 18px 18px 4px", background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                    <div style={{ padding: "12px 16px", borderRadius: "18px 18px 18px 4px", background: "#f9fafb", border: "1px solid var(--border-default)" }}>
                       <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                        {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#9ca3af", animation: `lchat-bounce 1.2s ${i*0.2}s infinite` }} />)}
+                        {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--gray-400) /* no semantic: gray-400 as surface */", animation: `lchat-bounce 1.2s ${i*0.2}s infinite` }} />)}
                       </div>
                     </div>
                   </div>
@@ -923,12 +923,12 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
           </div>
 
           {/* Input */}
-          <div style={{ padding: "16px 24px", borderTop: "1px solid #f3f4f6", flexShrink: 0 }}>
+          <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border-subtle)", flexShrink: 0 }}>
             <div style={{ maxWidth: "760px", margin: "0 auto" }}>
               {attachments.length > 0 && (
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
                   {attachments.map((att, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px" }}>
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px" }}>
                       {att.type.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
                       <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
                       <button onClick={() => setAttachments(prev => prev.filter((_,idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", padding: 0, lineHeight: 1 }}>×</button>
@@ -937,13 +937,13 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
                 </div>
               )}
               <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFile} />
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#f9fafb", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "8px 12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#f9fafb", borderRadius: "14px", border: "1px solid var(--border-default)", padding: "8px 12px" }}>
                 <button onClick={() => fileRef.current?.click()} title="Attach file"
-                  style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "#e5e7eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 300, flexShrink: 0, lineHeight: 1 }}>+</button>
+                  style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "var(--surface-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 300, flexShrink: 0, lineHeight: 1 }}>+</button>
                 <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
-                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "#1f2937", alignSelf: "center" }} />
+                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "var(--text-secondary)", alignSelf: "center" }} />
                 <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}
-                  style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "#e5e7eb" : theme, color: loading || (!input.trim() && attachments.length === 0) ? "#9ca3af" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>↑</button>
+                  style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "var(--surface-muted)" : theme, color: loading || (!input.trim() && attachments.length === 0) ? "var(--text-subtle)" : "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>↑</button>
               </div>
               <div style={{ textAlign: "center", fontSize: "11px", color: "#d1d5db", marginTop: "8px" }}>Enter to send · Shift+Enter for new line</div>
             </div>
@@ -1058,31 +1058,31 @@ function DateRangePicker({ from, to, onChange }: {
         onClick={() => setOpen(p => !p)}
         style={{
           display: "flex", alignItems: "center", gap: "10px",
-          padding: "9px 16px", border: `2px solid ${open ? "#3b82f6" : "#e5e7eb"}`,
-          borderRadius: "10px", background: "#fff", cursor: "pointer",
-          fontSize: "14px", fontWeight: 500, color: "#1f2937",
+          padding: "9px 16px", border: `2px solid ${open ? "#3b82f6" : "var(--border-default)"}`,
+          borderRadius: "10px", background: "var(--surface-default)", cursor: "pointer",
+          fontSize: "14px", fontWeight: 500, color: "var(--text-secondary)",
           whiteSpace: "nowrap", transition: "border-color 0.15s"
         }}
       >
         <span style={{ fontSize: "16px" }}>📅</span>
         {label}
-        <span style={{ fontSize: "11px", color: "#6b7280", marginLeft: "2px" }}>{open ? "▲" : "▼"}</span>
+        <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "2px" }}>{open ? "▲" : "▼"}</span>
       </button>
 
       {/* Dropdown */}
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 500,
-          background: "#fff", borderRadius: "14px", boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
-          border: "1px solid #e5e7eb", display: "flex", overflow: "hidden", minWidth: "560px"
+          background: "var(--surface-default)", borderRadius: "14px", boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+          border: "1px solid var(--border-default)", display: "flex", overflow: "hidden", minWidth: "560px"
         }}>
           {/* Presets */}
-          <div style={{ width: "160px", borderRight: "1px solid #f3f4f6", padding: "12px 0", flexShrink: 0 }}>
+          <div style={{ width: "160px", borderRight: "1px solid var(--border-subtle)", padding: "12px 0", flexShrink: 0 }}>
             {["Current week","Last 7 Days","Current month","Last 3 months","Current Year"].map(p => (
               <button key={p} onClick={() => applyPreset(p)} style={{
                 width: "100%", textAlign: "left", padding: "11px 20px",
                 border: "none", background: "none", cursor: "pointer",
-                fontSize: "14px", color: "#374151", fontWeight: 400,
+                fontSize: "14px", color: "var(--text-tertiary)", fontWeight: 400,
                 transition: "background 0.1s"
               }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
@@ -1099,19 +1099,19 @@ function DateRangePicker({ from, to, onChange }: {
                 let m = viewMonth - 1, y = viewYear;
                 if (m < 0) { m = 11; y--; }
                 setViewMonth(m); setViewYear(y);
-              }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280", padding: "4px 8px" }}>‹</button>
-              <span style={{ fontWeight: 700, fontSize: "16px", color: "#1f2937" }}>{MONTHS[viewMonth]} {viewYear}</span>
+              }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "var(--text-muted)", padding: "4px 8px" }}>‹</button>
+              <span style={{ fontWeight: 700, fontSize: "16px", color: "var(--text-secondary)" }}>{MONTHS[viewMonth]} {viewYear}</span>
               <button onClick={() => {
                 let m = viewMonth + 1, y = viewYear;
                 if (m > 11) { m = 0; y++; }
                 setViewMonth(m); setViewYear(y);
-              }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280", padding: "4px 8px" }}>›</button>
+              }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "var(--text-muted)", padding: "4px 8px" }}>›</button>
             </div>
 
             {/* Day headers */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: "6px" }}>
               {DAYS.map(d => (
-                <div key={d} style={{ textAlign: "center", fontSize: "12px", color: "#9ca3af", fontWeight: 600, padding: "4px 0" }}>{d}</div>
+                <div key={d} style={{ textAlign: "center", fontSize: "12px", color: "var(--text-subtle)", fontWeight: 600, padding: "4px 0" }}>{d}</div>
               ))}
             </div>
 
@@ -1122,7 +1122,7 @@ function DateRangePicker({ from, to, onChange }: {
                 const start = isStart(d), end = isEnd(d), range = inRange(d);
                 const isToday = d.getTime() === today.getTime();
                 const bg = start || end ? "#3b82f6" : range ? "#dbeafe" : "transparent";
-                const color = start || end ? "#fff" : range ? "#1d4ed8" : "#1f2937";
+                const color = start || end ? "var(--text-inverse)" : range ? "#1d4ed8" : "var(--text-secondary)";
                 return (
                   <div
                     key={d.getTime()}
@@ -1142,7 +1142,7 @@ function DateRangePicker({ from, to, onChange }: {
             </div>
 
             {selecting && (
-              <div style={{ marginTop: "12px", fontSize: "12px", color: "#6b7280", textAlign: "center" }}>
+              <div style={{ marginTop: "12px", fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>
                 Click a second date to complete the range
               </div>
             )}
@@ -1192,12 +1192,12 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
   if (selectedChat) {
     return (
       <div style={{ padding: "32px" }} className="bot-panel-padding">
-        <button onClick={() => setSelectedChat(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "14px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <button onClick={() => setSelectedChat(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "14px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "6px" }}>
           ← Back
         </button>
         <div style={{ marginBottom: "16px" }}>
           <div style={{ fontWeight: 700, fontSize: "16px" }}>{selectedChat.title}</div>
-          <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>
+          <div style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px" }}>
             {selectedChat.userName} · {selectedChat.userEmail} · <span style={{ textTransform: "capitalize" }}>{selectedChat.userRole}</span>
           </div>
         </div>
@@ -1206,8 +1206,8 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
             <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
               <div style={{
                 maxWidth: "75%", padding: "10px 14px", borderRadius: "16px", fontSize: "14px", lineHeight: "1.6",
-                background: m.role === "user" ? "#1f2937" : "#f3f4f6",
-                color: m.role === "user" ? "#fff" : "#1f2937",
+                background: m.role === "user" ? "var(--surface-inverse-raised)" : "var(--surface-subtle)",
+                color: m.role === "user" ? "var(--text-inverse)" : "var(--text-secondary)",
                 whiteSpace: "pre-wrap"
               }}>
                 {m.content}
@@ -1219,49 +1219,49 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
     );
   }
 
-  const thStyle: React.CSSProperties = { padding: "10px 14px", textAlign: "left", fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.07em", textTransform: "uppercase", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" };
-  const tdStyle: React.CSSProperties = { padding: "12px 14px", fontSize: "13px", color: "#374151", borderBottom: "1px solid #f3f4f6", verticalAlign: "middle" };
+  const thStyle: React.CSSProperties = { padding: "10px 14px", textAlign: "left", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", letterSpacing: "0.07em", textTransform: "uppercase", borderBottom: "1px solid var(--border-default)", whiteSpace: "nowrap" };
+  const tdStyle: React.CSSProperties = { padding: "12px 14px", fontSize: "13px", color: "var(--text-tertiary)", borderBottom: "1px solid var(--border-subtle)", verticalAlign: "middle" };
 
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>Chat History</h2>
-      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "24px" }}>All conversations with this bot</p>
+      <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "24px" }}>All conversations with this bot</p>
 
       {/* Filters */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap", alignItems: "center" }}>
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search by user, email or title..."
-          style={{ width: "280px", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", outline: "none" }}
+          style={{ width: "280px", padding: "9px 12px", border: "1px solid var(--border-default)", borderRadius: "8px", fontSize: "13px", outline: "none" }}
         />
         <DateRangePicker from={dateFrom} to={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
         {(dateFrom || dateTo) && (
           <button onClick={() => { setDateFrom(null); setDateTo(null); }}
-            style={{ padding: "9px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", background: "#fff", cursor: "pointer", fontSize: "13px", color: "#6b7280" }}>
+            style={{ padding: "9px 14px", border: "1px solid var(--border-default)", borderRadius: "8px", background: "var(--surface-default)", cursor: "pointer", fontSize: "13px", color: "var(--text-muted)" }}>
             ✕ Clear
           </button>
         )}
         <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-          style={{ padding: "9px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", background: "#fff", cursor: "pointer" }}>
+          style={{ padding: "9px 14px", border: "1px solid var(--border-default)", borderRadius: "8px", fontSize: "13px", background: "var(--surface-default)", cursor: "pointer" }}>
           <option value="all">All Roles</option>
           <option value="admin">Admin</option>
           <option value="sales-team-lead">Sales Team Lead</option>
           <option value="sales">Sales</option>
           <option value="marketing">Marketing</option>
         </select>
-        <span style={{ fontSize: "13px", color: "#6b7280", marginLeft: "auto" }}>{filtered.length} total items</span>
+        <span style={{ fontSize: "13px", color: "var(--text-muted)", marginLeft: "auto" }}>{filtered.length} total items</span>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#9ca3af" }}>Loading...</div>
+        <div style={{ textAlign: "center", padding: "60px", color: "var(--text-subtle)" }}>Loading...</div>
       ) : filtered.length === 0 ? (
-        <div style={{ background: "#fff", borderRadius: "12px", padding: "60px 20px", border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
+        <div style={{ background: "var(--surface-default)", borderRadius: "12px", padding: "60px 20px", border: "1px solid var(--border-default)", textAlign: "center", color: "var(--text-subtle)" }}>
           <div style={{ fontSize: "48px", marginBottom: "12px" }}>💬</div>
-          <div style={{ fontSize: "16px", fontWeight: 500, color: "#374151" }}>No conversations yet</div>
+          <div style={{ fontSize: "16px", fontWeight: 500, color: "var(--text-tertiary)" }}>No conversations yet</div>
           <div style={{ fontSize: "14px", marginTop: "8px" }}>Chats will appear here once users start talking to this bot</div>
         </div>
       ) : (
-        <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+        <div style={{ background: "var(--surface-default)", borderRadius: "12px", border: "1px solid var(--border-default)", overflow: "hidden" }}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead style={{ background: "#f8fafc" }}>
@@ -1283,31 +1283,31 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
                   const roleColor: Record<string, string> = { admin: "#f3f4f6", "sales-team-lead": "#ede9fe", sales: "#dbeafe", marketing: "#dcfce7" };
                   const roleText: Record<string, string> = { admin: "#374151", "sales-team-lead": "#6d28d9", sales: "#1d4ed8", marketing: "#15803d" };
                   return (
-                    <tr key={chat.chatId} style={{ background: idx % 2 === 0 ? "#fff" : "#fafafa" }}
+                    <tr key={chat.chatId} style={{ background: idx % 2 === 0 ? "var(--surface-default)" : "#fafafa" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "#f0f9ff")}
-                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#fafafa")}>
+                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? "var(--surface-default)" : "#fafafa")}>
                       <td style={tdStyle}><input type="checkbox" /></td>
                       <td style={tdStyle}>
                         <div style={{ fontSize: "13px" }}>{new Date(chat.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
-                        <div style={{ fontSize: "11px", color: "#9ca3af" }}>{new Date(chat.updatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>{new Date(chat.updatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</div>
                       </td>
                       <td style={{ ...tdStyle, maxWidth: "220px" }}>
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#374151" }}>{lastContent}</div>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-tertiary)" }}>{lastContent}</div>
                       </td>
                       <td style={tdStyle}>
                         <div style={{ fontWeight: 600, fontSize: "13px" }}>{chat.userName || "-"}</div>
-                        <div style={{ fontSize: "11px", color: "#9ca3af" }}>{chat.userEmail || ""}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>{chat.userEmail || ""}</div>
                       </td>
                       <td style={tdStyle}>
-                        <span style={{ padding: "2px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 600, background: roleColor[chat.userRole] || "#f3f4f6", color: roleText[chat.userRole] || "#374151", textTransform: "capitalize" }}>
+                        <span style={{ padding: "2px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 600, background: roleColor[chat.userRole] || "var(--surface-subtle)", color: roleText[chat.userRole] || "var(--text-tertiary)", textTransform: "capitalize" }}>
                           {chat.userRole || "-"}
                         </span>
                       </td>
-                      <td style={tdStyle}><span style={{ fontSize: "12px", color: "#6b7280" }}>English</span></td>
+                      <td style={tdStyle}><span style={{ fontSize: "12px", color: "var(--text-muted)" }}>English</span></td>
                       <td style={tdStyle}>{chat.messages?.length || 0}</td>
                       <td style={tdStyle}>
                         <button onClick={() => setSelectedChat(chat)}
-                          style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: "12px", color: "#374151", fontWeight: 500 }}>
+                          style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid var(--border-default)", background: "var(--surface-default)", cursor: "pointer", fontSize: "12px", color: "var(--text-tertiary)", fontWeight: 500 }}>
                           View
                         </button>
                       </td>
@@ -1430,20 +1430,20 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>Links</h2>
-      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "24px" }}>Enter the link to a webpage and we will visit all the pages starting from it</p>
+      <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "24px" }}>Enter the link to a webpage and we will visit all the pages starting from it</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }} className="bot-links-grid">
         {/* Train from Link */}
         <div style={card}>
           <div style={{ fontWeight: 600, fontSize: "16px", marginBottom: "4px" }}>Train from Link</div>
-          <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "16px" }}>Enter a URL to train your bot from a website or document</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>Enter a URL to train your bot from a website or document</p>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
             {["full-website", "webpage", "pdf", "word-doc", "excel-csv", "youtube", "vimeo", "loom"].map(t => (
               <button key={t} onClick={() => setUrlType(t)} style={{
                 padding: "4px 12px", borderRadius: "20px", border: "1px solid", fontSize: "12px", cursor: "pointer", fontWeight: 500,
-                background: urlType === t ? "#1f2937" : "#fff",
-                color: urlType === t ? "#fff" : "#374151",
-                borderColor: urlType === t ? "#1f2937" : "#d1d5db"
+                background: urlType === t ? "var(--surface-inverse-raised)" : "var(--surface-default)",
+                color: urlType === t ? "var(--text-inverse)" : "var(--text-tertiary)",
+                borderColor: urlType === t ? "var(--border-strong)" : "#d1d5db"
               }}>
                 {t === "full-website" ? "Full Website" : t === "webpage" ? "Webpage" : t === "pdf" ? "PDF" : t === "word-doc" ? "Word Doc" : t === "excel-csv" ? "Excel/CSV" : t === "youtube" ? "YouTube" : t === "vimeo" ? "Vimeo" : "Loom"}
               </button>
@@ -1468,7 +1468,7 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
         {/* Upload Document */}
         <div style={card}>
           <div style={{ fontWeight: 600, fontSize: "16px", marginBottom: "4px" }}>Upload Document</div>
-          <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "16px" }}>Only txt, pdf, docx, doc, csv, xlsx files are allowed. Max 70MB.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>Only txt, pdf, docx, doc, csv, xlsx files are allowed. Max 70MB.</p>
           <div
             onClick={() => !uploading && fileRef.current?.click()}
             onDragOver={e => e.preventDefault()}
@@ -1482,7 +1482,7 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
                 fileRef.current.dispatchEvent(new Event("change", { bubbles: true }));
               }
             }}
-            style={{ border: "2px dashed #d1d5db", borderRadius: "10px", padding: "40px 20px", textAlign: "center", cursor: uploading ? "wait" : "pointer", color: "#6b7280", background: uploading ? "#f9fafb" : "#fff" }}
+            style={{ border: "2px dashed #d1d5db", borderRadius: "10px", padding: "40px 20px", textAlign: "center", cursor: uploading ? "wait" : "pointer", color: "var(--text-muted)", background: uploading ? "#f9fafb" : "var(--surface-default)" }}
           >
             <div style={{ fontSize: "32px", marginBottom: "8px" }}>{uploading ? "⏳" : "☁️"}</div>
             <div style={{ fontSize: "14px", fontWeight: 500 }}>{uploading ? "Processing file..." : "Choose a file or drag it here"}</div>
@@ -1501,28 +1501,28 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
           { label: "Trained", value: links.filter(l => l.status === "trained").length, color: "#10b981" },
           { label: "Pending", value: links.filter(l => l.status === "pending").length, color: "#f59e0b" },
           { label: "Failed", value: links.filter(l => l.status === "failed").length, color: "#ef4444" },
-          { label: "No Space", value: links.filter(l => l.status === "no-space").length, color: "#6b7280" },
+          { label: "No Space", value: links.filter(l => l.status === "no-space").length, color: "var(--text-muted)" },
         ].map(s => (
-          <div key={s.label} style={{ background: "#fff", borderRadius: "8px", padding: "12px 16px", border: "1px solid #e5e7eb", textAlign: "center" }}>
-            <div style={{ fontSize: "18px", fontWeight: 700, color: (s as any).color || "#1f2937" }}>{s.value}</div>
-            <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "2px" }}>{s.label}</div>
+          <div key={s.label} style={{ background: "var(--surface-default)", borderRadius: "8px", padding: "12px 16px", border: "1px solid var(--border-default)", textAlign: "center" }}>
+            <div style={{ fontSize: "18px", fontWeight: 700, color: (s as any).color || "var(--text-secondary)" }}>{s.value}</div>
+            <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {links.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+        <div style={{ ...card, textAlign: "center", padding: "40px", color: "var(--text-subtle)" }}>
           <div style={{ fontSize: "14px" }}>No links found. Add a URL above to start training.</div>
         </div>
       ) : (
-        <div style={{ background: "#fff", borderRadius: "10px", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+        <div style={{ background: "var(--surface-default)", borderRadius: "10px", border: "1px solid var(--border-default)", overflow: "hidden" }}>
           {/* Table header */}
-          <div style={{ display: "grid", gridTemplateColumns: "36px 120px 1fr 140px 100px 80px", alignItems: "center", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "36px 120px 1fr 140px 100px 80px", alignItems: "center", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid var(--border-default)" }}>
             <div />
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>Status</div>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>Link / File</div>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>Character Count</div>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>Type</div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Status</div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Link / File</div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Character Count</div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Type</div>
             <div />
           </div>
 
@@ -1535,19 +1535,19 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
             const statusLabel: Record<string, string> = { trained: "Done", pending: "Pending", failed: "Failed", "no-space": "No Space" };
 
             return (
-              <div key={link.id} style={{ display: "grid", gridTemplateColumns: "36px 120px 1fr 140px 100px 80px", alignItems: "center", padding: "12px 16px", borderBottom: idx < links.length - 1 ? "1px solid #f3f4f6" : "none", background: "#fff" }}
+              <div key={link.id} style={{ display: "grid", gridTemplateColumns: "36px 120px 1fr 140px 100px 80px", alignItems: "center", padding: "12px 16px", borderBottom: idx < links.length - 1 ? "1px solid var(--border-subtle)" : "none", background: "var(--surface-default)" }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-default)")}>
 
                 {/* Checkbox */}
                 <input type="checkbox" style={{ cursor: "pointer" }} />
 
                 {/* Status */}
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${statusDot[link.status] || "#9ca3af"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${statusDot[link.status] || "var(--gray-400) /* no semantic: gray-400 as border */"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     {link.status === "trained" && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "block" }} />}
                   </span>
-                  <span style={{ fontSize: "13px", fontWeight: 600, color: statusDot[link.status] || "#6b7280" }}>{statusLabel[link.status] || link.status}</span>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: statusDot[link.status] || "var(--text-muted)" }}>{statusLabel[link.status] || link.status}</span>
                 </div>
 
                 {/* Link / File */}
@@ -1561,7 +1561,7 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
                     </a>
                   ) : (
                     <a href={link.url} download={link.originalName || name}
-                      style={{ fontSize: "13px", color: "#374151", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "6px" }}>
+                      style={{ fontSize: "13px", color: "var(--text-tertiary)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "6px" }}>
                       <span>{ext === "pdf" ? "📄" : ext === "docx" || ext === "doc" ? "📝" : ext === "xlsx" || ext === "csv" ? "📊" : "📎"}</span>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
                     </a>
@@ -1569,17 +1569,17 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
                 </div>
 
                 {/* Char count */}
-                <div style={{ fontSize: "13px", color: "#374151" }}>{(link.chars || 0).toLocaleString()}</div>
+                <div style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>{(link.chars || 0).toLocaleString()}</div>
 
                 {/* Type */}
-                <div style={{ fontSize: "12px", color: "#6b7280", textTransform: "capitalize" }}>{link.type}</div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "capitalize" }}>{link.type}</div>
 
                 {/* Delete */}
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <button onClick={() => removeLink(link.id)}
-                    style={{ width: 28, height: 28, borderRadius: "6px", background: "none", border: "1px solid #e5e7eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: "14px" }}
+                    style={{ width: 28, height: 28, borderRadius: "6px", background: "none", border: "1px solid var(--border-default)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-subtle)", fontSize: "14px" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "#fff5f5"; e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.borderColor = "#fecaca"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#9ca3af"; e.currentTarget.style.borderColor = "#e5e7eb"; }}>
+                    onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-subtle)"; e.currentTarget.style.borderColor = "var(--border-default)"; }}>
                     🗑
                   </button>
                 </div>
@@ -1601,7 +1601,7 @@ function TextPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Text</h2>
-      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "24px" }}>This is a quick and easy method to quickly train your chatbot on extra data. Simply add any text below.</p>
+      <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "24px" }}>This is a quick and easy method to quickly train your chatbot on extra data. Simply add any text below.</p>
       <div style={card}>
         <textarea
           value={text}
@@ -1609,8 +1609,8 @@ function TextPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
           placeholder="Enter your training content here..."
           style={{ width: "100%", minHeight: "400px", border: "none", outline: "none", fontSize: "14px", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #f3f4f6" }}>
-          <span style={{ fontSize: "12px", color: "#9ca3af" }}>{text.length.toLocaleString()} characters</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid var(--border-subtle)" }}>
+          <span style={{ fontSize: "12px", color: "var(--text-subtle)" }}>{text.length.toLocaleString()} characters</span>
           <button onClick={() => { onSave({ trainingText: text }); flash(); }} disabled={saving} style={btnPrimary}>
             {saving ? "Saving..." : "Save"}
           </button>
@@ -1649,7 +1649,7 @@ function QAPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBo
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }} className="bot-qa-header">
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Q&A</h2>
-          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Use this section to add frequently asked questions and the responses the chatbot should provide.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "14px", margin: 0 }}>Use this section to add frequently asked questions and the responses the chatbot should provide.</p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={addItem} style={btnPrimary}>+ Add</button>
@@ -1659,7 +1659,7 @@ function QAPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBo
       </div>
 
       {items.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "60px", color: "#9ca3af" }}>
+        <div style={{ ...card, textAlign: "center", padding: "60px", color: "var(--text-subtle)" }}>
           <div style={{ fontSize: "14px" }}>No Q&A pairs yet. Click "+ Add" to create one.</div>
         </div>
       ) : (
@@ -1667,7 +1667,7 @@ function QAPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBo
           {items.map(item => (
             <div key={item.id} style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                <span style={{ fontWeight: 600, fontSize: "13px", color: "#374151" }}>Question</span>
+                <span style={{ fontWeight: 600, fontSize: "13px", color: "var(--text-tertiary)" }}>Question</span>
                 <button onClick={() => removeItem(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "14px" }}>🗑</button>
               </div>
               <input
@@ -1792,19 +1792,19 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Courses</h2>
-          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Select courses, modules, and lessons to train this bot</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "14px", margin: 0 }}>Select courses, modules, and lessons to train this bot</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {totalSelected > 0 && <span style={{ fontSize: "13px", color: "#6b7280" }}>{totalSelected} lessons selected</span>}
+          {totalSelected > 0 && <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>{totalSelected} lessons selected</span>}
           <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save & Train"}</button>
           <SavedBadge visible={saved} />
         </div>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#9ca3af" }}>Loading courses...</div>
+        <div style={{ textAlign: "center", padding: "60px", color: "var(--text-subtle)" }}>Loading courses...</div>
       ) : courses.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "60px", color: "#9ca3af" }}>No courses found</div>
+        <div style={{ ...card, textAlign: "center", padding: "60px", color: "var(--text-subtle)" }}>No courses found</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {courses.map(course => {
@@ -1816,15 +1816,15 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
             return (
               <div key={course.id} style={{ ...card, padding: 0, overflow: "hidden" }}>
                 {/* Course header */}
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 20px", background: "#f8fafc", borderBottom: isExpanded ? "1px solid #e5e7eb" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 20px", background: "#f8fafc", borderBottom: isExpanded ? "1px solid var(--border-default)" : "none" }}>
                   <input type="checkbox" checked={isCourseChecked} onChange={() => toggleCourse(course.id, course)}
                     style={{ width: 16, height: 16, accentColor: "#3b82f6", cursor: "pointer", flexShrink: 0 }} />
                   <button onClick={() => setExpanded(prev => { const n = new Set(prev); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n; })}
                     style={{ background: "none", border: "none", cursor: "pointer", flex: 1, textAlign: "left", display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ fontSize: "18px" }}>📚</span>
-                    <span style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937" }}>{course.title}</span>
-                    <span style={{ fontSize: "12px", color: "#9ca3af", marginLeft: "auto" }}>{selectedInCourse}/{coursePageCount} lessons</span>
-                    <span style={{ color: "#9ca3af", fontSize: "12px" }}>{isExpanded ? "▲" : "▼"}</span>
+                    <span style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-secondary)" }}>{course.title}</span>
+                    <span style={{ fontSize: "12px", color: "var(--text-subtle)", marginLeft: "auto" }}>{selectedInCourse}/{coursePageCount} lessons</span>
+                    <span style={{ color: "var(--text-subtle)", fontSize: "12px" }}>{isExpanded ? "▲" : "▼"}</span>
                   </button>
                 </div>
 
@@ -1839,7 +1839,7 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
                         <input type="checkbox" checked={selectedPages.has(page.id)} onChange={() => togglePage(page.id)}
                           style={{ width: 14, height: 14, accentColor: "#3b82f6", cursor: "pointer" }} />
                         <span style={{ fontSize: "14px" }}>📄</span>
-                        <span style={{ fontSize: "13px", color: "#374151" }}>{page.title}</span>
+                        <span style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>{page.title}</span>
                         {page.transcript && <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "auto" }}>✓ transcript</span>}
                       </label>
                     ))}
@@ -1854,8 +1854,8 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
                             <input type="checkbox" checked={isFolderChecked} onChange={() => toggleFolder(folder.id, course)}
                               style={{ width: 15, height: 15, accentColor: "#3b82f6", cursor: "pointer" }} />
                             <span style={{ fontSize: "15px" }}>📁</span>
-                            <span style={{ fontWeight: 600, fontSize: "13px", color: "#374151" }}>{folder.title}</span>
-                            <span style={{ fontSize: "11px", color: "#9ca3af" }}>({folderPages.filter(p => selectedPages.has(p.id)).length}/{folderPages.length})</span>
+                            <span style={{ fontWeight: 600, fontSize: "13px", color: "var(--text-tertiary)" }}>{folder.title}</span>
+                            <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>({folderPages.filter(p => selectedPages.has(p.id)).length}/{folderPages.length})</span>
                           </div>
                           {folderPages.map(page => (
                             <label key={page.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "7px 20px 7px 60px", cursor: "pointer" }}
@@ -1864,7 +1864,7 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
                               <input type="checkbox" checked={selectedPages.has(page.id)} onChange={() => togglePage(page.id)}
                                 style={{ width: 14, height: 14, accentColor: "#3b82f6", cursor: "pointer" }} />
                               <span style={{ fontSize: "13px" }}>📄</span>
-                              <span style={{ fontSize: "13px", color: "#374151" }}>{page.title}</span>
+                              <span style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>{page.title}</span>
                               {page.transcript && <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "auto" }}>✓ transcript</span>}
                             </label>
                           ))}
@@ -1909,7 +1909,7 @@ function TunePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
         <div style={{ fontWeight: 600, marginBottom: "16px" }}>Model</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }} className="bot-tune-model-grid">
           <div>
-            <label style={{ fontSize: "12px", color: "#6b7280", display: "block", marginBottom: "6px" }}>OpenAI Models</label>
+            <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>OpenAI Models</label>
             <select value={model} onChange={e => setModel(e.target.value)} style={inputStyle}>
               <option value="gpt-4o-mini">GPT-4o mini</option>
               <option value="gpt-4o">GPT-4o</option>
@@ -1922,14 +1922,14 @@ function TunePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
       {/* AI Creativity */}
       <div style={{ ...card, marginBottom: "20px" }}>
         <div style={{ fontWeight: 600, marginBottom: "4px" }}>AI Creativity</div>
-        <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "16px" }}>Lower values make responses more focused and predictable. Higher values make them more creative and varied.</p>
+        <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>Lower values make responses more focused and predictable. Higher values make them more creative and varied.</p>
         <input
           type="range" min={0} max={100} value={creativity}
           onChange={e => setCreativity(Number(e.target.value))}
-          style={{ width: "100%", accentColor: "#1f2937" }}
+          style={{ width: "100%", accentColor: "var(--gray-800) /* no semantic: gray-800 as accent-color (no MAP category) */" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
-          <span>0%</span><span style={{ fontWeight: 600, color: "#1f2937" }}>{creativity}%</span><span>100%</span>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
+          <span>0%</span><span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>{creativity}%</span><span>100%</span>
         </div>
       </div>
 
@@ -1938,7 +1938,7 @@ function TunePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
           <div>
             <div style={{ fontWeight: 600, marginBottom: "4px" }}>AI Instruction Prompt</div>
-            <p style={{ color: "#6b7280", fontSize: "13px", margin: 0 }}>Give instructions here to tune the behaviour of the bot. You can simply explain how you want the bot to behave.</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: 0 }}>Give instructions here to tune the behaviour of the bot. You can simply explain how you want the bot to behave.</p>
           </div>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "12px" }}>
@@ -2017,16 +2017,16 @@ function TestPanel({ bot }: { bot: AiBot }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Test Your Bot</h2>
-          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Here you can use your chatbot and compare AI models to see which gives you the best responses.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "14px", margin: 0 }}>Here you can use your chatbot and compare AI models to see which gives you the best responses.</p>
         </div>
         <button onClick={() => { setMessages([{ role: "assistant", content: (bot as any).welcomeMessage || "Hi, How can I help you today?" }]); setAttachments([]); }} style={btnSecondary}>Clear all chats</button>
       </div>
 
       <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
-        <div style={{ width: "100%", maxWidth: "520px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: "600px" }}>
+        <div style={{ width: "100%", maxWidth: "520px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid var(--border-default)", background: "var(--surface-default)", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: "600px" }}>
           <div style={{ background: color, padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>{avatar}</div>
-            <span style={{ color: "#fff", fontWeight: 600, fontSize: "15px", flex: 1 }}>{(bot as any).botTitle || bot.name}</span>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgb(var(--white-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>{avatar}</div>
+            <span style={{ color: "var(--text-inverse)", fontWeight: 600, fontSize: "15px", flex: 1 }}>{(bot as any).botTitle || bot.name}</span>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "12px", background: "#f8fafc" }}>
@@ -2039,7 +2039,7 @@ function TestPanel({ bot }: { bot: AiBot }) {
                   {m.attachments && m.attachments.length > 0 && (
                     <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
                       {m.attachments.map((att, ai) => (
-                        <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgba(255,255,255,0.2)" : "#f3f4f6", borderRadius: "8px", fontSize: "12px", color: m.role === "user" ? "#fff" : "#374151", display: "flex", alignItems: "center", gap: "5px" }}>
+                        <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgb(var(--white-rgb) / 0.2)" : "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "5px" }}>
                           {att.type.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
                           <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
                         </div>
@@ -2047,7 +2047,7 @@ function TestPanel({ bot }: { bot: AiBot }) {
                     </div>
                   )}
                   {m.content && (
-                    <div style={{ padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", fontSize: "16px", lineHeight: "1.6", background: m.role === "user" ? color : "#fff", color: m.role === "user" ? "#fff" : "#1f2937", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>{m.content}</div>
+                    <div style={{ padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", fontSize: "16px", lineHeight: "1.6", background: m.role === "user" ? color : "var(--surface-default)", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-secondary)", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>{m.content}</div>
                   )}
                 </div>
               </div>
@@ -2055,7 +2055,7 @@ function TestPanel({ bot }: { bot: AiBot }) {
             {loading && (
               <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-end", gap: "8px" }}>
                 <div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>{avatar}</div>
-                <div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", background: "#fff", color: "#6b7280", fontSize: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>Thinking...</div>
+                <div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", background: "var(--surface-default)", color: "var(--text-muted)", fontSize: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>Thinking...</div>
               </div>
             )}
             <div ref={bottomRef} />
@@ -2063,9 +2063,9 @@ function TestPanel({ bot }: { bot: AiBot }) {
 
           {/* Attachment preview */}
           {attachments.length > 0 && (
-            <div style={{ padding: "8px 16px", borderTop: "1px solid #f3f4f6", display: "flex", gap: "8px", flexWrap: "wrap", background: "#fff" }}>
+            <div style={{ padding: "8px 16px", borderTop: "1px solid var(--border-subtle)", display: "flex", gap: "8px", flexWrap: "wrap", background: "var(--surface-default)" }}>
               {attachments.map((att, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px" }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px" }}>
                   {att.type.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
                   <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
                   <button onClick={() => setAttachments(prev => prev.filter((_,idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", padding: 0, lineHeight: 1 }}>×</button>
@@ -2074,16 +2074,16 @@ function TestPanel({ bot }: { bot: AiBot }) {
             </div>
           )}
 
-          <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: "8px", alignItems: "center", background: "#fff" }}>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border-default)", display: "flex", gap: "8px", alignItems: "center", background: "var(--surface-default)" }}>
             <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFile} />
             <button onClick={() => fileRef.current?.click()} title="Attach file"
-              style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>+</button>
+              style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: "var(--surface-subtle)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>+</button>
             <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
               placeholder={(bot as any).placeholder || "Ask me anything..."}
               style={{ ...inputStyle, flex: 1, marginBottom: 0, borderRadius: "20px", padding: "10px 16px" }} />
             <button onClick={send} disabled={loading || (!input.trim() && attachments.length === 0)}
               style={{ width: 40, height: 40, borderRadius: "50%", background: color, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: loading || (!input.trim() && attachments.length === 0) ? 0.5 : 1, flexShrink: 0 }}>
-              <span style={{ color: "#fff", fontSize: "16px" }}>➤</span>
+              <span style={{ color: "var(--text-inverse)", fontSize: "16px" }}>➤</span>
             </button>
           </div>
         </div>
@@ -2152,16 +2152,16 @@ function ChatPreview({ botTitle, welcomeMessage, suggestions, placeholder, color
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "12px", userSelect: "none" }}>
       {/* Chat window */}
-      <div style={{ width: "300px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "300px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--border-default)", background: "var(--surface-default)", display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ background: colorTheme, padding: "14px 16px", display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgb(var(--white-rgb) / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
             {avatar}
           </div>
-          <div style={{ color: "#fff", fontWeight: 700, fontSize: "14px", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ color: "var(--text-inverse)", fontWeight: 700, fontSize: "14px", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {botTitle || "My Bot"}
           </div>
-          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "18px", cursor: "pointer" }}>✕</div>
+          <div style={{ color: "rgb(var(--white-rgb) / 0.7)", fontSize: "18px", cursor: "pointer" }}>✕</div>
         </div>
 
         {/* Messages area */}
@@ -2170,32 +2170,32 @@ function ChatPreview({ botTitle, welcomeMessage, suggestions, placeholder, color
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: colorTheme, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: "13px" }}>
               {avatarPreview ? <img src={avatarPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🤖"}
             </div>
-            <div style={{ background: "#fff", border: "1px solid #e5e7eb", padding: "9px 12px", borderRadius: "4px 14px 14px 14px", fontSize: "13px", color: "#1f2937", maxWidth: "200px", lineHeight: "1.5", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+            <div style={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", padding: "9px 12px", borderRadius: "4px 14px 14px 14px", fontSize: "13px", color: "var(--text-secondary)", maxWidth: "200px", lineHeight: "1.5", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
               {welcomeMessage || "Hi, How can I help you today?"}
             </div>
           </div>
           {suggestions.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginLeft: "36px" }}>
               {suggestions.slice(0, 3).map((s, i) => (
-                <span key={i} style={{ padding: "4px 10px", border: `1px solid ${colorTheme}`, borderRadius: "20px", fontSize: "11px", color: colorTheme, background: "#fff", cursor: "pointer" }}>{s}</span>
+                <span key={i} style={{ padding: "4px 10px", border: `1px solid ${colorTheme}`, borderRadius: "20px", fontSize: "11px", color: colorTheme, background: "var(--surface-default)", cursor: "pointer" }}>{s}</span>
               ))}
             </div>
           )}
         </div>
 
         {/* Input bar */}
-        <div style={{ padding: "10px 12px", borderTop: "1px solid #e5e7eb", background: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ flex: 1, padding: "8px 12px", background: "#f3f4f6", borderRadius: "20px", fontSize: "12px", color: "#9ca3af" }}>
+        <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border-default)", background: "var(--surface-default)", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ flex: 1, padding: "8px 12px", background: "var(--surface-subtle)", borderRadius: "20px", fontSize: "12px", color: "var(--text-subtle)" }}>
             {placeholder || "Ask me anything..."}
           </div>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: colorTheme, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px", flexShrink: 0 }}>➤</div>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: colorTheme, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-inverse)", fontSize: "14px", flexShrink: 0 }}>➤</div>
         </div>
       </div>
 
       {/* Launcher + popup */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
         {showWelcomePopup && (
-          <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "10px 14px", fontSize: "12px", color: "#374151", maxWidth: "220px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", lineHeight: "1.5" }}>
+          <div style={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: "12px", padding: "10px 14px", fontSize: "12px", color: "var(--text-tertiary)", maxWidth: "220px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", lineHeight: "1.5" }}>
             {welcomeMessage || "Hi, How can I help you today?"}
           </div>
         )}
@@ -2210,7 +2210,7 @@ function ChatPreview({ botTitle, welcomeMessage, suggestions, placeholder, color
 
         {/* Animation label badge */}
         {attentionAnimation !== "None" && (
-          <div style={{ fontSize: "10px", color: "#6b7280", background: "#f3f4f6", padding: "2px 8px", borderRadius: "10px" }}>
+          <div style={{ fontSize: "10px", color: "var(--text-muted)", background: "var(--surface-subtle)", padding: "2px 8px", borderRadius: "10px" }}>
             ▶ {attentionAnimation}
           </div>
         )}
@@ -2349,21 +2349,21 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
 
   const rowStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" };
   const sectionLabel: React.CSSProperties = { fontWeight: 600, fontSize: "15px" };
-  const sectionSub: React.CSSProperties = { fontSize: "12px", color: "#6b7280", marginTop: "2px" };
+  const sectionSub: React.CSSProperties = { fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" };
 
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Appearance</h2>
-      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "28px" }}>Customize the look and feel of your chatbot interface here.</p>
+      <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "28px" }}>Customize the look and feel of your chatbot interface here.</p>
 
       <div style={{ display: "flex", gap: "32px", alignItems: "flex-start" }} className="bot-appearance-layout">
 
         {/* ── Left: Settings form ── */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "#e5e7eb", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "var(--surface-muted)", borderRadius: "12px", overflow: "hidden", border: "1px solid var(--border-default)" }}>
 
         {/* Display Message */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={rowStyle}>
             <div><div style={sectionLabel}>Display Message</div><div style={sectionSub}>To be shown in the response output</div></div>
             <Toggle value={displayMessageEnabled} onChange={setDisplayMessageEnabled} />
@@ -2372,7 +2372,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
         </div>
 
         {/* Welcome Message */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={rowStyle}>
             <div><div style={sectionLabel}>Welcome Message</div><div style={sectionSub}>The introductory message from the chatbot</div></div>
             <Toggle value={welcomeEnabled} onChange={setWelcomeEnabled} />
@@ -2381,7 +2381,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
         </div>
 
         {/* Suggestions */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={rowStyle}>
             <div><div style={sectionLabel}>Suggestions</div><div style={sectionSub}>Questions to be shown to user (1 suggestion per line)</div></div>
             <Toggle value={suggestionsEnabled} onChange={setSuggestionsEnabled} />
@@ -2395,7 +2395,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
                 rows={4}
                 style={{ ...inputStyle, marginTop: "10px", resize: "vertical", fontFamily: "inherit" }}
               />
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px", cursor: "pointer", fontSize: "13px", color: "#374151", background: "#fffbeb", padding: "10px 12px", borderRadius: "8px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px", cursor: "pointer", fontSize: "13px", color: "var(--text-tertiary)", background: "#fffbeb", padding: "10px 12px", borderRadius: "8px" }}>
                 <input type="checkbox" checked={removeSuggestionsAfterFirst} onChange={e => setRemoveSuggestionsAfterFirst(e.target.checked)} style={{ accentColor: "#3b82f6" }} />
                 Remove Suggestion List after first User message is sent
               </label>
@@ -2404,7 +2404,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
         </div>
 
         {/* Placeholder */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={rowStyle}>
             <div><div style={sectionLabel}>Placeholder</div><div style={sectionSub}>To be shown in the query input</div></div>
             <Toggle value={placeholderEnabled} onChange={setPlaceholderEnabled} />
@@ -2413,7 +2413,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
         </div>
 
         {/* Lead Collection */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={rowStyle}>
             <div><div style={sectionLabel}>Lead Collection</div><div style={sectionSub}>Collect leads before or during a conversation</div></div>
             <Toggle value={leadCollection} onChange={setLeadCollection} />
@@ -2421,7 +2421,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
         </div>
 
         {/* Privacy Policy */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={rowStyle}>
             <div><div style={sectionLabel}>Privacy Policy</div><div style={sectionSub}>Add privacy policy link to your chat widget</div></div>
             <Toggle value={privacyPolicyEnabled} onChange={setPrivacyPolicyEnabled} />
@@ -2429,15 +2429,15 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
           {privacyPolicyEnabled && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: "10px", marginTop: "12px" }} className="bot-tune-model-grid">
               <div>
-                <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Action text</div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px" }}>Action text</div>
                 <input value={privacyActionText} onChange={e => setPrivacyActionText(e.target.value)} style={inputStyle} placeholder="Read our" />
               </div>
               <div>
-                <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Link text</div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px" }}>Link text</div>
                 <input value={privacyLinkText} onChange={e => setPrivacyLinkText(e.target.value)} style={inputStyle} placeholder="Privacy Policy" />
               </div>
               <div>
-                <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Link</div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px" }}>Link</div>
                 <input value={privacyLink} onChange={e => setPrivacyLink(e.target.value)} style={inputStyle} placeholder="https://yoursite.com/privacy" />
               </div>
             </div>
@@ -2445,39 +2445,39 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
         </div>
 
         {/* Branding */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Branding</div>
-          <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "16px" }}>Upload your avatar and set colors</div>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "16px" }}>Upload your avatar and set colors</div>
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", alignItems: "flex-start" }}>
             {/* Avatar upload */}
             <div style={{ textAlign: "center" }}>
               <div
                 onClick={() => avatarRef.current?.click()}
-                style={{ width: 80, height: 80, borderRadius: "50%", background: avatarPreview ? "transparent" : "#f3f4f6", border: avatarFile ? "2px solid #3b82f6" : "2px dashed #d1d5db", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: "6px" }}
+                style={{ width: 80, height: 80, borderRadius: "50%", background: avatarPreview ? "transparent" : "var(--surface-subtle)", border: avatarFile ? "2px solid #3b82f6" : "2px dashed #d1d5db", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: "6px" }}
               >
                 {avatarPreview ? <img src={avatarPreview} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "28px" }}>🤖</span>}
               </div>
-              <div style={{ fontSize: "11px", color: avatarFile ? "#3b82f6" : "#6b7280" }}>
+              <div style={{ fontSize: "11px", color: avatarFile ? "#3b82f6" : "var(--text-muted)" }}>
                 {avatarFile ? `✓ ${avatarFile.name}` : "Chatbot Avatar"}
               </div>
-              <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "2px" }}>Click to change</div>
+              <div style={{ fontSize: "10px", color: "var(--text-subtle)", marginTop: "2px" }}>Click to change</div>
               <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarChange} />
             </div>
             {/* Icon size + enter message */}
             <div style={{ flex: 1, minWidth: "200px" }}>
-              <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>Chat Icon Size</div>
+              <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "6px" }}>Chat Icon Size</div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                 <input type="range" min={40} max={80} value={chatIconSize} onChange={e => setChatIconSize(Number(e.target.value))} style={{ flex: 1, accentColor: "#3b82f6" }} />
                 <span style={{ fontSize: "13px", fontWeight: 600, minWidth: "40px" }}>{chatIconSize}px</span>
               </div>
-              <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>Enter message for live chat</div>
+              <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "6px" }}>Enter message for live chat</div>
               <input value={enterMessage} onChange={e => setEnterMessage(e.target.value)} style={inputStyle} placeholder="Chat Now" />
             </div>
           </div>
         </div>
 
           {/* Color Theme */}
-          <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
             <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Color Theme</div>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "12px" }}>
               {COLOR_THEMES.map(c => {
@@ -2485,33 +2485,33 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
                 // black outline; use a dark selection ring too (a white ring
                 // wouldn't show on white).
                 const isLight = c.toLowerCase() === "#ffffff" || c.toLowerCase() === "#fff";
-                const ring = isLight ? "#111827" : c;
+                const ring = isLight ? "var(--gray-900) /* no semantic: gray-900 as border */" : c;
                 return (
-                  <button key={c} onClick={() => setColorTheme(c)} style={{ width: 36, height: 36, borderRadius: "50%", background: c, border: isLight ? "1px solid #111827" : "none", cursor: "pointer", boxShadow: colorTheme === c ? `0 0 0 2px #fff, 0 0 0 4px ${ring}` : "none", transition: "box-shadow 0.15s" }} />
+                  <button key={c} onClick={() => setColorTheme(c)} style={{ width: 36, height: 36, borderRadius: "50%", background: c, border: isLight ? "1px solid var(--gray-900) /* no semantic: gray-900 as border */" : "none", cursor: "pointer", boxShadow: colorTheme === c ? `0 0 0 2px var(--white) /* no semantic: white as border (box-shadow ring) */, 0 0 0 4px ${ring}` : "none", transition: "box-shadow 0.15s" }} />
                 );
               })}
             </div>
           </div>
 
         {/* Attention Grabbers */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
+        <div style={{ background: "var(--surface-default)", padding: "18px 20px" }}>
           <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Attention Grabbers</div>
-          <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "16px" }}>Draw users attention to your chatbot</div>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "16px" }}>Draw users attention to your chatbot</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "12px" }} className="bot-links-grid">
             <div>
-              <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "6px" }}>Sound to play when the widget appears</div>
+              <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px" }}>Sound to play when the widget appears</div>
               <select value={attentionSound} onChange={e => setAttentionSound(e.target.value)} style={inputStyle}>
                 {["None","Chime","Bell","Pop","Ding"].map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
             <div>
-              <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "6px" }}>Animation for chatbot avatar icon</div>
+              <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px" }}>Animation for chatbot avatar icon</div>
               <select value={attentionAnimation} onChange={e => setAttentionAnimation(e.target.value)} style={inputStyle}>
                 {["None","Bounce","Pulse","Shake","Wiggle"].map(a => <option key={a}>{a}</option>)}
               </select>
             </div>
           </div>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "var(--text-tertiary)" }}>
             <input type="checkbox" checked={immediatelyOpenChat} onChange={e => setImmediatelyOpenChat(e.target.checked)} style={{ accentColor: "#3b82f6" }} />
             Immediately Open Chat Window (Desktop Only)
           </label>
@@ -2522,7 +2522,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
 
         {/* ── Right: Live Preview ── */}
         <div style={{ width: "320px", flexShrink: 0, position: "sticky", top: "20px" }} className="bot-appearance-preview">
-          <div style={{ fontSize: "12px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>Live Preview</div>
+          <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-subtle)", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>Live Preview</div>
           <ChatPreview
             botTitle={botTitle}
             welcomeMessage={welcomeMessage}
@@ -2580,7 +2580,7 @@ function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSa
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Deploy</h2>
-      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "20px" }}>Choose which portals can access this chatbot.</p>
+      <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "20px" }}>Choose which portals can access this chatbot.</p>
 
       {/* Not public banner */}
       {!bot.isPublic && (
@@ -2592,14 +2592,14 @@ function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSa
       {/* Assign to Panels */}
       <div style={{ ...card, marginBottom: "20px" }}>
         <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Assign to Panels</div>
-        <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>Choose which portals can access this bot</div>
+        <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "14px" }}>Choose which portals can access this bot</div>
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {roles.map(role => (
-            <label key={role} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", padding: "12px", borderRadius: "8px", border: `1px solid ${assignedRoles.includes(role) ? "#1f2937" : "#e5e7eb"}`, background: assignedRoles.includes(role) ? "#f9fafb" : "#fff" }}>
-              <input type="checkbox" checked={assignedRoles.includes(role)} onChange={() => toggleRole(role)} style={{ width: "16px", height: "16px", accentColor: "#1f2937" }} />
+            <label key={role} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", padding: "12px", borderRadius: "8px", border: `1px solid ${assignedRoles.includes(role) ? "var(--border-strong)" : "var(--border-default)"}`, background: assignedRoles.includes(role) ? "#f9fafb" : "var(--surface-default)" }}>
+              <input type="checkbox" checked={assignedRoles.includes(role)} onChange={() => toggleRole(role)} style={{ width: "16px", height: "16px", accentColor: "var(--gray-800) /* no semantic: gray-800 as accent-color (no MAP category) */" }} />
               <div>
                 <div style={{ fontWeight: 600, fontSize: "14px", textTransform: "capitalize" }}>{role} Panel</div>
-                <div style={{ fontSize: "12px", color: "#6b7280" }}>Show this bot in the {role} portal</div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Show this bot in the {role} portal</div>
               </div>
             </label>
           ))}
@@ -2703,7 +2703,7 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Settings</h2>
-      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "28px" }}>Use these settings to add security, team members, custom domains and to delete your chatbot.</p>
+      <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "28px" }}>Use these settings to add security, team members, custom domains and to delete your chatbot.</p>
 
       {/* Top row: Basic + Security + Email Branding + Custom Domain */}
       {/* Removed all sections as requested */}
@@ -2717,7 +2717,7 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
           <span style={{ fontSize: "18px" }}>👥</span>
           <div style={{ fontWeight: 700, fontSize: "15px" }}>Team Members</div>
         </div>
-        <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Add users to manage this bot. Control which modules each member can access.</p>
+        <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px" }}>Add users to manage this bot. Control which modules each member can access.</p>
 
         {/* User search dropdown */}
         <div style={{ position: "relative", marginBottom: "16px" }} ref={dropdownRef}>
@@ -2729,18 +2729,18 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
             style={{ ...inputStyle, marginBottom: 0 }}
           />
           {showUserDropdown && filteredUsers.length > 0 && (
-            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, maxHeight: "220px", overflowY: "auto" }}>
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: "8px", boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, maxHeight: "220px", overflowY: "auto" }}>
               {filteredUsers.map(u => (
                 <div key={u.id} onClick={() => addTeamMember(u)}
-                  style={{ padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #f3f4f6" }}
+                  style={{ padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid var(--border-subtle)" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                  onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-default)")}>
                   <div style={{ width: 32, height: 32, borderRadius: "50%", background: u.role === "sales-team-lead" ? "#ede9fe" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: u.role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8", flexShrink: 0 }}>
                     {(u.name || u.email || "?")[0].toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>{u.name || u.email}</div>
-                    <div style={{ fontSize: "11px", color: "#6b7280" }}>{u.email} · <span style={{ textTransform: "capitalize" }}>{u.role}</span></div>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>{u.name || u.email}</div>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{u.email} · <span style={{ textTransform: "capitalize" }}>{u.role}</span></div>
                   </div>
                 </div>
               ))}
@@ -2749,8 +2749,8 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
         </div>
 
         {teamMembers.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "32px 20px", color: "#9ca3af", background: "#f9fafb", borderRadius: "8px" }}>
-            <div style={{ fontSize: "14px", fontWeight: 500, color: "#374151", marginBottom: "4px" }}>No team members added yet</div>
+          <div style={{ textAlign: "center", padding: "32px 20px", color: "var(--text-subtle)", background: "#f9fafb", borderRadius: "8px" }}>
+            <div style={{ fontSize: "14px", fontWeight: 500, color: "var(--text-tertiary)", marginBottom: "4px" }}>No team members added yet</div>
             <div style={{ fontSize: "12px" }}>Search and add users above</div>
           </div>
         ) : (
@@ -2764,23 +2764,23 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
               const isEditing = editingAccessFor === userId;
 
               return (
-                <div key={userId} style={{ background: "#f9fafb", borderRadius: "10px", border: `1px solid ${isEditing ? "#3b82f6" : "#e5e7eb"}`, overflow: "hidden", transition: "border-color 0.2s" }}>
+                <div key={userId} style={{ background: "#f9fafb", borderRadius: "10px", border: `1px solid ${isEditing ? "#3b82f6" : "var(--border-default)"}`, overflow: "hidden", transition: "border-color 0.2s" }}>
                   {/* Member header */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e5e7eb", background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--border-default)", background: "var(--surface-default)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                       <div style={{ width: 32, height: 32, borderRadius: "50%", background: role === "sales-team-lead" ? "#ede9fe" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: role === "sales-team-lead" ? "#6d28d9" : "#1d4ed8", flexShrink: 0 }}>
                         {(displayName)[0]?.toUpperCase() || "?"}
                       </div>
                       <div>
-                        <div style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>{displayName}</div>
-                        <div style={{ fontSize: "11px", color: "#6b7280" }}>{displayEmail} · <span style={{ textTransform: "capitalize" }}>{role}</span></div>
+                        <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>{displayName}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{displayEmail} · <span style={{ textTransform: "capitalize" }}>{role}</span></div>
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       {!isEditing && (
                         <button
                           onClick={() => { setEditingAccessFor(userId); setDraftAccess([...access]); }}
-                          style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+                          style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid #d1d5db", background: "var(--surface-default)", color: "var(--text-tertiary)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
                           ✏️ Edit
                         </button>
                       )}
@@ -2790,13 +2790,13 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
 
                   {/* Module access */}
                   <div style={{ padding: "12px 16px" }}>
-                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#6b7280", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Module Access</div>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Module Access</div>
 
                     {isEditing ? (
                       <>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px", marginBottom: "14px" }}>
                           {ALL_MODULES.map(mod => (
-                            <label key={mod.id} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
+                            <label key={mod.id} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "var(--text-tertiary)" }}>
                               <input
                                 type="checkbox"
                                 checked={draftAccess.includes(mod.id)}
@@ -2815,12 +2815,12 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
                               onSave({ teamMemberAccess: updatedAccess });
                               setEditingAccessFor(null);
                             }}
-                            style={{ padding: "7px 16px", borderRadius: "6px", border: "none", background: "#3b82f6", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                            style={{ padding: "7px 16px", borderRadius: "6px", border: "none", background: "#3b82f6", color: "var(--text-inverse)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
                             Save
                           </button>
                           <button
                             onClick={() => setEditingAccessFor(null)}
-                            style={{ padding: "7px 16px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                            style={{ padding: "7px 16px", borderRadius: "6px", border: "1px solid #d1d5db", background: "var(--surface-default)", color: "var(--text-tertiary)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
                             Cancel
                           </button>
                         </div>
@@ -2828,7 +2828,7 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
                     ) : (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                         {access.length === 0
-                          ? <span style={{ fontSize: "12px", color: "#9ca3af" }}>No modules assigned</span>
+                          ? <span style={{ fontSize: "12px", color: "var(--text-subtle)" }}>No modules assigned</span>
                           : access.map(modId => {
                               const mod = ALL_MODULES.find(m => m.id === modId);
                               return mod ? (
@@ -2852,12 +2852,12 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
           <span style={{ fontSize: "18px" }}>🗑️</span>
           <div style={{ fontWeight: 700, fontSize: "15px", color: "#dc2626" }}>Delete Chatbot</div>
         </div>
-        <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Deleting a bot is a permanent action that cannot be reversed. Deleting the bot will delete all documents indexed against it and all history.</p>
+        <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px" }}>Deleting a bot is a permanent action that cannot be reversed. Deleting the bot will delete all documents indexed against it and all history.</p>
         <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", marginBottom: "16px" }}>
           <input type="checkbox" checked={confirmDelete} onChange={e => setConfirmDelete(e.target.checked)} style={{ marginTop: "2px", accentColor: "#dc2626" }} />
-          <span style={{ fontSize: "13px", color: "#374151" }}>Yes, I want to delete this bot and all its data permanently.</span>
+          <span style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>Yes, I want to delete this bot and all its data permanently.</span>
         </label>
-        <button onClick={handleDelete} disabled={!confirmDelete || deleting} style={{ ...btnPrimary, background: confirmDelete ? "#dc2626" : "#e5e7eb", color: confirmDelete ? "#fff" : "#9ca3af", cursor: confirmDelete ? "pointer" : "not-allowed" }}>
+        <button onClick={handleDelete} disabled={!confirmDelete || deleting} style={{ ...btnPrimary, background: confirmDelete ? "#dc2626" : "var(--surface-muted)", color: confirmDelete ? "var(--text-inverse)" : "var(--text-subtle)", cursor: confirmDelete ? "pointer" : "not-allowed" }}>
           {deleting ? "Deleting..." : "Delete"}
         </button>
       </div>
@@ -2878,7 +2878,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
     >
       <span style={{
         position: "absolute", top: 3, left: value ? 22 : 3, width: 18, height: 18,
-        borderRadius: "50%", background: "#fff", transition: "left 0.2s",
+        borderRadius: "50%", background: "var(--surface-default)", transition: "left 0.2s",
         boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
       }} />
     </button>
@@ -2890,19 +2890,19 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", width: "440px", maxWidth: "90vw", position: "relative" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: "16px", right: "16px", background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280" }}>✕</button>
+      <div style={{ background: "var(--surface-default)", borderRadius: "16px", padding: "32px", width: "440px", maxWidth: "90vw", position: "relative" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: "16px", right: "16px", background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "var(--text-muted)" }}>✕</button>
         {children}
       </div>
     </div>
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e5e7eb" };
+const card: React.CSSProperties = { background: "var(--surface-default)", borderRadius: "12px", padding: "20px", border: "1px solid var(--border-default)" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "15px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" };
-const btnPrimary: React.CSSProperties = { padding: "10px 20px", background: "#1f2937", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: 600, cursor: "pointer" };
-const btnSecondary: React.CSSProperties = { padding: "10px 20px", background: "#fff", color: "#374151", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "15px", fontWeight: 500, cursor: "pointer" };
-const botCard: React.CSSProperties = { background: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e5e7eb", cursor: "pointer", transition: "box-shadow 0.2s" };
+const btnPrimary: React.CSSProperties = { padding: "10px 20px", background: "var(--surface-inverse-raised)", color: "var(--text-inverse)", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: 600, cursor: "pointer" };
+const btnSecondary: React.CSSProperties = { padding: "10px 20px", background: "var(--surface-default)", color: "var(--text-tertiary)", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "15px", fontWeight: 500, cursor: "pointer" };
+const botCard: React.CSSProperties = { background: "var(--surface-default)", borderRadius: "12px", padding: "20px", border: "1px solid var(--border-default)", cursor: "pointer", transition: "box-shadow 0.2s" };
 
 function useSaved() {
   const [saved, setSaved] = useState(false);
@@ -2945,8 +2945,8 @@ function EditableBotName({ bot, onSave }: { bot: AiBot; onSave: (u: Partial<AiBo
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: "12px" }}>
-      <div style={{ fontWeight: 700, fontSize: "16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1f2937", flex: 1 }}>{bot.botTitle || bot.name}</div>
-      <button onClick={() => { setDraft(bot.botTitle || bot.name); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#6b7280" }} title="Edit name">✏️</button>
+      <div style={{ fontWeight: 700, fontSize: "16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-secondary)", flex: 1 }}>{bot.botTitle || bot.name}</div>
+      <button onClick={() => { setDraft(bot.botTitle || bot.name); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-muted)" }} title="Edit name">✏️</button>
     </div>
   );
 }

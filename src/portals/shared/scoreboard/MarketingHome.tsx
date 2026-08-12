@@ -22,9 +22,9 @@ export function MarketingHome(props: { firstName: string }): JSX.Element {
 
   return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: "#111827" }}>Hi, {firstName}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>Hi, {firstName}</div>
 
-      <div style={{ fontSize: 14, color: "#6b7280" }}>
+      <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
         Marketing metrics aren't connected to a data source yet.
       </div>
 
@@ -54,8 +54,8 @@ function EmptyTile(props: { label: string }): JSX.Element {
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
+        background: "var(--surface-default)",
+        border: "1px solid var(--border-default)",
         borderRadius: 12,
         padding: "14px 16px",
         minWidth: 0,
@@ -65,7 +65,7 @@ function EmptyTile(props: { label: string }): JSX.Element {
         style={{
           fontSize: 12,
           fontWeight: 700,
-          color: "#6b7280",
+          color: "var(--text-muted)",
           textTransform: "uppercase",
           letterSpacing: 0.5,
         }}
@@ -73,9 +73,9 @@ function EmptyTile(props: { label: string }): JSX.Element {
         {label}
       </div>
 
-      <div style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>&ndash;</div>
+      <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", marginTop: 4 }}>&ndash;</div>
 
-      <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>Not connected yet</div>
+      <div style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 2 }}>Not connected yet</div>
     </div>
   );
 }

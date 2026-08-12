@@ -118,7 +118,7 @@ export function SalesTeamLeadProfilePage(props: {
   return (
     <div className="profile-page">
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid var(--border-default)' }}>
         {(['profile', 'training'] as const).map(tab => (
           <button
             key={tab}
@@ -127,7 +127,7 @@ export function SalesTeamLeadProfilePage(props: {
             style={{
               padding: '12px 28px', background: 'none', border: 'none',
               borderBottom: activeTab === tab ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === tab ? '#2563eb' : '#6b7280',
+              color: activeTab === tab ? '#2563eb' : 'var(--text-muted)',
               fontWeight: activeTab === tab ? 600 : 400,
               cursor: 'pointer', marginBottom: '-2px', fontSize: 16, textTransform: 'capitalize'
             }}
@@ -140,30 +140,30 @@ export function SalesTeamLeadProfilePage(props: {
       {activeTab === 'training' ? (
         <div>
           {isLoadingTraining ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
+            <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading...</div>
           ) : trainingData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No courses available.</div>
+            <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-subtle)' }}>No courses available.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {trainingData.map(({ course, completed, total, isCompleted }) => {
                 const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
                 return (
                   <div key={course.id} style={{
-                    background: '#fff', border: '1px solid #e5e7eb',
+                    background: 'var(--surface-default)', border: '1px solid var(--border-default)',
                     borderRadius: 12, padding: '20px 24px',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                   }}>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: '#111827', marginBottom: 4 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', marginBottom: 4 }}>
                       {course.title}
                     </div>
-                    <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>Training Center Progress</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>Training Center Progress</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>
-                      <span style={{ color: '#374151' }}>Lessons Completed: <strong>{completed} / {total}</strong></span>
+                      <span style={{ color: 'var(--text-tertiary)' }}>Lessons Completed: <strong>{completed} / {total}</strong></span>
                       <span style={{ fontWeight: 700, color: isCompleted ? '#10b981' : '#2563eb' }}>
                         {isCompleted ? '✓ Completed' : `Course Completion: ${pct}%`}
                       </span>
                     </div>
-                    <div style={{ height: 10, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                    <div style={{ height: 10, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', borderRadius: 999,
                         background: isCompleted ? '#10b981' : '#22c55e',

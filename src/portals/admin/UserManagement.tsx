@@ -675,7 +675,7 @@ export function UserManagement(props: UserEditorProps) {
         <div className="overlay">
           <div className="dialog" style={{ width: 460, maxWidth: "90vw" }}>
             <div className="dialog-title">Notify users to update the app</div>
-            <div style={{ fontSize: 13, color: "#6b7280", margin: "12px 0 20px", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "12px 0 20px", lineHeight: 1.5 }}>
               This sends a push notification and an in-app alert to <strong>all app users</strong> letting
               them know a new version is available. Tapping it opens the App Store (or Play Store on Android).
               Only send this after the new version is live in the store.
@@ -695,12 +695,12 @@ export function UserManagement(props: UserEditorProps) {
         <div className="overlay">
           <div className="dialog" style={{ width: 600, maxWidth: "90vw" }}>
             <div className="dialog-title">Confirm User Import</div>
-            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 12 }}>
               {pendingImportUsers.length} user(s) will be imported:
             </div>
-            <div style={{ maxHeight: 400, overflowY: "auto", marginBottom: 16, border: "1px solid #e5e7eb", borderRadius: 8 }}>
+            <div style={{ maxHeight: 400, overflowY: "auto", marginBottom: 16, border: "1px solid var(--border-default)", borderRadius: 8 }}>
               <table style={{ width: "100%", fontSize: 12 }}>
-                <thead style={{ position: "sticky", top: 0, backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                <thead style={{ position: "sticky", top: 0, backgroundColor: "#f9fafb", borderBottom: "1px solid var(--border-default)" }}>
                   <tr>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Name</th>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Email</th>
@@ -739,7 +739,7 @@ export function UserManagement(props: UserEditorProps) {
             <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
               {/* Role Filter */}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 14, color: "#6b7280" }}>Role:</span>
+                <span style={{ fontSize: 14, color: "var(--text-muted)" }}>Role:</span>
                 <div style={{ position: "relative" }}>
                   <button
                     type="button"
@@ -756,8 +756,8 @@ export function UserManagement(props: UserEditorProps) {
                       top: "100%",
                       right: 0,
                       marginTop: 4,
-                      backgroundColor: "#ffffff",
-                      border: "1px solid #e5e7eb",
+                      backgroundColor: "var(--surface-default)",
+                      border: "1px solid var(--border-default)",
                       borderRadius: 8,
                       boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
                       zIndex: 1000,
@@ -784,7 +784,7 @@ export function UserManagement(props: UserEditorProps) {
                             padding: "10px 16px",
                             textAlign: "left",
                             border: "none",
-                            background: roleFilter === option.value ? "#f3f4f6" : "transparent",
+                            background: roleFilter === option.value ? "var(--surface-subtle)" : "transparent",
                             cursor: "pointer",
                             fontSize: 14,
                             fontWeight: roleFilter === option.value ? 600 : 400
@@ -800,7 +800,7 @@ export function UserManagement(props: UserEditorProps) {
 
               {/* Sort Dropdown */}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 14, color: "#6b7280" }}>Sort:</span>
+                <span style={{ fontSize: 14, color: "var(--text-muted)" }}>Sort:</span>
                 <div style={{ position: "relative" }}>
                   <button
                     type="button"
@@ -820,8 +820,8 @@ export function UserManagement(props: UserEditorProps) {
                   top: "100%",
                   right: 0,
                   marginTop: 4,
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #e5e7eb",
+                  backgroundColor: "var(--surface-default)",
+                  border: "1px solid var(--border-default)",
                   borderRadius: 8,
                   boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
                   zIndex: 1000,
@@ -846,7 +846,7 @@ export function UserManagement(props: UserEditorProps) {
                         padding: "10px 16px",
                         textAlign: "left",
                         border: "none",
-                        background: sortBy === option.value ? "#f3f4f6" : "transparent",
+                        background: sortBy === option.value ? "var(--surface-subtle)" : "transparent",
                         cursor: "pointer",
                         fontSize: 14,
                         fontWeight: sortBy === option.value ? 600 : 400
@@ -873,7 +873,7 @@ export function UserManagement(props: UserEditorProps) {
                 width: "100%",
                 padding: "8px 12px",
                 fontSize: 13,
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--border-default)",
                 borderRadius: 6,
                 marginBottom: 8,
                 marginTop: 0,
@@ -950,7 +950,7 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-section-title" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => setShowDeletedUsers(!showDeletedUsers)}>
                 <span>{showDeletedUsers ? "▾" : "▸"}</span>
                 <span>🗑️ Deleted Users</span>
-                <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>({draftDeletedUsers.length})</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>({draftDeletedUsers.length})</span>
               </div>
               {showDeletedUsers && (
                 <div className="list">
@@ -960,7 +960,7 @@ export function UserManagement(props: UserEditorProps) {
                         <div className="list-item-title">{user.name}</div>
                         <div className="list-item-subtitle">{user.role.toUpperCase()} • {user.email}</div>
                         {user.deletedAt && (
-                          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+                          <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 4 }}>
                             Deleted: {new Date(user.deletedAt).toLocaleDateString()}
                           </div>
                         )}
@@ -1000,7 +1000,7 @@ export function UserManagement(props: UserEditorProps) {
                         </button>
                         <button
                           type="button"
-                          style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ background: '#ef4444', color: 'var(--text-inverse)', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                           onClick={async () => {
                             if (await appConfirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
                               try {
@@ -1047,7 +1047,7 @@ export function UserManagement(props: UserEditorProps) {
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-tertiary)", cursor: "pointer", userSelect: "none" }}>
                       <input
                         type="checkbox"
                         checked={!!notifyUsers[selectedUserId]}
@@ -1188,7 +1188,7 @@ export function UserManagement(props: UserEditorProps) {
                     <span style={{
                       fontSize: 13,
                       fontWeight: 600,
-                      color: "#fff",
+                      color: "var(--text-inverse)",
                       backgroundColor: "#16a34a",
                       padding: "6px 14px",
                       borderRadius: 8,
@@ -1298,7 +1298,7 @@ export function UserManagement(props: UserEditorProps) {
                       setShowTerritoryDropdown(!showTerritoryDropdown);
                     }}
                   >
-                    <span className="territory-trigger-value" style={{ color: selectedUser.territory ? undefined : "#9ca3af" }}>
+                    <span className="territory-trigger-value" style={{ color: selectedUser.territory ? undefined : "var(--text-subtle)" }}>
                       {selectedUser.territory && selectedUser.territory.trim().length > 0
                         ? selectedUser.territory
                         : "No Branch"}
@@ -1316,7 +1316,7 @@ export function UserManagement(props: UserEditorProps) {
                         width: territoryDropdownPos.width,
                         maxHeight: 260,
                         overflowY: "auto",
-                        backgroundColor: "#ffffff",
+                        backgroundColor: "var(--surface-default)",
                         border: "1px solid #d4d4d8",
                         borderRadius: 8,
                         boxShadow: "0 18px 40px rgba(15, 23, 42, 0.18)",
@@ -1393,7 +1393,7 @@ export function UserManagement(props: UserEditorProps) {
                       setShowRolesDropdown(!showRolesDropdown);
                     }}
                   >
-                    <span className="territory-trigger-value" style={{ color: (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 ? '#9ca3af' : undefined }}>
+                    <span className="territory-trigger-value" style={{ color: (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 ? 'var(--text-subtle)' : undefined }}>
                       {(selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0
                         ? "-- Select a role (required) --"
                         : roleDisplayName(selectedUser.role)}
@@ -1408,7 +1408,7 @@ export function UserManagement(props: UserEditorProps) {
                         top: rolesDropdownPos.top,
                         left: rolesDropdownPos.left,
                         width: rolesDropdownPos.width,
-                        backgroundColor: "#ffffff",
+                        backgroundColor: "var(--surface-default)",
                         border: "1px solid #d4d4d8",
                         borderRadius: 8,
                         boxShadow: "0 18px 40px rgba(15, 23, 42, 0.18)",
@@ -1509,7 +1509,7 @@ export function UserManagement(props: UserEditorProps) {
                       </select>
                     </div>
                     {branchSelected && teamLeadOptions.length === 0 && (
-                      <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 4 }}>
                         No Sales Team Leads in this branch yet.
                       </div>
                     )}
@@ -1534,7 +1534,7 @@ export function UserManagement(props: UserEditorProps) {
                       className="field-input"
                       readOnly
                       value={branchMgr ? branchMgr.name : "No branch manager set for this branch"}
-                      style={{ background: "#f9fafb", cursor: "default", color: branchMgr ? undefined : "#9ca3af" }}
+                      style={{ background: "#f9fafb", cursor: "default", color: branchMgr ? undefined : "var(--text-subtle)" }}
                     />
                   </label>
                 );
@@ -1583,8 +1583,8 @@ export function UserManagement(props: UserEditorProps) {
                     </div>
                   ))}
                   {/* Save buttons */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, padding: "12px 0", borderTop: "1px solid #e5e7eb" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "#374151", userSelect: "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, padding: "12px 0", borderTop: "1px solid var(--border-default)" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "var(--text-tertiary)", userSelect: "none" }}>
                       <input
                         type="checkbox"
                         id="applyToAllCheck"
@@ -1671,9 +1671,9 @@ export function UserManagement(props: UserEditorProps) {
                 {showTrainingProgress && (
                   <div style={{ marginTop: 16 }}>
                     {isLoadingTrainingModal ? (
-                      <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading...</div>
+                      <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading...</div>
                     ) : trainingModalData.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+                      <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>
                         <div style={{ fontSize: 40, marginBottom: 12 }}>📚</div>
                         <div>No published courses available</div>
                       </div>
@@ -1684,16 +1684,16 @@ export function UserManagement(props: UserEditorProps) {
                           return (
                             <div key={course.id} style={{ 
                               padding: 16, 
-                              border: '1px solid #e5e7eb', 
+                              border: '1px solid var(--border-default)', 
                               borderRadius: 8,
-                              background: isCompleted ? '#f0fdf4' : '#fff'
+                              background: isCompleted ? '#f0fdf4' : 'var(--surface-default)'
                             }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                                 <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 4 }}>
+                                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', marginBottom: 4 }}>
                                     {course.title}
                                   </div>
-                                  <div style={{ fontSize: 13, color: '#6b7280' }}>
+                                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                                     {completed} of {total} items completed
                                   </div>
                                 </div>
@@ -1702,7 +1702,7 @@ export function UserManagement(props: UserEditorProps) {
                                     padding: '4px 10px', 
                                     borderRadius: 6, 
                                     background: '#10b981', 
-                                    color: '#fff', 
+                                    color: 'var(--text-inverse)', 
                                     fontSize: 12, 
                                     fontWeight: 600 
                                   }}>
@@ -1711,15 +1711,15 @@ export function UserManagement(props: UserEditorProps) {
                                 )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ flex: 1, height: 10, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                <div style={{ flex: 1, height: 10, borderRadius: 999, background: 'var(--surface-muted)', overflow: 'hidden' }}>
                                   <div style={{
                                     width: `${pct}%`,
                                     height: '100%',
-                                    background: pct === 100 ? '#10b981' : pct > 0 ? '#f59e0b' : '#e5e7eb',
+                                    background: pct === 100 ? '#10b981' : pct > 0 ? '#f59e0b' : 'var(--surface-muted)',
                                     transition: 'width 0.3s'
                                   }} />
                                 </div>
-                                <span style={{ fontSize: 14, fontWeight: 700, color: '#374151', minWidth: 45 }}>{pct}%</span>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-tertiary)', minWidth: 45 }}>{pct}%</span>
                               </div>
                             </div>
                           );
@@ -1743,13 +1743,13 @@ export function UserManagement(props: UserEditorProps) {
                   <span>Assigned Sales Users</span>
                 </div>
                 {showAssignedSales && (
-                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, marginTop: 16 }}>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border-default)', borderRadius: 8, marginTop: 16 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: '#374151' }}>Name</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: '#374151' }}>Email</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: '#374151' }}>Role</th>
+                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid var(--border-default)' }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: 'var(--text-tertiary)' }}>Name</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: 'var(--text-tertiary)' }}>Email</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: 'var(--text-tertiary)' }}>Role</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1758,22 +1758,22 @@ export function UserManagement(props: UserEditorProps) {
                           key={user.id}
                           onClick={() => setSelectedUserId(user.id)}
                           style={{
-                            borderBottom: index < assignedSalesUsers.length - 1 ? '1px solid #f3f4f6' : 'none',
+                            borderBottom: index < assignedSalesUsers.length - 1 ? '1px solid var(--border-subtle)' : 'none',
                             cursor: 'pointer',
                             transition: 'background-color 0.2s',
-                            backgroundColor: '#ffffff'
+                            backgroundColor: 'var(--surface-default)'
                           }}
                           onMouseEnter={(e) => {
                             (e.currentTarget as HTMLElement).style.backgroundColor = '#eff6ff';
                           }}
                           onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.backgroundColor = '#ffffff';
+                            (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--surface-default)';
                           }}
                         >
-                          <td style={{ padding: '12px 16px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{user.name}</td>
-                          <td style={{ padding: '12px 16px', fontSize: 14, color: '#6b7280' }}>{user.email}</td>
-                          <td style={{ padding: '12px 16px', fontSize: 14, color: '#6b7280' }}>
-                            <span style={{ backgroundColor: '#e5e7eb', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500 }}>
+                          <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{user.name}</td>
+                          <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-muted)' }}>{user.email}</td>
+                          <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-muted)' }}>
+                            <span style={{ backgroundColor: 'var(--surface-muted)', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500 }}>
                               {roleDisplayName(user.role)}
                             </span>
                           </td>
@@ -1800,7 +1800,7 @@ export function UserManagement(props: UserEditorProps) {
           padding: 16,
         }}>
           <div style={{
-            background: "#fff", borderRadius: 14,
+            background: "var(--surface-default)", borderRadius: 14,
             width: "100%", maxWidth: 600,
             maxHeight: "90vh", display: "flex", flexDirection: "column",
             boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
@@ -1823,7 +1823,7 @@ export function UserManagement(props: UserEditorProps) {
                 }}
                 style={{
                   background: "none", border: "none", cursor: "pointer",
-                  fontSize: 20, color: "#9ca3af", lineHeight: 1, padding: 4,
+                  fontSize: 20, color: "var(--text-subtle)", lineHeight: 1, padding: 4,
                 }}
               >×</button>
             </div>
@@ -1831,7 +1831,7 @@ export function UserManagement(props: UserEditorProps) {
             {/* Tabs */}
             <div style={{ 
               display: "flex", 
-              borderBottom: "1px solid #e5e7eb",
+              borderBottom: "1px solid var(--border-default)",
               background: "#f5f3ff",
               paddingLeft: 24,
               paddingRight: 24,
@@ -1846,7 +1846,7 @@ export function UserManagement(props: UserEditorProps) {
                   cursor: "pointer",
                   fontSize: 14,
                   fontWeight: developerModalTab === "selection" ? 600 : 400,
-                  color: developerModalTab === "selection" ? "#7c3aed" : "#6b7280",
+                  color: developerModalTab === "selection" ? "#7c3aed" : "var(--text-muted)",
                   borderBottom: developerModalTab === "selection" ? "2px solid #7c3aed" : "2px solid transparent",
                 }}
               >
@@ -1862,7 +1862,7 @@ export function UserManagement(props: UserEditorProps) {
                   cursor: "pointer",
                   fontSize: 14,
                   fontWeight: developerModalTab === "selected" ? 600 : 400,
-                  color: developerModalTab === "selected" ? "#7c3aed" : "#6b7280",
+                  color: developerModalTab === "selected" ? "#7c3aed" : "var(--text-muted)",
                   borderBottom: developerModalTab === "selected" ? "2px solid #7c3aed" : "2px solid transparent",
                 }}
               >
@@ -1877,14 +1877,14 @@ export function UserManagement(props: UserEditorProps) {
                 placeholder="Search users..."
                 value={devSearch}
                 onChange={e => setDevSearch(e.target.value)}
-                style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: "1px solid #e5e7eb", borderRadius: 6, marginBottom: 16, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: "1px solid var(--border-default)", borderRadius: 6, marginBottom: 16, boxSizing: "border-box" }}
               />
               {developerModalTab === "selection" ? (
                 <>
-                  <div style={{ marginBottom: 16, fontSize: 13, color: "#6b7280" }}>
+                  <div style={{ marginBottom: 16, fontSize: 13, color: "var(--text-muted)" }}>
                     Select users to mark as developers
                   </div>
-                  <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden" }}>
                     {[...draftUsers].sort((a, b) => (a.name || "").localeCompare(b.name || "")).filter(u => (u.name || "").toLowerCase().includes(devSearch.toLowerCase())).map((user, idx) => {
                       const isSelected = developerUsers.has(user.id);
                       return (
@@ -1893,8 +1893,8 @@ export function UserManagement(props: UserEditorProps) {
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 16px", cursor: "pointer",
-                            background: isSelected ? "#f5f3ff" : idx % 2 === 0 ? "#fff" : "#fafafa",
-                            borderBottom: idx < draftUsers.length - 1 ? "1px solid #f3f4f6" : "none",
+                            background: isSelected ? "#f5f3ff" : idx % 2 === 0 ? "var(--surface-default)" : "#fafafa",
+                            borderBottom: idx < draftUsers.length - 1 ? "1px solid var(--border-subtle)" : "none",
                             transition: "background 0.15s",
                           }}
                         >
@@ -1905,8 +1905,8 @@ export function UserManagement(props: UserEditorProps) {
                             style={{ width: 16, height: 16, accentColor: "#7c3aed", cursor: "pointer" }}
                           />
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, color: "#111827", fontSize: 14 }}>{user.name}</div>
-                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                            <div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 14 }}>{user.name}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                               {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
                             </div>
                           </div>
@@ -1920,28 +1920,28 @@ export function UserManagement(props: UserEditorProps) {
                 </>
               ) : (
                 <>
-                  <div style={{ marginBottom: 16, fontSize: 13, color: "#6b7280" }}>
+                  <div style={{ marginBottom: 16, fontSize: 13, color: "var(--text-muted)" }}>
                     {developerUsers.size} developer account{developerUsers.size !== 1 ? "s" : ""} selected
                   </div>
                   {developerUsers.size === 0 ? (
-                    <div style={{ textAlign: "center", padding: 40, color: "#9ca3af", fontSize: 13 }}>
+                    <div style={{ textAlign: "center", padding: 40, color: "var(--text-subtle)", fontSize: 13 }}>
                       No developer accounts selected
                     </div>
                   ) : (
-                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden" }}>
                       {[...draftUsers].filter(u => developerUsers.has(u.id)).sort((a, b) => (a.name || "").localeCompare(b.name || "")).filter(u => (u.name || "").toLowerCase().includes(devSearch.toLowerCase())).map((user, idx) => (
                         <div
                           key={user.id}
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 16px",
-                            background: idx % 2 === 0 ? "#fff" : "#fafafa",
-                            borderBottom: idx < draftUsers.filter(u => developerUsers.has(u.id)).length - 1 ? "1px solid #f3f4f6" : "none",
+                            background: idx % 2 === 0 ? "var(--surface-default)" : "#fafafa",
+                            borderBottom: idx < draftUsers.filter(u => developerUsers.has(u.id)).length - 1 ? "1px solid var(--border-subtle)" : "none",
                           }}
                         >
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, color: "#111827", fontSize: 14 }}>{user.name}</div>
-                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                            <div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 14 }}>{user.name}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                               {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
                             </div>
                           </div>
@@ -1965,7 +1965,7 @@ export function UserManagement(props: UserEditorProps) {
 
             {/* Modal footer */}
             <div style={{
-              padding: "14px 24px", borderTop: "1px solid #e5e7eb",
+              padding: "14px 24px", borderTop: "1px solid var(--border-default)",
               display: "flex", justifyContent: "flex-end", gap: 10,
               background: "#f8fafc",
             }}>
@@ -1973,8 +1973,8 @@ export function UserManagement(props: UserEditorProps) {
                 onClick={() => setShowDeveloperModal(false)}
                 style={{
                   padding: "8px 18px", borderRadius: 8,
-                  border: "1px solid #d1d5db", background: "#fff",
-                  fontSize: 13, fontWeight: 600, color: "#374151",
+                  border: "1px solid #d1d5db", background: "var(--surface-default)",
+                  fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)",
                   cursor: "pointer",
                 }}
               >Cancel</button>
@@ -1984,7 +1984,7 @@ export function UserManagement(props: UserEditorProps) {
                   padding: "8px 20px", borderRadius: 8,
                   border: "none",
                   background: "#7c3aed",
-                  fontSize: 13, fontWeight: 600, color: "#fff",
+                  fontSize: 13, fontWeight: 600, color: "var(--text-inverse)",
                   cursor: "pointer",
                 }}
               >
@@ -2003,18 +2003,18 @@ export function UserManagement(props: UserEditorProps) {
           display: "flex", alignItems: "center", justifyContent: "center"
         }}>
           <div style={{
-            background: "#fff", borderRadius: 16,
+            background: "var(--surface-default)", borderRadius: 16,
             padding: "40px 56px",
             display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
             boxShadow: "0 20px 60px rgba(0,0,0,0.25)"
           }}>
             <div style={{
-              width: 48, height: 48, border: "4px solid #e5e7eb",
+              width: 48, height: 48, border: "4px solid var(--border-default)",
               borderTop: "4px solid #2563eb", borderRadius: "50%",
               animation: "spin 0.8s linear infinite"
             }} />
-            <div style={{ fontSize: 18, fontWeight: 600, color: "#111827" }}>Saving User...</div>
-            <div style={{ fontSize: 13, color: "#6b7280" }}>Please wait while changes are being saved</div>
+            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>Saving User...</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Please wait while changes are being saved</div>
           </div>
         </div>
       )}

@@ -3,10 +3,10 @@ import type { BoardFilters } from "../../../lib/training/board";
 
 const selectStyle: React.CSSProperties = {
   background: "#f9fafb",
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--border-default)",
   borderRadius: 8,
   padding: "6px 10px",
-  color: "#374151",
+  color: "var(--text-tertiary)",
   fontSize: 12,
 };
 
@@ -43,8 +43,8 @@ export function FiltersBar({
       style={{
         flex: isNarrow ? 1 : undefined,
         textAlign: "center",
-        background: view === v ? "#fff" : "transparent",
-        color: view === v ? "#111827" : "#6b7280",
+        background: view === v ? "var(--surface-default)" : "transparent",
+        color: view === v ? "var(--text-primary)" : "var(--text-muted)",
         fontWeight: view === v ? 600 : 500,
         fontSize: 12,
         padding: "5px 12px",
@@ -83,8 +83,8 @@ export function FiltersBar({
         display: "flex",
         flexDirection: "column",
         gap: 8,
-        background: "#fff",
-        border: "1px solid #e5e7eb",
+        background: "var(--surface-default)",
+        border: "1px solid var(--border-default)",
         borderRadius: 12,
         padding: "9px 11px",
         marginBottom: 10,
@@ -92,7 +92,7 @@ export function FiltersBar({
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {/* data-tour wraps BOTH toggles so the spotlight covers the pair, not one button. */}
-        <div data-tour="clb-views" style={{ display: "flex", background: "#f3f4f6", borderRadius: 8, padding: 2, flex: isNarrow ? "1 1 100%" : undefined }}>
+        <div data-tour="clb-views" style={{ display: "flex", background: "var(--surface-subtle)", borderRadius: 8, padding: 2, flex: isNarrow ? "1 1 100%" : undefined }}>
           {toggle("overall", "Overall")}
           {toggle("course", "By Course")}
         </div>
@@ -104,7 +104,7 @@ export function FiltersBar({
             flex: 1,
             minWidth: 120,
             background: "#f9fafb",
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--border-default)",
             borderRadius: 8,
             padding: "6px 10px",
             fontSize: 12,

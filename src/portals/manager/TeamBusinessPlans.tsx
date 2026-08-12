@@ -156,7 +156,7 @@ export function TeamBusinessPlansPage() {
       <div className="panel-body">
         {/* First Row - Totals */}
         <div style={{ marginBottom: 32 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0, marginBottom: 16 }}>
             Team Totals
           </h3>
           
@@ -180,8 +180,8 @@ export function TeamBusinessPlansPage() {
         </div>
 
         {/* Yearly Targets */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+        <div style={{ borderTop: "2px solid var(--border-default)", paddingTop: 24, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>
             Yearly Targets
           </h3>
 
@@ -205,8 +205,8 @@ export function TeamBusinessPlansPage() {
         </div>
 
         {/* Monthly Targets */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+        <div style={{ borderTop: "2px solid var(--border-default)", paddingTop: 24, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>
             Monthly Targets
           </h3>
 
@@ -230,26 +230,26 @@ export function TeamBusinessPlansPage() {
         </div>
 
         {/* Sales Team Plans Table */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+        <div style={{ borderTop: "2px solid var(--border-default)", paddingTop: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>
             Sales Team Plans
           </h3>
           
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                  <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Rep Name</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
-                  <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
-                  <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
+                <tr style={{ backgroundColor: "var(--surface-subtle)", borderBottom: "2px solid var(--border-default)" }}>
+                  <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "var(--text-primary)" }}>Rep Name</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Income Goal</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deal Ave</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deals/Year</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deals/Month</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Claims/Year</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Claims/Month</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Inspections/Year</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Inspections/Month</th>
+                  <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "var(--text-primary)" }}>Status</th>
+                  <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "var(--text-primary)" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,16 +259,16 @@ export function TeamBusinessPlansPage() {
                     const metrics = calculateMetrics(bp?.revenueGoal || 0, bp?.averageDealSize || 0);
                     
                     return (
-                      <tr key={idx} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
-                        <td style={{ padding: 12, color: "#111827", fontWeight: 500 }}>{member.name}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.dealsPerYear.toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.dealsPerMonth.toFixed(2)}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.claimsPerYear.toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.claimsPerMonth.toFixed(2)}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.inspectionsPerMonth.toFixed(2)}</td>
+                      <tr key={idx} style={{ borderBottom: "1px solid var(--border-default)", backgroundColor: idx % 2 === 0 ? "var(--surface-default)" : "#f9fafb" }}>
+                        <td style={{ padding: 12, color: "var(--text-primary)", fontWeight: 500 }}>{member.name}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>{metrics.dealsPerYear.toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>{metrics.dealsPerMonth.toFixed(2)}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>{metrics.claimsPerYear.toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>{metrics.claimsPerMonth.toFixed(2)}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>{metrics.inspectionsPerMonth.toFixed(2)}</td>
                         <td style={{ padding: 12, textAlign: "center" }}>
                           <span style={{ padding: "4px 8px", backgroundColor: bp?.committed ? "#d1fae5" : "#fef3c7", color: bp?.committed ? "#065f46" : "#78350f", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
                             {bp?.committed ? "Committed" : "Draft"}
@@ -287,7 +287,7 @@ export function TeamBusinessPlansPage() {
                             style={{
                               padding: "6px 12px",
                               backgroundColor: "#3b82f6",
-                              color: "#ffffff",
+                              color: "var(--text-inverse)",
                               border: "none",
                               borderRadius: 4,
                               fontSize: 12,
@@ -303,7 +303,7 @@ export function TeamBusinessPlansPage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={11} style={{ padding: 24, textAlign: "center", color: "#6b7280" }}>
+                    <td colSpan={11} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)" }}>
                       No team members assigned
                     </td>
                   </tr>
@@ -329,14 +329,14 @@ export function TeamBusinessPlansPage() {
           zIndex: 1000
         }} onClick={() => setEditingUserId(null)}>
           <div style={{
-            backgroundColor: "#ffffff",
+            backgroundColor: "var(--surface-default)",
             borderRadius: 8,
             padding: 24,
             width: "90%",
             maxWidth: 500,
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)"
           }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 20 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", margin: 0, marginBottom: 20 }}>
               Edit Plan - {teamMembers.find(m => m.id === editingUserId)?.name}
             </h2>
 
@@ -344,7 +344,7 @@ export function TeamBusinessPlansPage() {
               <label className="field">
                 <span className="field-label">Income Goal</span>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>$</span>
                   <input
                     type="number"
                     min={0}
@@ -361,7 +361,7 @@ export function TeamBusinessPlansPage() {
               <label className="field">
                 <span className="field-label">Deal Ave</span>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>$</span>
                   <input
                     type="number"
                     min={0}
@@ -399,8 +399,8 @@ export function TeamBusinessPlansPage() {
                 onClick={() => setEditingUserId(null)}
                 style={{
                   padding: "10px 24px",
-                  backgroundColor: "#e5e7eb",
-                  color: "#111827",
+                  backgroundColor: "var(--surface-muted)",
+                  color: "var(--text-primary)",
                   border: "none",
                   borderRadius: 6,
                   fontSize: 13,
@@ -415,7 +415,7 @@ export function TeamBusinessPlansPage() {
                 style={{
                   padding: "10px 24px",
                   backgroundColor: "#3b82f6",
-                  color: "#ffffff",
+                  color: "var(--text-inverse)",
                   border: "none",
                   borderRadius: 6,
                   fontSize: 13,

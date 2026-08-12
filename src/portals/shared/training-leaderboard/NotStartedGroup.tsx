@@ -25,11 +25,11 @@ export function NotStartedGroup({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          background: "#fff",
+          background: "var(--surface-default)",
           border: "1px dashed #d1d5db",
           borderRadius: 12,
           padding: "12px 14px",
-          color: "#6b7280",
+          color: "var(--text-muted)",
           cursor: "pointer",
         }}
       >
@@ -61,13 +61,13 @@ export function NotStartedGroup({
                 justifyContent: "space-between",
                 padding: "5px 0",
                 fontSize: 13,
-                color: "#374151",
+                color: "var(--text-tertiary)",
                 cursor: onOpenRep ? "pointer" : "default",
               }}
             >
               <span>{r.name}</span>
               {!isNarrow && (
-                <span style={{ color: "#9ca3af", fontSize: 12 }}>
+                <span style={{ color: "var(--text-subtle)", fontSize: 12 }}>
                   {[r.branch, r.team && `Team ${r.team}`].filter(Boolean).join(" · ")}
                 </span>
               )}

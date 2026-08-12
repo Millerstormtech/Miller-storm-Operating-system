@@ -54,7 +54,7 @@ const ForgotPasswordPage: NextPage = () => {
             <div style={{ fontSize: 24, fontWeight: 600, color: "#16a34a", marginBottom: 12 }}>
               Check Your Email
             </div>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 24, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.6 }}>
               If an account exists with <strong>{email}</strong>, you will receive a password reset link shortly.
               <br /><br />
               Please check your inbox and spam folder.
@@ -90,7 +90,7 @@ const ForgotPasswordPage: NextPage = () => {
           The Miller Storm Operating System
         </div>
         <div className="login-subtitle">Reset Your Password</div>
-        <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 24, textAlign: "center" }}>
+        <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24, textAlign: "center" }}>
           Enter your email address and we'll send you a link to reset your password.
         </div>
         <form className="login-form" onSubmit={handleSubmit}>

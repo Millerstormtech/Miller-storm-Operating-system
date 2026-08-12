@@ -164,17 +164,17 @@ export function ShareModal({ isOpen, onClose, title, shareUrl, lessonId }: Share
         {/* Team Members Section */}
         {teamMembers.length > 0 ? (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#111827' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: 'var(--text-primary)' }}>
               Share with Team Members
             </div>
             {loading ? (
-              <div style={{ padding: 16, textAlign: 'center', color: '#6b7280' }}>Loading team members...</div>
+              <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>Loading team members...</div>
             ) : (
               <>
                 <div style={{ 
                   maxHeight: 300, 
                   overflowY: 'auto', 
-                  border: '1px solid #e5e7eb', 
+                  border: '1px solid var(--border-default)', 
                   borderRadius: 6,
                   backgroundColor: '#f9fafb'
                 }}>
@@ -186,7 +186,7 @@ export function ShareModal({ isOpen, onClose, title, shareUrl, lessonId }: Share
                         alignItems: 'center',
                         padding: '12px 16px',
                         cursor: 'pointer',
-                        borderBottom: '1px solid #e5e7eb',
+                        borderBottom: '1px solid var(--border-default)',
                         transition: 'background-color 0.2s',
                       }}
                       onMouseEnter={(e) => {
@@ -212,7 +212,7 @@ export function ShareModal({ isOpen, onClose, title, shareUrl, lessonId }: Share
                       />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 500, fontSize: 14 }}>{member.name}</div>
-                        <div style={{ fontSize: 12, color: '#6b7280' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                           {member.role.charAt(0).toUpperCase() + member.role.slice(1)} • {member.email}
                         </div>
                       </div>
@@ -227,7 +227,7 @@ export function ShareModal({ isOpen, onClose, title, shareUrl, lessonId }: Share
                     width: '100%',
                     marginTop: 12,
                     padding: '12px 20px',
-                    backgroundColor: shareSuccess ? '#10b981' : (selectedUsers.size === 0 || sharing ? '#9ca3af' : '#2563eb'),
+                    backgroundColor: shareSuccess ? '#10b981' : (selectedUsers.size === 0 || sharing ? 'var(--gray-400) /* no semantic: gray-400 as surface */' : '#2563eb'),
                     color: 'white',
                     border: 'none',
                     borderRadius: 6,
@@ -243,7 +243,7 @@ export function ShareModal({ isOpen, onClose, title, shareUrl, lessonId }: Share
             )}
           </div>
         ) : (
-          <div style={{ padding: 40, textAlign: 'center', color: '#6b7280', marginBottom: 24 }}>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', marginBottom: 24 }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>👥</div>
             <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>No Team Members</div>
             <div style={{ fontSize: 14 }}>

@@ -498,9 +498,9 @@ export function SocialMediaMetrics() {
                     return sum + (isNaN(num) ? 0 : num);
                   }, 0);
                   return (
-                    <div key={col.id} style={{ padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>Total {col.name}</div>
-                      <div style={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>{total.toLocaleString()}</div>
+                    <div key={col.id} style={{ padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid var(--border-default)" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Total {col.name}</div>
+                      <div style={{ fontSize: 24, fontWeight: 600, color: "var(--text-primary)" }}>{total.toLocaleString()}</div>
                     </div>
                   );
                 }
@@ -519,8 +519,8 @@ export function SocialMediaMetrics() {
                     fontWeight: 600,
                     marginBottom: 8,
                     padding: "12px 16px",
-                    borderBottom: "2px solid #e5e7eb",
-                    color: "#374151",
+                    borderBottom: "2px solid var(--border-default)",
+                    color: "var(--text-tertiary)",
                     backgroundColor: "#f9fafb"
                   }}
                 >
@@ -540,7 +540,7 @@ export function SocialMediaMetrics() {
                       alignItems: "center",
                       padding: "12px 16px",
                       borderBottom: "1px solid #f1f5f9",
-                      backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                      backgroundColor: index % 2 === 0 ? "var(--surface-default)" : "#f9fafb",
                       fontSize: 14
                     }}
                   >
@@ -604,9 +604,9 @@ export function SocialMediaMetrics() {
       <div style={{ 
         display: 'flex', 
         gap: '0', 
-        borderBottom: '2px solid #e5e7eb',
+        borderBottom: '2px solid var(--border-default)',
         padding: '0 24px',
-        backgroundColor: '#fff'
+        backgroundColor: 'var(--surface-default)'
       }}>
         <button
           type="button"
@@ -618,7 +618,7 @@ export function SocialMediaMetrics() {
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: activeTab === 'dashboard' ? '600' : '400',
-            color: activeTab === 'dashboard' ? '#3b82f6' : '#6b7280',
+            color: activeTab === 'dashboard' ? '#3b82f6' : 'var(--text-muted)',
             borderBottom: activeTab === 'dashboard' ? '2px solid #3b82f6' : '2px solid transparent',
             marginBottom: '-2px',
             transition: 'all 0.2s'
@@ -636,7 +636,7 @@ export function SocialMediaMetrics() {
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: activeTab === 'configuration' ? '600' : '400',
-            color: activeTab === 'configuration' ? '#3b82f6' : '#6b7280',
+            color: activeTab === 'configuration' ? '#3b82f6' : 'var(--text-muted)',
             borderBottom: activeTab === 'configuration' ? '2px solid #3b82f6' : '2px solid transparent',
             marginBottom: '-2px',
             transition: 'all 0.2s'
@@ -682,10 +682,10 @@ export function SocialMediaMetrics() {
               maxWidth: 450,
               width: "95%",
               boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-              border: "1px solid #e5e7eb"
+              border: "1px solid var(--border-default)"
             }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#111827" }}>Add Custom Column</h3>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>Add Custom Column</h3>
                 <button
                   type="button"
                   onClick={() => {
@@ -698,7 +698,7 @@ export function SocialMediaMetrics() {
                     border: "none",
                     fontSize: 24,
                     cursor: "pointer",
-                    color: "#6b7280",
+                    color: "var(--text-muted)",
                     padding: 0,
                     width: 32,
                     height: 32,
@@ -712,7 +712,7 @@ export function SocialMediaMetrics() {
               </div>
               
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#374151" }}>Column Name</label>
+                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" }}>Column Name</label>
                 <input
                   type="text"
                   className="field-input"
@@ -724,7 +724,7 @@ export function SocialMediaMetrics() {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#374151" }}>Data Type</label>
+                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" }}>Data Type</label>
                 <select
                   className="field-input"
                   value={columnDatatype}
@@ -789,10 +789,10 @@ export function SocialMediaMetrics() {
               maxWidth: 450,
               width: "95%",
               boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-              border: "1px solid #e5e7eb"
+              border: "1px solid var(--border-default)"
             }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#111827" }}>Edit Column</h3>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>Edit Column</h3>
                 <button
                   type="button"
                   onClick={() => {
@@ -806,7 +806,7 @@ export function SocialMediaMetrics() {
                     border: "none",
                     fontSize: 24,
                     cursor: "pointer",
-                    color: "#6b7280",
+                    color: "var(--text-muted)",
                     padding: 0,
                     width: 32,
                     height: 32,
@@ -820,7 +820,7 @@ export function SocialMediaMetrics() {
               </div>
               
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#374151" }}>Column Name</label>
+                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" }}>Column Name</label>
                 <input
                   type="text"
                   className="field-input"
@@ -832,7 +832,7 @@ export function SocialMediaMetrics() {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#374151" }}>Data Type</label>
+                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)" }}>Data Type</label>
                 <select
                   className="field-input"
                   value={editColumnDatatype}
@@ -891,17 +891,17 @@ export function SocialMediaMetrics() {
         {/* Summary Cards */}
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, allVisibleColumns.length)}, 1fr)`, gap: 16, marginBottom: 24 }}>
           {allVisibleColumns.length === 0 ? (
-            <div style={{ padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb", gridColumn: "1 / -1" }}>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>No columns added yet</div>
-              <div style={{ fontSize: 14, color: "#111827" }}>Click "+ Add Column" to create your first column</div>
+            <div style={{ padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid var(--border-default)", gridColumn: "1 / -1" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>No columns added yet</div>
+              <div style={{ fontSize: 14, color: "var(--text-primary)" }}>Click "+ Add Column" to create your first column</div>
             </div>
           ) : (
             allVisibleColumns.map(col => {
               const total = col.datatype === "number" ? getColumnTotal(col.name) : null;
               return (
-                <div key={col.id} style={{ padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>Total {col.name}</div>
-                  <div style={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>
+                <div key={col.id} style={{ padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid var(--border-default)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Total {col.name}</div>
+                  <div style={{ fontSize: 24, fontWeight: 600, color: "var(--text-primary)" }}>
                     {col.datatype === "number" ? total?.toLocaleString() : "—"}
                   </div>
                 </div>
@@ -917,8 +917,8 @@ export function SocialMediaMetrics() {
           <div style={{ overflowX: "auto", marginTop: 24 }}>
             <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ borderBottom: "2px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Platform</th>
+                <tr style={{ borderBottom: "2px solid var(--border-default)", backgroundColor: "#f9fafb" }}>
+                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-tertiary)" }}>Platform</th>
                   {allVisibleColumns.map(col => (
                     <th 
                       key={col.id} 
@@ -930,8 +930,8 @@ export function SocialMediaMetrics() {
                         padding: "12px 16px", 
                         textAlign: "center", 
                         fontWeight: 600, 
-                        color: "#374151", 
-                        backgroundColor: draggedColumnId === col.id ? "#fef3c7" : "#f3f4f6",
+                        color: "var(--text-tertiary)", 
+                        backgroundColor: draggedColumnId === col.id ? "#fef3c7" : "var(--surface-subtle)",
                         minWidth: 150,
                         cursor: "move",
                         transition: "background-color 0.2s",
@@ -950,7 +950,7 @@ export function SocialMediaMetrics() {
                             cursor: "pointer",
                             fontSize: 14,
                             padding: "2px 4px",
-                            color: "#6b7280",
+                            color: "var(--text-muted)",
                             borderRadius: 3,
                             transition: "all 0.2s",
                             display: "flex",
@@ -958,12 +958,12 @@ export function SocialMediaMetrics() {
                             justifyContent: "center"
                           }}
                           onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#e5e7eb";
-                            (e.currentTarget as HTMLButtonElement).style.color = "#374151";
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-muted)";
+                            (e.currentTarget as HTMLButtonElement).style.color = "var(--text-tertiary)";
                           }}
                           onMouseLeave={(e) => {
                             (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent";
-                            (e.currentTarget as HTMLButtonElement).style.color = "#6b7280";
+                            (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
                           }}
                         >
                           ⚙️
@@ -971,7 +971,7 @@ export function SocialMediaMetrics() {
                       </div>
                     </th>
                   ))}
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600, color: "#374151" }}>Actions</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600, color: "var(--text-tertiary)" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -986,7 +986,7 @@ export function SocialMediaMetrics() {
                       onDrop={(e) => handleRowDrop(e, metric.id)}
                       style={{ 
                         borderBottom: "1px solid #f1f5f9", 
-                        backgroundColor: draggedRowId === metric.id ? "#fef3c7" : isEditing ? "#fef3c7" : index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                        backgroundColor: draggedRowId === metric.id ? "#fef3c7" : isEditing ? "#fef3c7" : index % 2 === 0 ? "var(--surface-default)" : "#f9fafb",
                         cursor: "move",
                         transition: "background-color 0.2s",
                         opacity: draggedRowId === metric.id ? 0.7 : 1
@@ -1003,11 +1003,11 @@ export function SocialMediaMetrics() {
                             style={{ width: "100%", maxWidth: 200, padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
                           />
                         ) : (
-                          <span style={{ fontWeight: 500, color: "#111827" }}>{metric.platformName}</span>
+                          <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>{metric.platformName}</span>
                         )}
                       </td>
                       {allVisibleColumns.map(col => (
-                        <td key={col.id} style={{ padding: "12px 16px", textAlign: "center", backgroundColor: isEditing ? "rgba(243, 244, 246, 0.5)" : "transparent", minWidth: 150 }}>
+                        <td key={col.id} style={{ padding: "12px 16px", textAlign: "center", backgroundColor: isEditing ? "rgb(var(--gray-100-rgb) / 0.5)" : "transparent", minWidth: 150 }}>
                           {isEditing ? (
                             col.datatype === "boolean" ? (
                               <select
@@ -1045,7 +1045,7 @@ export function SocialMediaMetrics() {
                               />
                             )
                           ) : (
-                            <span style={{ color: "#374151" }}>
+                            <span style={{ color: "var(--text-tertiary)" }}>
                               {col.datatype === "boolean" ? (metric[col.name] ? "Yes" : "No") : col.datatype === "number" ? (metric[col.name] || 0).toLocaleString() : metric[col.name] || "-"}
                             </span>
                           )}

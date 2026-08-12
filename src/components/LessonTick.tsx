@@ -40,7 +40,7 @@ export function LessonTick({
         ...style,
       }}
     >
-      {done && <span style={{ color: "#fff", fontSize: Math.round(size * 0.56) }}>✓</span>}
+      {done && <span style={{ color: "var(--text-inverse)", fontSize: Math.round(size * 0.56) }}>✓</span>}
     </div>
   );
 }

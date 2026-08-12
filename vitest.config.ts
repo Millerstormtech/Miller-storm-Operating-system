@@ -33,6 +33,7 @@ export default defineConfig({
       // would also wake identity/merge/ranking, which have never run here.
       "src/lib/leaderboard/contractKing.test.ts",
       "src/lib/leaderboard/conversion.test.ts",
+      "src/lib/design/**/*.test.ts",
     ],
     environment: "node",
   },

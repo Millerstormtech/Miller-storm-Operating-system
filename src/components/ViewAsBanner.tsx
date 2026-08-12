@@ -44,7 +44,7 @@ export function ViewAsBanner() {
         flexWrap: "wrap",
         padding: "8px 16px",
         background: flash ? "#7f1d1d" : "#CB0002",
-        color: "#fff",
+        color: "var(--text-inverse)",
         fontSize: 13,
         fontWeight: 600,
         boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
@@ -59,9 +59,9 @@ export function ViewAsBanner() {
         type="button"
         onClick={exitViewAs}
         style={{
-          border: "1px solid rgba(255,255,255,0.6)",
-          background: "rgba(255,255,255,0.15)",
-          color: "#fff",
+          border: "1px solid rgb(var(--white-rgb) / 0.6)",
+          background: "rgb(var(--white-rgb) / 0.15)",
+          color: "var(--text-inverse)",
           borderRadius: 999,
           padding: "4px 14px",
           fontSize: 12,

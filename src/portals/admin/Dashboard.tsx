@@ -268,20 +268,20 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
             <div className="panel-empty">No published courses yet.</div>
           ) : (
             <div>
-              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>
                 Overall completion across {eligibleUsers.length} team member{eligibleUsers.length !== 1 ? "s" : ""}:{" "}
-                <strong style={{ color: "#111827" }}>{totalCourseCompletionPercentage}%</strong>
+                <strong style={{ color: "var(--text-primary)" }}>{totalCourseCompletionPercentage}%</strong>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {publishedCourses.map(course => {
                   const pct = getCourseCompletion(course);
                   return (
                     <div key={course.id}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#374151" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--text-tertiary)" }}>
                         <span>{course.title}</span>
                         <span style={{ color: pct >= 100 ? "#16a34a" : "#2563eb" }}>{pct}%</span>
                       </div>
-                      <div style={{ height: 10, background: "#e5e7eb", borderRadius: 999, overflow: "hidden" }}>
+                      <div style={{ height: 10, background: "var(--surface-muted)", borderRadius: 999, overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${pct}%`, background: pct >= 100 ? "#22c55e" : "#3b82f6", borderRadius: 999, transition: "width .3s" }} />
                       </div>
                     </div>
@@ -346,8 +346,8 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
                         fontWeight: 600,
                         marginBottom: 8,
                         padding: "12px 16px",
-                        borderBottom: "2px solid #e5e7eb",
-                        color: "#374151",
+                        borderBottom: "2px solid var(--border-default)",
+                        color: "var(--text-tertiary)",
                         backgroundColor: "#f9fafb"
                       }}
                     >
@@ -367,7 +367,7 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
                           alignItems: "center",
                           padding: "12px 16px",
                           borderBottom: "1px solid #f1f5f9",
-                          backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                          backgroundColor: index % 2 === 0 ? "var(--surface-default)" : "#f9fafb",
                           fontSize: 14
                         }}
                       >
@@ -463,25 +463,25 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
                     width: 24,
                     height: 24,
                     borderRadius: "50%",
-                    border: "2px solid #6b7280",
+                    border: "2px solid var(--gray-500) /* no semantic: gray-500 as border */",
                     backgroundColor: "#f9fafb",
                     cursor: "move",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: 12,
-                    color: "#6b7280",
+                    color: "var(--text-muted)",
                     transition: "all 0.2s ease"
                   }}
                   draggable
                   onDragStart={(e) => handleDragStart(e, section.id)}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#e5e7eb";
-                    e.currentTarget.style.borderColor = "#374151";
+                    e.currentTarget.style.backgroundColor = "var(--surface-muted)";
+                    e.currentTarget.style.borderColor = "var(--gray-700) /* no semantic: gray-700 as border */";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = "#f9fafb";
-                    e.currentTarget.style.borderColor = "#6b7280";
+                    e.currentTarget.style.borderColor = "var(--gray-500) /* no semantic: gray-500 as border */";
                   }}
                 >
                   ⋮⋮

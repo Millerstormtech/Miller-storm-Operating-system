@@ -157,7 +157,7 @@ export function OverrideModal({
     >
       <div
         style={{
-          background: "#fff",
+          background: "var(--surface-default)",
           borderRadius: 14,
           width: "100%",
           maxWidth: 560,
@@ -171,7 +171,7 @@ export function OverrideModal({
         <div
           style={{
             padding: "18px 24px",
-            borderBottom: "1px solid #e5e7eb",
+            borderBottom: "1px solid var(--border-default)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -179,21 +179,21 @@ export function OverrideModal({
           }}
         >
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "#111827" }}>Progress Override</div>
-            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>Progress Override</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
               Marks videos watched. Quizzes cannot be overridden, so this alone never completes a course.
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9ca3af", lineHeight: 1, padding: 4 }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-subtle)", lineHeight: 1, padding: 4 }}
           >
             ×
           </button>
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>
             Course
           </label>
           <select
@@ -209,10 +209,10 @@ export function OverrideModal({
           </select>
 
           {loading ? (
-            <div style={{ textAlign: "center", padding: 40, color: "#6b7280", fontSize: 13 }}>Loading…</div>
+            <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)", fontSize: 13 }}>Loading…</div>
           ) : (
             <>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>
                 Select user
               </label>
               <input
@@ -222,7 +222,7 @@ export function OverrideModal({
                 onChange={(e) => setUserSearch(e.target.value)}
                 style={{ width: "100%", padding: "9px 12px", border: "1px solid #d1d5db", borderRadius: "8px 8px 0 0", fontSize: 13, outline: "none", boxSizing: "border-box", borderBottom: "none" }}
               />
-              <div style={{ border: "1px solid #d1d5db", borderRadius: "0 0 8px 8px", maxHeight: 180, overflowY: "auto", background: "#fff", marginBottom: 18 }}>
+              <div style={{ border: "1px solid #d1d5db", borderRadius: "0 0 8px 8px", maxHeight: 180, overflowY: "auto", background: "var(--surface-default)", marginBottom: 18 }}>
                 {visibleUsers.map((u, idx) => {
                   const isSelected = selectedUser?.id === u.id;
                   return (
@@ -235,13 +235,13 @@ export function OverrideModal({
                         justifyContent: "space-between",
                         padding: "9px 12px",
                         cursor: "pointer",
-                        background: isSelected ? "#eff6ff" : idx % 2 === 0 ? "#fff" : "#fafafa",
+                        background: isSelected ? "#eff6ff" : idx % 2 === 0 ? "var(--surface-default)" : "#fafafa",
                         borderLeft: isSelected ? "3px solid #3b82f6" : "3px solid transparent",
                         fontSize: 13,
                       }}
                     >
-                      <span style={{ fontWeight: 600, color: "#111827" }}>{u.name}</span>
-                      <span style={{ fontSize: 11, color: "#6b7280" }}>{u.email}</span>
+                      <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{u.name}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{u.email}</span>
                     </div>
                   );
                 })}
@@ -250,25 +250,25 @@ export function OverrideModal({
               {selectedUser && (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-tertiary)" }}>
                       Video completions ({checked.size} / {lessons.length})
                     </label>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={() => setChecked(new Set(lessons.map((l) => l.id)))}
-                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "1px solid #d1d5db", background: "#f9fafb", color: "#374151", cursor: "pointer", fontWeight: 600 }}
+                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "1px solid #d1d5db", background: "#f9fafb", color: "var(--text-tertiary)", cursor: "pointer", fontWeight: 600 }}
                       >
                         All
                       </button>
                       <button
                         onClick={() => setChecked(new Set())}
-                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "1px solid #d1d5db", background: "#f9fafb", color: "#374151", cursor: "pointer", fontWeight: 600 }}
+                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "1px solid #d1d5db", background: "#f9fafb", color: "var(--text-tertiary)", cursor: "pointer", fontWeight: 600 }}
                       >
                         None
                       </button>
                     </div>
                   </div>
-                  <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden", maxHeight: 260, overflowY: "auto" }}>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden", maxHeight: 260, overflowY: "auto" }}>
                     {lessons.map((lesson, idx) => {
                       const isChecked = checked.has(lesson.id);
                       return (
@@ -280,8 +280,8 @@ export function OverrideModal({
                             gap: 12,
                             padding: "10px 14px",
                             cursor: "pointer",
-                            background: isChecked ? "#f0fdf4" : idx % 2 === 0 ? "#fff" : "#fafafa",
-                            borderBottom: idx < lessons.length - 1 ? "1px solid #f3f4f6" : "none",
+                            background: isChecked ? "#f0fdf4" : idx % 2 === 0 ? "var(--surface-default)" : "#fafafa",
+                            borderBottom: idx < lessons.length - 1 ? "1px solid var(--border-subtle)" : "none",
                           }}
                         >
                           <input
@@ -297,7 +297,7 @@ export function OverrideModal({
                             }
                             style={{ width: 15, height: 15, accentColor: "#10b981", cursor: "pointer" }}
                           />
-                          <span style={{ fontSize: 13, color: "#111827", flex: 1 }}>{lesson.title}</span>
+                          <span style={{ fontSize: 13, color: "var(--text-primary)", flex: 1 }}>{lesson.title}</span>
                         </label>
                       );
                     })}
@@ -308,7 +308,7 @@ export function OverrideModal({
           )}
         </div>
 
-        <div style={{ padding: "14px 24px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "flex-end", gap: 10, background: "#f8fafc" }}>
+        <div style={{ padding: "14px 24px", borderTop: "1px solid var(--border-default)", display: "flex", justifyContent: "flex-end", gap: 10, background: "#f8fafc" }}>
           {saveError && (
             <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 600, marginRight: "auto" }}>
               {saveError}
@@ -316,7 +316,7 @@ export function OverrideModal({
           )}
           <button
             onClick={onClose}
-            style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}
+            style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #d1d5db", background: "var(--surface-default)", fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)", cursor: "pointer" }}
           >
             Cancel
           </button>
@@ -330,7 +330,7 @@ export function OverrideModal({
               background: !selectedUser || saving ? "#d1d5db" : "#2563eb",
               fontSize: 13,
               fontWeight: 600,
-              color: "#fff",
+              color: "var(--text-inverse)",
               cursor: !selectedUser || saving ? "not-allowed" : "pointer",
             }}
           >

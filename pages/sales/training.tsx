@@ -61,7 +61,7 @@ const Training: NextPage = () => {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-            <div style={{ color: '#6b7280' }}>Loading...</div>
+            <div style={{ color: 'var(--text-muted)' }}>Loading...</div>
           </div>
         </div>
       </SalesLayout>

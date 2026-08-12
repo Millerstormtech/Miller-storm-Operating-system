@@ -300,8 +300,8 @@ function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
               fontWeight: 600,
               marginBottom: 8,
               padding: "4px 0",
-              borderBottom: "1px solid #e5e7eb",
-              color: "#6b7280"
+              borderBottom: "1px solid var(--border-default)",
+              color: "var(--text-muted)"
             }}
           >
             <div>Platform</div>
@@ -321,9 +321,9 @@ function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
                 alignItems: "center",
                 padding: "8px 0",
                 borderTop:
-                  index === 0 ? "1px solid #e5e7eb" : "1px solid #f1f5f9",
+                  index === 0 ? "1px solid var(--border-default)" : "1px solid #f1f5f9",
                 backgroundColor:
-                  index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                  index % 2 === 0 ? "var(--surface-default)" : "#f9fafb",
                 fontSize: 13
               }}
             >
@@ -1113,7 +1113,7 @@ function AiBotManagement(props: { courses: Course[] }) {
         </div>
       </div>
       {isCreating && (
-        <div className="panel-body" style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16 }}>
+        <div className="panel-body" style={{ borderBottom: "1px solid var(--border-default)", marginBottom: 16 }}>
           <div className="form-grid">
             <label className="field">
               <span className="field-label">Bot Name</span>
@@ -1203,7 +1203,7 @@ function AiBotManagement(props: { courses: Course[] }) {
                     style={{
                       marginLeft: 8,
                       cursor: "pointer",
-                      color: "#6b7280",
+                      color: "var(--text-muted)",
                       fontSize: 12
                     }}
                     title="Supported formats: PDF, DOCX, TXT, MD, CSV (Max 10MB per file)"
@@ -3264,7 +3264,7 @@ function WebTemplatesPage(props: {
                   style={{
                     fontSize: 12,
                     fontWeight: 600,
-                    color: "#6b7280"
+                    color: "var(--text-muted)"
                   }}
                 >
                   <th
@@ -3314,8 +3314,8 @@ function WebTemplatesPage(props: {
                     <tr
                       key={rep.id}
                       style={{
-                        borderTop: index === 0 ? "1px solid #e5e7eb" : "none",
-                        borderBottom: "1px solid #e5e7eb"
+                        borderTop: index === 0 ? "1px solid var(--border-default)" : "none",
+                        borderBottom: "1px solid var(--border-default)"
                       }}
                     >
                       <td
@@ -3325,7 +3325,7 @@ function WebTemplatesPage(props: {
                         }}
                       >
                         <div style={{ fontWeight: 600 }}>{rep.name}</div>
-                        <div style={{ fontSize: 12, color: "#6b7280" }}>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                           {rep.email}
                         </div>
                       </td>
@@ -3566,7 +3566,7 @@ function AppsToolManagement() {
         </div>
         <div className="panel-body">
           {isCreating === type && (
-            <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16, paddingBottom: 16 }}>
+            <div style={{ borderBottom: "1px solid var(--border-default)", marginBottom: 16, paddingBottom: 16 }}>
               <div className="form-grid">
                 <label className="field">
                   <span className="field-label">Title</span>
@@ -3761,7 +3761,7 @@ function BusinessUnitsManager(props: { users: UserProfile[] }) {
                   <div className="panel-empty">No team members assigned.</div>
                 ) : (
                   teamMembers.map((member) => (
-                    <div key={member.id} style={{ marginBottom: 12, padding: 12, border: "1px solid #e5e7eb", borderRadius: 6 }}>
+                    <div key={member.id} style={{ marginBottom: 12, padding: 12, border: "1px solid var(--border-default)", borderRadius: 6 }}>
                       <div style={{ fontWeight: 600, marginBottom: 8 }}>{member.name}</div>
                       {member.businessPlan ? (
                         <div className="grid grid-4">
@@ -3775,7 +3775,7 @@ function BusinessUnitsManager(props: { users: UserProfile[] }) {
                           />
                         </div>
                       ) : (
-                        <div style={{ fontSize: 13, color: "#6b7280" }}>No business plan set</div>
+                        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>No business plan set</div>
                       )}
                     </div>
                   ))

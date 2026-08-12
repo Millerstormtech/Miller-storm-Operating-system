@@ -211,27 +211,27 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               col === "metric" ? row.metric : row.value;
             const getCellStyle = (col: string): React.CSSProperties =>
               col === "value"
-                ? { padding: 12, textAlign: "left", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }
+                ? { padding: 12, textAlign: "left", color: "var(--text-primary)", fontWeight: 600, border: "1px solid var(--border-default)" }
                 : col === "value"
-                ? { padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }
-                : { padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" };
+                ? { padding: 12, color: "var(--text-muted)", fontSize: 12, border: "1px solid var(--border-default)" }
+                : { padding: 12, color: "var(--text-tertiary)", paddingLeft: 24, border: "1px solid var(--border-default)" };
             return (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, border: "1px solid #e5e7eb" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, border: "1px solid var(--border-default)" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                    <tr style={{ backgroundColor: "var(--surface-subtle)", borderBottom: "2px solid var(--border-default)" }}>
                     </tr>
                   </thead>
                   <tbody>
                     {sections.map(section => (
                       <>
                         <tr key={section} style={{ backgroundColor: "#f8fafc" }}>
-                          <td style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, border: "1px solid #e5e7eb" }}>{section}</td>
-                          <td style={{ padding: 12, border: "1px solid #e5e7eb", textAlign: "right" }}>
+                          <td style={{ padding: 12, fontWeight: 600, color: "var(--text-primary)", fontSize: 14, border: "1px solid var(--border-default)" }}>{section}</td>
+                          <td style={{ padding: 12, border: "1px solid var(--border-default)", textAlign: "right" }}>
                             {section === "Yearly Targets" && (
                               <button
                                 onClick={() => setYearlyExpanded(p => !p)}
-                                style={{ fontSize: 13, padding: "4px 14px", borderRadius: 4, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontWeight: 600 }}
+                                style={{ fontSize: 13, padding: "4px 14px", borderRadius: 4, border: "none", background: "#2563eb", color: "var(--text-inverse)", cursor: "pointer", fontWeight: 600 }}
                               >
                                 {yearlyExpanded ? "Collapse" : "Expand"}
                               </button>
@@ -239,7 +239,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                             {section === "Monthly Targets" && (
                               <button
                                 onClick={() => setMonthlyExpanded(p => !p)}
-                                style={{ fontSize: 13, padding: "4px 14px", borderRadius: 4, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontWeight: 600 }}
+                                style={{ fontSize: 13, padding: "4px 14px", borderRadius: 4, border: "none", background: "#2563eb", color: "var(--text-inverse)", cursor: "pointer", fontWeight: 600 }}
                               >
                                 {monthlyExpanded ? "Collapse" : "Expand"}
                               </button>
@@ -278,7 +278,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           style={{
             padding: "8px 20px",
             backgroundColor: "#3b82f6",
-            color: "#ffffff",
+            color: "var(--text-inverse)",
             border: "none",
             borderRadius: 6,
             fontSize: 13,
@@ -339,7 +339,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 <span>{manager.name} - Sales Team Lead</span>
                 <button
                   onClick={() => hideManager(manager.id)}
-                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fff", background: "#fff", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid var(--white) /* no semantic: white as border */", background: "var(--surface-default)", color: "var(--text-inverse)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                 >
                   Hide
                 </button>
@@ -348,50 +348,50 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
-                      <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                        <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Name</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Avg</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
-                        <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
-                        <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
+                      <tr style={{ backgroundColor: "var(--surface-subtle)", borderBottom: "2px solid var(--border-default)" }}>
+                        <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "var(--text-primary)" }}>Name</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Income Goal</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deal Avg</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deals/Month</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Claims/Month</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Inspections/Month</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deals/Year</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Claims/Year</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Inspections/Year</th>
+                        <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "var(--text-primary)" }}>Status</th>
+                        <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "var(--text-primary)" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* Manager Row */}
-                      <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f8fafc" }}>
-                        <td style={{ padding: 12, color: "#111827", fontWeight: 600 }}>
+                      <tr style={{ borderBottom: "1px solid var(--border-default)", backgroundColor: "#f8fafc" }}>
+                        <td style={{ padding: 12, color: "var(--text-primary)", fontWeight: 600 }}>
                           {manager.name} (Manager)
                         </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)", fontWeight: 600 }}>
                           ${teamTotals.incomeGoal.toLocaleString()}
                         </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>—</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)", fontWeight: 600 }}>—</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)", fontWeight: 600 }}>
                           {Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}
                         </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)", fontWeight: 600 }}>
                           {Math.ceil(teamTotals.claimsPerMonth).toLocaleString()}
                         </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)", fontWeight: 600 }}>
                           {Math.ceil(teamTotals.inspectionsPerMonth).toLocaleString()}
                         </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)", fontWeight: 600 }}>
                           {teamTotals.dealsPerYear.toLocaleString()}
                         </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)", fontWeight: 600 }}>
                           {teamTotals.claimsPerYear.toLocaleString()}
                         </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                        <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)", fontWeight: 600 }}>
                           {teamTotals.inspectionsPerYear.toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "center" }}>
-                          <span style={{ padding: "4px 8px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+                          <span style={{ padding: "4px 8px", backgroundColor: "var(--surface-muted)", color: "var(--text-tertiary)", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
                             Team ({teamMembers.length})
                           </span>
                         </td>
@@ -401,7 +401,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                             style={{
                               padding: "6px 12px",
                               backgroundColor: "#10b981",
-                              color: "#ffffff",
+                              color: "var(--text-inverse)",
                               border: "none",
                               borderRadius: 4,
                               fontSize: 12,
@@ -420,32 +420,32 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                         const metrics = calculateMetrics(bp?.revenueGoal || 0, bp?.averageDealSize || 0);
                         
                         return (
-                          <tr key={`${manager.id}-${member.id}`} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#ffffff" }}>
-                            <td style={{ padding: 12, color: "#111827", fontWeight: 500, paddingLeft: 32 }}>
+                          <tr key={`${manager.id}-${member.id}`} style={{ borderBottom: "1px solid var(--border-default)", backgroundColor: "var(--surface-default)" }}>
+                            <td style={{ padding: 12, color: "var(--text-primary)", fontWeight: 500, paddingLeft: 32 }}>
                               └ {member.name}
                             </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                            <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>
                               ${(bp?.revenueGoal || 0).toLocaleString()}
                             </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                            <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>
                               ${(bp?.averageDealSize || 3500).toLocaleString()}
                             </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                            <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>
                               {Math.ceil(metrics.dealsPerMonth).toLocaleString()}
                             </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                            <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>
                               {Math.ceil(metrics.claimsPerMonth).toLocaleString()}
                             </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                            <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>
                               {Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}
                             </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                            <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>
                               {metrics.dealsPerYear.toLocaleString()}
                             </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                            <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>
                               {metrics.claimsPerYear.toLocaleString()}
                             </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                            <td style={{ padding: 12, textAlign: "right", color: "var(--text-tertiary)" }}>
                               {metrics.inspectionsPerYear.toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "center" }}>
@@ -473,7 +473,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                 style={{
                                   padding: "6px 12px",
                                   backgroundColor: "#3b82f6",
-                                  color: "#ffffff",
+                                  color: "var(--text-inverse)",
                                   border: "none",
                                   borderRadius: 4,
                                   fontSize: 12,
@@ -500,7 +500,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           <div style={{ marginTop: 32 }}>
             <button
               onClick={() => setShowHiddenSection(p => !p)}
-              style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #f3f4f6", background: "#f3f4f6", color: "#f3f4f6", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}
+              style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border-subtle)", background: "var(--surface-subtle)", color: "var(--gray-100) /* no semantic: gray-100 as text; matches --surface-subtle background above -- pre-existing invisible-text bug, not fixed here (out of scope, zero visual change) */", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}
             >
               {showHiddenSection ? "▲" : "▼"} Hidden Sales Team Leads ({hiddenManagers.size})
             </button>
@@ -524,7 +524,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               return (
                 <div key={manager.id} className="panel" style={{ marginBottom: 16 }}>
                   <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ color: "#6b7280" }}>{manager.name} - Sales Team Lead</span>
+                    <span style={{ color: "var(--text-muted)" }}>{manager.name} - Sales Team Lead</span>
                     <button
                       onClick={() => unhideManager(manager.id)}
                       style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #3b82f6", background: "#eff6ff", color: "#2563eb", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
@@ -536,23 +536,23 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                     <div style={{ overflowX: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                         <thead>
-                          <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                            <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Name</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Avg</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
-                            <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
-                            <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
+                          <tr style={{ backgroundColor: "var(--surface-subtle)", borderBottom: "2px solid var(--border-default)" }}>
+                            <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "var(--text-primary)" }}>Name</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Income Goal</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deal Avg</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deals/Month</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Claims/Month</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Inspections/Month</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Deals/Year</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Claims/Year</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>Inspections/Year</th>
+                            <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "var(--text-primary)" }}>Status</th>
+                            <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "var(--text-primary)" }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f8fafc" }}>
-                            <td style={{ padding: 12, color: "#111827", fontWeight: 600 }}>{manager.name} (Sales Team Lead)</td>
+                          <tr style={{ borderBottom: "1px solid var(--border-default)", backgroundColor: "#f8fafc" }}>
+                            <td style={{ padding: 12, color: "var(--text-primary)", fontWeight: 600 }}>{manager.name} (Sales Team Lead)</td>
                             <td style={{ padding: 12, textAlign: "right" }}>${teamTotals.incomeGoal.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>—</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}</td>
@@ -561,16 +561,16 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                             <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.dealsPerYear.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.claimsPerYear.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.inspectionsPerYear.toLocaleString()}</td>
-                            <td style={{ padding: 12, textAlign: "center" }}><span style={{ padding: "4px 8px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>Team ({teamMembers.length})</span></td>
+                            <td style={{ padding: 12, textAlign: "center" }}><span style={{ padding: "4px 8px", backgroundColor: "var(--surface-muted)", color: "var(--text-tertiary)", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>Team ({teamMembers.length})</span></td>
                             <td style={{ padding: 12, textAlign: "center" }}>
-                              <button onClick={() => toggleManager(manager.id)} style={{ padding: "6px 12px", backgroundColor: "#10b981", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>See Team</button>
+                              <button onClick={() => toggleManager(manager.id)} style={{ padding: "6px 12px", backgroundColor: "#10b981", color: "var(--text-inverse)", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>See Team</button>
                             </td>
                           </tr>
                           {expandedManagers.has(manager.id) && teamMembers.map((member) => {
                             const bp = member.businessPlan;
                             const metrics = calculateMetrics(bp?.revenueGoal || 0, bp?.averageDealSize || 0);
                             return (
-                              <tr key={member.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                              <tr key={member.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
                                 <td style={{ padding: 12, paddingLeft: 32 }}>└ {member.name}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>${(bp?.averageDealSize || 3500).toLocaleString()}</td>
@@ -586,7 +586,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                   </span>
                                 </td>
                                 <td style={{ padding: 12, textAlign: "center" }}>
-                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: String(bp?.revenueGoal || 0), dealAve: String(bp?.averageDealSize || 3500), committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: String(bp?.revenueGoal || 0), dealAve: String(bp?.averageDealSize || 3500), committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "var(--text-inverse)", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
                                 </td>
                               </tr>
                             );
@@ -618,14 +618,14 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           zIndex: 1000
         }} onClick={() => setEditingUserId(null)}>
           <div style={{
-            backgroundColor: "#ffffff",
+            backgroundColor: "var(--surface-default)",
             borderRadius: 8,
             padding: 24,
             width: "90%",
             maxWidth: 500,
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)"
           }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 20 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", margin: 0, marginBottom: 20 }}>
               Edit Plan - {salesReps.find(m => m.id === editingUserId)?.name}
             </h2>
 
@@ -633,7 +633,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               <label className="field">
                 <span className="field-label">Income Goal</span>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>$</span>
                   <input
                     type="text"
                     value={editForm.incomeGoal}
@@ -646,7 +646,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               <label className="field">
                 <span className="field-label">Deal Ave</span>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>$</span>
                   <input
                     type="text"
                     value={editForm.dealAve}
@@ -661,7 +661,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 <select
                   value={editForm.committed ? "committed" : "draft"}
                   onChange={e => setEditForm({ ...editForm, committed: e.target.value === "committed" })}
-                  style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, background: "#fff" }}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, background: "var(--surface-default)" }}
                 >
                   <option value="draft">Draft</option>
                   <option value="committed">Committed</option>
@@ -674,8 +674,8 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 onClick={() => setEditingUserId(null)}
                 style={{
                   padding: "10px 24px",
-                  backgroundColor: "#e5e7eb",
-                  color: "#111827",
+                  backgroundColor: "var(--surface-muted)",
+                  color: "var(--text-primary)",
                   border: "none",
                   borderRadius: 6,
                   fontSize: 13,
@@ -690,7 +690,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 style={{
                   padding: "10px 24px",
                   backgroundColor: "#3b82f6",
-                  color: "#ffffff",
+                  color: "var(--text-inverse)",
                   border: "none",
                   borderRadius: 6,
                   fontSize: 13,

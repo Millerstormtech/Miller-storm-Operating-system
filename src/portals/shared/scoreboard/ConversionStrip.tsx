@@ -32,8 +32,8 @@ export function ConversionStrip(props: {
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
+        background: "var(--surface-default)",
+        border: "1px solid var(--border-default)",
         borderRadius: 12,
         padding: "14px 16px",
         display: "flex",
@@ -66,7 +66,7 @@ function ConversionCellView(props: { label: string; cell: ConversionCell }): JSX
         style={{
           fontSize: 12,
           fontWeight: 700,
-          color: "#6b7280",
+          color: "var(--text-muted)",
           textTransform: "uppercase",
           letterSpacing: 0.5,
         }}
@@ -74,7 +74,7 @@ function ConversionCellView(props: { label: string; cell: ConversionCell }): JSX
         {label}
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: "#111827" }}>{text}</div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>{text}</div>
         {/* No arrow at all when dir is null: no prior period is not the same
             as a flat or green trend. */}
         {arrow !== null && word !== null && (

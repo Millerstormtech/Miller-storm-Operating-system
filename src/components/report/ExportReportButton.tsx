@@ -41,8 +41,8 @@ const btn: React.CSSProperties = {
   padding: "8px 14px",
   borderRadius: 8,
   border: "1px solid #d1d5db",
-  background: "#fff",
-  color: "#374151",
+  background: "var(--surface-default)",
+  color: "var(--text-tertiary)",
   fontWeight: 600,
   fontSize: 13,
   cursor: "pointer",
@@ -62,7 +62,7 @@ const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 12,
   fontWeight: 600,
-  color: "#374151",
+  color: "var(--text-tertiary)",
   marginBottom: 6,
 };
 
@@ -169,7 +169,7 @@ export function ExportReportButton({
         >
           <div
             style={{
-              background: "#fff",
+              background: "var(--surface-default)",
               borderRadius: 14,
               width: "100%",
               maxWidth: 460,
@@ -183,7 +183,7 @@ export function ExportReportButton({
             <div
               style={{
                 padding: "18px 24px",
-                borderBottom: "1px solid #e5e7eb",
+                borderBottom: "1px solid var(--border-default)",
                 background: "#f8fafc",
                 display: "flex",
                 justifyContent: "space-between",
@@ -191,14 +191,14 @@ export function ExportReportButton({
               }}
             >
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "#111827" }}>Export report</div>
-                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>Export report</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                   Downloads a PDF of the board.
                 </div>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9ca3af", lineHeight: 1, padding: 4 }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-subtle)", lineHeight: 1, padding: 4 }}
               >
                 ×
               </button>
@@ -238,7 +238,7 @@ export function ExportReportButton({
               ))}
 
               <div style={{ ...labelStyle, marginTop: 16 }}>Columns</div>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 2px", fontSize: 13, color: "#9ca3af" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 2px", fontSize: 13, color: "var(--text-subtle)" }}>
                 <input type="checkbox" checked disabled readOnly />
                 Rep (always included)
               </label>
@@ -266,7 +266,7 @@ export function ExportReportButton({
             <div
               style={{
                 padding: "14px 24px",
-                borderTop: "1px solid #e5e7eb",
+                borderTop: "1px solid var(--border-default)",
                 display: "flex",
                 justifyContent: "flex-end",
                 gap: 10,
@@ -275,7 +275,7 @@ export function ExportReportButton({
             >
               <button
                 onClick={() => setOpen(false)}
-                style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}
+                style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #d1d5db", background: "var(--surface-default)", fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)", cursor: "pointer" }}
               >
                 Cancel
               </button>
@@ -285,7 +285,7 @@ export function ExportReportButton({
                 title={emptySelection ? "Nothing to export" : ""}
                 style={{
                   padding: "8px 20px", borderRadius: 8, border: "none", background: "#2563eb",
-                  fontSize: 13, fontWeight: 600, color: "#fff",
+                  fontSize: 13, fontWeight: 600, color: "var(--text-inverse)",
                   cursor: busy ? "wait" : emptySelection ? "not-allowed" : "pointer",
                   opacity: busy || emptySelection ? 0.55 : 1,
                 }}

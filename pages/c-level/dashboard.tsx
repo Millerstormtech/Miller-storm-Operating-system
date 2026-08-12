@@ -16,7 +16,7 @@ const CLevelDashboardPage: NextPage = () => {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto 16px' }} />
-            <div style={{ color: '#6b7280' }}>Checking session...</div>
+            <div style={{ color: 'var(--text-muted)' }}>Checking session...</div>
           </div>
         </div>
       </CLevelLayout>

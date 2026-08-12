@@ -99,7 +99,7 @@ const ResetPasswordPage: NextPage = () => {
             />
           </div>
           <div style={{ textAlign: "center", padding: "32px 0" }}>
-            <div style={{ fontSize: 14, color: "#6b7280" }}>
+            <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
               Verifying reset link...
             </div>
           </div>
@@ -125,7 +125,7 @@ const ResetPasswordPage: NextPage = () => {
             <div style={{ fontSize: 24, fontWeight: 600, color: "#16a34a", marginBottom: 12 }}>
               Password Reset Successful
             </div>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
+            <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24 }}>
               Your password has been reset successfully.
               <br />
               You can now login with your new password.
@@ -163,7 +163,7 @@ const ResetPasswordPage: NextPage = () => {
             <div style={{ fontSize: 24, fontWeight: 600, color: "#dc2626", marginBottom: 12 }}>
               Invalid Reset Link
             </div>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
+            <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24 }}>
               {error || "This password reset link is invalid or has expired."}
               <br />
               Please request a new password reset link.
@@ -199,7 +199,7 @@ const ResetPasswordPage: NextPage = () => {
           The Miller Storm Operating System
         </div>
         <div className="login-subtitle">Set New Password</div>
-        <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 24, textAlign: "center" }}>
+        <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24, textAlign: "center" }}>
           Resetting password for <strong>{userEmail}</strong>
         </div>
         <form className="login-form" onSubmit={handleSubmit}>

@@ -112,7 +112,7 @@ const LoginPage: NextPage = () => {
         <div className="login-title">
           The Miller Storm Operating System
         </div>
-        <div className="login-subtitle" style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+        <div className="login-subtitle" style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '8px' }}>
           powered by Genesis, everything- it starts here
         </div>
         <form className="login-form" onSubmit={handleSubmit}>
@@ -178,13 +178,13 @@ const LoginPage: NextPage = () => {
               type="button"
               className="btn-primary"
               onClick={handleBiometricLogin}
-              style={{ marginTop: 10, background: "#111827", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              style={{ marginTop: 10, background: "var(--surface-inverse)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
               🔒 Login with {bioLabel}
             </button>
           )}
           <div className="login-links" style={{ marginTop: '14px', textAlign: 'center' }}>
-            <span style={{ color: '#6b7280', fontSize: 14 }}>{"Don't have an account? "}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>{"Don't have an account? "}</span>
             <a href="/register" className="login-link" style={{ color: '#dc2626', fontWeight: 700 }}>Register</a>
           </div>
         </form>

@@ -5,7 +5,7 @@ import { NotStartedGroup } from "./NotStartedGroup";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, margin: "14px 0 6px" }}>
+    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5, margin: "14px 0 6px" }}>
       {children}
     </div>
   );
@@ -38,7 +38,7 @@ export function RosterGrid({
 
   if (visible.length === 0 && visibleNotStarted.length === 0) {
     return (
-      <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+      <div style={{ padding: 32, textAlign: "center", color: "var(--text-subtle)", fontSize: 13 }}>
         {active ? "No reps match these filters." : "No reps on the board yet."}
       </div>
     );

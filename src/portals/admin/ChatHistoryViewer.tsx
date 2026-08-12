@@ -128,8 +128,8 @@ export function ChatHistoryViewer() {
                     maxWidth: '70%',
                     padding: '12px 16px',
                     borderRadius: '18px',
-                    backgroundColor: role === 'user' ? '#1f2937' : '#f3f4f6',
-                    color: role === 'user' ? '#ffffff' : '#1f2937',
+                    backgroundColor: role === 'user' ? 'var(--surface-inverse-raised)' : 'var(--surface-subtle)',
+                    color: role === 'user' ? 'var(--text-inverse)' : 'var(--text-secondary)',
                     fontSize: '15px',
                     lineHeight: '1.5'
                   }}
@@ -178,7 +178,7 @@ export function ChatHistoryViewer() {
         
         {loading ? (
           <div className="panel-body" style={{ textAlign: 'center', padding: '40px' }}>
-            <div style={{ fontSize: '16px', color: '#6b7280' }}>Loading chats...</div>
+            <div style={{ fontSize: '16px', color: 'var(--text-muted)' }}>Loading chats...</div>
           </div>
         ) : (
           <div className="panel-body" style={{ padding: '24px' }}>
@@ -199,7 +199,7 @@ export function ChatHistoryViewer() {
                   style={{
                     width: '100%',
                     padding: '12px 16px 12px 40px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border-default)',
                     borderRadius: '10px',
                     fontSize: '14px',
                     outline: 'none'
@@ -221,7 +221,7 @@ export function ChatHistoryViewer() {
                 onChange={(e) => setChatTypeFilter(e.target.value)}
                 style={{
                   padding: '12px 16px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border-default)',
                   borderRadius: '10px',
                   fontSize: '14px',
                   backgroundColor: 'white',
@@ -240,7 +240,7 @@ export function ChatHistoryViewer() {
                 onChange={(e) => setDateFilter(e.target.value)}
                 style={{
                   padding: '12px 16px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border-default)',
                   borderRadius: '10px',
                   fontSize: '14px',
                   backgroundColor: 'white',
@@ -258,10 +258,10 @@ export function ChatHistoryViewer() {
                   }}
                   style={{
                     padding: '12px 16px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border-default)',
                     borderRadius: '10px',
                     fontSize: '14px',
-                    backgroundColor: '#f3f4f6',
+                    backgroundColor: 'var(--surface-subtle)',
                     cursor: 'pointer',
                     fontWeight: 500
                   }}
@@ -283,7 +283,7 @@ export function ChatHistoryViewer() {
                   backgroundColor: '#f9fafb',
                   borderRadius: '12px',
                   padding: '20px',
-                  border: '1px solid #e5e7eb'
+                  border: '1px solid var(--border-default)'
                 }}>
                   <div style={{
                     display: 'flex',
@@ -291,13 +291,13 @@ export function ChatHistoryViewer() {
                     justifyContent: 'space-between',
                     marginBottom: '20px',
                     paddingBottom: '12px',
-                    borderBottom: '2px solid #1f2937'
+                    borderBottom: '2px solid var(--border-strong)'
                   }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#1f2937' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-secondary)' }}>
                       💬 AI Chat History
                     </h3>
                     <span style={{
-                      backgroundColor: '#1f2937',
+                      backgroundColor: 'var(--surface-inverse-raised)',
                       color: 'white',
                       padding: '4px 12px',
                       borderRadius: '12px',
@@ -317,7 +317,7 @@ export function ChatHistoryViewer() {
                     paddingRight: '8px'
                   }}>
                     {filteredAiChats.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '14px' }}>
+                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-subtle)', fontSize: '14px' }}>
                         <div style={{ fontSize: '48px', marginBottom: '12px' }}>💭</div>
                         {chatSearchQuery || dateFilter ? 'No matching AI chats' : 'No AI chats yet'}
                       </div>
@@ -328,18 +328,18 @@ export function ChatHistoryViewer() {
                           onClick={() => viewChat(chat, 'ai')}
                           style={{
                             padding: '16px',
-                            backgroundColor: '#ffffff',
+                            backgroundColor: 'var(--surface-default)',
                             borderRadius: '10px',
                             cursor: 'pointer',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border-default)',
                             transition: 'all 0.2s',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                           }}
                         >
-                          <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: '#1f2937' }}>
+                          <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: 'var(--text-secondary)' }}>
                             {chat.title}
                           </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span>💬 {chat.messages.length} messages</span>
                             <span>•</span>
                             <span>📅 {new Date(chat.updatedAt).toLocaleDateString()}</span>
@@ -356,7 +356,7 @@ export function ChatHistoryViewer() {
                   backgroundColor: '#f9fafb',
                   borderRadius: '12px',
                   padding: '20px',
-                  border: '1px solid #e5e7eb'
+                  border: '1px solid var(--border-default)'
                 }}>
                   <div style={{
                     display: 'flex',
@@ -364,13 +364,13 @@ export function ChatHistoryViewer() {
                     justifyContent: 'space-between',
                     marginBottom: '20px',
                     paddingBottom: '12px',
-                    borderBottom: '2px solid #1f2937'
+                    borderBottom: '2px solid var(--border-strong)'
                   }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#1f2937' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-secondary)' }}>
                       📚 Course Training Chats
                     </h3>
                     <span style={{
-                      backgroundColor: '#1f2937',
+                      backgroundColor: 'var(--surface-inverse-raised)',
                       color: 'white',
                       padding: '4px 12px',
                       borderRadius: '12px',
@@ -390,7 +390,7 @@ export function ChatHistoryViewer() {
                     paddingRight: '8px'
                   }}>
                     {filteredLessonChats.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '14px' }}>
+                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-subtle)', fontSize: '14px' }}>
                         <div style={{ fontSize: '48px', marginBottom: '12px' }}>📖</div>
                         {chatSearchQuery || dateFilter ? 'No matching lesson chats' : 'No lesson chats yet'}
                       </div>
@@ -401,21 +401,21 @@ export function ChatHistoryViewer() {
                           onClick={() => viewChat(chat, 'lesson')}
                           style={{
                             padding: '16px',
-                            backgroundColor: '#ffffff',
+                            backgroundColor: 'var(--surface-default)',
                             borderRadius: '10px',
                             cursor: 'pointer',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border-default)',
                             transition: 'all 0.2s',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                           }}
                         >
-                          <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: '#1f2937' }}>
+                          <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: 'var(--text-secondary)' }}>
                             {chat.title}
                           </div>
                           <div style={{
                             fontSize: '11px',
-                            color: '#6b7280',
-                            backgroundColor: '#f3f4f6',
+                            color: 'var(--text-muted)',
+                            backgroundColor: 'var(--surface-subtle)',
                             padding: '4px 8px',
                             borderRadius: '6px',
                             marginBottom: '8px',
@@ -423,7 +423,7 @@ export function ChatHistoryViewer() {
                           }}>
                             📖 {chat.lessonTitle}
                           </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span>💬 {chat.messages.length} messages</span>
                             <span>•</span>
                             <span>📅 {new Date(chat.updatedAt).toLocaleDateString()}</span>
@@ -465,7 +465,7 @@ export function ChatHistoryViewer() {
               style={{
                 width: '100%',
                 padding: '12px 16px 12px 40px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border-default)',
                 borderRadius: '10px',
                 fontSize: '14px',
                 outline: 'none'
@@ -487,7 +487,7 @@ export function ChatHistoryViewer() {
             onChange={(e) => setRoleFilter(e.target.value)}
             style={{
               padding: '12px 16px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border-default)',
               borderRadius: '10px',
               fontSize: '14px',
               backgroundColor: 'white',
@@ -516,26 +516,26 @@ export function ChatHistoryViewer() {
                 onClick={() => loadUserChats(user)}
                 style={{
                   padding: '18px',
-                  backgroundColor: '#ffffff',
+                  backgroundColor: 'var(--surface-default)',
                   borderRadius: '10px',
                   cursor: 'pointer',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border-default)',
                   transition: 'all 0.2s',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '4px', color: '#1f2937' }}>
+                    <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
                       {user.name}
                     </div>
-                    <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
                       {user.email}
                     </div>
                   </div>
                   <div style={{
                     padding: '6px 14px',
-                    backgroundColor: '#1f2937',
+                    backgroundColor: 'var(--surface-inverse-raised)',
                     color: 'white',
                     borderRadius: '20px',
                     fontSize: '12px',
@@ -557,7 +557,7 @@ export function ChatHistoryViewer() {
             <div style={{
               textAlign: 'center',
               padding: '60px 20px',
-              color: '#9ca3af'
+              color: 'var(--text-subtle)'
             }}>
               <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔍</div>
               <div style={{ fontSize: '16px', fontWeight: 500 }}>No users found</div>

@@ -35,7 +35,7 @@ export function HideModal({
     >
       <div
         style={{
-          background: "#fff",
+          background: "var(--surface-default)",
           borderRadius: 14,
           width: "100%",
           maxWidth: 460,
@@ -46,14 +46,14 @@ export function HideModal({
           overflow: "hidden",
         }}
       >
-        <div style={{ padding: "18px 24px", borderBottom: "1px solid #e5e7eb", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border-default)", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "#111827" }}>Hide or unhide users</div>
-            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>Hide or unhide users</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
               Checked users are hidden from your view of the board.
             </div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9ca3af", lineHeight: 1, padding: 4 }}>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-subtle)", lineHeight: 1, padding: 4 }}>
             ×
           </button>
         </div>
@@ -76,7 +76,7 @@ export function HideModal({
                 gap: 10,
                 padding: "8px 6px",
                 cursor: "pointer",
-                background: idx % 2 === 0 ? "#fff" : "#fafafa",
+                background: idx % 2 === 0 ? "var(--surface-default)" : "#fafafa",
                 borderRadius: 6,
                 fontSize: 13,
               }}
@@ -94,13 +94,13 @@ export function HideModal({
                 }
                 style={{ width: 15, height: 15, cursor: "pointer" }}
               />
-              <span style={{ fontWeight: 600, color: "#111827", flex: 1 }}>{r.name}</span>
-              <span style={{ fontSize: 11, color: "#6b7280" }}>{r.email}</span>
+              <span style={{ fontWeight: 600, color: "var(--text-primary)", flex: 1 }}>{r.name}</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.email}</span>
             </label>
           ))}
         </div>
-        <div style={{ padding: "14px 24px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "flex-end", gap: 10, background: "#f8fafc" }}>
-          <button onClick={onClose} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}>
+        <div style={{ padding: "14px 24px", borderTop: "1px solid var(--border-default)", display: "flex", justifyContent: "flex-end", gap: 10, background: "#f8fafc" }}>
+          <button onClick={onClose} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #d1d5db", background: "var(--surface-default)", fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)", cursor: "pointer" }}>
             Cancel
           </button>
           <button
@@ -108,7 +108,7 @@ export function HideModal({
               onSave(selection);
               onClose();
             }}
-            style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#2563eb", fontSize: 13, fontWeight: 600, color: "#fff", cursor: "pointer" }}
+            style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#2563eb", fontSize: 13, fontWeight: 600, color: "var(--text-inverse)", cursor: "pointer" }}
           >
             Save
           </button>
