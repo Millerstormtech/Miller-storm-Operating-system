@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
+// Crisp original logo (dark charcoal + red on white) — reads clearly and looks
+// identical in dark AND light. The transparent PNG below is only the faded
+// background watermark.
+import logoMark from "../../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
 
-// The transparent Miller Storm logo (card mark + faded background watermark).
+// The transparent Miller Storm logo — used only as the faded background watermark.
 const LOGO_SRC = "/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png";
 
 /**
@@ -15,7 +19,7 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
     <div className={`ms-auth${wide ? " ms-auth--wide" : ""}`}>
       <img className="ms-auth__watermark" src={LOGO_SRC} alt="" aria-hidden="true" />
       <div className="ms-auth__card">
-        <img className="ms-auth__logo" src={LOGO_SRC} alt="Miller Storm" />
+        <img className="ms-auth__logo" src={logoMark.src} alt="Miller Storm" />
         {children}
       </div>
       <div className="ms-auth__footer">© 2026–2027 Miller Storm. All Rights Reserved.</div>
@@ -78,19 +82,22 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           -webkit-backdrop-filter: blur(var(--ms-glass-blur));
         }
 
-        /* Plain logo — no background chip. Same transparent mark in both themes. */
+        /* Crisp logo that reads the same in dark and light. Its own white ground
+           keeps the dark wordmark legible on the glass card; rounded corners
+           soften that ground so it doesn't read as a hard box. */
         .ms-auth__logo {
           display: block;
-          height: 76px;
+          height: 96px;
           width: auto;
-          margin: 0 auto 22px;
+          margin: 0 auto 18px;
           object-fit: contain;
+          border-radius: 14px;
         }
 
         .ms-auth__title {
           margin: 0;
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-          font-size: clamp(32px, 4.4vw, 46px);
+          font-size: clamp(28px, 3.6vw, 38px);
           line-height: 0.94;
           font-weight: 800;
           letter-spacing: 0.01em;
@@ -115,8 +122,8 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           padding: 30px 40px 26px;
         }
         .ms-auth--wide .ms-auth__logo {
-          height: 66px;
-          margin-bottom: 16px;
+          height: 80px;
+          margin-bottom: 12px;
         }
         .ms-auth--wide .ms-auth__title {
           font-size: clamp(26px, 3.2vw, 34px);
