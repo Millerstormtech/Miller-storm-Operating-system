@@ -1,21 +1,22 @@
 import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
+import { SidebarBrand } from "./SidebarBrand";
 import { useAuth } from "../contexts/AuthContext";
 import { useFeatureToggles } from "../hooks/useFeatureToggles";
 
 // `path` items navigate to that exact route (used for the per-role dashboards
 // which live outside /admin). Items without `path` navigate to /admin/<id>.
-export const adminSidebarItems: { id: string; label: string; toggleKey?: string; path?: string }[] = [
-  { id: "trainingExecutive", label: "Course Leaderboard", toggleKey: "trainingCenter" },
-  { id: "userManagement", label: "User Management", toggleKey: "userManagement" },
-  { id: "teamStructure", label: "Organization Chart", toggleKey: "teamStructure" },
-  { id: "courseManagement", label: "Course Builder", toggleKey: "courseManagement" },
-  { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
-  { id: "appsTools", label: "Tools & Products", toggleKey: "appsTools" },
-  { id: "aiBots", label: "Master Bot Builder", toggleKey: "aiBots" },
-  { id: "leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard" },
-  { id: "stormChat", label: "StormChat", toggleKey: "stormChat" },
-  { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig" },
+export const adminSidebarItems: { id: string; label: string; toggleKey?: string; path?: string; group?: string }[] = [
+  { id: "leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard", group: "Compete" },
+  { id: "trainingExecutive", label: "Course Leaderboard", toggleKey: "trainingCenter", group: "Compete" },
+  { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining", group: "Learn" },
+  { id: "courseManagement", label: "Course Builder", toggleKey: "courseManagement", group: "Learn" },
+  { id: "aiBots", label: "Master Bot Builder", toggleKey: "aiBots", group: "Learn" },
+  { id: "userManagement", label: "User Management", toggleKey: "userManagement", group: "Manage" },
+  { id: "stormChat", label: "StormChat", toggleKey: "stormChat", group: "Manage" },
+  { id: "teamStructure", label: "Organization Chart", toggleKey: "teamStructure", group: "Manage" },
+  { id: "appsTools", label: "Tools & Products", toggleKey: "appsTools", group: "Manage" },
+  { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig", group: "Manage" },
 ];
 
 const allSidebarItems = adminSidebarItems;
@@ -51,7 +52,7 @@ export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse, onLogout
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%', paddingTop: 0, marginTop: -30 }}>
           {/* Decorative only: pointer-events:none keeps the transparent overlap
               from swallowing clicks on the first menu item. */}
-          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40, pointerEvents: 'none', filter: 'brightness(0.82)' }} />
+          <SidebarBrand />
         </div>
       }
       items={sidebarItems}

@@ -4,6 +4,9 @@ export type SidebarItem = {
   id: string;
   label: string;
   icon?: ReactNode;
+  // Optional section this item belongs to. When it differs from the previous
+  // item's group, a section header (+ divider) is rendered above it.
+  group?: string;
 };
 
 type SidebarProps = {
@@ -228,7 +231,31 @@ const collapsedIconMap: Record<string, ReactNode> = {
         d="M4 18l5-6 4 3 7-9 2 1-9 12-4-3-4 5-1-3z"
       />
     </svg>
-  )
+  ),
+  // Leaderboards — bar chart.
+  leaderboard: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 19h16v2H4v-2zm2-4h3v4H6v-4zm5-6h3v10h-3V9zm5-4h3v14h-3V5z" /></svg>,
+  "sales-leaderboard": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 19h16v2H4v-2zm2-4h3v4H6v-4zm5-6h3v10h-3V9zm5-4h3v14h-3V5z" /></svg>,
+  rankings: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 19h16v2H4v-2zm2-4h3v4H6v-4zm5-6h3v10h-3V9zm5-4h3v14h-3V5z" /></svg>,
+  // Course leaderboard — ranked list lines.
+  trainingExecutive: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5h16v2H4V5zm0 4h16v2H4V9zm0 4h16v2H4v-2zm0 4h10v2H4v-2z" /></svg>,
+  "course-leaderboard": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5h16v2H4V5zm0 4h16v2H4V9zm0 4h16v2H4v-2zm0 4h10v2H4v-2z" /></svg>,
+  // Organization chart — hierarchy.
+  teamStructure: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 3h2v4h4v2h-4v2h-2V9H7V7h4V3zm-6 8h6v2H5v-2zm8 4h6v2h-6v-2zm-8 4h6v2H5v-2z" /></svg>,
+  "team-structure": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 3h2v4h4v2h-4v2h-2V9H7V7h4V3zm-6 8h6v2H5v-2zm8 4h6v2h-6v-2zm-8 4h6v2H5v-2z" /></svg>,
+  // Tools & products — 4-point spark.
+  appsTools: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" /></svg>,
+  "apps-tools": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" /></svg>,
+  // StormChat — ringed circle.
+  stormChat: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" /></svg>,
+  "storm-chat": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" /></svg>,
+  // Email config — envelope.
+  emailConfig: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5h18v14H3V5zm2 3.2V17h14V8.2l-7 4.4-7-4.4zM5 7l7 4.4L19 7H5z" /></svg>,
+  // AI clone — diamond.
+  "jays-ai-clone": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3l9 9-9 9-9-9z" /></svg>,
+  "ai-chat": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5h16v10H7l-3 3V5zm4 3h8v2H8V8zm0 4h6v2H8v-2z" /></svg>,
+  "my-profile": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4z" /></svg>,
+  "user-management": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4z" /></svg>,
+  "course-builder": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6l9-4 9 4-9 4-9-4zm0 6l9 4 9-4v6l-9 4-9-4v-6z" /></svg>
 };
 
 export function Sidebar(props: SidebarProps) {
@@ -250,24 +277,35 @@ export function Sidebar(props: SidebarProps) {
         </div>
       </div>
       <nav className="sidebar-nav">
-        {props.items.map((item) => (
-          <button
-            key={item.id}
-            className={
-              item.id === props.activeId ? "sidebar-item active" : "sidebar-item"
-            }
-            onClick={() => props.onSelect(item.id)}
-            title={item.label}
-          >
-            {item.icon && <span className="sidebar-icon">{item.icon}</span>}
-            <span className="sidebar-collapsed-icon">
-              {collapsedIconMap[item.id] ?? (
-                <span className="sidebar-fallback-icon">•</span>
+        {props.items.map((item, i) => {
+          const prevGroup = i > 0 ? props.items[i - 1].group : undefined;
+          const newSection = item.group && item.group !== prevGroup;
+          return (
+            <div className="sidebar-nav-block" key={item.id}>
+              {newSection && (
+                <>
+                  {i > 0 && <div className="sidebar-divider" aria-hidden="true" />}
+                  <div className="sidebar-group-label">{item.group}</div>
+                </>
               )}
-            </span>
-            <span className="sidebar-label">{item.label}</span>
-          </button>
-        ))}
+              <button
+                className={
+                  item.id === props.activeId ? "sidebar-item active" : "sidebar-item"
+                }
+                onClick={() => props.onSelect(item.id)}
+                aria-label={item.label}
+                data-label={item.label}
+              >
+                <span className="sidebar-nav-icon">
+                  {item.icon ?? collapsedIconMap[item.id] ?? (
+                    <span className="sidebar-fallback-icon">•</span>
+                  )}
+                </span>
+                <span className="sidebar-label">{item.label}</span>
+              </button>
+            </div>
+          );
+        })}
       </nav>
       {props.footerContent && (
         <div className="sidebar-footer">{props.footerContent}</div>

@@ -611,7 +611,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           background: var(--bg);
           border: 1px solid var(--card-border);
           border-radius: 18px;
-          padding: 22px 22px 8px;
+          padding: 2px 22px 8px;
           color: var(--text);
           overflow: hidden;
         }
@@ -659,7 +659,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
         /* Board heading (mockup: big condensed title + period subtitle, pills right) */
         .sl__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-        .sl__head-titles { min-width: 0; }
+        .sl__head-titles { min-width: 0; margin-left: 16px; }
         .sl__head-title {
           margin: 0;
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
@@ -699,13 +699,16 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__king-name { font-size: 24px; font-weight: 800; margin-top: 3px; }
         .sl__king-amount { font-size: 34px; font-weight: 900; letter-spacing: -0.5px; margin-left: auto; }
 
-        .sl__filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        /* Above the table sibling so the "Search reps" dropdown isn't painted
+           over by it (.sl > * pins every child to z-index 1). */
+        .sl__filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; position: relative; z-index: 15; }
         .sl__field { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
         .sl__select, .sl__chip { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--chip-text); font-weight: 600; font-size: 13px; cursor: pointer; }
         .sl__toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--pill-text); font-weight: 600; cursor: pointer; }
         .sl__rep-wrap { position: relative; display: inline-block; }
         .sl__overlay { position: fixed; inset: 0; z-index: 20; }
-        .sl__rep-panel { position: absolute; z-index: 21; top: calc(100% + 6px); left: 0; width: 260px; background: var(--rep-panel-bg); border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25); padding: 10px; }
+        .sl__rep-panel { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: 260px; background: #1a1a1d; border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); padding: 10px; }
+        .sl.sl--light .sl__rep-panel { background: #ffffff; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18); }
         .sl__rep-search { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--text); margin-bottom: 8px; box-sizing: border-box; font-size: 13px; }
         .sl__rep-list { max-height: 220px; overflow-y: auto; margin-bottom: 8px; }
         .sl__rep-item { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 13px; cursor: pointer; color: var(--text); }

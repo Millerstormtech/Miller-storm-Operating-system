@@ -19,9 +19,20 @@ body {
 }
 
 .app-sidebar {
-  width: 260px;
-  background: linear-gradient(180deg, #020617, var(--gray-900) /* no semantic: gradient stop */);
-  color: #f9fafb;
+  /* Theme-aware sidebar palette (light default; dark override below). */
+  --sb-bg: #ffffff;
+  --sb-text: #3f4650;
+  --sb-muted: #9aa1ab;
+  --sb-border: #ececf1;
+  --sb-icon: #4b5563;
+  --sb-hover-bg: #f5f5f7;
+  --sb-active-bg: rgba(202, 0, 2, 0.08);
+  --sb-active-text: #c1121f;
+  --sb-active-icon: #c1121f;
+  width: 216px;
+  background: var(--sb-bg);
+  color: var(--sb-text);
+  border-right: 1px solid var(--sb-border);
   display: flex;
   flex-shrink: 0;
   height: 100vh;
@@ -29,18 +40,56 @@ body {
   top: 0;
   overflow-y: auto;
 }
+:root[data-theme="dark"] .app-sidebar {
+  --sb-bg: #0d0d0f;
+  --sb-text: #d3d6db;
+  --sb-muted: #6c717a;
+  --sb-border: rgba(255, 255, 255, 0.08);
+  --sb-icon: #c2c6cd;
+  --sb-hover-bg: rgba(255, 255, 255, 0.05);
+  --sb-active-bg: rgba(255, 92, 94, 0.14);
+  --sb-active-text: #ff6b6d;
+  --sb-active-icon: #ff6b6d;
+}
+/* Sidebar brand: swap the logo image by theme — the crisp login mark (white-bg
+   JPEG) in light mode, the transparent PNG in dark mode. The header wrapper's
+   inline negative margin is neutralised so the logo never clips. */
+.app-sidebar .sidebar-header-title > div {
+  margin-top: 0 !important;
+}
+.sidebar-brand {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 4px 0 2px;
+}
+.sidebar-brand-logo {
+  width: 152px;
+  height: auto;
+  object-fit: contain;
+}
+.sidebar-brand-logo--dark {
+  display: none;
+}
+:root[data-theme="dark"] .sidebar-brand-logo--light {
+  display: none;
+}
+:root[data-theme="dark"] .sidebar-brand-logo--dark {
+  display: block;
+  filter: brightness(1.08);
+}
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
+  padding: 18px 10px;
   width: 100%;
   height: 100%;
   overflow-y: auto;
 }
 
 .sidebar-header {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .sidebar-header-row {
@@ -99,54 +148,82 @@ body {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 2px;
   flex: 1;
+}
+
+.sidebar-nav-block {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Section header, e.g. COMPETE / LEARN / MANAGE. */
+.sidebar-group-label {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sb-muted);
+  padding: 6px 8px 8px;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--sb-border);
+  margin: 8px 14px 4px;
 }
 
 .sidebar-item {
   border: none;
   background: transparent;
-  color: inherit;
-  text-align: left;
-  padding: 8px 10px;
-  border-radius: 6px;
+  color: var(--sb-text);
+  text-align: center;
+  padding: 11px 8px;
+  border-radius: 12px;
   font-size: 14px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
 }
 
 .sidebar-item:hover {
-  background: rgba(248, 113, 113, 0.18);
+  background: var(--sb-hover-bg);
 }
 
 .sidebar-item.active {
-  background: #fee2e2;
-  color: #b91c1c;
-  font-weight: 500;
+  background: var(--sb-active-bg);
+  color: var(--sb-active-text);
+  font-weight: 600;
 }
 
-.sidebar-icon {
+.sidebar-nav-icon {
   display: inline-flex;
-}
-
-.sidebar-collapsed-icon {
-  display: none;
-  width: 20px;
-  height: 20px;
   align-items: center;
   justify-content: center;
-  color: #d1d5db;
+  width: 26px;
+  height: 26px;
+  color: var(--sb-icon);
 }
 
-.sidebar-collapsed-icon svg {
-  width: 18px;
-  height: 18px;
+.sidebar-nav-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.sidebar-item.active .sidebar-nav-icon {
+  color: var(--sb-active-icon);
+}
+
+.sidebar-label {
+  line-height: 1.15;
 }
 
 .sidebar-fallback-icon {
-  font-size: 12px;
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -159,18 +236,18 @@ body {
 .sidebar-logout-button {
   width: 100%;
   border-radius: 999px;
-  border: 1px solid #fca5a5;
+  border: 1px solid var(--sb-border);
   padding: 8px 12px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   background-color: transparent;
-  color: #fecaca;
+  color: var(--sb-active-text);
   cursor: pointer;
   text-align: center;
 }
 
 .sidebar-logout-button:hover {
-  background-color: rgba(248, 113, 113, 0.18);
+  background-color: var(--sb-active-bg);
 }
 
 .app-root.sidebar-collapsed .app-sidebar {
@@ -185,34 +262,63 @@ body {
   display: none;
 }
 
-.app-root.sidebar-collapsed .sidebar-label {
+.app-root.sidebar-collapsed .sidebar-label,
+.app-root.sidebar-collapsed .sidebar-group-label,
+.app-root.sidebar-collapsed .sidebar-divider {
   display: none;
-}
-
-.app-root.sidebar-collapsed .sidebar-collapsed-icon {
-  display: inline-flex;
 }
 
 .app-root.sidebar-collapsed .sidebar-item {
   justify-content: center;
-  color: var(--gray-200) /* no semantic: gray-200 as text */;
+  padding: 11px 8px;
+  position: relative;
+}
+
+/* Collapsed: the full logo can't fit the narrow rail — hide it so it doesn't
+   overflow/overlap the toggle. */
+.app-root.sidebar-collapsed .sidebar-brand {
+  display: none;
+}
+
+/* Collapsed: let hover tooltips spill out of the rail, and lift the rail above
+   the main content so they show on top. */
+.app-root.sidebar-collapsed .app-sidebar,
+.app-root.sidebar-collapsed .sidebar {
+  overflow: visible;
+}
+.app-root.sidebar-collapsed .app-sidebar {
+  z-index: 30;
+}
+.app-root.sidebar-collapsed .sidebar-item::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #111827;
+  color: #ffffff;
+  padding: 6px 11px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 1000;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+.app-root.sidebar-collapsed .sidebar-item:hover::after {
+  opacity: 1;
 }
 
 .app-root.sidebar-collapsed .sidebar-footer {
   display: none;
 }
 
-.app-root.sidebar-collapsed .sidebar-item:hover .sidebar-collapsed-icon {
-  color: #fecaca;
-}
-
 .app-root.sidebar-collapsed .sidebar-item.active {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.app-root.sidebar-collapsed .sidebar-item.active .sidebar-collapsed-icon {
-  color: #b91c1c;
+  background: var(--sb-active-bg);
+  color: var(--sb-active-text);
 }
 
 .app-main {
