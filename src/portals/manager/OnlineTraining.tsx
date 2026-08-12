@@ -2531,41 +2531,34 @@ export function ManagerOnlineTrainingPage(props: {
                     }}
                     style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
                   >
-                    <div 
-                      className="training-card-image"
-                      style={
-                        course.coverImageUrl
-                          ? { backgroundImage: `url(${course.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-                          : undefined
-                      }
-                    >
-                      <div className="training-card-image-overlay">
-                        {course.tagline && (
-                          <span className="training-card-chip">
-                            {course.tagline}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="training-card-body">
-                      <div className="training-card-title">{course.title}</div>
-                      {progress.total > 0 && (
-                        <div className="training-card-progress-row">
+                    {(() => {
+                      const lessons = (course.pages ?? []).filter(p => p.status === 'published' && !p.isQuiz).length;
+                      const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+                      const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
+                      const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
+                      return (
+                        <div className="training-card-body">
+                          <div className="training-card-top">
+                            <div className="training-card-title">{course.title}</div>
+                            <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
+                          </div>
+                          {lessons > 0 && (
+                            <div className="training-card-lessons">{lessons} lesson{lessons === 1 ? "" : "s"}</div>
+                          )}
                           <div className="training-card-progress-track">
                             <div
                               className="training-card-progress-fill"
                               style={{
-                                width: `${Math.round((progress.completed / progress.total) * 100)}%`,
-                                background: progress.isCompleted ? '#10b981' : '#22c55e'
+                                width: `${pct}%`,
+                                background: progress.isCompleted
+                                  ? "linear-gradient(90deg, #2f8f57, #3ea56a)"
+                                  : "linear-gradient(90deg, #b30002, #e01418)",
                               }}
                             />
                           </div>
-                          <span className="training-card-progress-label">
-                            {progress.isCompleted ? '✓ 100%' : `${Math.round((progress.completed / progress.total) * 100)}%`}
-                          </span>
                         </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </button>
                 );
               })}
