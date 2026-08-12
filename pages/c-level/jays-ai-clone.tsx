@@ -12,7 +12,7 @@ const CLevelJaysAiClonePage: NextPage = () => {
     <CLevelLayout currentView="jays-ai-clone">
       <div className="page-header" style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {bots.map(b => (
+          {bots.length > 1 && bots.map(b => (
             <button key={b.id} onClick={() => selectFn?.(b)} style={{
               padding: "6px 14px", borderRadius: "20px", border: "1px solid",
               borderColor: selectedBot?.id === b.id ? "var(--border-strong)" : "#d1d5db",
