@@ -17,7 +17,10 @@ describe("resolvePageTitle", () => {
   it("returns null when the view is not in the menu and no explicit title given", () => {
     expect(resolvePageTitle(ITEMS, "businessCards")).toBeNull();
   });
-  it("ignores an empty explicit title", () => {
-    expect(resolvePageTitle(ITEMS, "rankings", "")).toBe("Sales Leaderboard");
+  it("treats an empty explicit title as an explicit request to hide the band", () => {
+    // A page passes pageTitle="" to suppress the PageHeader entirely (e.g.
+    // StormChat / Master Bot Builder / Email Config), so it must NOT fall back
+    // to the sidebar label.
+    expect(resolvePageTitle(ITEMS, "rankings", "")).toBeNull();
   });
 });

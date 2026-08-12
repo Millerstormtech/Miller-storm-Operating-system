@@ -8,6 +8,7 @@ import { sendPushNotificationToMultiple } from '../../../../src/lib/firebase-adm
 import { logToDb } from '../../../../src/lib/models/SystemLog';
 import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
+import { canReadMessages } from '../../../../src/lib/stormchat/access';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST', 'PATCH', 'DELETE'])) return;
@@ -39,14 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const me = await UserModel.findOne({ id: queryUserId }, { _id: 1 }).lean() as any;
       const myIds = [queryUserId, me?._id?.toString()].filter(Boolean) as string[];
 
-      // System admins can read any GROUP, but NOT private DMs — a 1-on-1 thread
-      // is readable only by its two members, even to an admin. isDmGroup also
-      // catches legacy DMs that predate the isDirect flag.
-      const isAdmin = !isDmGroup(group) && queryUserRole?.toString().toLowerCase() === 'admin';
-      const isGroupAdmin = group.admins.some((m: string) => myIds.includes(m));
-      const isMember = group.members.some((m: string) => myIds.includes(m));
-
-      if (!isAdmin && !isGroupAdmin && !isMember) {
+      // Membership-first read access (unit-tested in access.test.ts): members
+      // and group admins can read; a system admin can read a real GROUP but
+      // NEVER a private DM. Everyone else is denied.
+      if (!canReadMessages(group, myIds, queryUserRole?.toString())) {
         return res.status(403).json({ error: 'You are not a member of this group' });
       }
 

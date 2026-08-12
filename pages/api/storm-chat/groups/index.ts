@@ -5,6 +5,7 @@ import { UserModel } from '../../../../src/lib/models/User';
 import mongoose from 'mongoose';
 import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
+import { canSeeGroupInList, isMemberOf as memberOf } from '../../../../src/lib/stormchat/access';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -88,17 +89,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const me = myDoc as any;
         const myId = me?._id?.toString();
         const myIds = [auth.sub, myId].filter(Boolean) as string[];
-        const isMemberOf = (g: any) =>
-          (g.members || []).some((m: string) => myIds.includes(m)) ||
-          (g.admins || []).some((m: string) => myIds.includes(m));
+        const isMemberOf = (g: any) => memberOf(g, myIds);
         // DMs stay strictly members-only. All other groups (public AND private)
         // are visible to EVERYONE so non-members can find a private group and
         // request to join — each carries an `isMember` flag the UI uses to show
         // the chat vs a "Request to Join" prompt. `isDmGroup` also catches legacy
         // DMs missing the isDirect flag, and we normalize isDirect=true on the way
         // out so the client always renders them as a DM (never a joinable group).
+        //
+        // PRIVACY (membership-first): a NON-member may only ever see a thread
+        // that is an explicitly-discoverable group — one that carries a
+        // public/private `visibility`, which is set only by the group-creation
+        // POST. A DM never carries a visibility, so it can NEVER appear in a
+        // stranger's list regardless of its member count, name, or whether the
+        // legacy isDirect/dmKey flags are present. This is deliberately stronger
+        // than trusting isDmGroup alone: even a malformed DM (odd member array,
+        // stray fields) stays members-only because it has no visibility.
         groups = groups
-          .filter((g: any) => (isDmGroup(g) ? isMemberOf(g) : true))
+          .filter((g: any) => canSeeGroupInList(g, myIds))
           .map((g: any) => (isDmGroup(g) ? { ...g, isDirect: true } : { ...g, isMember: isMemberOf(g) }));
 
         // Attach the caller's join-request status for private groups they aren't
@@ -128,9 +136,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         }
       } else {
-        // Never leak private DM threads into the unfiltered list (isDmGroup also
-        // catches legacy DMs missing the isDirect flag).
-        groups = groups.filter((g: any) => !isDmGroup(g));
+        // Unfiltered list (admin management view / app all-groups discovery).
+        // Never leak DMs. The admin management view (?manage=1) keeps every real
+        // group so it can be administered; the public discovery list shows only
+        // groups that carry an explicit visibility — so a DM (which never has
+        // one) can never surface here either.
+        groups = req.query.manage
+          ? groups.filter((g: any) => !isDmGroup(g))
+          // Discovery list: a non-member (empty viewer id-set) sees only
+          // explicitly-discoverable groups — the same rule the tests cover.
+          : groups.filter((g: any) => canSeeGroupInList(g, []));
       }
 
       // WhatsApp-style ordering: the group/DM with the newest message floats to

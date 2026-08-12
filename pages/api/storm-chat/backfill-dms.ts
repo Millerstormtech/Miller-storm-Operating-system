@@ -15,8 +15,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
   const col = mongoose.connection.db!.collection('chatgroups');
 
+  // Every legacy 1-on-1 thread: exactly 2 members and no group `visibility`
+  // (real groups always carry one; DMs never do). This catches DMs that were
+  // named something other than "Direct Message" too, so they all get the
+  // isDirect/dmKey flags and are treated as private everywhere.
   const legacy = await col
-    .find({ isDirect: { $ne: true }, members: { $size: 2 }, name: 'Direct Message' })
+    .find({ isDirect: { $ne: true }, members: { $size: 2 }, visibility: { $exists: false } })
     .toArray();
 
   let fixed = 0;
