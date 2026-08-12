@@ -76,7 +76,6 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           box-shadow: var(--ms-card-shadow);
           backdrop-filter: blur(var(--ms-glass-blur));
           -webkit-backdrop-filter: blur(var(--ms-glass-blur));
-          margin: auto;
         }
 
         /* Plain logo — no background chip. Same transparent mark in both themes. */
