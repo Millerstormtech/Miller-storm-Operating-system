@@ -172,6 +172,23 @@ export function ManagerOnlineTrainingPage(props: {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   // C-Level (companyWide) has no "Courses Progress" view, so default to Playlist.
   const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists' | 'unlock'>(props.companyWide ? 'playlists' : 'courses');
+
+  // Segmented red-pill tab style (matches the sales Training Center): solid
+  // brand red when active, subtle outline otherwise.
+  const tabPill = (active: boolean): React.CSSProperties => ({
+    padding: '10px 22px',
+    borderRadius: 999,
+    fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif',
+    fontSize: 15,
+    fontWeight: 800,
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase',
+    cursor: 'pointer',
+    border: active ? 'none' : '1px solid var(--border-default)',
+    background: active ? 'linear-gradient(90deg, #b30002, #e01418)' : 'transparent',
+    color: active ? '#fff' : 'var(--text-muted)',
+    boxShadow: active ? '0 3px 10px rgba(202,0,2,0.3)' : 'none',
+  });
   const [playlistProgressData, setPlaylistProgressData] = useState<Record<string, { user: any; completed: number; total: number; pct: number }[]>>({});
   const [isLoadingPlaylistProgress, setIsLoadingPlaylistProgress] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280); // Default width
@@ -1337,7 +1354,7 @@ export function ManagerOnlineTrainingPage(props: {
       )}
       <div className="training-center">
         {/* Always show tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid var(--border-default)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, marginBottom: 24, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => {
@@ -1349,17 +1366,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setCourseViewInitialized(null);
               }
             }}
-            style={{
-              padding: '16px 32px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'courses' ? '2px solid #e01418' : '2px solid transparent',
-              color: activeTab === 'courses' ? '#e01418' : 'var(--text-muted)',
-              fontWeight: activeTab === 'courses' ? 600 : 400,
-              cursor: 'pointer',
-              marginBottom: '-2px',
-              fontSize: 18
-            }}
+            style={tabPill(activeTab === 'courses')}
           >
             Courses
           </button>
@@ -1374,17 +1381,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setCourseViewInitialized(null);
               }
             }}
-            style={{
-              padding: '16px 32px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'playlists' ? '2px solid #e01418' : '2px solid transparent',
-              color: activeTab === 'playlists' ? '#e01418' : 'var(--text-muted)',
-              fontWeight: activeTab === 'playlists' ? 600 : 400,
-              cursor: 'pointer',
-              marginBottom: '-2px',
-              fontSize: 18
-            }}
+            style={tabPill(activeTab === 'playlists')}
           >
             Playlists
           </button>
@@ -1399,17 +1396,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setCourseViewInitialized(null);
               }
             }}
-            style={{
-              padding: '16px 32px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'team' ? '2px solid #e01418' : '2px solid transparent',
-              color: activeTab === 'team' ? '#e01418' : 'var(--text-muted)',
-              fontWeight: activeTab === 'team' ? 600 : 400,
-              cursor: 'pointer',
-              marginBottom: '-2px',
-              fontSize: 18
-            }}
+            style={tabPill(activeTab === 'team')}
           >
             Team Progress
           </button>
@@ -1419,7 +1406,7 @@ export function ManagerOnlineTrainingPage(props: {
               value={courseSearch}
               onChange={(e) => setCourseSearch(e.target.value)}
               placeholder="Search courses or videos…"
-              style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+              style={{ marginLeft: 'auto', alignSelf: 'center', width: 280, padding: '11px 18px', background: 'var(--surface-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 999, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
             />
           )}
         </div>
@@ -2371,7 +2358,7 @@ export function ManagerOnlineTrainingPage(props: {
       {renderModals()}
       <div className={`training-center${selectedCourse ? (mobileCourseScreen === 'lesson' ? ' mobile-lesson-active' : ' mobile-overview-active') : ''}`}>
         {/* Always show tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid var(--border-default)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, marginBottom: 24, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => {
@@ -2383,17 +2370,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setCourseViewInitialized(null);
               }
             }}
-            style={{
-              padding: '16px 32px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'courses' ? '2px solid #e01418' : '2px solid transparent',
-              color: activeTab === 'courses' ? '#e01418' : 'var(--text-muted)',
-              fontWeight: activeTab === 'courses' ? 600 : 400,
-              cursor: 'pointer',
-              marginBottom: '-2px',
-              fontSize: 18
-            }}
+            style={tabPill(activeTab === 'courses')}
           >
             Courses
           </button>
@@ -2408,17 +2385,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setCourseViewInitialized(null);
               }
             }}
-            style={{
-              padding: '16px 32px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'playlists' ? '2px solid #e01418' : '2px solid transparent',
-              color: activeTab === 'playlists' ? '#e01418' : 'var(--text-muted)',
-              fontWeight: activeTab === 'playlists' ? 600 : 400,
-              cursor: 'pointer',
-              marginBottom: '-2px',
-              fontSize: 18
-            }}
+            style={tabPill(activeTab === 'playlists')}
           >
             Playlists
           </button>
@@ -2433,17 +2400,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setCourseViewInitialized(null);
               }
             }}
-            style={{
-              padding: '16px 32px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'team' ? '2px solid #e01418' : '2px solid transparent',
-              color: activeTab === 'team' ? '#e01418' : 'var(--text-muted)',
-              fontWeight: activeTab === 'team' ? 600 : 400,
-              cursor: 'pointer',
-              marginBottom: '-2px',
-              fontSize: 18
-            }}
+            style={tabPill(activeTab === 'team')}
           >
             Team Progress
           </button>
@@ -2453,7 +2410,7 @@ export function ManagerOnlineTrainingPage(props: {
               value={courseSearch}
               onChange={(e) => setCourseSearch(e.target.value)}
               placeholder="Search courses or videos…"
-              style={{ marginLeft: 'auto', alignSelf: 'center', width: 260, padding: '8px 12px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+              style={{ marginLeft: 'auto', alignSelf: 'center', width: 280, padding: '11px 18px', background: 'var(--surface-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 999, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
             />
           )}
         </div>
