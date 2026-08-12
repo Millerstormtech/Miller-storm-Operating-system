@@ -3556,10 +3556,10 @@ body {
 }
 
 .profile-card {
-  background-color: #fdfdfd;
+  background-color: var(--surface-default);
   border-radius: 16px;
   padding: 20px 22px 18px;
-  border: 1px solid #ede9e0;
+  border: 1px solid var(--border-default);
 }
 
 .profile-header-row {
@@ -3585,8 +3585,8 @@ body {
   align-items: center;
   gap: 16px;
   padding: 18px 0;
-  border-top: 1px solid #f1f5f9;
-  border-bottom: 1px solid #f1f5f9;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
   margin-bottom: 18px;
 }
 
@@ -3594,11 +3594,11 @@ body {
   width: 72px;
   height: 72px;
   border-radius: 999px;
-  background-color: #f1f5f9;
+  background: linear-gradient(150deg, #e01418, #9a0002);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #475569;
+  color: #fff;
   font-size: 26px;
   font-weight: 600;
 }
@@ -3642,7 +3642,7 @@ body {
 
 .profile-photo-hint {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .profile-body-grid {
@@ -3653,14 +3653,14 @@ body {
 }
 
 .field-input-disabled {
-  background-color: #f9fafb;
-  color: #94a3b8;
+  background-color: var(--surface-subtle);
+  color: var(--text-muted);
 }
 
 .field-help {
   margin-top: 4px;
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .profile-save-row {
