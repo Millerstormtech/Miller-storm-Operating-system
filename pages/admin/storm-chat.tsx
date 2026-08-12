@@ -4,7 +4,7 @@ import { StormChatManagement } from "../../src/portals/admin/StormChat";
 
 const StormChatPage: NextPage = () => {
   return (
-    <AdminPageWrapper currentView="stormChat">
+    <AdminPageWrapper currentView="stormChat" pageTitle="">
       <StormChatManagement />
     </AdminPageWrapper>
   );

@@ -7,7 +7,7 @@ const BranchManagerStormChatPage: NextPage = () => {
   const { user } = useAuth();
   if (!user) return <div>Loading...</div>;
   return (
-    <BranchManagerLayout currentView="storm-chat">
+    <BranchManagerLayout currentView="storm-chat" pageTitle="">
       <StormChatViewer />
     </BranchManagerLayout>
   );

@@ -7,7 +7,7 @@ const StormChatPage: NextPage = () => {
   const { user } = useAuth();
   if (!user) return <div>Loading...</div>;
   return (
-    <SalesTeamLeadLayout currentView="storm-chat">
+    <SalesTeamLeadLayout currentView="storm-chat" pageTitle="">
       <StormChatViewer />
     </SalesTeamLeadLayout>
   );

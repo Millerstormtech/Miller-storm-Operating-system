@@ -9,7 +9,7 @@ const MarketingStormChatPage: NextPage = () => {
   if (!user) return <div>Loading...</div>;
   return (
     <ProtectedRoute allowedRoles={["marketing", "admin"]}>
-      <MarketingLayout currentView="storm-chat">
+      <MarketingLayout currentView="storm-chat" pageTitle="">
         <StormChatViewer />
       </MarketingLayout>
     </ProtectedRoute>

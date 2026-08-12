@@ -6,6 +6,7 @@ export function resolvePageTitle(
   currentView: string,
   explicit?: string
 ): string | null {
-  if (explicit) return explicit;
+  // An explicit "" is a deliberate request to hide the title band entirely.
+  if (explicit !== undefined) return explicit || null;
   return items.find((i) => i.id === currentView)?.label ?? null;
 }

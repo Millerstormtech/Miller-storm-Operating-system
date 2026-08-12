@@ -7,7 +7,7 @@ const CLevelStormChatPage: NextPage = () => {
   const { user } = useAuth();
   if (!user) return <div>Loading...</div>;
   return (
-    <CLevelLayout currentView="storm-chat">
+    <CLevelLayout currentView="storm-chat" pageTitle="">
       <StormChatViewer />
     </CLevelLayout>
   );
