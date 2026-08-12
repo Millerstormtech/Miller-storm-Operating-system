@@ -288,14 +288,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     });
   };
 
-  // Board subtitle mirrors the selected period, like the mockup.
-  const nowD = new Date();
+  // Board subtitle reflects the ACTUAL selected period + the date range the API
+  // resolved for it (echoed into from/to), so it changes with the user's filter.
+  const fmtD = (iso: string) =>
+    new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const headSub = isCustom
-    ? (from && to ? `${from} → ${to}` : "Custom range")
-    : window === "day" ? "Today"
-    : window === "week" ? "This week to date"
-    : window === "month" ? `${nowD.toLocaleString("en-US", { month: "long" })} ${nowD.getFullYear()}, month to date`
-    : `${nowD.getFullYear()}, year to date`;
+    ? (from && to ? `${fmtD(from)} – ${fmtD(to)}` : "Custom range")
+    : window === "day"
+      ? (to ? `Today · ${fmtD(to)}` : "Today")
+    : window === "week"
+      ? (from && to ? `Week to date · ${fmtD(from)} – ${fmtD(to)}` : "Week to date")
+    : window === "month"
+      ? (from ? `${new Date(from + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}, month to date` : "Month to date")
+      : (from ? `${new Date(from + "T00:00:00").getFullYear()}, year to date` : "Year to date");
 
   return (
     <div className={`sl sl--${theme}`} ref={rootRef}>
@@ -658,7 +663,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__head-title {
           margin: 0;
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-          font-size: clamp(30px, 3.6vw, 44px);
+          font-size: clamp(24px, 2.8vw, 34px);
           line-height: 1;
           font-weight: 800;
           letter-spacing: 0.01em;
