@@ -629,10 +629,49 @@ export function UserManagement(props: UserEditorProps) {
 
   return (
     <div className="admin-user-management">
+      <style jsx global>{`
+        /* Brand font across the whole User Management screen. */
+        .admin-user-management,
+        .admin-user-management input,
+        .admin-user-management select,
+        .admin-user-management button,
+        .admin-user-management textarea {
+          font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+        }
+        .admin-user-management .panel-header,
+        .admin-user-management .panel-section-title {
+          font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .admin-user-management .panel-header { font-weight: 800; }
+        .admin-user-management .panel-section-title {
+          font-weight: 700;
+          letter-spacing: 0.06em;
+        }
+        /* Role-count pills + toolbar buttons in the condensed brand font. */
+        .admin-user-management .panel-header-row,
+        .admin-user-management .panel-header-row button {
+          font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+          letter-spacing: 0.02em;
+        }
+        /* Faded brand logo centred in the page background. */
+        .admin-user-management .panel-right { position: relative; }
+        .admin-user-management .panel-right > * { position: relative; z-index: 1; }
+        .admin-user-management .panel-right::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png")
+            center 50% / min(520px, 52%) no-repeat;
+          opacity: 0.07;
+          pointer-events: none;
+        }
+      `}</style>
       <div className="panel-header" style={{ marginBottom: 16 }}>
         <div className="panel-header-row">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span>User Management</span>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               {(['admin', 'c-level', 'branch-manager', 'sales-team-lead', 'sales', 'marketing'] as UserRole[]).map(role => {
                 const count = draftUsers.filter(u => u.role === role && !u.testAccount).length;
@@ -666,7 +705,7 @@ export function UserManagement(props: UserEditorProps) {
             <button type="button" className="btn-secondary btn-small" onClick={() => { setDeveloperModalTab("selection"); setDevSearch(""); setShowDeveloperModal(true); }}>
               👨‍💻 Developer Accounts{developerUsers.size > 0 ? ` (${developerUsers.size})` : ""}
             </button>
-            <button type="button" className="btn-primary btn-success" onClick={createUser}>+ Add User</button>
+            <button type="button" className="btn-primary" onClick={createUser} style={{ background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", border: "none" }}>+ Add User</button>
           </div>
         </div>
       </div>
@@ -700,7 +739,7 @@ export function UserManagement(props: UserEditorProps) {
             </div>
             <div style={{ maxHeight: 400, overflowY: "auto", marginBottom: 16, border: "1px solid var(--border-default)", borderRadius: 8 }}>
               <table style={{ width: "100%", fontSize: 12 }}>
-                <thead style={{ position: "sticky", top: 0, backgroundColor: "#f9fafb", borderBottom: "1px solid var(--border-default)" }}>
+                <thead style={{ position: "sticky", top: 0, backgroundColor: "var(--surface-subtle)", borderBottom: "1px solid var(--border-default)" }}>
                   <tr>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Name</th>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Email</th>
@@ -709,7 +748,7 @@ export function UserManagement(props: UserEditorProps) {
                 </thead>
                 <tbody>
                   {pendingImportUsers.map((user, index) => (
-                    <tr key={index} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <tr key={index} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                       <td style={{ padding: "8px 12px" }}>{user.name}</td>
                       <td style={{ padding: "8px 12px" }}>{user.email}</td>
                       <td style={{ padding: "8px 12px", textTransform: "capitalize" }}>{roleDisplayName(user.role)}</td>
@@ -785,6 +824,7 @@ export function UserManagement(props: UserEditorProps) {
                             textAlign: "left",
                             border: "none",
                             background: roleFilter === option.value ? "var(--surface-subtle)" : "transparent",
+                            color: "var(--text-primary)",
                             cursor: "pointer",
                             fontSize: 14,
                             fontWeight: roleFilter === option.value ? 600 : 400
@@ -847,6 +887,7 @@ export function UserManagement(props: UserEditorProps) {
                         textAlign: "left",
                         border: "none",
                         background: sortBy === option.value ? "var(--surface-subtle)" : "transparent",
+                        color: "var(--text-primary)",
                         cursor: "pointer",
                         fontSize: 14,
                         fontWeight: sortBy === option.value ? 600 : 400
@@ -1534,7 +1575,7 @@ export function UserManagement(props: UserEditorProps) {
                       className="field-input"
                       readOnly
                       value={branchMgr ? branchMgr.name : "No branch manager set for this branch"}
-                      style={{ background: "#f9fafb", cursor: "default", color: branchMgr ? undefined : "var(--text-subtle)" }}
+                      style={{ background: "var(--surface-subtle)", cursor: "default", color: branchMgr ? undefined : "var(--text-subtle)" }}
                     />
                   </label>
                 );
@@ -1746,7 +1787,7 @@ export function UserManagement(props: UserEditorProps) {
                   <div style={{ overflowX: 'auto', border: '1px solid var(--border-default)', borderRadius: 8, marginTop: 16 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid var(--border-default)' }}>
+                      <tr style={{ backgroundColor: "var(--surface-subtle)", borderBottom: '2px solid var(--border-default)' }}>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: 'var(--text-tertiary)' }}>Name</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: 'var(--text-tertiary)' }}>Email</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: 'var(--text-tertiary)' }}>Role</th>
@@ -1764,7 +1805,7 @@ export function UserManagement(props: UserEditorProps) {
                             backgroundColor: 'var(--surface-default)'
                           }}
                           onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.backgroundColor = '#eff6ff';
+                            (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(202,0,2,0.07)';
                           }}
                           onMouseLeave={(e) => {
                             (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--surface-default)';
@@ -1967,7 +2008,7 @@ export function UserManagement(props: UserEditorProps) {
             <div style={{
               padding: "14px 24px", borderTop: "1px solid var(--border-default)",
               display: "flex", justifyContent: "flex-end", gap: 10,
-              background: "#f8fafc",
+              background: "var(--surface-subtle)",
             }}>
               <button
                 onClick={() => setShowDeveloperModal(false)}

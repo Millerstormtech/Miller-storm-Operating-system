@@ -63,37 +63,81 @@ export function UserManagementView() {
 
   return (
     <>
-      <div style={{ marginBottom: 16, borderBottom: "1px solid var(--border-default)" }}>
-        <div style={{ display: "flex", gap: 24, paddingLeft: 24 }}>
-          <button
-            onClick={() => setActiveTab("users")}
-            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "users" ? "#2563eb" : "var(--text-muted)", borderBottom: activeTab === "users" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer" }}
-          >
-            User Management
-          </button>
-          <button
-            onClick={() => setActiveTab("requests")}
-            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "requests" ? "#2563eb" : "var(--text-muted)", borderBottom: activeTab === "requests" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
-          >
-            User Requests
-            {pendingCount > 0 && (
-              <span style={{ backgroundColor: "#dc2626", color: "var(--text-inverse)", fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 12, minWidth: 20, textAlign: "center" }}>
-                {pendingCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("deleted")}
-            style={{ padding: "12px 0", fontSize: 15, fontWeight: 500, color: activeTab === "deleted" ? "#2563eb" : "var(--text-muted)", borderBottom: activeTab === "deleted" ? "2px solid #2563eb" : "2px solid transparent", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
-          >
-            🗑️ Deleted Users
-            {deletedUsers.length > 0 && (
-              <span style={{ backgroundColor: "#ef4444", color: "var(--text-inverse)", fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 12, minWidth: 20, textAlign: "center" }}>
-                {deletedUsers.length}
-              </span>
-            )}
-          </button>
+      <div style={{ margin: "0 0 20px 24px" }}>
+        <div className="um-tabs">
+          {([
+            { id: "users", label: "User Management", badge: 0, badgeBg: "" },
+            { id: "requests", label: "User Requests", badge: pendingCount, badgeBg: "#e01418" },
+            { id: "deleted", label: "🗑️ Deleted Users", badge: deletedUsers.length, badgeBg: "#7a7f87" },
+          ] as const).map((t) => {
+            const active = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id as typeof activeTab)}
+                className={`um-tab${active ? " um-tab--active" : ""}`}
+              >
+                {t.label}
+                {t.badge > 0 && (
+                  <span className="um-tab__badge" style={{ background: t.badgeBg }}>
+                    {t.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+        <style jsx>{`
+          .um-tabs {
+            display: inline-flex;
+            gap: 4px;
+            padding: 5px;
+            border-radius: 12px;
+            background: var(--surface-subtle);
+            border: 1px solid var(--border-subtle);
+          }
+          .um-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+          }
+          .um-tab:hover {
+            color: var(--text-primary);
+            background: var(--surface-muted);
+          }
+          .um-tab--active,
+          .um-tab--active:hover {
+            color: #fff;
+            background: linear-gradient(90deg, #b30002, #e01418);
+            box-shadow: 0 2px 8px rgba(202, 0, 2, 0.32);
+          }
+          .um-tab__badge {
+            color: #fff;
+            font-family: system-ui, sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0;
+            padding: 1px 8px;
+            border-radius: 999px;
+            min-width: 20px;
+            text-align: center;
+          }
+          .um-tab--active .um-tab__badge {
+            background: rgba(255, 255, 255, 0.28) !important;
+          }
+        `}</style>
       </div>
 
       {activeTab === "users" ? (
@@ -115,7 +159,7 @@ export function UserManagementView() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {deletedUsers.map((user) => (
-                  <div key={user.id} style={{ padding: 16, backgroundColor: "#fef2f2", borderLeft: "3px solid #ef4444", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div key={user.id} style={{ padding: 16, backgroundColor: "var(--surface-subtle)", borderLeft: "3px solid #e01418", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{user.name}</div>
                       <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 4 }}>

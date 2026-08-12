@@ -394,7 +394,7 @@ export function TrainingLeaderboard() {
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
           font-size: clamp(22px, 2.6vw, 30px);
           line-height: 1;
-          font-weight: 800;
+          font-weight: 900;
           letter-spacing: 0.01em;
           text-transform: uppercase;
           color: var(--text-primary);

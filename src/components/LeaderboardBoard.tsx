@@ -663,9 +663,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__head-title {
           margin: 0;
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-          font-size: clamp(24px, 2.8vw, 34px);
+          font-size: clamp(22px, 2.6vw, 30px);
           line-height: 1;
-          font-weight: 800;
+          font-weight: 900;
           letter-spacing: 0.01em;
           text-transform: uppercase;
           color: var(--text);
