@@ -352,8 +352,10 @@ body {
 }
 
 .header-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   color: var(--text-primary);
   margin: 0;
 }
@@ -378,7 +380,8 @@ body {
 
 .header-user-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .header-user-role {
@@ -388,15 +391,18 @@ body {
 
 .header-logout {
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 7px 16px;
   border: 1px solid var(--border-default);
   background-color: var(--surface-default);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 13px;
+  font-weight: 600;
 }
 
 .header-logout:hover {
-  background-color: #f8fafc;
+  background-color: var(--surface-muted);
+  border-color: var(--border-strong);
 }
 
 .app-content {

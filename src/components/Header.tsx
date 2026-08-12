@@ -59,7 +59,7 @@ export function Header(props: HeaderProps) {
             {props.panelName}
           </div>
         )}
-        <h1 className="header-title">{props.title} {props.panelName && <span style={{ fontSize: '1em', marginLeft: 2 }}><span style={{ color: 'inherit' }}>| </span><span style={{ color: '#dc2626' }}>{props.panelName}</span></span>}</h1>
+        <h1 className="header-title">{props.title} {props.panelName && <span style={{ fontSize: '1em', marginLeft: 2 }}><span style={{ color: 'inherit' }}>| </span><span style={{ color: '#e01418' }}>{props.panelName}</span></span>}</h1>
         {props.subtitle && (
           <p className="header-subtitle">{props.subtitle}</p>
         )}
@@ -89,14 +89,15 @@ export function Header(props: HeaderProps) {
               top: "100%",
               right: 0,
               marginTop: "8px",
-              backgroundColor: "white",
-              border: "1px solid #e0e0e0",
-              borderRadius: "4px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              backgroundColor: "var(--surface-default)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "10px",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
               minWidth: "150px",
-              zIndex: 1000
+              zIndex: 1000,
+              overflow: "hidden"
             }}>
-              <div 
+              <div
                 onClick={() => {
                   setShowDropdown(false);
                   router.push("/sales/profile");
@@ -104,10 +105,11 @@ export function Header(props: HeaderProps) {
                 style={{
                   padding: "10px 16px",
                   cursor: "pointer",
+                  color: "var(--text-primary)",
                   transition: "background-color 0.2s"
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--surface-muted)"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
               >
                 My Profile
               </div>
@@ -124,8 +126,9 @@ export function Header(props: HeaderProps) {
             width: 38,
             height: 38,
             borderRadius: "50%",
-            border: "1px solid #e0e0e0",
+            border: "1px solid var(--border-default)",
             background: "transparent",
+            color: "var(--text-primary)",
             cursor: "pointer",
             fontSize: 16,
             lineHeight: 1,
