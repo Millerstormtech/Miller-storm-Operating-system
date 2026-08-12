@@ -144,7 +144,7 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
       <style jsx>{`
         .at-section-title {
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-          font-size: 18px;
+          font-size: 24px;
           font-weight: 800;
           letter-spacing: 0.01em;
           color: var(--text-primary);
