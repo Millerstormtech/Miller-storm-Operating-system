@@ -237,7 +237,6 @@ export function TrainingLeaderboard() {
       <div className="clb-head">
         <div className="clb-head-titles">
           <h1 className="clb-title">Course Leaderboard</h1>
-          <p className="clb-sub">Training progress across every team</p>
         </div>
         <div className="clb-views" data-tour="clb-views-2">
           <button type="button" className={`clb-view${view === "overall" ? " on" : ""}`} onClick={() => setView("overall")}>Overall</button>
