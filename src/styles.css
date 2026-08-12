@@ -2580,13 +2580,22 @@ body {
 .training-card {
   background-color: var(--surface-default);
   border-radius: 18px;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-strong);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   cursor: pointer;
-  transition: box-shadow 0.15s ease, transform 0.12s ease;
+  transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+/* Dark mode: the default card fill sits almost on the near-black page ground, so
+   raise it a couple of shades and add depth so each course reads as a card
+   (matching how it looks in light mode). */
+:root[data-theme="dark"] .training-card {
+  background-color: #1e2126;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
 }
 
 .training-card:hover {
+  border-color: #e01418;
   box-shadow: 0 18px 36px rgba(15, 23, 42, 0.16);
   transform: translateY(-2px);
 }

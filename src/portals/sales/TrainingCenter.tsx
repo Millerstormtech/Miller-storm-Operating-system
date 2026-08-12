@@ -633,7 +633,27 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     
     loadProgress();
   }, [courses, user]);
-  
+
+  // Segmented red-pill tab style: solid brand red when active, subtle outline
+  // otherwise.
+  const tabPill = (active: boolean): React.CSSProperties => ({
+    padding: '10px 22px',
+    borderRadius: 999,
+    fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif',
+    fontSize: 15,
+    fontWeight: 800,
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase',
+    cursor: 'pointer',
+    border: active ? 'none' : '1px solid var(--border-default)',
+    background: active ? 'linear-gradient(90deg, #b30002, #e01418)' : 'transparent',
+    color: active ? '#fff' : 'var(--text-muted)',
+    boxShadow: active ? '0 3px 10px rgba(202,0,2,0.3)' : 'none',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  });
+
   return (
     <>
       {/* Share Modal - Render at top level */}
@@ -651,108 +671,86 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
       <div className={`training-center${selectedCourse ? (mobileCourseScreen === 'lesson' ? ' mobile-lesson-active' : ' mobile-overview-active') : ''}`}>
         {/* Always show tabs */}
-      <div data-tour="tabs" style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid var(--border-default)' }}>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('courses');
-            if (selectedCourse) {
-              setSelectedCourse(null);
-              setActivePageId(null);
-              setViewingPlaylist(null);
-              setCourseViewInitialized(null);
-            }
-          }}
-          style={{
-            padding: '16px 32px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'courses' ? '2px solid #e01418' : '2px solid transparent',
-            color: activeTab === 'courses' ? '#e01418' : 'var(--text-muted)',
-            fontWeight: activeTab === 'courses' ? 600 : 400,
-            cursor: 'pointer',
-            marginBottom: '-2px',
-            fontSize: 18
-          }}
-        >
-          Courses
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('myPlaylists');
-            if (selectedCourse) {
-              setSelectedCourse(null);
-              setActivePageId(null);
-              setViewingPlaylist(null);
-              setCourseViewInitialized(null);
-            }
-          }}
-          style={{
-            padding: '16px 32px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'myPlaylists' ? '2px solid #e01418' : '2px solid transparent',
-            color: activeTab === 'myPlaylists' ? '#e01418' : 'var(--text-muted)',
-            fontWeight: activeTab === 'myPlaylists' ? 600 : 400,
-            cursor: 'pointer',
-            marginBottom: '-2px',
-            fontSize: 18
-          }}
-        >
-          My Playlists
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('assignedPlaylists');
-            if (selectedCourse) {
-              setSelectedCourse(null);
-              setActivePageId(null);
-              setViewingPlaylist(null);
-              setCourseViewInitialized(null);
-            }
-            // Mark as viewed: remember the current assignment count so only
-            // FUTURE assignments re-badge.
-            if (user?.id) {
-              localStorage.setItem(`assigned-playlists-seen-${user.id}`, String(assignedPlaylists.length));
-              setUnreadAssignedCount(0);
-            }
-          }}
-          style={{
-            padding: '16px 32px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'assignedPlaylists' ? '2px solid #e01418' : '2px solid transparent',
-            color: activeTab === 'assignedPlaylists' ? '#e01418' : 'var(--text-muted)',
-            fontWeight: activeTab === 'assignedPlaylists' ? 600 : 400,
-            cursor: 'pointer',
-            marginBottom: '-2px',
-            fontSize: 18,
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
-        >
-          Assigned Playlists
-          {unreadAssignedCount > 0 && (
-            <span style={{
-              backgroundColor: '#ef4444',
-              color: 'white',
-              borderRadius: '50%',
-              width: 28,
-              height: 28,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 14,
-              fontWeight: 600
-            }}>
-              {unreadAssignedCount}
-            </span>
-          )}
-        </button>
+      <div data-tour="tabs" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginTop: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('courses');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+                setCourseViewInitialized(null);
+              }
+            }}
+            style={tabPill(activeTab === 'courses')}
+          >
+            Courses
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('myPlaylists');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+                setCourseViewInitialized(null);
+              }
+            }}
+            style={tabPill(activeTab === 'myPlaylists')}
+          >
+            My Playlists
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('assignedPlaylists');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+                setCourseViewInitialized(null);
+              }
+              // Mark as viewed: remember the current assignment count so only
+              // FUTURE assignments re-badge.
+              if (user?.id) {
+                localStorage.setItem(`assigned-playlists-seen-${user.id}`, String(assignedPlaylists.length));
+                setUnreadAssignedCount(0);
+              }
+            }}
+            style={tabPill(activeTab === 'assignedPlaylists')}
+          >
+            Assigned Playlists
+            {unreadAssignedCount > 0 && (
+              <span style={{
+                backgroundColor: activeTab === 'assignedPlaylists' ? 'rgba(255,255,255,0.28)' : '#ef4444',
+                color: 'white',
+                borderRadius: '50%',
+                minWidth: 22,
+                height: 22,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 700,
+                padding: '0 5px'
+              }}>
+                {unreadAssignedCount}
+              </span>
+            )}
+          </button>
+        </div>
+        {/* Search moved to the end of the tab row. */}
+        <input
+          className="field-input"
+          data-tour="search"
+          placeholder="Search courses and lessons"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ maxWidth: 300, borderRadius: 999, padding: '11px 20px' }}
+        />
       </div>
       {/* Exactly one tour is mounted per visible view, so there is never more
           than one "?" or auto-start candidate, and the header's "?" always
@@ -784,18 +782,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     if (activeTab === 'courses') {
       return (
         <>
-          <div className="training-center-header">
-            {/* No title here: the unified PageHeader band supplies
-                "Training Center" from the sidebar label. */}
-            <div className="training-center-search" data-tour="search">
-              <input
-                className="field-input"
-                placeholder="Search trainings or videos"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
+          {/* Search lives in the tab row now (see the segmented tabs above). */}
           {isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <div style={{ textAlign: 'center' }}>
