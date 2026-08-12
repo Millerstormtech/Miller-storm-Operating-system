@@ -97,7 +97,7 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
         .ms-auth__title {
           margin: 0;
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-          font-size: clamp(28px, 3.6vw, 38px);
+          font-size: clamp(23px, 2.9vw, 31px);
           line-height: 0.94;
           font-weight: 800;
           letter-spacing: 0.01em;
