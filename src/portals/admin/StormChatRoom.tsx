@@ -1240,14 +1240,11 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
       {/* Pinned messages banner — every pinned message, scrolls if many. */}
       {pinnedMessages.length > 0 && (
         <div style={{ maxHeight: 168, overflowY: 'auto', background: 'rgba(241,195,60,0.1)', borderBottom: '1px solid rgba(241,195,60,0.3)' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', padding: '7px 16px 3px' }}>
-            📌 {pinnedMessages.length} Pinned message{pinnedMessages.length === 1 ? '' : 's'}
-          </div>
           {pinnedMessages.map((pm) => (
-            <div key={pm._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', borderTop: '1px solid rgba(241,195,60,0.25)' }}>
+            <div key={pm._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderTop: '1px solid rgba(241,195,60,0.2)' }}>
               <span style={{ fontSize: 14 }}>📌</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                   Pinned{pm.pinnedByName ? ` · ${pm.pinnedByName}` : ''}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1262,7 +1259,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 <button
                   onClick={() => togglePin(pm)}
                   title="Unpin"
-                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#92400e', fontSize: 13, fontWeight: 700, flexShrink: 0 }}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#e5484d', fontSize: 13, fontWeight: 700, flexShrink: 0 }}
                 >
                   Unpin
                 </button>
