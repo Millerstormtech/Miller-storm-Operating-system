@@ -239,7 +239,7 @@ export function StormChatViewer() {
         onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-muted)"; e.currentTarget.style.borderColor = "var(--border-strong)"; }}
         onMouseLeave={e => { e.currentTarget.style.background = "var(--surface-default)"; e.currentTarget.style.borderColor = "var(--border-default)"; }}
       >
-        <div style={{ width: 48, height: 48, borderRadius: "50%", background: img ? "transparent" : "linear-gradient(135deg, #e01418, #b30002)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16, fontWeight: 700, letterSpacing: "0.02em" }}>
+        <div style={{ width: 48, height: 48, borderRadius: "50%", background: img ? "transparent" : (g.isDirect ? "linear-gradient(135deg, #e01418, #b30002)" : "var(--surface-muted)"), color: g.isDirect ? "#fff" : "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16, fontWeight: 700, letterSpacing: "0.02em" }}>
           {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(titleFor(g))}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -278,12 +278,13 @@ export function StormChatViewer() {
   const sectionLabel = { fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: 17, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "0.01em", marginBottom: 10 };
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", width: "100%", position: "relative" }}>
+    <div style={{ maxWidth: 980, margin: 0, width: "100%", position: "relative" }}>
       {/* Faded brand watermark, like the leaderboards. */}
       <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "url(/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png)", backgroundRepeat: "no-repeat", backgroundPosition: "center 30%", backgroundSize: "min(720px, 88%)", opacity: 0.05, pointerEvents: "none", zIndex: 0 }} />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        <div style={{ fontSize: 14.5, color: "var(--text-muted)", marginBottom: 20 }}>Your groups and direct messages</div>
+        <div style={{ fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: "clamp(28px, 3vw, 34px)", fontWeight: 900, letterSpacing: "0.01em", lineHeight: 1.05, color: "var(--text-primary)" }}>StormChat</div>
+        <div style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 4, marginBottom: 20 }}>Your groups and direct messages</div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22, flexWrap: "wrap" }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
