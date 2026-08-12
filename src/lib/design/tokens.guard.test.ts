@@ -54,7 +54,11 @@ const SVG_ATTR = /(?:stroke|fill|stop-color|stopColor)\s*=\s*"#[0-9a-fA-F]{3,6}"
 // as JS inside an on* attribute instead of a CSS declaration. Verified this pattern
 // (style= or on*=) appears in exactly one file repo-wide (CourseManagement.tsx), so
 // broadening it does not hide a violation anywhere else.
-const HTML_STYLE_ATTR = /(?:style|on[a-zA-Z]+)="[^"]*"/g;
+// The \b word boundary on both alternatives stops this from matching mid-identifier.
+// Unanchored, on[a-zA-Z]+=" also matches the "on...=" tail hiding inside content="...",
+// contenteditable="..." and fontSize="...", stripping those attributes too even though
+// they are not style/event-handler attributes and were never meant to be exempt.
+const HTML_STYLE_ATTR = /(?:\bstyle|\bon[a-zA-Z]+)="[^"]*"/g;
 
 const BANNED: Record<string, string> = {
   "#F3F4F6": "var(--surface-subtle) or var(--border-subtle)",
@@ -145,7 +149,7 @@ const LEAVE_ALONE = new Set<string>([
   "src/portals/shared/training-leaderboard/constants.ts:29",
 ]);
 
-const RATCHET_BASELINE = 1416; // measured 2026-08-12; may only go DOWN
+const RATCHET_BASELINE = 1404; // measured 2026-08-12; may only go DOWN
 
 function* walk(dir: string): Generator<string> {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -179,7 +183,7 @@ describe("design tokens", () => {
           const use = BANNED[norm(m[0])];
           if (use) offences.push(`${file}:${i + 1}  found "${m[0]}"  ->  use ${use}`);
         }
-        for (const m of line.matchAll(/rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*[,)]/g)) {
+        for (const m of line.matchAll(/rgba?\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,/)]/g)) {
           const use = BANNED_RGB[`${+m[1]},${+m[2]},${+m[3]}`];
           if (use) offences.push(`${file}:${i + 1}  found "${m[0]}"  ->  use ${use}`);
         }
