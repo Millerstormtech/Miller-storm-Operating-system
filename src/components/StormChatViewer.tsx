@@ -24,6 +24,8 @@ type ChatGroup = {
   isMember?: boolean;
   // The caller's own request state for a non-member private group.
   joinStatus?: 'pending' | 'denied' | 'none';
+  // Attached by the groups API for sorting — used for the row timestamp.
+  lastMessageAt?: string;
 };
 
 type PickUser = { _id?: string; id: string; name: string; email: string; role: string; headshotUrl?: string };
@@ -177,6 +179,27 @@ export function StormChatViewer() {
   function imageFor(g: ChatGroup) {
     return g.isDirect ? (g.dmOther?.imageUrl || "") : g.imageUrl;
   }
+  // First-letters avatar fallback (e.g. "Brighton Weaver" -> "BW").
+  function initials(name: string) {
+    const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "?";
+    return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+  }
+  // Compact relative time for the row (11m / 2h / Yesterday / Mon / Aug 3).
+  function relTime(iso?: string) {
+    if (!iso) return "";
+    const t = new Date(iso).getTime();
+    if (isNaN(t)) return "";
+    const m = Math.floor((Date.now() - t) / 60000);
+    if (m < 1) return "now";
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    const days = Math.floor(h / 24);
+    if (days === 1) return "Yesterday";
+    if (days < 7) return new Date(iso).toLocaleDateString(undefined, { weekday: "short" });
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
 
   if (selected) {
     return (
@@ -205,84 +228,97 @@ export function StormChatViewer() {
     const img = imageFor(g);
     const notMember = g.isMember === false && !g.isDirect;
     const status: 'pending' | 'denied' | 'none' = requestedIds.has(g._id) ? 'pending' : (g.joinStatus || 'none');
+    const isPrivate = g.visibility === 'private' && !g.isDirect;
+    const time = relTime(g.lastMessageAt);
+    const preview = g.isDirect ? "Private message" : (g.description || "Group chat");
     return (
       <button
         key={g._id}
         onClick={() => openGroup(g)}
-        style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%", transition: "background 0.15s" }}
-        onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-        onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-default)")}
+        style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%", transition: "background 0.15s, border-color 0.15s" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-muted)"; e.currentTarget.style.borderColor = "var(--border-strong)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "var(--surface-default)"; e.currentTarget.style.borderColor = "var(--border-default)"; }}
       >
-        <div style={{ width: 46, height: 46, borderRadius: "50%", background: g.isDirect ? "#4b5563" : "var(--surface-inverse-raised)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 20 }}>
-          {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (g.isDirect ? "👤" : "💬")}
+        <div style={{ width: 48, height: 48, borderRadius: "50%", background: img ? "transparent" : "linear-gradient(135deg, #e01418, #b30002)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16, fontWeight: 700, letterSpacing: "0.02em" }}>
+          {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(titleFor(g))}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{titleFor(g)}</div>
-          {!g.isDirect && g.description && (
-            <div style={{ fontSize: 12, color: "var(--text-subtle)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{g.description}</div>
-          )}
-          {g.isDirect && (
-            <div style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 2 }}>Private message</div>
-          )}
-          {notMember && (
-            <div style={{ fontSize: 12, marginTop: 2, fontWeight: 500, color: status === 'denied' ? "var(--text-muted)" : status === 'pending' ? "#059669" : "#dc2626" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{titleFor(g)}</div>
+          {notMember ? (
+            <div style={{ fontSize: 13, marginTop: 3, fontWeight: 500, color: status === 'denied' ? "var(--text-muted)" : status === 'pending' ? "#10b981" : "#e5484d" }}>
               {status === 'denied' ? "🚫 Rejected · no access" : status === 'pending' ? "✓ Request pending" : "🔒 Private · tap to request to join"}
             </div>
+          ) : (
+            <div style={{ fontSize: 13.5, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>{preview}</div>
           )}
         </div>
-        {notMember ? (
-          <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999,
-            ...(status === 'denied'
-              ? { background: "var(--surface-subtle)", color: "var(--text-muted)", border: "1px solid var(--border-default)" }
-              : status === 'pending'
-                ? { background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }
-                : { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }) }}>
-            {status === 'denied' ? "Rejected" : status === 'pending' ? "Pending" : "Join"}
-          </span>
-        ) : count > 0 && (
-          <span style={{ background: "#ef4444", color: "var(--text-inverse)", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", flexShrink: 0 }}>
-            {count > 99 ? "99+" : count}
-          </span>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+          {time && !notMember && <span style={{ fontSize: 12.5, color: "var(--text-subtle)" }}>{time}</span>}
+          {notMember ? (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 11px", borderRadius: 999,
+              ...(status === 'denied'
+                ? { background: "var(--surface-subtle)", color: "var(--text-muted)", border: "1px solid var(--border-default)" }
+                : status === 'pending'
+                  ? { background: "rgba(16,185,129,0.14)", color: "#10b981", border: "1px solid rgba(16,185,129,0.4)" }
+                  : { background: "rgba(202,0,2,0.12)", color: "#e5484d", border: "1px solid rgba(202,0,2,0.35)" }) }}>
+              {status === 'denied' ? "Rejected" : status === 'pending' ? "Pending" : "Join"}
+            </span>
+          ) : count > 0 ? (
+            <span style={{ background: "#e01418", color: "#fff", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
+              {count > 99 ? "99+" : count}
+            </span>
+          ) : isPrivate ? (
+            <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.06em", padding: "3px 9px", borderRadius: 6, border: "1px solid var(--border-strong)", color: "var(--text-muted)" }}>PRIVATE</span>
+          ) : null}
+        </div>
       </button>
     );
   }
 
-  return (
-    <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
-          style={{ flex: 1, minWidth: 160, padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: 10, fontSize: 14, outline: "none" }} />
-        <button onClick={openPicker}
-          style={{ padding: "10px 16px", background: "var(--surface-inverse-raised)", color: "var(--text-inverse)", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
-          ✏️ New message
-        </button>
-      </div>
+  const sectionLabel = { fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: 17, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "0.01em", marginBottom: 10 };
 
-      {loading ? (
-        <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "60px 0" }}>Loading chats…</div>
-      ) : visible.length === 0 ? (
-        <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "60px 20px" }}>
-          <div style={{ fontSize: 46, marginBottom: 12 }}>💬</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>No chats yet</div>
-          <div style={{ fontSize: 13 }}>Start one with “New message”, or you&apos;ll see your groups here once you&apos;re added.</div>
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", width: "100%", position: "relative" }}>
+      {/* Faded brand watermark, like the leaderboards. */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "url(/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png)", backgroundRepeat: "no-repeat", backgroundPosition: "center 30%", backgroundSize: "min(720px, 88%)", opacity: 0.05, pointerEvents: "none", zIndex: 0 }} />
+
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <div style={{ fontSize: 14.5, color: "var(--text-muted)", marginBottom: 20 }}>Your groups and direct messages</div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22, flexWrap: "wrap" }}>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
+            style={{ flex: 1, minWidth: 160, padding: "13px 18px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 15, outline: "none" }} />
+          <button onClick={openPicker}
+            style={{ padding: "13px 24px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", border: "none", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(202,0,2,0.32)" }}>
+            New message
+          </button>
         </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {dms.length > 0 && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Direct Messages</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{dms.map(g => <GroupRow key={g._id} g={g} />)}</div>
-            </div>
-          )}
-          {normalGroups.length > 0 && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Groups</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{normalGroups.map(g => <GroupRow key={g._id} g={g} />)}</div>
-            </div>
-          )}
-        </div>
-      )}
+
+        {loading ? (
+          <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "60px 0" }}>Loading chats…</div>
+        ) : visible.length === 0 ? (
+          <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "60px 20px" }}>
+            <div style={{ fontSize: 46, marginBottom: 12 }}>💬</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>No chats yet</div>
+            <div style={{ fontSize: 13 }}>Start one with “New message”, or you&apos;ll see your groups here once you&apos;re added.</div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+            {dms.length > 0 && (
+              <div>
+                <div style={sectionLabel}>Direct Messages</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{dms.map(g => <GroupRow key={g._id} g={g} />)}</div>
+              </div>
+            )}
+            {normalGroups.length > 0 && (
+              <div>
+                <div style={sectionLabel}>Groups</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{normalGroups.map(g => <GroupRow key={g._id} g={g} />)}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* New-message user picker */}
       {pickerOpen && (
@@ -290,7 +326,7 @@ export function StormChatViewer() {
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
             style={{ background: "var(--surface-default)", borderRadius: 16, width: "100%", maxWidth: 460, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <div style={{ padding: "16px 18px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-default)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-secondary)" }}>New message</div>
               <button onClick={() => setPickerOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "var(--text-subtle)", cursor: "pointer", lineHeight: 1 }}>×</button>
             </div>
@@ -304,7 +340,7 @@ export function StormChatViewer() {
               ) : pickable.map(u => (
                 <button key={u.id} disabled={opening} onClick={() => startDm(u)}
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "none", border: "none", cursor: opening ? "wait" : "pointer", width: "100%", textAlign: "left", borderRadius: 10 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                  onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-muted)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "none")}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#4b5563", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16 }}>
                     {u.headshotUrl ? <img src={u.headshotUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (u.name?.[0]?.toUpperCase() || "👤")}
