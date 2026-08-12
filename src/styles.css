@@ -219,7 +219,9 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: #f4f4f5;
+  /* Token so the content region flips dark with the theme (was hardcoded
+     #f4f4f5, which left the whole page light in dark mode). */
+  background-color: var(--surface-subtle);
   height: 100vh;
   overflow: hidden;
 }
