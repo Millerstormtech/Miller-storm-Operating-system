@@ -6,7 +6,6 @@ const ManagerTeamStructurePage: NextPage = () => (
   <SalesTeamLeadLayout
     currentView="team-structure"
     pageTitle="Organization Chart"
-    pageSubtitle="Live org chart, built automatically from registered users and their roles."
   >
     <div style={{ padding: "0 24px 24px" }}>
       <TeamStructure />

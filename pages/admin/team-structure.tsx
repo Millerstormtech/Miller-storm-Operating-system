@@ -6,7 +6,6 @@ const AdminTeamStructurePage: NextPage = () => (
   <AdminPageWrapper
     currentView="teamStructure"
     pageTitle="Organization Chart"
-    pageSubtitle="Live org chart, built automatically from registered users and their roles."
   >
     <div style={{ padding: 24 }}>
       <TeamStructure />
