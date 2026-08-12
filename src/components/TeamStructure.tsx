@@ -12,13 +12,16 @@ type OrgUser = {
   territory?: string;
 };
 
-const ROLE: Record<string, { label: string; bg: string; border: string; text: string; dot: string }> = {
-  "c-level": { label: "C-Level", bg: "#eef2ff", border: "#c7d2fe", text: "#4338ca", dot: "#4f46e5" },
-  "branch-manager": { label: "Branch Manager", bg: "#fff7ed", border: "#fed7aa", text: "#c2410c", dot: "#ea580c" },
-  "sales-team-lead": { label: "Sales Team Lead", bg: "#f5f3ff", border: "#ddd6fe", text: "#6d28d9", dot: "#7c3aed" },
-  sales: { label: "Sales", bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8", dot: "#2563eb" },
-  marketing: { label: "Marketing", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d", dot: "#16a34a" },
-  admin: { label: "Admin", bg: "#fef2f2", border: "#fecaca", text: "#b91c1c", dot: "#dc2626" },
+// `dot` colours the summary pills; `avatarBg`/`avatarText` colour the node
+// avatar. C-Level is gold and Branch Managers are red; everyone else gets a
+// neutral dark chip so the coloured tiers read at a glance (see mockup).
+const ROLE: Record<string, { label: string; dot: string; avatarBg: string; avatarText: string }> = {
+  "c-level": { label: "C-Level", dot: "#f1c33c", avatarBg: "linear-gradient(135deg, #f6d873, #e0a80a)", avatarText: "#3a2a00" },
+  "branch-manager": { label: "Branch Manager", dot: "#e01418", avatarBg: "linear-gradient(135deg, #e01418, #b30002)", avatarText: "#ffffff" },
+  "sales-team-lead": { label: "Sales Team Lead", dot: "#ff8f91", avatarBg: "var(--surface-muted)", avatarText: "var(--text-primary)" },
+  sales: { label: "Sales", dot: "#9aa1b3", avatarBg: "var(--surface-muted)", avatarText: "var(--text-primary)" },
+  marketing: { label: "Marketing", dot: "#22c55e", avatarBg: "var(--surface-muted)", avatarText: "var(--text-primary)" },
+  admin: { label: "Admin", dot: "#9aa1b3", avatarBg: "var(--surface-muted)", avatarText: "var(--text-primary)" },
 };
 
 function roleOf(u: OrgUser): string {
@@ -41,7 +44,7 @@ function Avatar({ user, size = 40, role }: { user: OrgUser; size?: number; role?
       <img
         src={user.headshotUrl}
         alt={user.name}
-        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: `2px solid ${c.border}` }}
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
       />
     );
   }
@@ -49,9 +52,9 @@ function Avatar({ user, size = 40, role }: { user: OrgUser; size?: number; role?
     <div
       style={{
         width: size, height: size, borderRadius: "50%", flexShrink: 0,
-        background: c.bg, color: c.text, border: `2px solid ${c.border}`,
+        background: c.avatarBg, color: c.avatarText,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontWeight: 700, fontSize: size * 0.36,
+        fontWeight: 700, fontSize: size * 0.34,
       }}
     >
       {initials(user.name)}
@@ -59,21 +62,22 @@ function Avatar({ user, size = 40, role }: { user: OrgUser; size?: number; role?
   );
 }
 
-// A single compact org-chart node (avatar on top, name, role badge). `roleOverride`
-// lets a branch manager be re-drawn as their own Sales Team Lead card (the same
-// person appears twice in the chart when they also run a team).
-function Node({ user, isYou, roleOverride }: { user: OrgUser; isYou: boolean; roleOverride?: string }) {
+// A single horizontal org-chart node: avatar on the left, name + subtitle
+// stacked. `roleOverride` lets a branch manager be re-drawn as their own Sales
+// Team Lead card. `subtitle` overrides the default role label (e.g. a branch or
+// team name); falls back to "You" for the current user, else the role label.
+function Node({ user, isYou, roleOverride, subtitle }: { user: OrgUser; isYou: boolean; roleOverride?: string; subtitle?: string }) {
   const role = roleOverride || roleOf(user);
   const c = ROLE[role];
+  const sub = subtitle ?? (isYou ? "You" : c.label);
+  const cls = `node${role === "c-level" ? " node--exec" : ""}${isYou ? " node--you" : ""}`;
   return (
-    <div className="node" style={{ borderTop: `3px solid ${c.dot}`, boxShadow: isYou ? `0 0 0 2px ${c.dot}` : undefined }}>
-      <Avatar user={user} size={42} role={role} />
-      <div className="node-name" title={user.name}>
-        {user.name}
-        {isYou && <span className="you-badge" style={{ color: c.text, background: c.bg }}>YOU</span>}
+    <div className={cls}>
+      <Avatar user={user} size={40} role={role} />
+      <div className="node-body">
+        <div className="node-name" title={user.name}>{user.name}</div>
+        <div className="node-sub">{sub}</div>
       </div>
-      <span className="node-role" style={{ color: c.text, background: c.bg }}>{c.label}</span>
-      <div className="node-email" title={user.email}>{user.email}</div>
     </div>
   );
 }
@@ -288,7 +292,12 @@ export function TeamStructure() {
   const hasLeadership = cLevel.length > 0 || branchTree.length > 0;
 
   return (
-    <div>
+    <div style={{ position: "relative" }}>
+      {/* Faded brand watermark behind the chart. */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "url(/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png)", backgroundRepeat: "no-repeat", backgroundPosition: "center 34%", backgroundSize: "min(760px, 66%)", opacity: 0.05, pointerEvents: "none", zIndex: 0 }} />
+
+      <div style={{ position: "relative", zIndex: 1 }}>
+      <div style={{ fontSize: 14.5, color: "var(--text-muted)", marginBottom: 20 }}>Built automatically from registered users and their roles</div>
       {/* Summary */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
         {stat("C-Level", counts.cLevel, ROLE["c-level"].dot)}
@@ -336,7 +345,7 @@ export function TeamStructure() {
               <ul className="branch">
                 {branchTree.map(({ branchManager, leadNodes }) => (
                   <li key={branchManager.id}>
-                    <Node user={branchManager} isYou={branchManager.id === user?.id} />
+                    <Node user={branchManager} isYou={branchManager.id === user?.id} subtitle={branchManager.territory || undefined} />
                     {leadNodes.length > 0 && (
                       <ul>
                         {leadNodes.map(({ key, lead, reps, asTeamLead }) => (
@@ -345,6 +354,7 @@ export function TeamStructure() {
                               user={lead}
                               isYou={!asTeamLead && lead.id === user?.id}
                               roleOverride={asTeamLead ? "sales-team-lead" : undefined}
+                              subtitle={`Team ${lead.name.trim().split(/\s+/)[0]}`}
                             />
                             {reps.length > 0 && (
                               <ul>
@@ -370,7 +380,7 @@ export function TeamStructure() {
               <ul className="branch">
                 {orphanLeads.map(({ manager, reps }) => (
                   <li key={manager.id}>
-                    <Node user={manager} isYou={manager.id === user?.id} />
+                    <Node user={manager} isYou={manager.id === user?.id} subtitle={`Team ${manager.name.trim().split(/\s+/)[0]}`} />
                     {reps.length > 0 && (
                       <ul>
                         {reps.map((r) => (
@@ -393,7 +403,7 @@ export function TeamStructure() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 32, marginTop: 28 }}>
           {marketing.length > 0 && (
             <div>
-              <div className="side-title" style={{ color: ROLE.marketing.text }}>Marketing · {marketing.length}</div>
+              <div className="side-title">Marketing, {marketing.length}</div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {marketing.map((m) => <Node key={m.id} user={m} isYou={m.id === user?.id} />)}
               </div>
@@ -401,7 +411,7 @@ export function TeamStructure() {
           )}
           {unassigned.length > 0 && (
             <div>
-              <div className="side-title" style={{ color: ROLE.sales.text }}>Sales · Unassigned · {unassigned.length}</div>
+              <div className="side-title">Sales · Unassigned, {unassigned.length}</div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {unassigned.map((s) => <Node key={s.id} user={s} isYou={s.id === user?.id} />)}
               </div>
@@ -413,7 +423,7 @@ export function TeamStructure() {
       {/* Admins — always at the very bottom, under Marketing. */}
       {admins.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <div className="side-title" style={{ color: ROLE.admin.text }}>Admins · {admins.length}</div>
+          <div className="side-title">Admins, {admins.length}</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {admins.map((a) => <Node key={a.id} user={a} isYou={a.id === user?.id} />)}
           </div>
@@ -424,7 +434,7 @@ export function TeamStructure() {
         .chart-scroll { overflow: auto; padding: 8px 0 12px; cursor: grab; user-select: none; }
         .tree { display: inline-flex; flex-direction: column; align-items: center; min-width: 100%; }
         .admin-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-        .trunk { width: 2px; height: 26px; background: #d7dbe0; }
+        .trunk { width: 2px; height: 26px; background: var(--border-strong); }
 
         /* Recursive org-chart connectors (managers -> reps) */
         .branch, .branch ul { display: flex; justify-content: center; margin: 0; padding: 0; list-style: none; position: relative; }
@@ -436,42 +446,49 @@ export function TeamStructure() {
         /* vertical + horizontal connectors above each child */
         .branch li::before, .branch li::after {
           content: ""; position: absolute; top: 0; right: 50%;
-          border-top: 2px solid #d7dbe0; width: 50%; height: 26px;
+          border-top: 2px solid var(--border-strong); width: 50%; height: 26px;
         }
-        .branch li::after { right: auto; left: 50%; border-left: 2px solid #d7dbe0; }
+        .branch li::after { right: auto; left: 50%; border-left: 2px solid var(--border-strong); }
         .branch li:only-child::before, .branch li:only-child::after { display: none; }
         .branch li:only-child { padding-top: 26px; }
         .branch li:first-child::before, .branch li:last-child::after { border: 0 none; }
-        .branch li:last-child::before { border-right: 2px solid #d7dbe0; }
-        .branch li:first-child::after { border-left: 2px solid #d7dbe0; }
+        .branch li:last-child::before { border-right: 2px solid var(--border-strong); }
+        .branch li:first-child::after { border-left: 2px solid var(--border-strong); }
         /* vertical line from a parent node down to its children row */
         .branch ul::before {
           content: ""; position: absolute; top: 0; left: 50%;
-          border-left: 2px solid #d7dbe0; width: 0; height: 26px;
+          border-left: 2px solid var(--border-strong); width: 0; height: 26px;
         }
 
-        .side-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+        .side-title {
+          font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+          font-size: 17px; font-weight: 800; color: var(--text-primary);
+          letter-spacing: 0.01em; margin-bottom: 14px;
+        }
       `}</style>
 
       {/* Node styling (global so nested elements pick it up) */}
       <style jsx global>{`
         .node {
-          width: 168px; background: var(--surface-default); border: 1px solid var(--border-default); border-radius: 12px;
-          padding: 12px 10px 10px; display: flex; flex-direction: column; align-items: center;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-align: center;
+          width: 232px; background: var(--surface-default); border: 1px solid var(--border-default); border-radius: 14px;
+          padding: 12px 14px; display: flex; flex-direction: row; align-items: center; gap: 12px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12); text-align: left;
+          transition: border-color 0.15s, background 0.15s;
         }
+        .node:hover { border-color: var(--border-strong); }
+        .node--exec { border-color: rgba(241, 195, 60, 0.55); box-shadow: 0 0 0 1px rgba(241, 195, 60, 0.35), 0 6px 18px rgba(241, 195, 60, 0.12); }
+        .node--you { border-color: rgba(224, 20, 24, 0.75); box-shadow: 0 0 0 1px rgba(224, 20, 24, 0.4); }
+        .node-body { min-width: 0; }
         .node-name {
-          margin-top: 8px; font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+          font-size: 15px; font-weight: 700; color: var(--text-primary);
           max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-          display: flex; align-items: center; gap: 5px; justify-content: center;
         }
-        .you-badge { font-size: 9px; font-weight: 700; border-radius: 5px; padding: 1px 5px; }
-        .node-role { margin-top: 5px; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
-        .node-email {
-          margin-top: 6px; font-size: 10.5px; color: var(--text-subtle);
+        .node-sub {
+          margin-top: 2px; font-size: 13px; color: var(--text-muted);
           max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
       `}</style>
+      </div>
     </div>
   );
 }
