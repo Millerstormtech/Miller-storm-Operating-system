@@ -4,7 +4,7 @@ import { AiBotBuilder } from "../../src/portals/admin/AiBotBuilder";
 
 const AIBotsPage: NextPage = () => {
   return (
-    <AdminPageWrapper currentView="aiBots">
+    <AdminPageWrapper currentView="aiBots" pageTitle="">
       <AiBotBuilder />
     </AdminPageWrapper>
   );
