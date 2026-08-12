@@ -71,8 +71,6 @@ export function ProfilePage(props: {
       {/* Faded brand watermark. */}
       <div aria-hidden className="pf-watermark" />
 
-      <div className="pf-sub">How you appear across Miller Storm</div>
-
       <div className="pf-grid">
         {/* Photo card */}
         <div className="pf-card pf-photo-card">
@@ -137,7 +135,6 @@ export function ProfilePage(props: {
           background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png") center 24% / min(700px, 62%) no-repeat;
           opacity: 0.05;
         }
-        .pf-sub { position: relative; z-index: 1; font-size: 14.5px; color: var(--text-muted); margin-bottom: 22px; }
         .pf-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
         @media (max-width: 820px) { .pf-grid { grid-template-columns: 1fr; } }
         .pf-card { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: 18px; padding: 24px; }

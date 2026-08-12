@@ -40,7 +40,7 @@ const MarketingProfile: NextPage = () => {
 
   return (
     <ProtectedRoute allowedRoles={["marketing", "admin"]}>
-      <MarketingLayout currentView="profile">
+      <MarketingLayout currentView="profile" pageSubtitle="How you appear across Miller Storm">
         <ProfilePage profile={profile} onProfileChange={handleProfileChange} />
       </MarketingLayout>
     </ProtectedRoute>
