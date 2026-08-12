@@ -12,6 +12,7 @@ const SalesTeamStructurePage: NextPage = () => {
       userName={user.name}
       userId={user.id}
       pageTitle="Organization Chart"
+      pageSubtitle="Built automatically from registered users and their roles"
     >
       <div style={{ padding: "0 24px 24px" }}>
         <TeamStructure />

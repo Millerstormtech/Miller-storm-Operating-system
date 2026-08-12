@@ -297,7 +297,6 @@ export function TeamStructure() {
       <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "url(/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png)", backgroundRepeat: "no-repeat", backgroundPosition: "center 34%", backgroundSize: "min(760px, 66%)", opacity: 0.05, pointerEvents: "none", zIndex: 0 }} />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-      <div style={{ fontSize: 14.5, color: "var(--text-muted)", marginBottom: 20 }}>Built automatically from registered users and their roles</div>
       {/* Summary */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
         {stat("C-Level", counts.cLevel, ROLE["c-level"].dot)}

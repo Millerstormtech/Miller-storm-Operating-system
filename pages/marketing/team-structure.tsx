@@ -10,6 +10,7 @@ const MarketingTeamStructurePage: NextPage = () => {
     <MarketingLayout
       currentView="team-structure"
       pageTitle="Organization Chart"
+      pageSubtitle="Built automatically from registered users and their roles"
     >
       <div style={{ padding: "0 24px 24px" }}>
         <TeamStructure />
