@@ -5,10 +5,11 @@ import { barFill, paceNotch, fmtMoney, fmtCount, trendLabel } from "../../../lib
 // kept as local tokens here since this is a different subsystem and shouldn't
 // cross-import another feature's constants module for two hex codes.
 const GREEN = "#10b981";
-const RED = "#dc2626";
-const NEUTRAL = "#6b7280";
-const TRACK = "#e5e7eb";
-const NOTCH = "#111827";
+const RED = "#ff6b6d";
+const NEUTRAL = "#9aa1b3";
+const BAR = "#e01418";
+const TRACK = "var(--surface-muted)";
+const NOTCH = "rgba(255,255,255,0.55)";
 
 // The goal link is hidden until My Goals launches (no goals are set yet, the
 // backfill is deliberately unapplied). Flip to true to bring back
@@ -68,82 +69,81 @@ export function MetricTile(props: {
       style={{
         background: "var(--surface-default)",
         border: "1px solid var(--border-default)",
-        borderRadius: 12,
-        padding: "14px 16px",
+        borderRadius: 16,
+        padding: "18px 22px",
         minWidth: 0,
       }}
     >
-      <div
-        style={{
-          fontSize: 12,
-          fontWeight: 700,
-          color: "var(--text-muted)",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}
-      >
-        {label}
-      </div>
-
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>{formattedValue}</div>
-        {/* No arrow at all when dir is null: an absent prior period is not a flat or green trend. */}
-        {trendArrow !== null && trendText !== null && (
-          <span style={{ fontSize: 12, fontWeight: 700, color: trendColor }}>
-            {trendArrow} {trendText}
-          </span>
-        )}
-      </div>
-
-      {subtitle && <div style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 2 }}>{subtitle}</div>}
-
-      {goal !== null && fill !== null && notch !== null && (
-        <div style={{ marginTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div style={{ minWidth: 0 }}>
           <div
-            role="progressbar"
-            aria-valuenow={Math.round(fill * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`${label}: ${formattedValue} of ${fmt(goal)} goal, ${Math.round(fill * 100)} percent reached`}
             style={{
-              position: "relative",
-              height: 8,
-              borderRadius: 999,
-              background: TRACK,
-              overflow: "hidden",
+              fontSize: 13,
+              fontWeight: 800,
+              color: "var(--text-muted)",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
             }}
           >
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: `${fill * 100}%`,
-                background: GREEN,
-                borderRadius: 999,
-              }}
-            />
-            {/* Pace notch: expected progress for "today" within the period. Fill past
-                the notch reads as ahead of pace, purely visual so aria-hidden. */}
-            <div
-              aria-hidden="true"
-              title={`Expected pace: ${Math.round(notch * 100)}%`}
-              style={{
-                position: "absolute",
-                left: `${notch * 100}%`,
-                top: -2,
-                bottom: -2,
-                width: 2,
-                background: NOTCH,
-              }}
-            />
+            {label}
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 4 }}>
-            {Math.round(fill * 100)}% of {fmt(goal)} goal
-          </div>
+          {/* No arrow at all when dir is null: an absent prior period is not a flat or green trend. */}
+          {trendArrow !== null && trendText !== null && (
+            <div style={{ fontSize: 14, fontWeight: 700, color: trendColor, marginTop: 6 }}>
+              {trendArrow} {trendText}
+            </div>
+          )}
+        </div>
+        <div style={{ fontSize: "clamp(30px, 4.6vw, 52px)", fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--text-primary)", flexShrink: 0, textAlign: "right" }}>
+          {formattedValue}
+        </div>
+      </div>
+
+      {goal !== null && fill !== null && notch !== null && (
+        <div
+          role="progressbar"
+          aria-valuenow={Math.round(fill * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${label}: ${formattedValue} of ${fmt(goal)} goal, ${Math.round(fill * 100)} percent reached`}
+          style={{
+            position: "relative",
+            height: 10,
+            borderRadius: 999,
+            background: TRACK,
+            overflow: "hidden",
+            marginTop: 16,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: `${fill * 100}%`,
+              background: BAR,
+              borderRadius: 999,
+            }}
+          />
+          {/* Pace notch: expected progress for "today" within the period. Fill past
+              the notch reads as ahead of pace, purely visual so aria-hidden. */}
+          <div
+            aria-hidden="true"
+            title={`Expected pace: ${Math.round(notch * 100)}%`}
+            style={{
+              position: "absolute",
+              left: `${notch * 100}%`,
+              top: -1,
+              bottom: -1,
+              width: 2,
+              background: NOTCH,
+            }}
+          />
         </div>
       )}
+
+      {subtitle && <div style={{ fontSize: 13.5, color: "var(--text-muted)", marginTop: 12 }}>{subtitle}</div>}
 
       {SHOW_GOAL_LINK && onSetGoal && (
         <button

@@ -37,19 +37,53 @@ export function RankStrip(props: {
 
   if (text === null) return null;
 
+  const isTop = rank.rank <= 3;
+  const medalBg =
+    rank.rank === 1
+      ? "radial-gradient(circle at 40% 30%, #ffe488, #e8b923 58%, #b8860b)"
+      : rank.rank === 2
+        ? "radial-gradient(circle at 40% 30%, #e9edf2, #b9c0c9 60%, #8b929c)"
+        : rank.rank === 3
+          ? "radial-gradient(circle at 40% 30%, #f0b98a, #cd7f45 60%, #9a5a2c)"
+          : "rgba(255,255,255,0.18)";
+  const medalText = isTop ? "#3a2400" : "#ffffff";
+
   return (
     <div
       style={{
-        background: "var(--surface-default)",
-        border: "1px solid var(--border-default)",
-        borderRadius: 12,
-        padding: "10px 16px",
-        fontSize: 14,
-        fontWeight: 700,
-        color: "var(--text-primary)",
+        background: isTop
+          ? "linear-gradient(90deg, #8a0002, #c40204 55%, #7a0002)"
+          : "var(--surface-default)",
+        border: isTop ? "1px solid rgba(224,20,24,0.5)" : "1px solid var(--border-default)",
+        borderRadius: 16,
+        padding: "14px 20px",
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        boxShadow: isTop ? "0 8px 24px rgba(202,0,2,0.25)" : undefined,
       }}
     >
-      {text}
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          background: medalBg,
+          color: medalText,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: 900,
+          fontSize: 18,
+          flexShrink: 0,
+          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.3)",
+        }}
+      >
+        {rank.rank}
+      </div>
+      <div style={{ fontSize: 17, fontWeight: 800, color: isTop ? "#ffffff" : "var(--text-primary)" }}>
+        {text}
+      </div>
     </div>
   );
 }

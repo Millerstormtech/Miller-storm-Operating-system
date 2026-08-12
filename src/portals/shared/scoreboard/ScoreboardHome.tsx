@@ -181,7 +181,7 @@ export function ScoreboardHome(): JSX.Element {
           style={{
             border: "none",
             background: "none",
-            color: "#2563eb",
+            color: "#e5484d",
             cursor: "pointer",
             fontSize: 14,
             fontWeight: 700,
@@ -274,7 +274,7 @@ export function ScoreboardHome(): JSX.Element {
           style={{
             border: "none",
             background: "none",
-            color: "#2563eb",
+            color: "#e5484d",
             cursor: "pointer",
             fontSize: 13,
             fontWeight: 700,
@@ -290,9 +290,9 @@ export function ScoreboardHome(): JSX.Element {
       <>
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
           }}
         >
           <MetricTile
@@ -379,7 +379,7 @@ export function ScoreboardHome(): JSX.Element {
               border: "none",
               background: "none",
               padding: 0,
-              color: "#2563eb",
+              color: "#e5484d",
               fontSize: 13,
               fontWeight: 700,
               cursor: "pointer",
@@ -394,40 +394,47 @@ export function ScoreboardHome(): JSX.Element {
   }
 
   return (
-    <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>Hi, {firstName}</div>
+    <div style={{ position: "relative", maxWidth: 1100, margin: 0 }}>
+      {/* Faded brand watermark behind the scoreboard. */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "url(/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png)", backgroundRepeat: "no-repeat", backgroundPosition: "center 20%", backgroundSize: "min(760px, 70%)", opacity: 0.05, pointerEvents: "none", zIndex: 0 }} />
 
-      <RankStrip rank={board.rank} scopeLevel={board.scope.level} />
+      <div style={{ position: "relative", zIndex: 1, padding: "8px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 16, color: "var(--text-muted)" }}>Hi, {firstName}</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {WINDOW_OPTIONS.map((opt) => {
+              const active = windowSel === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setWindowSel(opt.value)}
+                  aria-pressed={active}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: 999,
+                    border: `1px solid ${active ? "transparent" : "var(--border-default)"}`,
+                    background: active ? "linear-gradient(90deg, #b30002, #e01418)" : "transparent",
+                    color: active ? "#fff" : "var(--text-muted)",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: active ? "0 3px 10px rgba(202,0,2,0.3)" : undefined,
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {WINDOW_OPTIONS.map((opt) => {
-          const active = windowSel === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setWindowSel(opt.value)}
-              aria-pressed={active}
-              style={{
-                padding: "6px 16px",
-                borderRadius: 999,
-                border: `1px solid ${active ? "var(--gray-900) /* no semantic: gray-900 as border */" : "var(--border-default)"}`,
-                background: active ? "var(--surface-inverse)" : "var(--surface-default)",
-                color: active ? "var(--text-inverse)" : "var(--text-tertiary)",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
+        <RankStrip rank={board.rank} scopeLevel={board.scope.level} />
+
+        {!scopeUnresolved && scopeText && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{scopeText}</div>}
+
+        {dataRegion}
       </div>
-
-      {!scopeUnresolved && scopeText && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{scopeText}</div>}
-
-      {dataRegion}
     </div>
   );
 }
