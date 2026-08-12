@@ -79,18 +79,19 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           margin: auto;
         }
 
+        /* Plain logo — no background chip. Same transparent mark in both themes. */
         .ms-auth__logo {
           display: block;
-          height: 56px;
+          height: 76px;
           width: auto;
-          margin: 0 auto 20px;
+          margin: 0 auto 22px;
           object-fit: contain;
         }
 
         .ms-auth__title {
           margin: 0;
           font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-          font-size: clamp(38px, 5.5vw, 56px);
+          font-size: clamp(32px, 4.4vw, 46px);
           line-height: 0.94;
           font-weight: 800;
           letter-spacing: 0.01em;
@@ -115,11 +116,11 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           padding: 30px 40px 26px;
         }
         .ms-auth--wide .ms-auth__logo {
-          height: 48px;
-          margin-bottom: 14px;
+          height: 66px;
+          margin-bottom: 16px;
         }
         .ms-auth--wide .ms-auth__title {
-          font-size: clamp(32px, 4.2vw, 44px);
+          font-size: clamp(26px, 3.2vw, 34px);
         }
         .ms-auth--wide .ms-auth__subtitle {
           margin: 8px 0 20px;
@@ -345,11 +346,8 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
             --ms-glass-blur: 22px;
             --ms-good: #34d399;
           }
-          /* The logo mark has dark text — brighten it so it reads on the glass card. */
-          .ms-auth__logo {
-            filter: brightness(0) invert(1);
-            opacity: 0.92;
-          }
+          /* Logo keeps its white chip in dark mode too, so it looks identical to
+             light mode — no inversion. */
           .ms-auth__watermark {
             filter: saturate(1.4);
           }
