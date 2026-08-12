@@ -110,7 +110,7 @@ export function EmailConfig() {
   return (
     <div style={{ display: "flex", gap: 0, height: "calc(100vh - 80px)", overflow: "hidden" }}>
       {/* Left tab list */}
-      <div style={{ width: 220, borderRight: "1px solid var(--border-default)", overflowY: "auto", flexShrink: 0, background: "#f9fafb" }}>
+      <div style={{ width: 220, borderRight: "1px solid var(--border-default)", overflowY: "auto", flexShrink: 0, background: "var(--surface-subtle)" }}>
         <div style={{ padding: "16px 16px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1 }}>
           Email Templates
         </div>
@@ -121,10 +121,10 @@ export function EmailConfig() {
             onClick={() => setActiveKey(key)}
             style={{
               width: "100%", textAlign: "left", padding: "12px 16px",
-              border: "none", background: activeKey === key ? "#eff6ff" : "transparent",
-              borderLeft: activeKey === key ? "3px solid #2563eb" : "3px solid transparent",
+              border: "none", background: activeKey === key ? "rgba(202,0,2,0.1)" : "transparent",
+              borderLeft: activeKey === key ? "3px solid #e01418" : "3px solid transparent",
               cursor: "pointer", fontSize: 13, fontWeight: activeKey === key ? 600 : 400,
-              color: activeKey === key ? "#1d4ed8" : "var(--text-tertiary)",
+              color: activeKey === key ? "#e01418" : "var(--text-tertiary)",
             }}
           >
             {EMAIL_LABELS[key]}
@@ -136,7 +136,7 @@ export function EmailConfig() {
       <div style={{ flex: 1, overflowY: "auto", padding: 32 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+            <div style={{ fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: "0.01em", color: "var(--text-primary)", marginBottom: 4 }}>
               {EMAIL_LABELS[activeKey]}
             </div>
             <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -153,7 +153,7 @@ export function EmailConfig() {
                 style={{
                   width: 40, height: 22, borderRadius: 11,
                   cursor: togglingStatus ? "wait" : "pointer",
-                  background: active?.status === "published" ? "#10b981" : "#d1d5db",
+                  background: active?.status === "published" ? "#10b981" : "var(--surface-muted)",
                   position: "relative", transition: "background 0.2s", flexShrink: 0,
                   opacity: togglingStatus ? 0.6 : 1,
                 }}
@@ -171,7 +171,7 @@ export function EmailConfig() {
             <button
               type="button"
               onClick={() => resetToDefault(activeKey)}
-              style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid #d1d5db", background: "var(--surface-default)", fontSize: 13, cursor: "pointer", color: "var(--text-tertiary)" }}
+              style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--surface-default)", fontSize: 13, cursor: "pointer", color: "var(--text-primary)" }}
             >
               Reset to Default
             </button>
@@ -179,7 +179,7 @@ export function EmailConfig() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "#2563eb", color: "var(--text-inverse)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
             >
               {saving ? "Saving..." : "Save All Templates"}
             </button>
@@ -187,16 +187,16 @@ export function EmailConfig() {
         </div>
 
         {/* Dynamic variables reference */}
-        <div style={{ marginBottom: 20, padding: 14, background: "#fefce8", border: "1px solid #fde68a", borderRadius: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", marginBottom: 8 }}>Available Dynamic Fields:</div>
+        <div style={{ marginBottom: 20, padding: 14, background: "rgba(241,195,60,0.1)", border: "1px solid rgba(241,195,60,0.3)", borderRadius: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8 }}>Available Dynamic Fields:</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {variables.map(v => (
-              <span key={v} style={{ padding: "3px 10px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 4, fontSize: 12, fontFamily: "monospace", color: "#78350f" }}>
+              <span key={v} style={{ padding: "3px 10px", background: "rgba(241,195,60,0.16)", border: "1px solid rgba(241,195,60,0.4)", borderRadius: 4, fontSize: 12, fontFamily: "monospace", color: "var(--text-primary)" }}>
                 {v}
               </span>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: "#92400e", marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>
             Copy and paste these exactly into your subject or body. They will be replaced with real values when the email is sent.
           </div>
         </div>
