@@ -243,7 +243,7 @@ export function StormChatViewer() {
         onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-muted)"; e.currentTarget.style.borderColor = "var(--border-strong)"; }}
         onMouseLeave={e => { e.currentTarget.style.background = "var(--surface-default)"; e.currentTarget.style.borderColor = "var(--border-default)"; }}
       >
-        <div style={{ width: 48, height: 48, borderRadius: "50%", background: img ? "transparent" : (g.isDirect ? "linear-gradient(135deg, #e01418, #b30002)" : "var(--surface-muted)"), color: g.isDirect ? "#fff" : "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16, fontWeight: 700, letterSpacing: "0.02em" }}>
+        <div style={{ width: 48, height: 48, borderRadius: "50%", background: img ? "transparent" : (g.isDirect ? "linear-gradient(135deg, #e01418, #b30002)" : "var(--surface-muted)"), color: g.isDirect ? "var(--text-inverse)" : "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16, fontWeight: 700, letterSpacing: "0.02em" }}>
           {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(titleFor(g))}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -268,7 +268,7 @@ export function StormChatViewer() {
               {status === 'denied' ? "Rejected" : status === 'pending' ? "Pending" : "Join"}
             </span>
           ) : count > 0 ? (
-            <span style={{ background: "#e01418", color: "#fff", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
+            <span style={{ background: "#e01418", color: "var(--text-inverse)", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
               {count > 99 ? "99+" : count}
             </span>
           ) : isPrivate ? (
@@ -295,7 +295,7 @@ export function StormChatViewer() {
             style={{ flex: 1, minWidth: 160, padding: "13px 18px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 15, outline: "none" }} />
           {!impersonating && (
             <button onClick={openPicker}
-              style={{ padding: "13px 24px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", border: "none", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(202,0,2,0.32)" }}>
+              style={{ padding: "13px 24px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", border: "none", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(202,0,2,0.32)" }}>
               New message
             </button>
           )}

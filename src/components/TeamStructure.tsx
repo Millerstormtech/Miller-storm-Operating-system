@@ -17,7 +17,7 @@ type OrgUser = {
 // neutral dark chip so the coloured tiers read at a glance (see mockup).
 const ROLE: Record<string, { label: string; dot: string; avatarBg: string; avatarText: string }> = {
   "c-level": { label: "C-Level", dot: "#f1c33c", avatarBg: "linear-gradient(135deg, #f6d873, #e0a80a)", avatarText: "#3a2a00" },
-  "branch-manager": { label: "Branch Manager", dot: "#e01418", avatarBg: "linear-gradient(135deg, #e01418, #b30002)", avatarText: "#ffffff" },
+  "branch-manager": { label: "Branch Manager", dot: "#e01418", avatarBg: "linear-gradient(135deg, #e01418, #b30002)", avatarText: "var(--text-inverse)" },
   "sales-team-lead": { label: "Sales Team Lead", dot: "#ff8f91", avatarBg: "var(--surface-muted)", avatarText: "var(--text-primary)" },
   sales: { label: "Sales", dot: "#9aa1b3", avatarBg: "var(--surface-muted)", avatarText: "var(--text-primary)" },
   marketing: { label: "Marketing", dot: "#22c55e", avatarBg: "var(--surface-muted)", avatarText: "var(--text-primary)" },

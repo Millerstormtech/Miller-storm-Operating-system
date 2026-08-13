@@ -592,7 +592,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --pill-text: #c7c9ce;
           --pill-border: rgba(255, 255, 255, 0.14);
           --num: #e7e8ea;
-          --amount: #ffffff;
+          --amount: var(--text-inverse);
           --rank: #6b7075;
           --gold: #f1c33c;
           --panel: #141416;
@@ -620,23 +620,23 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --bg: transparent;
           --card-border: transparent;
           --text: #14161a;
-          --muted: #6b7280;
+          --muted: var(--text-muted);
           --subtle: #9aa3ad;
           --line: #eceef1;
-          --th: #6b7280;
+          --th: var(--text-muted);
           --th-bg: #f6f7f9;
           --th-active: #ca0002;
-          --chip-bg: #ffffff;
+          --chip-bg: var(--surface-default);
           --chip-border: #d8dbdf;
-          --chip-text: #374151;
+          --chip-text: var(--text-tertiary);
           --pill-text: #4b5563;
           --pill-border: #d8dbdf;
-          --num: #1f2937;
-          --amount: #111827;
+          --num: var(--text-secondary);
+          --amount: var(--text-primary);
           --rank: #9aa3ad;
           --gold: #cf9412;
-          --panel: #ffffff;
-          --panel-line: #e5e7eb;
+          --panel: var(--surface-default);
+          --panel-line: var(--border-default);
           --hover: #f6f7f9;
           --you: rgba(202, 0, 2, 0.05);
           --top-grad: linear-gradient(90deg, rgba(202, 0, 2, 0.1), rgba(202, 0, 2, 0.02) 70%, transparent);
@@ -645,7 +645,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --note-border: #bfdbfe;
           --note-text: #1e40af;
           --guide-bg: #f8fafc;
-          --rep-panel-bg: #ffffff;
+          --rep-panel-bg: var(--surface-default);
         }
         .sl::before {
           content: "";
@@ -675,13 +675,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__periods { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
         .sl__pill { padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--pill-text); background: transparent; border: 1px solid var(--pill-border); transition: background 0.15s, color 0.15s, border-color 0.15s; }
         .sl__pill:hover { color: var(--text); }
-        .sl__pill--on { background: linear-gradient(90deg, #b30002, #e01418); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(202, 0, 2, 0.35); }
+        .sl__pill--on { background: linear-gradient(90deg, #b30002, #e01418); color: var(--text-inverse); border-color: transparent; box-shadow: 0 6px 18px rgba(202, 0, 2, 0.35); }
 
         .sl__custom { display: flex; gap: 16px; margin-bottom: 16px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
         .sl__date { margin-left: 6px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--text); }
 
         .sl__banner { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; }
-        .sl__banner--rank { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; box-shadow: 0 8px 24px rgba(37, 99, 235, 0.28); }
+        .sl__banner--rank { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: var(--text-inverse); box-shadow: 0 8px 24px rgba(37, 99, 235, 0.28); }
         .sl__banner-emoji { font-size: 34px; line-height: 1; }
         .sl__banner-main { flex: 1; min-width: 160px; }
         .sl__banner-eyebrow { font-size: 12px; opacity: 0.85; font-weight: 700; letter-spacing: 0.4px; }
@@ -691,7 +691,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__stat-val { font-size: 18px; font-weight: 800; }
         .sl__stat-lbl { font-size: 11px; opacity: 0.8; }
 
-        .sl__king { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; background: linear-gradient(100deg, #7a0d10 0%, #b31217 55%, #7a0d10 100%); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px 22px; margin-bottom: 18px; color: #fff; box-shadow: 0 10px 30px rgba(150, 10, 14, 0.35); }
+        .sl__king { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; background: linear-gradient(100deg, #7a0d10 0%, #b31217 55%, #7a0d10 100%); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px 22px; margin-bottom: 18px; color: var(--text-inverse); box-shadow: 0 10px 30px rgba(150, 10, 14, 0.35); }
         .sl__king-medal { position: relative; flex-shrink: 0; }
         .sl__king-crown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; color: #3a2400; background: radial-gradient(circle at 50% 35%, #ffe27a, #e8b923 55%, #a9800f); border-radius: 50%; border: 3px solid #f6d976; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
         .sl__king-main { flex: 1; min-width: 160px; }
@@ -708,13 +708,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__rep-wrap { position: relative; display: inline-block; }
         .sl__overlay { position: fixed; inset: 0; z-index: 20; }
         .sl__rep-panel { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: 260px; background: #1a1a1d; border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); padding: 10px; }
-        .sl.sl--light .sl__rep-panel { background: #ffffff; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18); }
+        .sl.sl--light .sl__rep-panel { background: var(--surface-default); box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18); }
         .sl__rep-search { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--text); margin-bottom: 8px; box-sizing: border-box; font-size: 13px; }
         .sl__rep-list { max-height: 220px; overflow-y: auto; margin-bottom: 8px; }
         .sl__rep-item { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 13px; cursor: pointer; color: var(--text); }
         .sl__rep-actions { display: flex; justify-content: space-between; align-items: center; }
         .sl__link { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0; }
-        .sl__apply { padding: 7px 14px; border-radius: 8px; border: none; background: linear-gradient(90deg, #b30002, #e01418); color: #fff; font-weight: 700; cursor: pointer; font-size: 13px; }
+        .sl__apply { padding: 7px 14px; border-radius: 8px; border: none; background: linear-gradient(90deg, #b30002, #e01418); color: var(--text-inverse); font-weight: 700; cursor: pointer; font-size: 13px; }
         .sl__export :global(button) { border-radius: 999px !important; }
         .sl__count { font-size: 13px; color: var(--subtle); margin-left: auto; }
 

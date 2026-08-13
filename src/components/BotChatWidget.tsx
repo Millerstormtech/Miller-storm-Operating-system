@@ -700,7 +700,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
         style={{ width: "260px", minWidth: "260px", background: sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", transition: "transform 0.25s ease, width 0.2s, min-width 0.2s", flexShrink: 0 }}>
 
         <div style={{ padding: "16px", borderBottom: "1px solid rgb(var(--white-rgb) / 0.1)" }}>
-          <button onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+          <button onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "16px" }}>✏️</span> New Chat
           </button>
         </div>
@@ -795,7 +795,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
                       </div>
                     )}
                     {m.content && (
-                      <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "linear-gradient(135deg, #c40204, #9a0002)" : "var(--surface-subtle)", color: m.role === "user" ? "#fff" : "var(--text-primary)", fontSize: "14px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid var(--border-default)" : "none", whiteSpace: "pre-wrap" }}>
+                      <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "linear-gradient(135deg, #c40204, #9a0002)" : "var(--surface-subtle)", color: m.role === "user" ? "var(--text-inverse)" : "var(--text-primary)", fontSize: "14px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid var(--border-default)" : "none", whiteSpace: "pre-wrap" }}>
                         {m.content}
                       </div>
                     )}
@@ -849,7 +849,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
               <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
                 style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "var(--text-secondary)", alignSelf: "center" }} />
               <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}
-                style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "var(--surface-muted)" : "#e01418", color: loading || (!input.trim() && attachments.length === 0) ? "var(--text-subtle)" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0, transition: "background 0.15s" }}>↑</button>
+                style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "var(--surface-muted)" : "#e01418", color: loading || (!input.trim() && attachments.length === 0) ? "var(--text-subtle)" : "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0, transition: "background 0.15s" }}>↑</button>
             </div>
             <div style={{ textAlign: "center", fontSize: "11px", color: "#d1d5db", marginTop: "8px" }}>
               <span>Powered by <strong style={{ color: "var(--text-subtle)" }}>MillerStorm</strong></span>
