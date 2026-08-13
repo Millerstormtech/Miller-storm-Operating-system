@@ -251,7 +251,7 @@ export function GuidedTour({ tour, ready = true }: { tour: TourDefinition; ready
           position: "fixed",
           top: spot.top, left: spot.left, width: spot.width, height: spot.height,
           borderRadius: 10,
-          boxShadow: "0 0 0 9999px rgb(var(--gray-900-rgb) / 0.6)",
+          boxShadow: "0 0 0 9999px rgb(var(--surface-inverse-rgb) / 0.6)",
           pointerEvents: "none",
           zIndex: 1295,
         }}

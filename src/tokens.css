@@ -15,6 +15,15 @@
    take an opacity. Sites that need alpha use the *-rgb channel primitives:
        rgb(var(--gray-500-rgb) / 0.9)
 
+   THEME OVERRIDES BELONG ON SEMANTICS, NEVER ON PRIMITIVES. A primitive's *-rgb
+   channel form is stable across themes -- --white-rgb is always 255 255 255,
+   full stop -- so a name never lies about what colour it holds. A translucent
+   colour that DOES need to flip with the theme (an alpha fill on a card, a dark
+   veil over the page) gets its own semantic channel token instead, e.g.
+   --surface-default-rgb / --surface-inverse-rgb below. A primitive is never
+   re-pointed to fake that job; that is how --white-rgb ended up meaning
+   "near-black" in dark mode, the exact bug this file's rule is here to prevent.
+
    These values are TODAY's colours. This file was introduced as a pure refactor
    with zero visual change; the new palette lands separately.
    ============================================================================= */
@@ -64,6 +73,12 @@
   --surface-inverse:        var(--gray-900);  /* dark sidebar (36) */
   --surface-inverse-raised: var(--gray-800);  /* panel raised on dark (36) */
 
+  /* Channel forms of the two surfaces above, for translucent fills that must
+     flip WITH the theme (unlike the *-rgb primitives above, which never do).
+     See "THEME OVERRIDES BELONG ON SEMANTICS" at the top of this file. */
+  --surface-default-rgb:  255 255 255;  /* mirrors --surface-default */
+  --surface-inverse-rgb:   17  24  39;  /* mirrors --surface-inverse */
+
   /* Borders */
   --border-default: var(--gray-200);  /* the standard hairline (352 uses) */
   --border-subtle:  var(--gray-100);  /* (26) */
@@ -98,11 +113,15 @@
   --border-subtle:  rgba(255, 255, 255, 0.06);
   --border-strong:  rgba(255, 255, 255, 0.24);
 
-  /* Channel forms used with slash-alpha — re-pointed so translucent fills read
-     on a dark ground. */
-  --gray-100-rgb: 23 24 27;
-  --gray-500-rgb: 154 161 168;
-  --gray-800-rgb: 36 38 43;
-  --gray-900-rgb: 14 15 17;
-  --white-rgb:    23 24 27;
+  /* Channel forms of the two surfaces above -- re-pointed so translucent fills
+     that sit on a flipping card/panel/veil still read correctly on a dark
+     ground. The *-rgb PRIMITIVES (--white-rgb, --gray-*-rgb) are deliberately
+     NOT overridden here any more -- see "THEME OVERRIDES BELONG ON SEMANTICS"
+     at the top of this file. This block used to re-point --white-rgb (and all
+     four gray-*-rgb primitives) to near-black-ish values, which is why a
+     translucent white fill on a THEME-INVARIANT coloured backdrop (a brand-red
+     badge, a bot's custom colour, a fixed gradient) rendered near-invisible in
+     dark mode instead of staying white. */
+  --surface-default-rgb: 23 24 27;  /* mirrors --surface-default */
+  --surface-inverse-rgb: 14 15 17;  /* mirrors --surface-inverse */
 }
