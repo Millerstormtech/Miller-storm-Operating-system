@@ -32,15 +32,15 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           /* Light theme (default) */
           --ms-bg: #eef0f3;
           --ms-glow: rgba(202, 0, 2, 0.06);
-          --ms-card: #ffffff;
+          --ms-card: var(--surface-default);
           --ms-card-border: #eceef1;
           --ms-card-shadow: 0 30px 80px rgba(0, 0, 0, 0.1);
           --ms-text: #0f1115;
-          --ms-muted: #6b7280;
-          --ms-input-bg: #f3f4f6;
-          --ms-input-border: #e5e7eb;
+          --ms-muted: var(--text-muted);
+          --ms-input-bg: var(--surface-subtle);
+          --ms-input-border: var(--border-default);
           --ms-input-text: #0f1115;
-          --ms-placeholder: #9ca3af;
+          --ms-placeholder: var(--text-subtle);
           --ms-wm-opacity: 0.06;
           --ms-glass-blur: 0px;
           --ms-red: #ca0002;
@@ -271,7 +271,7 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           padding: 16px;
           font-size: 16px;
           font-weight: 700;
-          color: #fff;
+          color: var(--text-inverse);
           border: none;
           border-radius: 12px;
           cursor: pointer;
