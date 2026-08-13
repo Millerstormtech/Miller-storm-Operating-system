@@ -10,6 +10,7 @@ import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
+import { courseModules } from "../../lib/training/modules";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -2537,56 +2538,68 @@ export function ManagerOnlineTrainingPage(props: {
               {section.courses.map(({ course, matchPageId }) => {
                 const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
                 return (
-                  <button
-                    key={course.id}
-                    type="button"
-                    className="training-card"
-                    onClick={() => {
-                      const firstPage = (course.pages ?? []).filter(p => p.status === 'published')[0];
-                      openCourse(course, matchPageId ?? firstPage?.id ?? null);
-                    }}
-                    style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
-                  >
-                    {(() => {
-                      const lessons = (course.pages ?? []).filter(p => p.status === 'published' && !p.isQuiz).length;
-                      const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-                      const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
-                      const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
-                      return (
-                        <>
-                        {course.coverImageUrl && (
-                          <div
-                            className="training-card-image"
-                            style={{ backgroundImage: `url(${course.coverImageUrl})` }}
-                          />
-                        )}
-                        <div className="training-card-body">
-                          <div className="training-card-top">
-                            <div className="training-card-title">{course.title}</div>
-                            <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
-                          </div>
-                          {course.description && (
-                            <div className="training-card-desc">{course.description}</div>
-                          )}
-                          {lessons > 0 && (
-                            <div className="training-card-lessons">{lessons} lesson{lessons === 1 ? "" : "s"}</div>
-                          )}
-                          <div className="training-card-progress-track">
+                  <div key={course.id} className="training-card">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        const firstPage = (course.pages ?? []).filter(p => p.status === 'published')[0];
+                        openCourse(course, matchPageId ?? firstPage?.id ?? null);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const firstPage = (course.pages ?? []).filter(p => p.status === 'published')[0]; openCourse(course, matchPageId ?? firstPage?.id ?? null); } }}
+                      style={{ cursor: "pointer", textAlign: "left", display: "block" }}
+                    >
+                      {(() => {
+                        const lessons = (course.pages ?? []).filter(p => p.status === 'published' && !p.isQuiz).length;
+                        const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+                        const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
+                        const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
+                        const mods = courseModules(course);
+                        return (
+                          <>
+                          {course.coverImageUrl && (
                             <div
-                              className="training-card-progress-fill"
-                              style={{
-                                width: `${pct}%`,
-                                background: progress.isCompleted
-                                  ? "linear-gradient(90deg, #2f8f57, #3ea56a)"
-                                  : "linear-gradient(90deg, #b30002, #e01418)",
-                              }}
+                              className="training-card-image"
+                              style={{ backgroundImage: `url(${course.coverImageUrl})` }}
                             />
+                          )}
+                          <div className="training-card-body">
+                            <div className="training-card-top">
+                              <div className="training-card-title">{course.title}</div>
+                              <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
+                            </div>
+                            {course.description && (
+                              <div className="training-card-desc">{course.description}</div>
+                            )}
+                            {mods.length > 0 && (
+                              <div className="training-card-modules" onClick={(e) => e.stopPropagation()}>
+                                {mods.map((m) => (
+                                  <button key={m.id} type="button" className="training-card-module" onClick={() => openCourse(course, m.firstPageId)}>
+                                    <span className="training-card-module-arrow">▸</span>{m.title}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {lessons > 0 && (
+                              <div className="training-card-lessons">{lessons} lesson{lessons === 1 ? "" : "s"}</div>
+                            )}
+                            <div className="training-card-progress-track">
+                              <div
+                                className="training-card-progress-fill"
+                                style={{
+                                  width: `${pct}%`,
+                                  background: progress.isCompleted
+                                    ? "linear-gradient(90deg, #2f8f57, #3ea56a)"
+                                    : "linear-gradient(90deg, #b30002, #e01418)",
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                        </>
-                      );
-                    })()}
-                  </button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 );
               })}
                 </div>

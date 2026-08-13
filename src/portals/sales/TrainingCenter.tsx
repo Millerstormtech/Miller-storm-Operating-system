@@ -10,6 +10,7 @@ import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
+import { courseModules } from "../../lib/training/modules";
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
@@ -868,64 +869,76 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               {section.courses.map((course: Course) => {
                 const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
                 return (
-                  <button
-                    key={course.id}
-                    type="button"
-                    className="training-card"
-                    onClick={() => {
-                      const published = (course.pages ?? []).filter(p => p.status === 'published');
-                      // If the search matched a specific video/lesson (and not the
-                      // course title itself), open the course straight to that lesson.
-                      const term = search.trim().toLowerCase();
-                      const titleMatch = term !== '' && (course.title || '').toLowerCase().includes(term);
-                      const matchedPage = term === '' || titleMatch
-                        ? undefined
-                        : published.find(p => !p.isQuiz && (p.title || '').toLowerCase().includes(term));
-                      enterCourse(course, matchedPage?.id ?? published[0]?.id ?? null);
-                    }}
-                    style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
-                  >
-                    {(() => {
-                      const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-                      const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
-                      const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
-                      return (
-                        <>
-                        {course.coverImageUrl && (
-                          <div
-                            className="training-card-image"
-                            style={{ backgroundImage: `url(${course.coverImageUrl})` }}
-                          />
-                        )}
-                        <div className="training-card-body">
-                          <div className="training-card-top">
-                            <div className="training-card-title">{course.title}</div>
-                            <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
-                          </div>
-                          {course.description && (
-                            <div className="training-card-desc">{course.description}</div>
-                          )}
-                          {lessonCount(course) > 0 && (
-                            <div className="training-card-lessons">
-                              {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}
-                            </div>
-                          )}
-                          <div className="training-card-progress-track">
+                  <div key={course.id} className="training-card">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        const published = (course.pages ?? []).filter(p => p.status === 'published');
+                        // If the search matched a specific video/lesson (and not the
+                        // course title itself), open the course straight to that lesson.
+                        const term = search.trim().toLowerCase();
+                        const titleMatch = term !== '' && (course.title || '').toLowerCase().includes(term);
+                        const matchedPage = term === '' || titleMatch
+                          ? undefined
+                          : published.find(p => !p.isQuiz && (p.title || '').toLowerCase().includes(term));
+                        enterCourse(course, matchedPage?.id ?? published[0]?.id ?? null);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const published = (course.pages ?? []).filter(p => p.status === 'published'); enterCourse(course, published[0]?.id ?? null); } }}
+                      style={{ cursor: "pointer", textAlign: "left", display: "block" }}
+                    >
+                      {(() => {
+                        const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+                        const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
+                        const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
+                        const mods = courseModules(course);
+                        return (
+                          <>
+                          {course.coverImageUrl && (
                             <div
-                              className="training-card-progress-fill"
-                              style={{
-                                width: `${pct}%`,
-                                background: progress.isCompleted
-                                  ? "linear-gradient(90deg, #2f8f57, #3ea56a)"
-                                  : "linear-gradient(90deg, #b30002, #e01418)",
-                              }}
+                              className="training-card-image"
+                              style={{ backgroundImage: `url(${course.coverImageUrl})` }}
                             />
+                          )}
+                          <div className="training-card-body">
+                            <div className="training-card-top">
+                              <div className="training-card-title">{course.title}</div>
+                              <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
+                            </div>
+                            {course.description && (
+                              <div className="training-card-desc">{course.description}</div>
+                            )}
+                            {mods.length > 0 && (
+                              <div className="training-card-modules" onClick={(e) => e.stopPropagation()}>
+                                {mods.map((m) => (
+                                  <button key={m.id} type="button" className="training-card-module" onClick={() => enterCourse(course, m.firstPageId)}>
+                                    <span className="training-card-module-arrow">▸</span>{m.title}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {lessonCount(course) > 0 && (
+                              <div className="training-card-lessons">
+                                {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}
+                              </div>
+                            )}
+                            <div className="training-card-progress-track">
+                              <div
+                                className="training-card-progress-fill"
+                                style={{
+                                  width: `${pct}%`,
+                                  background: progress.isCompleted
+                                    ? "linear-gradient(90deg, #2f8f57, #3ea56a)"
+                                    : "linear-gradient(90deg, #b30002, #e01418)",
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                        </>
-                      );
-                    })()}
-                  </button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 );
               })}
                 </div>

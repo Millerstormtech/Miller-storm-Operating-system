@@ -2756,6 +2756,37 @@ body {
   color: var(--text-muted);
 }
 
+/* Module (folder) shortcuts under the course name — click to jump straight
+   into that module's first lesson. */
+.training-card-modules {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 4px;
+}
+.training-card-module {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border-default);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.training-card-module:hover {
+  border-color: #e01418;
+  color: #e01418;
+  background: rgba(224, 20, 24, 0.06);
+}
+.training-card-module-arrow { color: #e01418; font-size: 11px; flex-shrink: 0; }
+
 /* Course description on the card — clamped to keep cards uniform. */
 .training-card-desc {
   margin-top: 6px;
