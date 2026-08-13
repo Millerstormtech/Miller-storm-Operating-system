@@ -925,7 +925,7 @@ export function StormChatManagement() {
             >
               🔔 Join Requests
               {joinRequests.length > 0 && (
-                <span style={{ position: 'absolute', top: -7, right: -7, minWidth: 19, height: 19, padding: '0 5px', borderRadius: 999, background: '#e01418', color: '#fff', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+                <span style={{ position: 'absolute', top: -7, right: -7, minWidth: 19, height: 19, padding: '0 5px', borderRadius: 999, background: '#e01418', color: 'var(--text-inverse)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
                   {joinRequests.length > 99 ? '99+' : joinRequests.length}
                 </span>
               )}

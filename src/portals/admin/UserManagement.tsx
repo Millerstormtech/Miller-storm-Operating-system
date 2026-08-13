@@ -706,7 +706,7 @@ export function UserManagement(props: UserEditorProps) {
             <button type="button" className="btn-secondary btn-small" onClick={() => { setDeveloperModalTab("selection"); setDevSearch(""); setShowDeveloperModal(true); }}>
               👨‍💻 Developer Accounts{developerUsers.size > 0 ? ` (${developerUsers.size})` : ""}
             </button>
-            <button type="button" className="btn-primary" onClick={createUser} style={{ background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", border: "none" }}>+ Add User</button>
+            <button type="button" className="btn-primary" onClick={createUser} style={{ background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", border: "none" }}>+ Add User</button>
           </div>
         </div>
       </div>

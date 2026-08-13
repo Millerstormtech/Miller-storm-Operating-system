@@ -417,7 +417,7 @@ export function ScoreboardHome(): JSX.Element {
                     borderRadius: 999,
                     border: `1px solid ${active ? "transparent" : "var(--border-default)"}`,
                     background: active ? "linear-gradient(90deg, #b30002, #e01418)" : "transparent",
-                    color: active ? "#fff" : "var(--text-muted)",
+                    color: active ? "var(--text-inverse)" : "var(--text-muted)",
                     fontSize: 14,
                     fontWeight: 700,
                     cursor: "pointer",

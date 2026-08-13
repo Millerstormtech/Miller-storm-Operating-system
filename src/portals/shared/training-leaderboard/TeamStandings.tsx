@@ -36,7 +36,7 @@ export function TeamStandings({
               borderRadius: 16,
               padding: "18px 24px",
               marginBottom: 12,
-              color: top ? "#fff" : "var(--text-primary)",
+              color: top ? "var(--text-inverse)" : "var(--text-primary)",
               background: top
                 ? "linear-gradient(100deg, #7a0d10 0%, #b31217 60%, #7a0d10 100%)"
                 : "var(--surface-default)",
@@ -91,7 +91,12 @@ export function TeamStandings({
                     width: `${pct}%`,
                     height: "100%",
                     borderRadius: 5,
-                    background: top ? "#ffffff" : "linear-gradient(90deg, #b30002, #e01418)",
+                    // top uses --text-inverse (not --surface-default) even though this is a
+                    // `background`: the top card is the FIXED brand-red treatment (see file
+                    // header), theme-invariant by design, and --surface-default flips dark in
+                    // dark mode while --text-inverse stays white in both — the only token that
+                    // preserves the always-white fill against the always-red card.
+                    background: top ? "var(--text-inverse)" : "linear-gradient(90deg, #b30002, #e01418)",
                   }}
                 />
               </div>

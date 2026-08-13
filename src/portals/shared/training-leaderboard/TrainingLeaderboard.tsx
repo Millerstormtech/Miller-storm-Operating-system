@@ -423,7 +423,7 @@ export function TrainingLeaderboard() {
         .clb-view:hover { color: var(--text-primary); }
         .clb-view.on {
           background: linear-gradient(90deg, #b30002, #e01418);
-          color: #fff;
+          color: var(--text-inverse);
           border-color: transparent;
           box-shadow: 0 6px 18px rgba(202, 0, 2, 0.3);
         }

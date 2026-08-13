@@ -179,7 +179,7 @@ export function EmailConfig() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
             >
               {saving ? "Saving..." : "Save All Templates"}
             </button>
