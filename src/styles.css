@@ -2588,7 +2588,13 @@ body {
 
 @media (min-width: 1024px) {
   .training-card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1360px) {
+  .training-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -2598,6 +2604,7 @@ body {
   border: 1px solid var(--border-strong);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   cursor: pointer;
+  overflow: hidden;
   transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
 }
 /* Dark mode: the default card fill sits almost on the near-black page ground, so
@@ -2617,10 +2624,13 @@ body {
 
 .training-card-image {
   position: relative;
-  padding-top: 44%;
+  padding-top: 52%;
   background-image: linear-gradient(135deg, var(--gray-900) /* no semantic: gradient stop */, #4b5563);
-  background-position: center;
+  /* Anchor the crop to the TOP edge so a person's head is never sliced off the
+     top of the thumbnail; `cover` then trims from the bottom instead. */
+  background-position: center top;
   background-size: cover;
+  background-repeat: no-repeat;
 }
 
 .training-card-image-overlay {

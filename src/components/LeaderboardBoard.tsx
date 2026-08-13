@@ -306,39 +306,14 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     <div className={`sl sl--${theme}`} ref={rootRef}>
       <GuidedTour tour={SALES_LEADERBOARD_TOUR} ready={!loading} />
 
-      {/* Title + period pills, inside the board — like the mockup. */}
+      {/* Title, inside the board — like the mockup. The period pills now live in
+          the filters row below, next to Branch/Team, instead of alone up here. */}
       <div className="sl__head">
         <div className="sl__head-titles">
           <h1 className="sl__head-title">Sales Leaderboard</h1>
           <p className="sl__head-sub">{headSub}</p>
         </div>
-        <div className="sl__periods">
-          {WINDOWS.map((w) => (
-            <button
-              key={w.key}
-              type="button"
-              className={`sl__pill${!isCustom && window === w.key ? " sl__pill--on" : ""}`}
-              onClick={() => pickWindow(w.key)}
-            >
-              {w.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`sl__pill${isCustom ? " sl__pill--on" : ""}`}
-            onClick={() => setShowCustom((s) => !s)}
-          >
-            Custom
-          </button>
-        </div>
       </div>
-
-      {showCustom && (
-        <div className="sl__custom">
-          <label>From <input type="date" value={from} max={to || undefined} onChange={(e) => pickDates(e.target.value, to)} className="sl__date" /></label>
-          <label>To <input type="date" value={to} min={from || undefined} onChange={(e) => pickDates(from, e.target.value)} className="sl__date" /></label>
-        </div>
-      )}
 
       {/* "Your rank" pop-out — any user on the board sees their own standing. */}
       {me && (
@@ -376,8 +351,27 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
       )}
 
-      {/* Filters row — pills. */}
+      {/* Filters row — period pills sit alongside Branch/Team/rep filters. */}
       <div className="sl__filters" data-tour="filters">
+        <div className="sl__periods">
+          {WINDOWS.map((w) => (
+            <button
+              key={w.key}
+              type="button"
+              className={`sl__pill${!isCustom && window === w.key ? " sl__pill--on" : ""}`}
+              onClick={() => pickWindow(w.key)}
+            >
+              {w.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`sl__pill${isCustom ? " sl__pill--on" : ""}`}
+            onClick={() => setShowCustom((s) => !s)}
+          >
+            Custom
+          </button>
+        </div>
         <label className="sl__field">
           <span>Branch</span>
           <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="sl__select">
@@ -444,6 +438,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
         <span className="sl__count">{visible.length} rep{visible.length === 1 ? "" : "s"}</span>
       </div>
+
+      {showCustom && (
+        <div className="sl__custom">
+          <label>From <input type="date" value={from} max={to || undefined} onChange={(e) => pickDates(e.target.value, to)} className="sl__date" /></label>
+          <label>To <input type="date" value={to} min={from || undefined} onChange={(e) => pickDates(from, e.target.value)} className="sl__date" /></label>
+        </div>
+      )}
 
       {branchFilter && branchFilter !== NONE ? (
         <div className="sl__note">
@@ -672,8 +673,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         }
         .sl__head-sub { margin: 8px 0 0; font-size: 15px; color: var(--muted); }
 
-        .sl__periods { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-        .sl__pill { padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--pill-text); background: transparent; border: 1px solid var(--pill-border); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+        .sl__periods { display: flex; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; justify-content: flex-start; }
+        @media (max-width: 1100px) { .sl__periods { flex-wrap: wrap; } }
+        .sl__pill { padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--pill-text); background: transparent; border: 1px solid var(--pill-border); transition: background 0.15s, color 0.15s, border-color 0.15s; }
         .sl__pill:hover { color: var(--text); }
         .sl__pill--on { background: linear-gradient(90deg, #b30002, #e01418); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(202, 0, 2, 0.35); }
 
@@ -701,7 +703,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
         /* Above the table sibling so the "Search reps" dropdown isn't painted
            over by it (.sl > * pins every child to z-index 1). */
-        .sl__filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; position: relative; z-index: 15; }
+        .sl__filters { display: flex; gap: 9px; margin-bottom: 16px; flex-wrap: nowrap; align-items: center; position: relative; z-index: 15; }
+        @media (max-width: 1100px) { .sl__filters { flex-wrap: wrap; } }
         .sl__field { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
         .sl__select, .sl__chip { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--chip-text); font-weight: 600; font-size: 13px; cursor: pointer; }
         .sl__toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--pill-text); font-weight: 600; cursor: pointer; }

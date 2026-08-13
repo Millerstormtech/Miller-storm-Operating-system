@@ -1713,14 +1713,12 @@ function ManagerOnlineTrainingPage(props: {
     <div className="training-center">
       <div className="grid grid-3" style={{ marginBottom: 16 }}>
         <DashboardCard
-          title="Your Online Course Completion"
+          title="Course completed out of 100%"
           value={`${managerAverageCompletion}%`}
-          description="Across all published courses"
         />
         <DashboardCard
-          title="Available Courses"
+          title="Courses available"
           value={publishedCourses.length.toString()}
-          description="Published online trainings"
         />
       </div>
       {publishedCourses.length === 0 ? (

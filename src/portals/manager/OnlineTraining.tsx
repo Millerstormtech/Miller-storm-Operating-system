@@ -2442,14 +2442,12 @@ export function ManagerOnlineTrainingPage(props: {
         <>
           <div className="grid grid-3" style={{ marginBottom: 16 }}>
             <DashboardCard
-              title="Your Online Course Completion"
+              title="Course completed out of 100%"
               value={`${managerAverageCompletion}%`}
-              description="Across all published courses"
             />
             <DashboardCard
-              title="Available Courses"
+              title="Courses available"
               value={publishedCourses.length.toString()}
-              description="Published online trainings"
             />
           </div>
           {isLoading ? (
@@ -2494,6 +2492,13 @@ export function ManagerOnlineTrainingPage(props: {
                       const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
                       const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
                       return (
+                        <>
+                        {course.coverImageUrl && (
+                          <div
+                            className="training-card-image"
+                            style={{ backgroundImage: `url(${course.coverImageUrl})` }}
+                          />
+                        )}
                         <div className="training-card-body">
                           <div className="training-card-top">
                             <div className="training-card-title">{course.title}</div>
@@ -2514,6 +2519,7 @@ export function ManagerOnlineTrainingPage(props: {
                             />
                           </div>
                         </div>
+                        </>
                       );
                     })()}
                   </button>

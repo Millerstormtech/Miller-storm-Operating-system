@@ -817,6 +817,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                       const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
                       const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
                       return (
+                        <>
+                        {course.coverImageUrl && (
+                          <div
+                            className="training-card-image"
+                            style={{ backgroundImage: `url(${course.coverImageUrl})` }}
+                          />
+                        )}
                         <div className="training-card-body">
                           <div className="training-card-top">
                             <div className="training-card-title">{course.title}</div>
@@ -839,6 +846,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                             />
                           </div>
                         </div>
+                        </>
                       );
                     })()}
                   </button>
