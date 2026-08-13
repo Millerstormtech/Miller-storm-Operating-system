@@ -257,6 +257,8 @@ export function ManagerOnlineTrainingPage(props: {
     setActivePageId(pageId);
     setViewingPlaylist(playlist);
     setSelectedCourse(course); // instant open with the light structure
+    // Modules start CLOSED every time a course is opened (not just the first).
+    setCollapsedFolders(new Set((course.folders ?? []).map(f => f.id)));
     try {
       const res = await fetch(`/api/courses/${course.id}${props.currentUser?.id ? `?userId=${props.currentUser.id}` : ''}`);
       if (res.ok) {
@@ -264,6 +266,8 @@ export function ManagerOnlineTrainingPage(props: {
         if (full && full.id) {
           // Only swap in the full course if the user is still viewing it.
           setSelectedCourse(prev => (prev && prev.id === full.id ? full : prev));
+          // Collapse the hydrated folder set too (light course may have had none).
+          setCollapsedFolders(new Set((full.folders ?? []).map((f: any) => f.id)));
         }
       }
     } catch (err) {

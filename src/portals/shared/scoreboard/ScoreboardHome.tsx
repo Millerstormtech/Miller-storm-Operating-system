@@ -431,6 +431,12 @@ export function ScoreboardHome(): JSX.Element {
           </div>
         </div>
 
+        {windowSel === "week" && (
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", textAlign: "right", marginTop: -8 }}>
+            Resets Mondays at 12:00 AM CT.
+          </div>
+        )}
+
         <RankStrip rank={board.rank} scopeLevel={board.scope.level} />
 
         {!scopeUnresolved && scopeText && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{scopeText}</div>}

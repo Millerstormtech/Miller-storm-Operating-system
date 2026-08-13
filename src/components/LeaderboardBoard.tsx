@@ -453,6 +453,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
       )}
 
+      {!isCustom && window === "week" && (
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: -6, marginBottom: 14 }}>
+          Resets Mondays at 12:00 AM CT.
+        </div>
+      )}
+
       {branchFilter && branchFilter !== NONE ? (
         <div className="sl__note">
           Showing <strong>{branchFilter}</strong> sales. Numbers are for this branch only. Branch and Team columns are hidden while a branch filter is on, because a rep based in another branch can appear here for their {branchFilter} sales.

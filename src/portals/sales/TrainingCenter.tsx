@@ -165,10 +165,15 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     setActivePageId(initialPageId);
     setCourseViewInitialized(null);
     setIsCourseLoading(true);
+    // Modules start CLOSED every time a course is opened (not just the first).
+    setCollapsedFolders(new Set((baseCourse.folders ?? []).map(f => f.id)));
     try {
       const res = await fetch(`/api/courses/${baseCourse.id}${user?.id ? `?userId=${user.id}` : ''}`);
       const full = res.ok ? await res.json() : null;
-      setSelectedCourse(full && full.id ? full : baseCourse);
+      const resolved = full && full.id ? full : baseCourse;
+      setSelectedCourse(resolved);
+      // Collapse the hydrated folder set too (summary course may have had none).
+      setCollapsedFolders(new Set((resolved.folders ?? []).map((f: any) => f.id)));
     } catch (err) {
       console.error('Failed to load full course, falling back to summary data:', err);
       setSelectedCourse(baseCourse);
