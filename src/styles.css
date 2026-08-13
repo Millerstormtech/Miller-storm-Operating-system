@@ -20,7 +20,7 @@ body {
 
 .app-sidebar {
   /* Theme-aware sidebar palette (light default; dark override below). */
-  --sb-bg: #ffffff;
+  --sb-bg: var(--surface-default);
   --sb-text: #3f4650;
   --sb-muted: #9aa1ab;
   --sb-border: #ececf1;
@@ -296,7 +296,7 @@ body {
   top: 50%;
   transform: translateY(-50%);
   background: #111827;
-  color: #ffffff;
+  color: var(--text-inverse);
   padding: 6px 11px;
   border-radius: 8px;
   font-size: 13px;
@@ -540,7 +540,7 @@ body {
 .btn-primary.btn-success {
   background: #16a34a;
   border-color: #16a34a;
-  color: #ffffff;
+  color: var(--text-inverse);
 }
 
 .btn-primary.btn-success.solid {
@@ -1910,7 +1910,7 @@ body {
 
 .admin-course-page-button-active {
   background-color: #e01418;
-  color: #ffffff;
+  color: var(--text-inverse);
 }
 
 .admin-user-management,
@@ -3663,7 +3663,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 26px;
   font-weight: 600;
 }
