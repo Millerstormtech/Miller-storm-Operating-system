@@ -9,6 +9,7 @@ import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
+import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -2528,8 +2529,12 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
             </div>
           ) : (
-            <div className="training-card-grid">
-              {shownCourses.map(({ course, matchPageId }, index) => {
+            <div>
+              {groupCoursesByCategory(shownCourses.map((sc) => ({ ...sc, category: sc.course.category }))).map((section) => (
+              <div key={section.category} className="training-category-section">
+                {section.category !== UNCATEGORIZED_LABEL && <div className="training-category-heading">{section.category}</div>}
+                <div className="training-card-grid">
+              {section.courses.map(({ course, matchPageId }) => {
                 const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
                 return (
                   <button
@@ -2581,6 +2586,9 @@ export function ManagerOnlineTrainingPage(props: {
                   </button>
                 );
               })}
+                </div>
+              </div>
+              ))}
             </div>
           )}
         </>

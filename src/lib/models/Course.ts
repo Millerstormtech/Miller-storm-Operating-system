@@ -73,6 +73,10 @@ const courseFolderSchema = new Schema(
     status: String,
     coverImageUrl: String,
     accessMode: String,
+    // Optional grouping shown as a section on the Training Center (like Tools &
+    // Products categories). Empty = Uncategorized. Categories are ad-hoc: any
+    // distinct value used across courses becomes a section.
+    category: { type: String, default: "" },
     // When true, EVERY lesson & quiz in this course is unlocked for ALL users
     // (no sequential gating). When false, only leadership roles (C-Level,
     // Branch Manager, Sales Team Lead) get the course unlocked; sales reps

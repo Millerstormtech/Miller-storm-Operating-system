@@ -180,6 +180,8 @@ export type Course = {
   status?: "draft" | "published";
   coverImageUrl?: string;
   accessMode?: "open" | "assigned";
+  // Training Center grouping heading. Empty/undefined = Uncategorized.
+  category?: string;
   // When true, every lesson & quiz is unlocked for ALL users (no sequential
   // gating). When false, only leadership roles get it unlocked.
   unlockAll?: boolean;

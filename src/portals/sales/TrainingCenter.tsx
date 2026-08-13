@@ -10,6 +10,7 @@ import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
+import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 import { GuidedTour } from "../shared/guided-tour/GuidedTour";
@@ -859,8 +860,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               </div>
             </div>
           ) : filteredCourses.length > 0 ? (
-            <div className="training-card-grid" data-tour="course-grid">
-              {filteredCourses.map((course: Course) => {
+            <div>
+              {groupCoursesByCategory(filteredCourses).map((section) => (
+              <div key={section.category} className="training-category-section">
+                {section.category !== UNCATEGORIZED_LABEL && <div className="training-category-heading">{section.category}</div>}
+                <div className="training-card-grid" data-tour="course-grid">
+              {section.courses.map((course: Course) => {
                 const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
                 return (
                   <button
@@ -920,6 +925,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   </button>
                 );
               })}
+                </div>
+              </div>
+              ))}
             </div>
           ) : (
             <div className="panel-empty">No trainings match your search yet.</div>

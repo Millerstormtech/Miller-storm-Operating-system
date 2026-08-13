@@ -2623,6 +2623,28 @@ body {
   gap: 16px;
 }
 
+/* Training Center category sections (grouping courses like Tools & Products). */
+.training-category-section { margin-bottom: 30px; }
+.training-category-heading {
+  font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.training-category-heading::before {
+  content: "";
+  width: 16px;
+  height: 3px;
+  background: #e01418;
+  border-radius: 2px;
+}
+
 @media (min-width: 640px) {
   .training-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
