@@ -2756,6 +2756,18 @@ body {
   color: var(--text-muted);
 }
 
+/* Course description on the card — clamped to keep cards uniform. */
+.training-card-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .training-card-progress-row {
   margin-top: 8px;
   display: flex;

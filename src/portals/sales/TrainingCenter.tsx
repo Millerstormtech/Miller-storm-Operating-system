@@ -902,6 +902,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                             <div className="training-card-title">{course.title}</div>
                             <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
                           </div>
+                          {course.description && (
+                            <div className="training-card-desc">{course.description}</div>
+                          )}
                           {lessonCount(course) > 0 && (
                             <div className="training-card-lessons">
                               {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}

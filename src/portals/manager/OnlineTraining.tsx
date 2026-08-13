@@ -2565,6 +2565,9 @@ export function ManagerOnlineTrainingPage(props: {
                             <div className="training-card-title">{course.title}</div>
                             <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
                           </div>
+                          {course.description && (
+                            <div className="training-card-desc">{course.description}</div>
+                          )}
                           {lessons > 0 && (
                             <div className="training-card-lessons">{lessons} lesson{lessons === 1 ? "" : "s"}</div>
                           )}
