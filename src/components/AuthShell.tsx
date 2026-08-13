@@ -116,7 +116,7 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           line-height: 0.94;
           font-weight: 800;
           letter-spacing: 0.01em;
-          text-transform: uppercase;
+          text-transform: none;
           color: var(--ms-text);
           text-wrap: balance;
         }

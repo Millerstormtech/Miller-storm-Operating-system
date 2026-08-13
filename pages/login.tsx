@@ -90,7 +90,7 @@ const LoginPage: NextPage = () => {
 
   return (
     <AuthShell>
-      <h1 className="ms-auth__title">Welcome Back</h1>
+      <h1 className="ms-auth__title" style={{ whiteSpace: 'nowrap', fontSize: 'clamp(15px, 4.4vw, 26px)', textWrap: 'nowrap', textTransform: 'none' }}>Miller Storm Operating System</h1>
       <p className="ms-auth__subtitle">Sign in to your Miller Storm account.</p>
 
       <form className="ms-auth__form" onSubmit={handleSubmit}>
