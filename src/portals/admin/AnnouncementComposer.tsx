@@ -57,8 +57,8 @@ export function AnnouncementComposer() {
     <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start", padding: 4 }}>
       {/* Form */}
       <div style={{ flex: "1 1 420px", minWidth: 320, maxWidth: 560 }}>
-        <div style={{ background: "var(--surface-default)", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 10px 20px rgba(15,23,42,0.04)", padding: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>
+        <div style={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 16, boxShadow: "0 10px 24px rgba(15,23,42,0.06)", padding: 20 }}>
+          <div style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 22, fontWeight: 800, letterSpacing: 0.2, textTransform: "uppercase", color: "var(--text-primary)", marginBottom: 4 }}>
             📢 New Announcement
           </div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 18 }}>
@@ -124,10 +124,10 @@ export function AnnouncementComposer() {
           style={{
             width: 340,
             maxWidth: "100%",
-            background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-            color: "var(--text-inverse)",
+            background: "linear-gradient(135deg, #e01418 0%, #b30002 100%)",
+            color: "#fff",
             borderRadius: 14,
-            boxShadow: "0 18px 45px rgba(220,38,38,0.35)",
+            boxShadow: "0 18px 45px rgba(202,0,2,0.4)",
             padding: "18px 18px 16px",
             position: "relative",
           }}
@@ -138,7 +138,7 @@ export function AnnouncementComposer() {
           <div style={{ fontSize: 13.5, lineHeight: 1.5, opacity: 0.95, marginBottom: 14, whiteSpace: "pre-wrap" }}>
             {message.trim() || "Your message to the whole company will appear here."}
           </div>
-          <div style={{ width: "100%", background: "var(--surface-default)", color: "#b91c1c", borderRadius: 9, padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "center" }}>
+          <div style={{ width: "100%", background: "#fff", color: "#b30002", borderRadius: 9, padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "center" }}>
             {link.trim() ? "Learn more" : "Got it"}
           </div>
         </div>

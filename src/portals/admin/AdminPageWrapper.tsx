@@ -58,28 +58,27 @@ export function AdminPageWrapper({ children, currentView, pageTitle, pageSubtitl
 
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
-      <AdminLayout currentView={currentView} pageTitle={pageTitle} pageSubtitle={pageSubtitle}>
-        {allowed === false ? null : (
-          <>
-            {backTo && (
-              <button
-                type="button"
-                onClick={() => router.push(backTo)}
-                title={backLabel || "Back to User Management"}
-                aria-label={backLabel || "Back to User Management"}
-                style={{
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  background: "var(--surface-default)", color: "var(--text-tertiary)", border: "1px solid var(--border-default)",
-                  borderRadius: 8, width: 40, height: 40, fontSize: 20, lineHeight: 1,
-                  cursor: "pointer", marginBottom: 16,
-                }}
-              >
-                ←
-              </button>
-            )}
-            {children}
-          </>
-        )}
+      <AdminLayout
+        currentView={currentView}
+        pageTitle={pageTitle}
+        pageSubtitle={pageSubtitle}
+        back={backTo ? (
+          <button
+            type="button"
+            onClick={() => router.push(backTo)}
+            title={backLabel || "Back to User Management"}
+            aria-label={backLabel || "Back to User Management"}
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              background: "var(--surface-default)", color: "var(--text-tertiary)", border: "1px solid var(--border-default)",
+              borderRadius: 10, width: 40, height: 40, fontSize: 20, lineHeight: 1, cursor: "pointer",
+            }}
+          >
+            ←
+          </button>
+        ) : undefined}
+      >
+        {allowed === false ? null : (backTo ? <div style={{ marginTop: 20 }}>{children}</div> : children)}
       </AdminLayout>
     </ProtectedRoute>
   );

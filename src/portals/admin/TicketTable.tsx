@@ -51,9 +51,9 @@ export function TicketTable() {
   const rows = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
 
   return (
-    <div style={{ background: "var(--surface-default)", borderRadius: 14, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+    <div style={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 16, padding: 24, boxShadow: "0 10px 24px rgba(15,23,42,0.06)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14 }}>
+        <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-subtle)", color: "var(--text-primary)", fontWeight: 600 }}>
           <option value="all">All statuses</option>
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
@@ -67,7 +67,7 @@ export function TicketTable() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
-              <tr style={{ background: "#f9fafb", textAlign: "left" }}>
+              <tr style={{ background: "var(--surface-subtle)", textAlign: "left" }}>
                 <th style={th}>User</th>
                 <th style={th}>Type</th>
                 <th style={th}>Details</th>
@@ -106,7 +106,7 @@ export function TicketTable() {
                         value={t.status}
                         disabled={updating === t.id}
                         onChange={(e) => changeStatus(t.id, e.target.value)}
-                        style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13, cursor: "pointer" }}
+                        style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid var(--border-default)", fontSize: 13, cursor: "pointer", background: "var(--surface-subtle)", color: "var(--text-primary)" }}
                       >
                         {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
                       </select>
