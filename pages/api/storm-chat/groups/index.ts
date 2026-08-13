@@ -25,9 +25,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // path that skipped it, so "public group = everyone is in it" holds for
       // real and every public group then shows in their list. Idempotent
       // ($addToSet), best-effort, and only for the per-user (mine=1) fetch.
+      // Admin "View As": an admin may request another user's list by passing
+      // ?userId=. Everyone else's userId param is IGNORED — so a normal user can
+      // never read someone else's chats/DMs, but an admin impersonating a user
+      // sees THAT user's own groups + private DMs (not the admin's own). Same
+      // admin-gated pattern as /api/scoreboard.
+      const requestedId = typeof req.query.userId === 'string' ? req.query.userId : '';
+      const effectiveUserId =
+        requestedId && requestedId !== auth.sub && auth.role === 'admin' ? requestedId : auth.sub;
+
       let myDoc: any = null;
       if (req.query.mine) {
-        myDoc = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean();
+        myDoc = await UserModel.findOne({ id: effectiveUserId }, { _id: 1 }).lean();
         if (myDoc?._id) {
           try {
             const { addUserToPublicGroups } = await import('../../../../src/lib/publicGroups');
@@ -88,7 +97,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (req.query.mine) {
         const me = myDoc as any;
         const myId = me?._id?.toString();
-        const myIds = [auth.sub, myId].filter(Boolean) as string[];
+        // Identity of the EFFECTIVE user (self, or the impersonated user for an
+        // admin View As) — never the admin's own id when impersonating.
+        const myIds = [effectiveUserId, myId].filter(Boolean) as string[];
         const isMemberOf = (g: any) => memberOf(g, myIds);
         // DMs stay strictly members-only. All other groups (public AND private)
         // are visible to EVERYONE so non-members can find a private group and

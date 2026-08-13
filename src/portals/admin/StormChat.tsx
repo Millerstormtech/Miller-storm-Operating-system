@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 import { roleDisplayName } from "../../lib/roleLabels";
 import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
@@ -34,6 +35,7 @@ export function StormChatManagement() {
   const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const router = useRouter();
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -90,20 +92,6 @@ export function StormChatManagement() {
     try {
       const res = await fetch('/api/storm-chat/join-requests');
       if (res.ok) setJoinRequests(await res.json());
-    } catch { /* ignore */ }
-  }
-
-  async function decideJoinRequest(requestId: string, action: 'approve' | 'deny') {
-    try {
-      const res = await fetch('/api/storm-chat/join-requests', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId, action }),
-      });
-      if (res.ok) {
-        setJoinRequests(prev => prev.filter(r => r._id !== requestId));
-        if (action === 'approve') fetchGroups(); // member count updates
-      }
     } catch { /* ignore */ }
   }
 
@@ -886,9 +874,22 @@ export function StormChatManagement() {
     .filter(u => !dmq || (u.name || '').toLowerCase().includes(dmq) || (u.email || '').toLowerCase().includes(dmq));
 
   return (
-    <div>
+    <div className="sc-page">
       <style>{`
-        .sc-wrap { background:var(--surface-default); border:1px solid #eef0f3; border-radius:18px; overflow:hidden; box-shadow:0 12px 40px rgb(var(--gray-900-rgb) / 0.06); }
+        /* Faded brand logo centred behind the whole StormChat management view,
+           matching the other admin pages. Low-opacity, non-interactive overlay. */
+        .sc-page { position: relative; }
+        .sc-page::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 4;
+          background: url("/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png")
+            center 50% / min(820px, 58%) no-repeat;
+          opacity: 0.06;
+          pointer-events: none;
+        }
+        .sc-wrap { position:relative; z-index:1; background:var(--surface-default); border:1px solid var(--border-default); border-radius:18px; overflow:hidden; box-shadow:0 12px 40px rgb(var(--gray-900-rgb) / 0.06); }
         .sc-head { background:linear-gradient(135deg,#DC2626 0%,#991b1b 100%); padding:20px 24px; display:flex; align-items:center; gap:16px; }
         .sc-head-badge { width:48px; height:48px; border-radius:14px; background:rgb(var(--white-rgb) / 0.16); display:flex; align-items:center; justify-content:center; font-size:24px; }
         .sc-btn { border:none; cursor:pointer; font-weight:700; font-size:13.5px; border-radius:999px; padding:9px 18px; display:inline-flex; align-items:center; gap:7px; transition:transform .15s, box-shadow .15s, background .15s; white-space:nowrap; }
@@ -898,7 +899,7 @@ export function StormChatManagement() {
         .sc-btn-solid:hover { transform:translateY(-1px); box-shadow:0 7px 20px rgba(0,0,0,0.2); }
         .sc-label { font-size:11px; font-weight:800; color:var(--text-subtle); text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:8px; }
         .sc-label::before { content:''; width:14px; height:2px; background:#DC2626; border-radius:2px; }
-        .sc-tile { display:flex; align-items:center; gap:13px; padding:11px 13px; background:var(--surface-default); border:1px solid #eef0f3; border-radius:14px; cursor:pointer; text-align:left; width:100%; transition:transform .14s, box-shadow .14s, border-color .14s; }
+        .sc-tile { display:flex; align-items:center; gap:13px; padding:11px 13px; background:var(--surface-default); border:1px solid var(--border-default); border-radius:14px; cursor:pointer; text-align:left; width:100%; transition:transform .14s, box-shadow .14s, border-color .14s; }
         .sc-tile:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgb(var(--gray-900-rgb) / 0.09); border-color:#fecaca; }
         .sc-badge { background:linear-gradient(135deg,#ef4444,#dc2626); color:var(--text-inverse); font-size:11.5px; font-weight:800; min-width:22px; height:22px; border-radius:11px; display:flex; align-items:center; justify-content:center; padding:0 6px; box-shadow:0 2px 6px rgba(220,38,38,0.4); flex-shrink:0; }
         .sc-info { color:#c4c9d2; font-size:18px; padding:2px 6px; flex-shrink:0; transition:color .15s; }
@@ -916,32 +917,23 @@ export function StormChatManagement() {
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="sc-btn sc-btn-ghost" onClick={openDmPicker}>✏️ New message</button>
+            <button
+              type="button"
+              className="sc-btn sc-btn-ghost"
+              onClick={() => router.push('/admin/join-requests')}
+              style={{ position: 'relative' }}
+            >
+              🔔 Join Requests
+              {joinRequests.length > 0 && (
+                <span style={{ position: 'absolute', top: -7, right: -7, minWidth: 19, height: 19, padding: '0 5px', borderRadius: 999, background: '#e01418', color: '#fff', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+                  {joinRequests.length > 99 ? '99+' : joinRequests.length}
+                </span>
+              )}
+            </button>
             <button type="button" className="sc-btn sc-btn-solid" onClick={() => { resetForm(); setIsCreating(true); }}>+ Create group</button>
           </div>
         </div>
         <div style={{ padding: '18px 20px' }}>
-          {/* Pending join requests for private groups */}
-          {joinRequests.length > 0 && (
-            <div style={{ marginBottom: 18, padding: 14, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 10 }}>
-                🔔 Pending join requests ({joinRequests.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {joinRequests.map(r => (
-                  <div key={r._id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-default)', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {r.userName || 'A user'} <span style={{ fontSize: 11, color: 'var(--text-subtle)', fontWeight: 500 }}>({r.userRole})</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>wants to join “{r.groupName}”</div>
-                    </div>
-                    <button type="button" onClick={() => decideJoinRequest(r._id, 'approve')} style={{ padding: '6px 12px', background: '#16a34a', color: 'var(--text-inverse)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Approve</button>
-                    <button type="button" onClick={() => decideJoinRequest(r._id, 'deny')} style={{ padding: '6px 12px', background: 'var(--surface-subtle)', color: 'var(--text-tertiary)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Deny</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           {/* Direct Messages */}
           <div className="sc-label" style={{ marginBottom: 10 }}>Direct Messages</div>
           {myDms.length === 0 ? (

@@ -32,18 +32,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Group not found' });
       }
 
-      const queryUserId = auth.sub;
-      const queryUserRole = auth.role;
+      // Admin "View As": an admin may read as another user by passing ?userId=.
+      // Ignored for everyone else, so a normal user can never read a DM they are
+      // not in. During impersonation the effective identity/role is the
+      // impersonated user's — NOT the admin's — so the admin sees exactly that
+      // user's view (and gets no admin override on a DM either).
+      const requestedId = typeof req.query.userId === 'string' ? req.query.userId : '';
+      const effectiveUserId =
+        requestedId && requestedId !== auth.sub && auth.role === 'admin' ? requestedId : auth.sub;
 
-      // auth.sub is the app id (e.g. "user-123") but group.members/admins store
-      // Mongo _ids — resolve this user's _id so membership matches either form.
-      const me = await UserModel.findOne({ id: queryUserId }, { _id: 1 }).lean() as any;
-      const myIds = [queryUserId, me?._id?.toString()].filter(Boolean) as string[];
+      // effectiveUserId is the app id (e.g. "user-123") but group.members/admins
+      // store Mongo _ids — resolve the _id so membership matches either form.
+      const me = await UserModel.findOne({ id: effectiveUserId }, { _id: 1, role: 1 }).lean() as any;
+      const myIds = [effectiveUserId, me?._id?.toString()].filter(Boolean) as string[];
+      const effectiveRole = effectiveUserId === auth.sub ? auth.role : me?.role;
 
-      // Membership-first read access (unit-tested in access.test.ts): members
-      // and group admins can read; a system admin can read a real GROUP but
-      // NEVER a private DM. Everyone else is denied.
-      if (!canReadMessages(group, myIds, queryUserRole?.toString())) {
+      // DM: only the two canonical participants (dmKey). Group: members, or a
+      // system admin. Enforced by the shared, unit-tested helper.
+      if (!canReadMessages(group, myIds, effectiveRole?.toString())) {
         return res.status(403).json({ error: 'You are not a member of this group' });
       }
 

@@ -31,7 +31,7 @@ type ChatGroup = {
 type PickUser = { _id?: string; id: string; name: string; email: string; role: string; headshotUrl?: string };
 
 export function StormChatViewer() {
-  const { user } = useAuth();
+  const { user, impersonating } = useAuth();
   const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<ChatGroup | null>(null);
@@ -66,7 +66,11 @@ export function StormChatViewer() {
 
   async function loadGroups() {
     try {
-      const res = await fetch("/api/storm-chat/groups?mine=1");
+      // Pass the (possibly impersonated) user's id. The server honors ?userId=
+      // ONLY when the caller's token is an admin — so a normal user can never
+      // read someone else's list, but an admin "View As" shows THAT user's own
+      // groups + DMs (not the admin's).
+      const res = await fetch(`/api/storm-chat/groups?mine=1&userId=${encodeURIComponent(user?.id || "")}`);
       if (res.ok) setGroups(await res.json());
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -289,10 +293,12 @@ export function StormChatViewer() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22, flexWrap: "wrap" }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
             style={{ flex: 1, minWidth: 160, padding: "13px 18px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 15, outline: "none" }} />
-          <button onClick={openPicker}
-            style={{ padding: "13px 24px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", border: "none", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(202,0,2,0.32)" }}>
-            New message
-          </button>
+          {!impersonating && (
+            <button onClick={openPicker}
+              style={{ padding: "13px 24px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "#fff", border: "none", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(202,0,2,0.32)" }}>
+              New message
+            </button>
+          )}
         </div>
 
         {loading ? (
