@@ -29,8 +29,17 @@ export async function addUserToBranchGroups(userMongoId: string, branches: Array
     const groupsCol = db.collection('chatgroups');
     const usersCol = db.collection('users');
 
+    // Only EXPLICITLY-discoverable groups (public/private visibility) are valid
+    // branch-membership candidates. A direct message never carries a
+    // `visibility`, so it can never be picked up as a "branch group" and have a
+    // third member auto-added — the bug that leaked Admin<->Jay to Carley. This
+    // is deliberately stronger than `isDirect: { $ne: true }`, which matched
+    // legacy DMs that predate the isDirect flag.
     const groups = await groupsCol
-      .find({ isDirect: { $ne: true } }, { projection: { name: 1, members: 1 } })
+      .find(
+        { visibility: { $in: ['public', 'private'] } },
+        { projection: { name: 1, members: 1, visibility: 1 } }
+      )
       .toArray();
     if (groups.length === 0) return;
 

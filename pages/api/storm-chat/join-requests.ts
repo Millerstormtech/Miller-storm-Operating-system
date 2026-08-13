@@ -5,6 +5,7 @@ import GroupJoinRequest from '../../../src/lib/models/GroupJoinRequest';
 import { UserModel } from '../../../src/lib/models/User';
 import { NotificationModel } from '../../../src/lib/models/Notification';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
+import { isDmGroup } from '../../../src/lib/stormchat/isDm';
 
 // Join-request flow for PRIVATE StormChat groups:
 //   POST   { groupId }               → a user asks to join (creates a pending request, notifies group admins)
@@ -107,6 +108,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!jr) return res.status(404).json({ error: 'Request not found' });
       const group: any = await ChatGroup.findById(jr.groupId);
       if (!group) return res.status(404).json({ error: 'Group not found' });
+
+      // A join request can NEVER add a member to a direct message — DMs are
+      // strictly 2-person. (Belt-and-suspenders: join requests are only ever
+      // created for discoverable groups, but this guarantees a DM can't grow.)
+      if (isDmGroup(group)) {
+        return res.status(400).json({ error: 'Direct messages cannot be joined' });
+      }
 
       // Only a system admin or one of the group's admins may decide.
       const groupAdminIds = (group.admins || []).map(String);
