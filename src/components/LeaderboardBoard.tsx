@@ -313,6 +313,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           <h1 className="sl__head-title">Sales Leaderboard</h1>
           <p className="sl__head-sub">{headSub}</p>
         </div>
+        {/* Total revenue for the selected period — recomputes with the date
+            filter (and any active branch/team/rep filters) since it sums the
+            visible rows. */}
+        <div className="sl__total" title="Total contract amount for the selected period">
+          <div className="sl__total-label">Total Revenue</div>
+          <div className="sl__total-val">{fmtMoney(totals.revenue)}</div>
+        </div>
       </div>
 
       {/* "Your rank" pop-out — any user on the board sees their own standing. */}
@@ -672,6 +679,11 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           color: var(--text);
         }
         .sl__head-sub { margin: 8px 0 0; font-size: 15px; color: var(--muted); }
+
+        .sl__total { text-align: right; padding: 10px 18px; border-radius: 14px; border: 1px solid var(--chip-border); background: var(--chip-bg); flex-shrink: 0; }
+        .sl__total-label { font-size: 11px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+        .sl__total-val { margin-top: 3px; font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif; font-size: clamp(24px, 3vw, 32px); font-weight: 900; line-height: 1; letter-spacing: 0.01em; color: #16a34a; }
+        @media (max-width: 560px) { .sl__total { text-align: left; } }
 
         .sl__periods { display: flex; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; justify-content: flex-start; }
         @media (max-width: 1100px) { .sl__periods { flex-wrap: wrap; } }
