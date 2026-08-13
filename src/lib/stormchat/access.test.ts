@@ -103,6 +103,42 @@ describe('Admin -> User DM privacy', () => {
   });
 });
 
+// Regression for the exact reported repro: Super Admin messages Carley; Ashton
+// must NOT see it. Covered across every shape the Admin<->Carley thread could
+// have in the real data, so a failure pinpoints the shape that leaks.
+describe('Regression: Admin -> Carley DM, Ashton must not see it', () => {
+  const ADMIN2 = { app: 'user-superadmin', _id: 'ccccccccccccccccccccc01', role: 'admin' };
+  const CARLEY = { app: 'user-carley', _id: 'ccccccccccccccccccccc02' };
+  const ASHTON = { app: 'user-ashton', _id: 'ccccccccccccccccccccc03' };
+
+  it('real DM (isDirect, dmKey, NO visibility): Ashton blocked', () => {
+    const t = dm(ADMIN2, CARLEY);
+    expect(canSeeGroupInList(t, ids(ADMIN2))).toBe(true);
+    expect(canSeeGroupInList(t, ids(CARLEY))).toBe(true);
+    expect(canSeeGroupInList(t, ids(ASHTON))).toBe(false);
+    expect(canReadMessages(t, ids(ASHTON))).toBe(false);
+  });
+
+  it('legacy DM (no flags, arbitrary name, NO visibility): Ashton blocked', () => {
+    const t = { _id: 'legacy-admin-carley', name: 'Carley', members: [ADMIN2._id, CARLEY._id], admins: [] };
+    expect(canSeeGroupInList(t, ids(CARLEY))).toBe(true);
+    expect(canSeeGroupInList(t, ids(ASHTON))).toBe(false);
+    expect(canReadMessages(t, ids(ASHTON))).toBe(false);
+  });
+
+  // If the reported thread actually carries a visibility, it is a GROUP by
+  // definition — the code (correctly) treats it as discoverable, AND the
+  // public-group self-heal would auto-add everyone. This asserts that a
+  // 2-member thread WITH a visibility is NOT a DM, i.e. proves the fix depends
+  // on the data being a real DM. If production leaks, the audit endpoint will
+  // show a `visibility` on the thread and this documents why.
+  it('a 2-member thread WITH visibility:public is a discoverable GROUP, not a DM', () => {
+    const t = { _id: 'grouplike', name: 'Carley', members: [ADMIN2._id, CARLEY._id], admins: [ADMIN2._id], visibility: 'public' };
+    // Non-member Ashton CAN see a public group — because it is a group, not a DM.
+    expect(canSeeGroupInList(t, ids(ASHTON))).toBe(true);
+  });
+});
+
 describe('does not change public/private group behaviour', () => {
   it('members see + read; a non-member still discovers a private group; admin can read a real group', () => {
     expect(canSeeGroupInList(PRIVATE_GROUP, ids(SEEMA))).toBe(true);   // member
