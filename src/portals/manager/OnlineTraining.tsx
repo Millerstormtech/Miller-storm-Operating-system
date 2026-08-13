@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { appConfirm } from "../../lib/appDialogs";
 import { useRouter } from "next/router";
-import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { LessonTick } from "../../components/LessonTick";
@@ -676,24 +675,37 @@ export function ManagerOnlineTrainingPage(props: {
   }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen, completedPages]);
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
+  // Per-course raw completed pages + last-touched time for the "Continue where
+  // you left off" resume banner (the viewer's OWN progress).
+  const [courseCompletedMap, setCourseCompletedMap] = useState<Record<string, Set<string>>>({});
+  const [courseUpdatedMap, setCourseUpdatedMap] = useState<Record<string, number>>({});
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
   const [teamProgress, setTeamProgress] = useState<{ user: any; rows: { course: any; completed: number; total: number; isCompleted: boolean }[] }[]>([]);
   const [isLoadingTeam, setIsLoadingTeam] = useState(false);
 
-  // Real average completion across all courses (lesson pages only)
-  const managerAverageCompletion = (() => {
-    const coursesWithPages = publishedCourses.filter(c => {
-      const lessonCount = (c.pages || []).filter(p => p.status === 'published' && !p.isQuiz).length;
-      return lessonCount > 0;
-    });
-    if (coursesWithPages.length === 0) return 0;
-    const total = coursesWithPages.reduce((sum, course) => {
-      const p = courseProgress[course.id];
-      if (!p || p.total === 0) return sum;
-      return sum + Math.round((p.completed / p.total) * 100);
-    }, 0);
-    return Math.round(total / coursesWithPages.length);
-  })();
+  // The course/lesson to resume: most recently touched course that's started
+  // but not finished, jumped to its first not-yet-watched published lesson.
+  const resumeTarget = useMemo(() => {
+    if (!publishedCourses.length) return null;
+    const started = publishedCourses
+      .map(c => ({
+        course: c,
+        prog: courseProgress[c.id],
+        done: courseCompletedMap[c.id] || new Set<string>(),
+        updated: courseUpdatedMap[c.id] || 0,
+      }))
+      .filter(x => x.prog && x.prog.completed > 0 && !x.prog.isCompleted)
+      .sort((a, b) => b.updated - a.updated);
+    const pick = started[0];
+    if (!pick) return null;
+    const pages = (pick.course.pages ?? []).filter(p => p.status === 'published');
+    const next =
+      pages.find(p => !p.isQuiz && !pick.done.has(p.id)) ||
+      pages.find(p => !pick.done.has(p.id)) ||
+      pages[0];
+    if (!next) return null;
+    return { course: pick.course, pageId: next.id, lessonTitle: next.title || '', courseTitle: pick.course.title };
+  }, [publishedCourses, courseProgress, courseCompletedMap, courseUpdatedMap]);
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -708,7 +720,9 @@ export function ManagerOnlineTrainingPage(props: {
         if (res.ok) {
           const data = await res.json();
           const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
-          
+          const completedMap: Record<string, Set<string>> = {};
+          const updatedMap: Record<string, number> = {};
+
           publishedCourses.forEach(course => {
             const courseData = data[course.id] || {};
             const publishedPages = (course.pages || []).filter(p => p.status === 'published');
@@ -718,9 +732,13 @@ export function ManagerOnlineTrainingPage(props: {
               courseData.quizResults || [],
               courseData.courseCompleted
             );
+            completedMap[course.id] = new Set<string>(courseData.completedPages || []);
+            updatedMap[course.id] = courseData.updatedAt ? new Date(courseData.updatedAt).getTime() : 0;
           });
-          
+
           setCourseProgress(progressMap);
+          setCourseCompletedMap(completedMap);
+          setCourseUpdatedMap(updatedMap);
         }
       } catch (err) {
         console.error('Failed to load progress:', err);
@@ -792,14 +810,19 @@ export function ManagerOnlineTrainingPage(props: {
           justifyContent: 'center', 
           zIndex: 9999 
         }}>
-          <div className="dialog" style={{ 
-            maxWidth: 700, 
-            backgroundColor: 'white', 
-            borderRadius: 8, 
+          <div className="dialog" style={{
+            width: 'min(700px, 92vw)',
+            maxWidth: 700,
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            backgroundColor: 'var(--surface-default)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 16,
             padding: 24,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            boxShadow: '0 24px 70px rgba(0, 0, 0, 0.45)'
           }}>
-            <div className="dialog-title" style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Create Playlist</div>
+            <div className="dialog-title" style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: 0.3, textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: 6, paddingBottom: 10, borderBottom: '2px solid #e01418' }}>Create Playlist</div>
             <div style={{ padding: '16px 0' }}>
               <label className="field" style={{ marginBottom: 16 }}>
                 <span className="field-label">Playlist Name</span>
@@ -967,14 +990,19 @@ export function ManagerOnlineTrainingPage(props: {
           justifyContent: 'center', 
           zIndex: 9999 
         }}>
-          <div className="dialog" style={{ 
-            maxWidth: 600, 
-            backgroundColor: 'white', 
-            borderRadius: 8, 
+          <div className="dialog" style={{
+            width: 'min(600px, 92vw)',
+            maxWidth: 600,
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            backgroundColor: 'var(--surface-default)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 16,
             padding: 24,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            boxShadow: '0 24px 70px rgba(0, 0, 0, 0.45)'
           }}>
-            <div className="dialog-title" style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Edit Playlist</div>
+            <div className="dialog-title" style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: 0.3, textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: 6, paddingBottom: 10, borderBottom: '2px solid #e01418' }}>Edit Playlist</div>
             <div style={{ padding: '16px 0' }}>
               <label className="field" style={{ marginBottom: 16 }}>
                 <span className="field-label">Playlist Name</span>
@@ -1093,14 +1121,19 @@ export function ManagerOnlineTrainingPage(props: {
           justifyContent: 'center', 
           zIndex: 9999 
         }}>
-          <div className="dialog" style={{ 
-            maxWidth: 700, 
-            backgroundColor: 'white', 
-            borderRadius: 8, 
+          <div className="dialog" style={{
+            width: 'min(700px, 92vw)',
+            maxWidth: 700,
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            backgroundColor: 'var(--surface-default)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 16,
             padding: 24,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            boxShadow: '0 24px 70px rgba(0, 0, 0, 0.45)'
           }}>
-            <div className="dialog-title" style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
+            <div className="dialog-title" style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: 0.3, textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: 12, paddingBottom: 10, borderBottom: '2px solid #e01418' }}>
               Manage Playlist Assignments
             </div>
             
@@ -1186,7 +1219,7 @@ export function ManagerOnlineTrainingPage(props: {
                     </div>
                   )}
                 </div>
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8 }}>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>
                     Deadline <span style={{ fontWeight: 400, color: 'var(--text-subtle)' }}>(optional)</span>
                   </label>
@@ -1194,7 +1227,7 @@ export function ManagerOnlineTrainingPage(props: {
                     type="date"
                     value={assignDeadline}
                     onChange={(e) => setAssignDeadline(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-default)', borderRadius: 6, fontSize: 14 }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 14, background: 'var(--surface-subtle)', color: 'var(--text-primary)', colorScheme: 'light dark' }}
                   />
                   <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 4 }}>
                     You&apos;ll be notified if a user hasn&apos;t finished the videos and quizzes by this date.
@@ -1317,10 +1350,11 @@ export function ManagerOnlineTrainingPage(props: {
               </div>
             )}
 
-            <div className="dialog-actions" style={{ marginTop: 16 }}>
+            <div className="dialog-actions" style={{ marginTop: 4 }}>
               <button
                 type="button"
                 className="btn-secondary"
+                style={{ background: 'var(--surface-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-strong)', fontWeight: 700, padding: '9px 22px' }}
                 onClick={() => {
                   setIsAssignModalOpen(false);
                   setAssigningPlaylist(null);
@@ -1911,15 +1945,15 @@ export function ManagerOnlineTrainingPage(props: {
 
         {/* DESKTOP: full layout */}
         <div className="desktop-course-view">
-        <div className="panel-header">
+        <div className="panel-header" style={{ marginTop: -14 }}>
           <div className="panel-header-row">
-            <span>{selectedCourse.title}</span>
+            <span style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 21, fontWeight: 800, letterSpacing: 0.2, color: 'var(--text-primary)' }}>{selectedCourse.title}</span>
             {/* Desktop: show all buttons inline */}
             <div className="course-header-desktop-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {!viewingPlaylist && (
-                <button type="button" className="btn-primary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
+                <button type="button" className="btn-primary btn-small" style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 700, boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
               )}
-              <button type="button" className="btn-secondary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>Back to Courses</button>
+              <button type="button" className="btn-secondary btn-small" style={{ background: 'var(--surface-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>← Back to Courses</button>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
                 <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('manager-autoplay', String(next)); }} style={{ width: 40, height: 22, borderRadius: 11, backgroundColor: autoPlay ? '#e01418' : 'var(--border-default)', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
                   <div style={{ position: 'absolute', top: 3, left: autoPlay ? 21 : 3, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
@@ -1969,7 +2003,7 @@ export function ManagerOnlineTrainingPage(props: {
                 value={lessonSearch}
                 onChange={(e) => setLessonSearch(e.target.value)}
                 placeholder="Search videos by title…"
-                style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', background: 'var(--surface-default)', color: 'var(--text-primary)' }}
               />
             </div>
 
@@ -2440,16 +2474,34 @@ export function ManagerOnlineTrainingPage(props: {
         .filter(x => x.show);
       return (
         <>
-          <div className="grid grid-3" style={{ marginBottom: 16 }}>
-            <DashboardCard
-              title="Course completed out of 100%"
-              value={`${managerAverageCompletion}%`}
-            />
-            <DashboardCard
-              title="Courses available"
-              value={publishedCourses.length.toString()}
-            />
-          </div>
+          {/* Resume banner: jumps to the next unwatched lesson of the course the
+              viewer most recently left unfinished (their OWN progress). */}
+          {resumeTarget && (
+            <>
+              <style>{`
+                @keyframes tcResumeShine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+                @keyframes tcResumePulse { 0%,100% { box-shadow: 0 10px 26px rgba(202,0,2,0.35); } 50% { box-shadow: 0 14px 34px rgba(202,0,2,0.55); } }
+                .tc-resume { position: relative; overflow: hidden; width: 100%; display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin: -22px 0 16px; border: none; border-radius: 16px; cursor: pointer; text-align: left;
+                  background: linear-gradient(90deg, #b30002, #e01418, #b30002); background-size: 200% 100%; animation: tcResumeShine 6s linear infinite, tcResumePulse 2.8s ease-in-out infinite; transition: transform .15s ease; }
+                .tc-resume:hover { transform: translateY(-2px); }
+                .tc-resume-play { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+                .tc-resume-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+                .tc-resume-title { font-family: "Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif; font-size: 19px; font-weight: 800; letter-spacing: 0.3px; color: #fff; }
+                .tc-resume-sub { font-size: 13px; color: rgba(255,255,255,0.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .tc-resume-arrow { flex-shrink: 0; font-size: 22px; color: #fff; }
+              `}</style>
+              <button type="button" className="tc-resume" onClick={() => openCourse(resumeTarget.course, resumeTarget.pageId)}>
+                <span className="tc-resume-play">▶</span>
+                <span className="tc-resume-text">
+                  <span className="tc-resume-title">Continue where you left off!</span>
+                  <span className="tc-resume-sub">
+                    {resumeTarget.courseTitle}{resumeTarget.lessonTitle ? ` · ${resumeTarget.lessonTitle}` : ''}
+                  </span>
+                </span>
+                <span className="tc-resume-arrow">→</span>
+              </button>
+            </>
+          )}
           {isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <div style={{ textAlign: 'center' }}>
@@ -2535,7 +2587,7 @@ export function ManagerOnlineTrainingPage(props: {
       return (
         <div className="panel">
           <div className="panel-header">
-            <span>My Playlists</span>
+            <span style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 21, fontWeight: 800, letterSpacing: 0.2, textTransform: 'uppercase', color: 'var(--text-primary)' }}>My Playlists</span>
           </div>
           <div className="panel-body">
             {playlists.length === 0 ? (
@@ -2549,10 +2601,10 @@ export function ManagerOnlineTrainingPage(props: {
             ) : (
               <div style={{ display: 'grid', gap: 16 }} className="playlist-grid">
                 {playlists.map((playlist) => (
-                  <div key={playlist.id} className="card playlist-card" style={{ padding: 16 }}>
+                  <div key={playlist.id} className="card playlist-card" style={{ padding: 16, height: 'auto', borderLeft: '4px solid #e01418' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }} className="playlist-card-content">
                       <div style={{ flex: 1 }} className="playlist-card-info">
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
+                        <div style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 19, fontWeight: 800, letterSpacing: 0.2, textTransform: 'uppercase', marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
                           {playlist.name}
                         </div>
                         <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
@@ -2566,6 +2618,7 @@ export function ManagerOnlineTrainingPage(props: {
                         <button
                           type="button"
                           className="btn-primary playlist-action-btn"
+                          style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: '#fff', border: 'none', boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }}
                           onClick={() => {
                             const course = publishedCourses.find(c => c.id === playlist.courseId);
                             if (course) {
@@ -2653,7 +2706,7 @@ export function ManagerOnlineTrainingPage(props: {
       return (
         <div className="panel">
           <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Team Training Progress</span>
+            <span style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 21, fontWeight: 800, letterSpacing: 0.2, textTransform: 'uppercase', color: 'var(--text-primary)' }}>Team Training Progress</span>
             <div style={{ display: 'flex', background: 'var(--surface-subtle)', padding: '4px', borderRadius: '8px', gap: '4px' }}>
               {/* C-Level (companyWide) hides the per-course "Courses Progress"
                   view — it only manages Playlist Progress + Unlock Lesson. */}
@@ -2668,9 +2721,9 @@ export function ManagerOnlineTrainingPage(props: {
                   fontWeight: 600,
                   border: 'none',
                   cursor: 'pointer',
-                  background: teamProgressView === 'courses' ? 'var(--surface-default)' : 'transparent',
-                  color: teamProgressView === 'courses' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  boxShadow: teamProgressView === 'courses' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  background: teamProgressView === 'courses' ? 'linear-gradient(90deg,#b30002,#e01418)' : 'transparent',
+                  color: teamProgressView === 'courses' ? '#fff' : 'var(--text-muted)',
+                  boxShadow: teamProgressView === 'courses' ? '0 3px 10px rgba(202,0,2,0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
               >
@@ -2687,9 +2740,9 @@ export function ManagerOnlineTrainingPage(props: {
                   fontWeight: 600,
                   border: 'none',
                   cursor: 'pointer',
-                  background: teamProgressView === 'playlists' ? 'var(--surface-default)' : 'transparent',
-                  color: teamProgressView === 'playlists' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  boxShadow: teamProgressView === 'playlists' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  background: teamProgressView === 'playlists' ? 'linear-gradient(90deg,#b30002,#e01418)' : 'transparent',
+                  color: teamProgressView === 'playlists' ? '#fff' : 'var(--text-muted)',
+                  boxShadow: teamProgressView === 'playlists' ? '0 3px 10px rgba(202,0,2,0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
               >
@@ -2708,9 +2761,9 @@ export function ManagerOnlineTrainingPage(props: {
                   fontWeight: 600,
                   border: 'none',
                   cursor: 'pointer',
-                  background: teamProgressView === 'unlock' ? 'var(--surface-default)' : 'transparent',
-                  color: teamProgressView === 'unlock' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  boxShadow: teamProgressView === 'unlock' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  background: teamProgressView === 'unlock' ? 'linear-gradient(90deg,#b30002,#e01418)' : 'transparent',
+                  color: teamProgressView === 'unlock' ? '#fff' : 'var(--text-muted)',
+                  boxShadow: teamProgressView === 'unlock' ? '0 3px 10px rgba(202,0,2,0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
               >
@@ -3098,9 +3151,10 @@ function UnlockLessonPanel(props: {
     <div>
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
-          <button type="button" onClick={() => setSelectedMemberId(null)} style={{ background: 'transparent', border: 'none', color: '#e01418', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>← Team members</button>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{selectedMember.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <button type="button" onClick={() => setSelectedMemberId(null)} style={{ background: 'transparent', border: 'none', color: '#e01418', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>← Team members</button>
+          <span style={{ color: 'var(--border-strong)' }}>·</span>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedMember.name}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Allow this rep to fast-forward / freely seek training videos. */}
@@ -3144,7 +3198,7 @@ function UnlockLessonPanel(props: {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search a lesson or quiz by name…"
-          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid var(--border-default)', fontSize: 14, outline: 'none' }}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid var(--border-default)', fontSize: 14, outline: 'none', background: 'var(--surface-default)', color: 'var(--text-primary)' }}
         />
         {search && (
           <button type="button" onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-subtle)', fontSize: 16, cursor: 'pointer' }}>✕</button>
@@ -3189,7 +3243,7 @@ function UnlockLessonPanel(props: {
                       <button
                         type="button"
                         onClick={() => toggleSelectWholeCourse(course.id, pages)}
-                        style={{ background: allSelected ? '#e0e7ff' : 'rgba(202,0,2,0.08)', color: '#e01418', border: '1px solid #bfdbfe', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        style={{ background: allSelected ? 'rgba(202,0,2,0.16)' : 'rgba(202,0,2,0.08)', color: '#e01418', border: '1px solid rgba(224,20,24,0.35)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       >
                         {allSelected ? 'Deselect all' : '🔓 Unlock whole course'}
                       </button>
@@ -3203,7 +3257,7 @@ function UnlockLessonPanel(props: {
                     const key = `${course.id}::${p.id}`;
                     const checkable = !done;
                     return (
-                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '1px solid #f1f5f9' }}>
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '1px solid var(--border-subtle)' }}>
                         <input
                           type="checkbox"
                           disabled={!checkable}
