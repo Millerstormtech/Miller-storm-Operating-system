@@ -69,6 +69,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (e?.code === 11000) group = await col.findOne({ dmKey });
         else throw e;
       }
+    } else {
+      // Reusing an existing DM for this pair. A DM is ALWAYS exactly its two
+      // canonical participants — repair the doc if a prior bug (e.g. branch
+      // auto-join) ever wrote a third member into it, and make sure the
+      // isDirect/dmKey flags are set. Idempotent: a clean DM is left untouched.
+      // (Authorization already ignores members[] and uses dmKey, so this is
+      // data hygiene, not the security boundary.)
+      const canonical = [myId, otherId];
+      const cur = (group.members || []).map(String);
+      const membersOk = cur.length === 2 && canonical.every((id) => cur.includes(id));
+      if (!membersOk || group.isDirect !== true || group.dmKey !== dmKey) {
+        await col.updateOne(
+          { _id: group._id },
+          { $set: { members: canonical, isDirect: true, dmKey } }
+        );
+        group = { ...group, members: canonical, isDirect: true, dmKey };
+      }
     }
 
     // Enrich with the other participant's display info so the client can render

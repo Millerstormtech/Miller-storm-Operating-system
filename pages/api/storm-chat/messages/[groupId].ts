@@ -8,7 +8,7 @@ import { sendPushNotificationToMultiple } from '../../../../src/lib/firebase-adm
 import { logToDb } from '../../../../src/lib/models/SystemLog';
 import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
-import { canReadMessages } from '../../../../src/lib/stormchat/access';
+import { canReadMessages, canSendMessage } from '../../../../src/lib/stormchat/access';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST', 'PATCH', 'DELETE'])) return;
@@ -105,14 +105,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const sender = await UserModel.findOne({ id: senderId }, { _id: 1 }).lean() as any;
       const senderIds = [senderId, sender?._id?.toString()].filter(Boolean) as string[];
 
-      // Check if user is a member or admin
-      if (!group.members.some((m: string) => senderIds.includes(m))) {
-        // A system admin may post into a normal group, but NOT into a private
-        // DM — only its two members can send there (isDmGroup also catches legacy
-        // DMs that predate the isDirect flag).
-        if (senderRole !== 'admin' || isDmGroup(group)) {
-          return res.status(403).json({ error: 'You are not a member of this group' });
-        }
+      // Send authorization (unit-tested in access.test.ts): for a DM, ONLY the
+      // two canonical participants (from dmKey) may send — never a polluted
+      // members[] entry, never an admin override. For a group, a member or a
+      // system admin may send.
+      if (!canSendMessage(group, senderIds, senderRole?.toString())) {
+        return res.status(403).json({ error: 'You are not a member of this group' });
       }
 
       // Check if only admin can chat

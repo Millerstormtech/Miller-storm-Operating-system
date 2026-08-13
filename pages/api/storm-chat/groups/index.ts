@@ -5,7 +5,7 @@ import { UserModel } from '../../../../src/lib/models/User';
 import mongoose from 'mongoose';
 import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
-import { canSeeGroupInList, isMemberOf as memberOf } from '../../../../src/lib/stormchat/access';
+import { canSeeGroupInList, isMemberOf as memberOf, dmParticipants } from '../../../../src/lib/stormchat/access';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -119,10 +119,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
         // Enrich DMs with the OTHER participant's display info so the client can
         // render the thread with that person's name/avatar (DMs have no name).
+        // Resolve the "other" from the CANONICAL participants (dmParticipants),
+        // NOT the raw members array — a polluted members[] could otherwise show
+        // the wrong person as the DM partner.
+        const otherOf = (g: any): string | undefined => {
+          const parts = dmParticipants(g);
+          if (!parts) return undefined;
+          return parts.find((p) => !myIds.includes(String(p)));
+        };
         const otherIds = groups
           .filter((g: any) => g.isDirect)
-          .map((g: any) => (g.members || []).find((m: string) => m !== myId))
-          .filter(Boolean);
+          .map((g: any) => otherOf(g))
+          .filter(Boolean) as string[];
         if (otherIds.length) {
           const others = await UserModel.find(
             { _id: { $in: otherIds } }, { _id: 1, name: 1, headshotUrl: 1, role: 1 }
@@ -130,7 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const byId = new Map(others.map(u => [u._id.toString(), u]));
           groups = groups.map((g: any) => {
             if (!g.isDirect) return g;
-            const otherId = (g.members || []).find((m: string) => m !== myId);
+            const otherId = otherOf(g);
             const u = otherId ? byId.get(otherId) : null;
             return { ...g, dmOther: u ? { _id: otherId, name: u.name, imageUrl: u.headshotUrl || '', role: u.role } : null };
           });
