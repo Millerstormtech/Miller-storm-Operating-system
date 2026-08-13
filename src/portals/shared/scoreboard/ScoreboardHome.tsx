@@ -394,7 +394,7 @@ export function ScoreboardHome(): JSX.Element {
   }
 
   return (
-    <div style={{ position: "relative", maxWidth: 1100, margin: 0, minHeight: "calc(100vh - 220px)" }}>
+    <div style={{ position: "relative", width: "100%", maxWidth: "100%", margin: 0, minHeight: "calc(100vh - 220px)" }}>
       {/* Faded brand watermark behind the scoreboard. The min-height above keeps
           the board tall enough that the full logo shows even on the short
           empty-state (e.g. the "no branch matched" message). */}
