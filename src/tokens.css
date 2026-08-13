@@ -19,6 +19,12 @@
    with zero visual change; the new palette lands separately.
    ============================================================================= */
 
+/* Tell the browser which scheme native form controls (selects, date inputs,
+   checkboxes, scrollbars) should render in, so they don't flash white in dark
+   mode. The app sets data-theme explicitly on <html>, so key off that. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
 :root {
   /* ---------------------------------------------------------------- PRIMITIVES
      Name the colour. Only the semantic block below may reference these. */
