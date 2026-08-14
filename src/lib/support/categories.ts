@@ -43,7 +43,7 @@ export const SUPPORT_CATEGORIES: SupportCategory[] = [
     label: "Draw Request",
     reason: "Job draw requests",
     department: "Billing",
-    emails: ["billing@millerstorm.com", "office@millerstorm.com"],
+    emails: ["billing@millerstorm.com", "office@millerstorm.com", "naaman@millerstorm.com"],
     fields: [ACCULYNX_JOB, { key: "amount", label: "Amount", type: "text", placeholder: "e.g. $1,200" }],
   },
   {

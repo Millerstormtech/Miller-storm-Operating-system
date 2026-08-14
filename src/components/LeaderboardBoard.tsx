@@ -33,15 +33,17 @@ const NONE = "__none__";
 // Column definitions drive both the header row and the click-to-sort behavior.
 type SortKey = "name" | "branch" | "team" | "verifiedKnocks" | "leadsCreated" | "filed" | "won" | "revenue";
 type ColType = "text" | "num" | "money";
-const COLUMNS: { key: SortKey; label: string; type: ColType }[] = [
-  { key: "name", label: "Rep", type: "text" },
-  { key: "branch", label: "Branch", type: "text" },
-  { key: "team", label: "Team", type: "text" },
-  { key: "verifiedKnocks", label: "Verified Door Knocks", type: "num" },
-  { key: "leadsCreated", label: "Leads Created", type: "num" },
-  { key: "filed", label: "Claims Filed", type: "num" },
-  { key: "won", label: "Contracts", type: "num" },
-  { key: "revenue", label: "Contract Amount", type: "money" },
+// `short` is the phone label: the card view's sort chips have to fit a 390px
+// screen, so they use these instead of the full table-header wording.
+const COLUMNS: { key: SortKey; label: string; short: string; type: ColType }[] = [
+  { key: "name", label: "Rep", short: "Rep", type: "text" },
+  { key: "branch", label: "Branch", short: "Branch", type: "text" },
+  { key: "team", label: "Team", short: "Team", type: "text" },
+  { key: "verifiedKnocks", label: "Verified Door Knocks", short: "Knocks", type: "num" },
+  { key: "leadsCreated", label: "Leads Created", short: "Leads", type: "num" },
+  { key: "filed", label: "Claims Filed", short: "Claims Filed", type: "num" },
+  { key: "won", label: "Contracts", short: "Contracts", type: "num" },
+  { key: "revenue", label: "Contract Amount", short: "Amount", type: "money" },
 ];
 
 export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) {
@@ -552,6 +554,30 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
         {/* Mobile: app-style leaderboard cards. */}
         <div className="leaderboard-cards sl__cards">
+          {/* Cards have no column headers to click, so sorting gets its own
+              control here. Same onSort as the table: tapping the active chip
+              flips direction, so both views behave identically. */}
+          <div className="sl__sortbar" role="group" aria-label="Sort reps by">
+            <span className="sl__sortbar-lbl">Sort</span>
+            <div className="sl__sortbar-chips">
+              {/* Metric columns (Knocks, Claims Filed, Contracts, Amount, Leads)
+                  first so they're visible without scrolling; Rep/Branch/Team last.
+                  This is the mobile equivalent of clicking a column on the web. */}
+              {[...visibleColumns]
+                .sort((a, b) => (a.type === "text" ? 1 : 0) - (b.type === "text" ? 1 : 0))
+                .map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => onSort(c.key)}
+                    aria-pressed={c.key === sortKey}
+                    className={`sl__sortchip${c.key === sortKey ? " sl__sortchip--on" : ""}`}
+                  >
+                    {c.short}{arrow(c.key)}
+                  </button>
+                ))}
+            </div>
+          </div>
           {visible.length === 0 ? (
             <div className="sl__empty">No reps match these filters.</div>
           ) : visible.map((r, i) => {
@@ -783,6 +809,26 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__amount { padding: 12px 16px; text-align: right; font-weight: 800; color: var(--amount); font-variant-numeric: tabular-nums; font-size: 17px; white-space: nowrap; }
         .sl__foot td { position: sticky; bottom: 0; z-index: 2; background: var(--panel); border-top: 2px solid var(--panel-line); padding: 12px 16px; font-weight: 800; }
         .sl__foot-label { text-align: left; color: var(--pill-text); }
+
+        /* Phone sort bar. Chips scroll sideways rather than wrapping, so the row
+           stays one line no matter how many columns are visible. */
+        .sl__sortbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .sl__sortbar-lbl { flex-shrink: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
+        .sl__sortbar-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+        .sl__sortbar-chips::-webkit-scrollbar { display: none; }
+        .sl__sortchip {
+          flex-shrink: 0;
+          padding: 7px 12px;
+          border-radius: 999px;
+          border: 1px solid var(--chip-border);
+          background: var(--chip-bg);
+          color: var(--chip-text);
+          font-size: 12.5px;
+          font-weight: 600;
+          white-space: nowrap;
+          cursor: pointer;
+        }
+        .sl__sortchip--on { background: linear-gradient(90deg, #b30002, #e01418); color: var(--text-inverse); border-color: transparent; }
 
         .sl__card { margin-bottom: 10px; background: var(--panel); border-radius: 14px; border: 1px solid var(--line); padding: 12px; }
         .sl__card--you { border-color: rgba(202, 0, 2, 0.5); background: var(--you); }
