@@ -311,7 +311,14 @@ export function TrainingLeaderboard() {
               {visibleStandings.length > 0 && (
                 <>
                   <div className="clb-section">Team standings</div>
-                  <TeamStandings standings={visibleStandings} activeTeam={filters.team} />
+                  <TeamStandings
+                    standings={visibleStandings}
+                    activeTeam={filters.team}
+                    rows={allRows}
+                    isNarrow={isNarrow}
+                    youId={user.id}
+                    onOpenRep={setDetailRepId}
+                  />
                 </>
               )}
               {youRow && (
