@@ -889,7 +889,7 @@ export function StormChatManagement() {
           opacity: 0.06;
           pointer-events: none;
         }
-        .sc-wrap { position:relative; z-index:1; background:var(--surface-default); border:1px solid var(--border-default); border-radius:18px; overflow:hidden; box-shadow:0 12px 40px rgb(var(--gray-900-rgb) / 0.06); }
+        .sc-wrap { position:relative; z-index:1; background:var(--surface-default); border:1px solid var(--border-default); border-radius:18px; overflow:hidden; box-shadow:0 12px 40px rgb(var(--surface-inverse-rgb) / 0.06); }
         .sc-head { background:linear-gradient(135deg,#DC2626 0%,#991b1b 100%); padding:20px 24px; display:flex; align-items:center; gap:16px; }
         .sc-head-badge { width:48px; height:48px; border-radius:14px; background:rgb(var(--white-rgb) / 0.16); display:flex; align-items:center; justify-content:center; font-size:24px; }
         .sc-btn { border:none; cursor:pointer; font-weight:700; font-size:13.5px; border-radius:999px; padding:9px 18px; display:inline-flex; align-items:center; gap:7px; transition:transform .15s, box-shadow .15s, background .15s; white-space:nowrap; }
@@ -900,7 +900,7 @@ export function StormChatManagement() {
         .sc-label { font-size:11px; font-weight:800; color:var(--text-subtle); text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:8px; }
         .sc-label::before { content:''; width:14px; height:2px; background:#DC2626; border-radius:2px; }
         .sc-tile { display:flex; align-items:center; gap:13px; padding:11px 13px; background:var(--surface-default); border:1px solid var(--border-default); border-radius:14px; cursor:pointer; text-align:left; width:100%; transition:transform .14s, box-shadow .14s, border-color .14s; }
-        .sc-tile:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgb(var(--gray-900-rgb) / 0.09); border-color:#fecaca; }
+        .sc-tile:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgb(var(--surface-inverse-rgb) / 0.09); border-color:#fecaca; }
         .sc-badge { background:linear-gradient(135deg,#ef4444,#dc2626); color:var(--text-inverse); font-size:11.5px; font-weight:800; min-width:22px; height:22px; border-radius:11px; display:flex; align-items:center; justify-content:center; padding:0 6px; box-shadow:0 2px 6px rgba(220,38,38,0.4); flex-shrink:0; }
         .sc-info { color:#c4c9d2; font-size:18px; padding:2px 6px; flex-shrink:0; transition:color .15s; }
         .sc-info:hover { color:#DC2626; }

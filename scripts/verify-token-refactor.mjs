@@ -9,6 +9,13 @@
  * Comparing sequences (rather than pairing diff lines) means the check does not
  * care how lines moved, and it catches a colour being added, dropped, or swapped.
  *
+ * THEME-AWARE: tokens.css defines a light block (bare :root) and a dark block
+ * (:root[data-theme="dark"]) that overrides a subset of the light semantics. Every
+ * changed file's colour sequence is built TWICE, once resolving through each
+ * theme's token table, and BOTH must be value-identical before/after. A refactor
+ * that is correct in light but diverges in dark (e.g. swapping a literal for a
+ * token whose dark value differs) is exactly the bug class this catches.
+ *
  * Usage: node scripts/verify-token-refactor.mjs [baseRef]   (default: HEAD)
  */
 import { execFileSync } from "node:child_process";
@@ -26,11 +33,41 @@ function loadTokens(cssText) {
   return map;
 }
 
-/** Repeatedly substitute var(--x) until no var() remains. */
+/**
+ * Split tokens.css into its light (bare :root) and dark (:root[data-theme="dark"])
+ * blocks and load each into its own token table. Loading the WHOLE file into one
+ * table (the old behaviour) let the dark block's duplicate keys silently overwrite
+ * the light ones (Map#set, last write wins) -- every semantic resolved to its dark
+ * value even in the light pass. The dark table is the light table with the dark
+ * block's overrides layered on top, matching how the cascade actually resolves
+ * :root[data-theme="dark"] (it does not redeclare tokens it doesn't override).
+ */
+function loadThemedTokens(cssText) {
+  const lightMatch = cssText.match(/:root(?!\[)\s*\{([\s\S]*?)\}/);
+  const darkMatch = cssText.match(/:root\[data-theme="dark"\]\s*\{([\s\S]*?)\}/);
+  const light = loadTokens(lightMatch ? lightMatch[1] : "");
+  const dark = new Map(light);
+  for (const [k, v] of loadTokens(darkMatch ? darkMatch[1] : "")) dark.set(k, v);
+  return { light, dark };
+}
+
+/**
+ * Repeatedly substitute var(--x) until no var() remains.
+ *
+ * A var() that is NOT defined in tokens.css is a component-local custom property
+ * (e.g. --ms-glow in AuthShell, --bg in LeaderboardBoard, --sb-bg in styles.css) --
+ * legitimate, not a refactor error. Throwing on it (the old behaviour) made any
+ * file using one entirely unverifiable. Instead substitute an OPAQUE placeholder
+ * and carry on: the same local var on both sides of the diff still resolves to the
+ * same placeholder and compares equal, while a literal replaced by an unknown
+ * token still mismatches against that placeholder, so a real conversion error is
+ * still caught. The only remaining hard failure is a genuine resolution cycle --
+ * a var that can never bottom out, i.e. resolves to nothing at all.
+ */
 function resolveVars(value, tokens, depth = 0) {
   if (depth > 10) throw new Error(`token cycle while resolving: ${value}`);
   const out = value.replace(/var\(\s*(--[a-zA-Z0-9-]+)\s*(?:,[^)]*)?\)/g, (whole, name) => {
-    if (!tokens.has(name)) throw new Error(`UNDEFINED TOKEN ${name}`);
+    if (!tokens.has(name)) return `«${name}»`; // opaque placeholder, e.g. «--ms-glow»
     return tokens.get(name);
   });
   return out === value ? out : resolveVars(out, tokens, depth + 1);
@@ -78,7 +115,8 @@ function colourSequence(text, tokens) {
 
 // ---------------------------------------------------------------------- main
 const tokensCss = readFileSync("src/tokens.css", "utf8");
-const tokens = loadTokens(tokensCss);
+const { light: lightTokens, dark: darkTokens } = loadThemedTokens(tokensCss);
+const THEMES = [["light", lightTokens], ["dark", darkTokens]];
 
 const changed = git(["diff", "--name-only", baseRef, "--", "src", "pages"])
   .split("\n").map((s) => s.trim()).filter(Boolean)
@@ -102,35 +140,37 @@ for (const file of changed) {
   if (!existsSync(file)) { console.log(`  DELETED, skipping: ${file}`); continue; }
   const after = readFileSync(file, "utf8");
 
-  let seqBefore, seqAfter;
-  try {
-    seqBefore = colourSequence(before, tokens);
-    seqAfter = colourSequence(after, tokens);
-  } catch (err) {
-    console.error(`FAIL ${file}\n      ${err.message}`);
-    failures++;
-    continue;
-  }
-
-  if (seqBefore.length !== seqAfter.length) {
-    console.error(`FAIL ${file}`);
-    console.error(`      colour COUNT changed: ${seqBefore.length} -> ${seqAfter.length}`);
-    console.error(`      a token conversion must never add or remove a colour.`);
-    failures++;
-    continue;
-  }
-  for (let i = 0; i < seqBefore.length; i++) {
-    if (seqBefore[i] !== seqAfter[i]) {
-      console.error(`FAIL ${file}`);
-      console.error(`      colour #${i + 1} changed: ${seqBefore[i]} -> ${seqAfter[i]}`);
+  for (const [themeName, tokens] of THEMES) {
+    let seqBefore, seqAfter;
+    try {
+      seqBefore = colourSequence(before, tokens);
+      seqAfter = colourSequence(after, tokens);
+    } catch (err) {
+      console.error(`FAIL ${file} [${themeName} theme]\n      ${err.message}`);
       failures++;
-      break;
+      continue;
+    }
+
+    if (seqBefore.length !== seqAfter.length) {
+      console.error(`FAIL ${file} [${themeName} theme]`);
+      console.error(`      colour COUNT changed: ${seqBefore.length} -> ${seqAfter.length}`);
+      console.error(`      a token conversion must never add or remove a colour.`);
+      failures++;
+      continue;
+    }
+    for (let i = 0; i < seqBefore.length; i++) {
+      if (seqBefore[i] !== seqAfter[i]) {
+        console.error(`FAIL ${file} [${themeName} theme]`);
+        console.error(`      colour #${i + 1} changed: ${seqBefore[i]} -> ${seqAfter[i]}`);
+        failures++;
+        break;
+      }
     }
   }
 }
 
 if (failures) {
-  console.error(`\nPROOF A FAILED: ${failures} file(s) are not value-identical.`);
+  console.error(`\nPROOF A FAILED: ${failures} check(s) are not value-identical.`);
   process.exit(1);
 }
-console.log(`PROOF A PASSED: ${changed.length} changed file(s) are value-identical to ${baseRef}.`);
+console.log(`PROOF A PASSED: ${changed.length} changed file(s) are value-identical to ${baseRef} in both light and dark theme.`);

@@ -124,7 +124,7 @@ export function AppDialogs() {
             position: "fixed",
             inset: 0,
             zIndex: 100001,
-            background: "rgb(var(--gray-900-rgb) / 0.55)",
+            background: "rgb(var(--surface-inverse-rgb) / 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
