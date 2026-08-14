@@ -144,7 +144,7 @@ export function ProfilePage(props: {
           width: 150px; height: 150px; border-radius: 50%; overflow: hidden;
           background: linear-gradient(150deg, #e01418, #9a0002);
           display: flex; align-items: center; justify-content: center;
-          color: #fff; font-size: 46px; font-weight: 800; letter-spacing: 0.02em;
+          color: var(--text-inverse); font-size: 46px; font-weight: 800; letter-spacing: 0.02em;
           box-shadow: 0 10px 28px rgba(202,0,2,0.3);
         }
         .pf-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -170,7 +170,7 @@ export function ProfilePage(props: {
         .pf-save-row { margin-top: 24px; display: flex; align-items: center; gap: 12px; }
         .pf-save {
           padding: 14px 34px; border-radius: 12px; border: none; cursor: pointer;
-          background: linear-gradient(90deg, #b30002, #e01418); color: #fff;
+          background: linear-gradient(90deg, #b30002, #e01418); color: var(--text-inverse);
           font-size: 15px; font-weight: 800; box-shadow: 0 4px 14px rgba(202,0,2,0.3);
         }
         .pf-notice { font-size: 13px; color: #10b981; font-weight: 600; }

@@ -197,7 +197,7 @@ export function RepCard({
             <span
               style={{
                 background: "#ca0002",
-                color: "#fff",
+                color: "var(--text-inverse)",
                 fontSize: 9,
                 fontWeight: 700,
                 padding: "1px 6px",

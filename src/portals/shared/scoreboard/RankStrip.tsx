@@ -46,7 +46,7 @@ export function RankStrip(props: {
         : rank.rank === 3
           ? "radial-gradient(circle at 40% 30%, #f0b98a, #cd7f45 60%, #9a5a2c)"
           : "rgba(255,255,255,0.18)";
-  const medalText = isTop ? "#3a2400" : "#ffffff";
+  const medalText = isTop ? "#3a2400" : "var(--text-inverse)";
 
   return (
     <div
@@ -81,7 +81,7 @@ export function RankStrip(props: {
       >
         {rank.rank}
       </div>
-      <div style={{ fontSize: 17, fontWeight: 800, color: isTop ? "#ffffff" : "var(--text-primary)" }}>
+      <div style={{ fontSize: 17, fontWeight: 800, color: isTop ? "var(--text-inverse)" : "var(--text-primary)" }}>
         {text}
       </div>
     </div>

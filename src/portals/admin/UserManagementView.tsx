@@ -119,12 +119,12 @@ export function UserManagementView() {
           }
           .um-tab--active,
           .um-tab--active:hover {
-            color: #fff;
+            color: var(--text-inverse);
             background: linear-gradient(90deg, #b30002, #e01418);
             box-shadow: 0 2px 8px rgba(202, 0, 2, 0.32);
           }
           .um-tab__badge {
-            color: #fff;
+            color: var(--text-inverse);
             font-family: system-ui, sans-serif;
             font-size: 12px;
             font-weight: 700;

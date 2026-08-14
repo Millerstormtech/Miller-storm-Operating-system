@@ -689,7 +689,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     cursor: 'pointer',
     border: active ? 'none' : '1px solid var(--border-default)',
     background: active ? 'linear-gradient(90deg, #b30002, #e01418)' : 'transparent',
-    color: active ? '#fff' : 'var(--text-muted)',
+    color: active ? 'var(--text-inverse)' : 'var(--text-muted)',
     boxShadow: active ? '0 3px 10px rgba(202,0,2,0.3)' : 'none',
     display: 'flex',
     alignItems: 'center',

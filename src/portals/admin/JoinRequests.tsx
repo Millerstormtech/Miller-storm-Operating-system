@@ -78,7 +78,7 @@ export function JoinRequests() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {requests.map(r => (
             <div key={r._id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 14 }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg, #e01418, #b30002)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16 }}>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg, #e01418, #b30002)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16 }}>
                 {(r.userName || "?").trim().charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -91,7 +91,7 @@ export function JoinRequests() {
                 </div>
               </div>
               <button type="button" disabled={busyId === r._id} onClick={() => decide(r._id, "approve")}
-                style={{ padding: "9px 18px", background: "#16a34a", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+                style={{ padding: "9px 18px", background: "#16a34a", color: "var(--text-inverse)", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
                 Approve
               </button>
               <button type="button" disabled={busyId === r._id} onClick={() => decide(r._id, "deny")}
