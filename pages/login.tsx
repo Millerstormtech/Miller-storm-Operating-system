@@ -7,7 +7,7 @@ import { isBiometricEnabled, isBiometricSupported, loginWithBiometric, biometric
 
 // Each role's home page and the URL prefix that role is allowed to land on.
 const ROLE_HOME: Record<string, string> = {
-  admin: "/admin/user-management",
+  admin: "/admin/leaderboard",
   "c-level": "/c-level/dashboard",
   "branch-manager": "/branch-manager/dashboard",
   "sales-team-lead": "/manager/dashboard",

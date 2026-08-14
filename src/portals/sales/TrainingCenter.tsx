@@ -10,6 +10,8 @@ import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
+import { courseModules } from "../../lib/training/modules";
+import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 import { GuidedTour } from "../shared/guided-tour/GuidedTour";
@@ -165,10 +167,15 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     setActivePageId(initialPageId);
     setCourseViewInitialized(null);
     setIsCourseLoading(true);
+    // Modules start CLOSED every time a course is opened (not just the first).
+    setCollapsedFolders(new Set((baseCourse.folders ?? []).map(f => f.id)));
     try {
       const res = await fetch(`/api/courses/${baseCourse.id}${user?.id ? `?userId=${user.id}` : ''}`);
       const full = res.ok ? await res.json() : null;
-      setSelectedCourse(full && full.id ? full : baseCourse);
+      const resolved = full && full.id ? full : baseCourse;
+      setSelectedCourse(resolved);
+      // Collapse the hydrated folder set too (summary course may have had none).
+      setCollapsedFolders(new Set((resolved.folders ?? []).map((f: any) => f.id)));
     } catch (err) {
       console.error('Failed to load full course, falling back to summary data:', err);
       setSelectedCourse(baseCourse);
@@ -599,20 +606,26 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   }, [courses, search]);
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
+  // Per-course raw completed pages + last-touched time — used to compute the
+  // "Continue where you left off" resume target (next unwatched lesson).
+  const [courseCompletedMap, setCourseCompletedMap] = useState<Record<string, Set<string>>>({});
+  const [courseUpdatedMap, setCourseUpdatedMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!user || courses.length === 0) return;
-    
+
     const loadProgress = async () => {
       try {
         // Batch load all progress in one API call
         const courseIds = courses.map(c => c.id).join(',');
         const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
-        
+
         if (res.ok) {
           const data = await res.json();
           const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
-          
+          const completedMap: Record<string, Set<string>> = {};
+          const updatedMap: Record<string, number> = {};
+
           courses.forEach(course => {
             const courseData = data[course.id] || {};
             const publishedPages = (course.pages || []).filter(p => p.status === 'published');
@@ -622,17 +635,46 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               courseData.quizResults || [],
               courseData.courseCompleted
             );
+            completedMap[course.id] = new Set<string>(courseData.completedPages || []);
+            updatedMap[course.id] = courseData.updatedAt ? new Date(courseData.updatedAt).getTime() : 0;
           });
-          
+
           setCourseProgress(progressMap);
+          setCourseCompletedMap(completedMap);
+          setCourseUpdatedMap(updatedMap);
         }
       } catch (err) {
         console.error('Failed to load progress:', err);
       }
     };
-    
+
     loadProgress();
   }, [courses, user]);
+
+  // The single course/lesson to resume: the most recently touched course that's
+  // started but not finished, jumped to its first not-yet-watched published
+  // lesson (falling back to the next incomplete item, then the first page).
+  const resumeTarget = useMemo(() => {
+    if (!courses.length) return null;
+    const started = courses
+      .map(c => ({
+        course: c,
+        prog: courseProgress[c.id],
+        done: courseCompletedMap[c.id] || new Set<string>(),
+        updated: courseUpdatedMap[c.id] || 0,
+      }))
+      .filter(x => x.prog && x.prog.completed > 0 && !x.prog.isCompleted)
+      .sort((a, b) => b.updated - a.updated);
+    const pick = started[0];
+    if (!pick) return null;
+    const pages = (pick.course.pages ?? []).filter(p => p.status === 'published');
+    const next =
+      pages.find(p => !p.isQuiz && !pick.done.has(p.id)) ||
+      pages.find(p => !pick.done.has(p.id)) ||
+      pages[0];
+    if (!next) return null;
+    return { course: pick.course, pageId: next.id, lessonTitle: next.title || '', courseTitle: pick.course.title };
+  }, [courses, courseProgress, courseCompletedMap, courseUpdatedMap]);
 
   // Segmented red-pill tab style: solid brand red when active, subtle outline
   // otherwise.
@@ -782,6 +824,34 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     if (activeTab === 'courses') {
       return (
         <>
+          {/* Resume banner: jumps straight to the next unwatched lesson of the
+              course the rep most recently left unfinished. */}
+          {resumeTarget && !isLoading && (
+            <>
+              <style>{`
+                @keyframes tcResumeShine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+                @keyframes tcResumePulse { 0%,100% { box-shadow: 0 10px 26px rgba(202,0,2,0.35); } 50% { box-shadow: 0 14px 34px rgba(202,0,2,0.55); } }
+                .tc-resume { position: relative; overflow: hidden; width: 100%; display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin: -22px 0 6px; border: none; border-radius: 16px; cursor: pointer; text-align: left;
+                  background: linear-gradient(90deg, #b30002, #e01418, #b30002); background-size: 200% 100%; animation: tcResumeShine 6s linear infinite, tcResumePulse 2.8s ease-in-out infinite; transition: transform .15s ease; }
+                .tc-resume:hover { transform: translateY(-2px); }
+                .tc-resume-play { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+                .tc-resume-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+                .tc-resume-title { font-family: "Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif; font-size: 19px; font-weight: 800; letter-spacing: 0.3px; color: #fff; }
+                .tc-resume-sub { font-size: 13px; color: rgba(255,255,255,0.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .tc-resume-arrow { flex-shrink: 0; font-size: 22px; color: #fff; }
+              `}</style>
+              <button type="button" className="tc-resume" onClick={() => enterCourse(resumeTarget.course, resumeTarget.pageId)}>
+                <span className="tc-resume-play">▶</span>
+                <span className="tc-resume-text">
+                  <span className="tc-resume-title">Continue where you left off!</span>
+                  <span className="tc-resume-sub">
+                    {resumeTarget.courseTitle}{resumeTarget.lessonTitle ? ` · ${resumeTarget.lessonTitle}` : ''}
+                  </span>
+                </span>
+                <span className="tc-resume-arrow">→</span>
+              </button>
+            </>
+          )}
           {/* Search lives in the tab row now (see the segmented tabs above). */}
           {isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
@@ -791,59 +861,89 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               </div>
             </div>
           ) : filteredCourses.length > 0 ? (
-            <div className="training-card-grid" data-tour="course-grid">
-              {filteredCourses.map((course: Course) => {
+            <div>
+              {groupCoursesByCategory(filteredCourses).map((section) => (
+              <div key={section.category} className="training-category-section">
+                {section.category !== UNCATEGORIZED_LABEL && <div className="training-category-heading">{section.category}</div>}
+                <div className="training-card-grid" data-tour="course-grid">
+              {section.courses.map((course: Course) => {
                 const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
                 return (
-                  <button
-                    key={course.id}
-                    type="button"
-                    className="training-card"
-                    onClick={() => {
-                      const published = (course.pages ?? []).filter(p => p.status === 'published');
-                      // If the search matched a specific video/lesson (and not the
-                      // course title itself), open the course straight to that lesson.
-                      const term = search.trim().toLowerCase();
-                      const titleMatch = term !== '' && (course.title || '').toLowerCase().includes(term);
-                      const matchedPage = term === '' || titleMatch
-                        ? undefined
-                        : published.find(p => !p.isQuiz && (p.title || '').toLowerCase().includes(term));
-                      enterCourse(course, matchedPage?.id ?? published[0]?.id ?? null);
-                    }}
-                    style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
-                  >
-                    {(() => {
-                      const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-                      const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
-                      const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
-                      return (
-                        <div className="training-card-body">
-                          <div className="training-card-top">
-                            <div className="training-card-title">{course.title}</div>
-                            <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
-                          </div>
-                          {lessonCount(course) > 0 && (
-                            <div className="training-card-lessons">
-                              {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}
-                            </div>
-                          )}
-                          <div className="training-card-progress-track">
+                  <div key={course.id} className="training-card">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        const published = (course.pages ?? []).filter(p => p.status === 'published');
+                        // If the search matched a specific video/lesson (and not the
+                        // course title itself), open the course straight to that lesson.
+                        const term = search.trim().toLowerCase();
+                        const titleMatch = term !== '' && (course.title || '').toLowerCase().includes(term);
+                        const matchedPage = term === '' || titleMatch
+                          ? undefined
+                          : published.find(p => !p.isQuiz && (p.title || '').toLowerCase().includes(term));
+                        enterCourse(course, matchedPage?.id ?? published[0]?.id ?? null);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const published = (course.pages ?? []).filter(p => p.status === 'published'); enterCourse(course, published[0]?.id ?? null); } }}
+                      style={{ cursor: "pointer", textAlign: "left", display: "block" }}
+                    >
+                      {(() => {
+                        const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+                        const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
+                        const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
+                        const mods = courseModules(course);
+                        return (
+                          <>
+                          {course.coverImageUrl && (
                             <div
-                              className="training-card-progress-fill"
-                              style={{
-                                width: `${pct}%`,
-                                background: progress.isCompleted
-                                  ? "linear-gradient(90deg, #2f8f57, #3ea56a)"
-                                  : "linear-gradient(90deg, #b30002, #e01418)",
-                              }}
+                              className="training-card-image"
+                              style={{ backgroundImage: `url(${course.coverImageUrl})` }}
                             />
+                          )}
+                          <div className="training-card-body">
+                            <div className="training-card-top">
+                              <div className="training-card-title">{course.title}</div>
+                              <div className="training-card-status" style={{ color: statusColor }}>{statusText}</div>
+                            </div>
+                            {course.description && (
+                              <div className="training-card-desc">{course.description}</div>
+                            )}
+                            {mods.length > 0 && (
+                              <div className="training-card-modules" onClick={(e) => e.stopPropagation()}>
+                                {mods.map((m) => (
+                                  <button key={m.id} type="button" className="training-card-module" onClick={() => enterCourse(course, m.firstPageId)}>
+                                    <span className="training-card-module-arrow">▸</span>{m.title}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {lessonCount(course) > 0 && (
+                              <div className="training-card-lessons">
+                                {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}
+                              </div>
+                            )}
+                            <div className="training-card-progress-track">
+                              <div
+                                className="training-card-progress-fill"
+                                style={{
+                                  width: `${pct}%`,
+                                  background: progress.isCompleted
+                                    ? "linear-gradient(90deg, #2f8f57, #3ea56a)"
+                                    : "linear-gradient(90deg, #b30002, #e01418)",
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
-                  </button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 );
               })}
+                </div>
+              </div>
+              ))}
             </div>
           ) : (
             <div className="panel-empty">No trainings match your search yet.</div>
@@ -855,7 +955,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       return (
         <div className="panel">
           <div className="panel-header">
-            <span>My Playlists</span>
+            <span style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 21, fontWeight: 800, letterSpacing: 0.2, textTransform: 'uppercase', color: 'var(--text-primary)' }}>My Playlists</span>
           </div>
           <div className="panel-body">
             {playlists.length === 0 ? (
@@ -869,10 +969,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             ) : (
               <div style={{ display: 'grid', gap: 16 }} className="playlist-grid">
                 {playlists.map((playlist) => (
-                  <div key={playlist.id} className="card playlist-card" style={{ padding: 16 }}>
+                  <div key={playlist.id} className="card playlist-card" style={{ padding: 16, height: 'auto', borderLeft: '4px solid #e01418' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }} className="playlist-card-content">
                       <div style={{ flex: 1 }} className="playlist-card-info">
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
+                        <div style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 19, fontWeight: 800, letterSpacing: 0.2, textTransform: 'uppercase', marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
                           {playlist.name}
                         </div>
                         <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
@@ -886,6 +986,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         <button
                           type="button"
                           className="btn-primary playlist-action-btn"
+                          style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: '#fff', border: 'none', boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }}
                           onClick={() => {
                             const course = courses.find(c => c.id === playlist.courseId);
                             if (course) {
@@ -957,10 +1058,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             ) : (
               <div style={{ display: 'grid', gap: 16 }} className="playlist-grid">
                 {assignedPlaylists.map((assignment) => (
-                  <div key={assignment._id} className="card playlist-card" style={{ padding: 16 }}>
+                  <div key={assignment._id} className="card playlist-card" style={{ padding: 16, height: 'auto', borderLeft: '4px solid #e01418' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }} className="playlist-card-content">
                       <div style={{ flex: 1 }} className="playlist-card-info">
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
+                        <div style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 19, fontWeight: 800, letterSpacing: 0.2, textTransform: 'uppercase', marginBottom: 8, color: 'var(--text-primary)' }} className="playlist-card-title">
                           {assignment.playlistName}
                         </div>
                         <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 4 }}>
@@ -977,6 +1078,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         <button
                           type="button"
                           className="btn-primary playlist-action-btn"
+                          style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: '#fff', border: 'none', boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }}
                           onClick={() => {
                             const course = courses.find(c => c.id === assignment.courseId);
                             if (course) {
@@ -1517,14 +1619,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
         {/* DESKTOP: full layout - hidden on mobile via CSS */}
         <div className="desktop-course-view">
-        <div className="training-center-header">
-          <div className="panel-header">{selectedCourse.title}</div>
+        <div className="training-center-header" style={{ marginTop: -14 }}>
+          <div className="panel-header" style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 21, fontWeight: 800, letterSpacing: 0.2, color: 'var(--text-primary)' }}>{selectedCourse.title}</div>
           {/* Desktop: show all buttons inline */}
           <div className="course-header-desktop-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {!viewingPlaylist && (
-              <button type="button" className="btn-primary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
+              <button type="button" className="btn-primary btn-small" style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 700, boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
             )}
-            <button type="button" className="btn-secondary btn-small" style={{ backgroundColor: 'var(--surface-inverse)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>Back to Courses</button>
+            <button type="button" className="btn-secondary btn-small" style={{ background: 'var(--surface-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>← Back to Courses</button>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
               <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 40, height: 22, borderRadius: 11, backgroundColor: autoPlay ? '#e01418' : 'var(--border-default)', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
                 <div style={{ position: 'absolute', top: 3, left: autoPlay ? 21 : 3, width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--surface-default)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
@@ -1555,8 +1657,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         {/* Playlist Creation Modal */}
         {isCreatePlaylistOpen && (
           <div className="overlay">
-            <div className="dialog" style={{ maxWidth: 700 }}>
-              <div className="dialog-title">Create Playlist</div>
+            <div className="dialog" style={{ width: 'min(700px, 92vw)', maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border-default)' }}>
+              <div className="dialog-title" style={{ fontFamily: '"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: 0.3, textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: 6, paddingBottom: 10, borderBottom: '2px solid #e01418' }}>Create Playlist</div>
               <div style={{ padding: '16px 0' }}>
                 <label className="field" style={{ marginBottom: 16 }}>
                   <span className="field-label">Playlist Name</span>

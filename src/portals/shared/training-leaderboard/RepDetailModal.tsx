@@ -4,6 +4,9 @@ import { BADGE_META, PODIUM, TIER_COLORS, MEDALS, GREEN, RING_TRACK } from "./co
 import { ProgressRing, Avatar } from "./RepCard";
 import { Tooltip } from "./Tooltip";
 
+// Condensed brand heading font, matching the rest of the redesigned panels.
+const HEAD_FONT = '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif';
+
 type RepCourse = {
   id: string;
   title: string;
@@ -39,6 +42,9 @@ type RepDetail = {
  * on open; the board payload stays light. Courses are ordered complete first,
  * then in progress (highest pct first), then not started, matching the
  * approved mockup. Locked badges are greyed with a how-to-earn tooltip.
+ *
+ * Brand redesign: red gradient header + carded sections, driven entirely by
+ * semantic tokens so it reads correctly in both light and dark mode.
  */
 export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () => void }) {
   const [data, setData] = useState<RepDetail | null>(null);
@@ -99,7 +105,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        background: "rgba(0,0,0,0.45)",
+        background: "rgba(0,0,0,0.55)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -109,45 +115,62 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
       <div
         style={{
           background: "var(--surface-default)",
-          borderRadius: 14,
+          borderRadius: 18,
           width: "100%",
           maxWidth: 560,
           maxHeight: "90vh",
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+          boxShadow: "0 24px 70px rgba(0,0,0,0.45)",
+          border: "1px solid var(--border-default)",
           overflow: "hidden",
         }}
       >
+        {/* Brand red header. */}
         <div
           style={{
-            padding: "14px 20px",
-            borderBottom: "1px solid var(--border-default)",
+            padding: "16px 22px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            background: "#f8fafc",
+            background: "linear-gradient(135deg, #e01418 0%, #b30002 100%)",
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>Rep detail</div>
+          <div
+            style={{
+              fontWeight: 800,
+              fontSize: 19,
+              color: "#fff",
+              fontFamily: HEAD_FONT,
+              letterSpacing: 0.4,
+              textTransform: "uppercase",
+            }}
+          >
+            Rep Detail
+          </div>
           <button
             onClick={onClose}
             aria-label="Close"
             style={{
-              background: "none",
+              background: "rgba(255,255,255,0.18)",
               border: "none",
               cursor: "pointer",
-              fontSize: 20,
-              color: "var(--text-subtle)",
+              fontSize: 18,
+              color: "#fff",
               lineHeight: 1,
-              padding: 4,
+              width: 30,
+              height: 30,
+              borderRadius: 999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             ×
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "18px 22px" }}>
           {loading ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-subtle)", fontSize: 13 }}>Loading…</div>
           ) : loadError || !data ? (
@@ -158,10 +181,10 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                 style={{
                   border: "none",
                   background: "none",
-                  color: "#2563eb",
+                  color: "#e01418",
                   cursor: "pointer",
                   fontSize: 13,
-                  fontWeight: 600,
+                  fontWeight: 700,
                 }}
               >
                 Try again
@@ -169,10 +192,21 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
             </div>
           ) : (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar name={data.name} headshotUrl={data.headshotUrl} size={48} />
+              {/* Identity card. */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: "14px 16px",
+                  background: "var(--surface-subtle)",
+                  border: "1px solid var(--border-default)",
+                  borderRadius: 14,
+                }}
+              >
+                <Avatar name={data.name} headshotUrl={data.headshotUrl} size={52} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-primary)", fontFamily: HEAD_FONT, letterSpacing: 0.2 }}>
                     {data.name}{" "}
                     {tier && (
                       <span
@@ -182,7 +216,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                           padding: "1px 8px",
                           borderRadius: 999,
                           fontSize: 11,
-                          fontWeight: 600,
+                          fontWeight: 700,
                           verticalAlign: "middle",
                         }}
                       >
@@ -210,10 +244,11 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                     {data.totalCourses} courses finished
                   </div>
                 </div>
-                <ProgressRing pct={data.pct} size={52} />
+                <ProgressRing pct={data.pct} size={56} />
               </div>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "14px 0" }}>
+              {/* Badges. */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
                 {(Object.keys(BADGE_META) as BadgeId[]).map((b) => {
                   const meta = BADGE_META[b];
                   const earned = data.badges.includes(b);
@@ -224,14 +259,14 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 5,
-                          padding: "3px 10px",
+                          padding: "4px 11px",
                           borderRadius: 999,
                           fontSize: 12,
-                          fontWeight: 600,
-                          background: earned ? "#f0fdf4" : "var(--surface-subtle)",
-                          color: earned ? "#166534" : "var(--text-subtle)",
-                          border: earned ? "1px solid #bbf7d0" : "1px solid var(--border-default)",
-                          opacity: earned ? 1 : 0.6,
+                          fontWeight: 700,
+                          background: earned ? "rgba(16,185,129,0.15)" : "var(--surface-subtle)",
+                          color: earned ? "#10b981" : "var(--text-subtle)",
+                          border: earned ? "1px solid rgba(16,185,129,0.4)" : "1px solid var(--border-default)",
+                          opacity: earned ? 1 : 0.65,
                         }}
                       >
                         {meta.emoji} {meta.label}
@@ -241,56 +276,93 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                 })}
               </div>
 
-              {orderedCourses.map((c) =>
-                c.complete ? (
-                  <div
-                    key={c.id}
-                    style={{ padding: "9px 11px", background: "#f0fdf4", borderRadius: 8, marginBottom: 4 }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>🏁 {c.title}</span>
-                      <span style={{ fontWeight: 700, fontSize: 12, color: "#059669", flexShrink: 0 }}>
-                        Complete
-                      </span>
+              {/* Section label. */}
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "var(--text-subtle)",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span style={{ width: 14, height: 2, background: "#e01418", borderRadius: 2 }} />
+                Courses
+              </div>
+
+              {/* Course rows. */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {orderedCourses.map((c) =>
+                  c.complete ? (
+                    <div
+                      key={c.id}
+                      style={{
+                        padding: "11px 13px",
+                        background: "rgba(16,185,129,0.12)",
+                        border: "1px solid rgba(16,185,129,0.3)",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text-primary)" }}>🏁 {c.title}</span>
+                        <span style={{ fontWeight: 800, fontSize: 12, color: "#10b981", flexShrink: 0 }}>Complete</span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>
+                        🎬 {c.videosWatched}/{c.videosTotal} videos · ✅ {c.quizzesPassed}/{c.quizzesTotal} quizzes
+                      </div>
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
-                      🎬 {c.videosWatched}/{c.videosTotal} videos · ✅ {c.quizzesPassed}/{c.quizzesTotal} quizzes
+                  ) : c.started ? (
+                    <div
+                      key={c.id}
+                      style={{
+                        padding: "11px 13px",
+                        background: "var(--surface-subtle)",
+                        border: "1px solid var(--border-default)",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text-primary)" }}>▶ {c.title}</span>
+                        <span style={{ fontWeight: 800, fontSize: 12, color: "#e01418", flexShrink: 0 }}>{c.pct}%</span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>
+                        🎬 {c.videosWatched}/{c.videosTotal} videos · ✅ {c.quizzesPassed}/{c.quizzesTotal} quizzes
+                      </div>
+                      <div style={{ height: 6, background: RING_TRACK, borderRadius: 3, marginTop: 8 }}>
+                        <div
+                          style={{
+                            width: `${Math.min(100, Math.max(0, c.pct))}%`,
+                            height: 6,
+                            background: GREEN,
+                            borderRadius: 3,
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ) : c.started ? (
-                  <div
-                    key={c.id}
-                    style={{ padding: "9px 11px", background: "#fafafa", borderRadius: 8, marginBottom: 4 }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>▶ {c.title}</span>
-                      <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-tertiary)", flexShrink: 0 }}>
-                        {c.pct}%
-                      </span>
+                  ) : (
+                    <div
+                      key={c.id}
+                      style={{
+                        padding: "11px 13px",
+                        borderRadius: 12,
+                        border: "1px solid var(--border-subtle)",
+                        color: "var(--text-muted)",
+                        fontSize: 13,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{c.title}</span>
+                      <span style={{ color: "var(--text-subtle)", flexShrink: 0 }}>Not started</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
-                      🎬 {c.videosWatched}/{c.videosTotal} videos · ✅ {c.quizzesPassed}/{c.quizzesTotal} quizzes
-                    </div>
-                    <div style={{ height: 5, background: RING_TRACK, borderRadius: 3, marginTop: 6 }}>
-                      <div
-                        style={{
-                          width: `${Math.min(100, Math.max(0, c.pct))}%`,
-                          height: 5,
-                          background: GREEN,
-                          borderRadius: 3,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    key={c.id}
-                    style={{ padding: "9px 11px", borderRadius: 8, marginBottom: 4, color: "var(--text-subtle)", fontSize: 13 }}
-                  >
-                    {c.title} · Not started
-                  </div>
-                )
-              )}
+                  )
+                )}
+              </div>
             </>
           )}
         </div>

@@ -21,7 +21,7 @@ export function MarketingHome(props: { firstName: string }): JSX.Element {
   const { firstName } = props;
 
   return (
-    <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
+    <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: "100%" }}>
       <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>Hi, {firstName}</div>
 
       <div style={{ fontSize: 14, color: "var(--text-muted)" }}>

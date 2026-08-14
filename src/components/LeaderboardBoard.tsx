@@ -306,39 +306,21 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     <div className={`sl sl--${theme}`} ref={rootRef}>
       <GuidedTour tour={SALES_LEADERBOARD_TOUR} ready={!loading} />
 
-      {/* Title + period pills, inside the board — like the mockup. */}
+      {/* Title, inside the board — like the mockup. The period pills now live in
+          the filters row below, next to Branch/Team, instead of alone up here. */}
       <div className="sl__head">
         <div className="sl__head-titles">
           <h1 className="sl__head-title">Sales Leaderboard</h1>
           <p className="sl__head-sub">{headSub}</p>
         </div>
-        <div className="sl__periods">
-          {WINDOWS.map((w) => (
-            <button
-              key={w.key}
-              type="button"
-              className={`sl__pill${!isCustom && window === w.key ? " sl__pill--on" : ""}`}
-              onClick={() => pickWindow(w.key)}
-            >
-              {w.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`sl__pill${isCustom ? " sl__pill--on" : ""}`}
-            onClick={() => setShowCustom((s) => !s)}
-          >
-            Custom
-          </button>
+        {/* Total revenue for the selected period — recomputes with the date
+            filter (and any active branch/team/rep filters) since it sums the
+            visible rows. */}
+        <div className="sl__total" title="Total contract amount for the selected period">
+          <div className="sl__total-label">Total Revenue</div>
+          <div className="sl__total-val">{fmtMoney(totals.revenue)}</div>
         </div>
       </div>
-
-      {showCustom && (
-        <div className="sl__custom">
-          <label>From <input type="date" value={from} max={to || undefined} onChange={(e) => pickDates(e.target.value, to)} className="sl__date" /></label>
-          <label>To <input type="date" value={to} min={from || undefined} onChange={(e) => pickDates(from, e.target.value)} className="sl__date" /></label>
-        </div>
-      )}
 
       {/* "Your rank" pop-out — any user on the board sees their own standing. */}
       {me && (
@@ -376,8 +358,27 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
       )}
 
-      {/* Filters row — pills. */}
+      {/* Filters row — period pills sit alongside Branch/Team/rep filters. */}
       <div className="sl__filters" data-tour="filters">
+        <div className="sl__periods">
+          {WINDOWS.map((w) => (
+            <button
+              key={w.key}
+              type="button"
+              className={`sl__pill${!isCustom && window === w.key ? " sl__pill--on" : ""}`}
+              onClick={() => pickWindow(w.key)}
+            >
+              {w.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`sl__pill${isCustom ? " sl__pill--on" : ""}`}
+            onClick={() => setShowCustom((s) => !s)}
+          >
+            Custom
+          </button>
+        </div>
         <label className="sl__field">
           <span>Branch</span>
           <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="sl__select">
@@ -444,6 +445,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
         <span className="sl__count">{visible.length} rep{visible.length === 1 ? "" : "s"}</span>
       </div>
+
+      {showCustom && (
+        <div className="sl__custom">
+          <label>From <input type="date" value={from} max={to || undefined} onChange={(e) => pickDates(e.target.value, to)} className="sl__date" /></label>
+          <label>To <input type="date" value={to} min={from || undefined} onChange={(e) => pickDates(from, e.target.value)} className="sl__date" /></label>
+        </div>
+      )}
+
+      {!isCustom && window === "week" && (
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: -6, marginBottom: 14 }}>
+          Resets Mondays at 12:00 AM CT.
+        </div>
+      )}
 
       {branchFilter && branchFilter !== NONE ? (
         <div className="sl__note">
@@ -586,11 +600,11 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --th: #8b9096;
           --th-bg: #0d0d0f;
           --th-active: #ff5a5c;
-          --chip-bg: rgba(255, 255, 255, 0.04);
-          --chip-border: rgba(255, 255, 255, 0.14);
+          --chip-bg: #1c1e22;
+          --chip-border: rgba(255, 255, 255, 0.18);
           --chip-text: #e7e8ea;
           --pill-text: #c7c9ce;
-          --pill-border: rgba(255, 255, 255, 0.14);
+          --pill-border: rgba(255, 255, 255, 0.2);
           --num: #e7e8ea;
           --amount: var(--text-inverse);
           --rank: #6b7075;
@@ -605,7 +619,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --note-border: rgba(37, 99, 235, 0.35);
           --note-text: #bcd0ff;
           --guide-bg: rgba(255, 255, 255, 0.03);
-          --rep-panel-bg: #1a1a1d;
+          --rep-panel-bg: #1e2024;
+          --rep-field-bg: rgba(255, 255, 255, 0.07);
+          --rep-hover: rgba(255, 255, 255, 0.07);
 
           position: relative;
           background: var(--bg);
@@ -614,9 +630,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           padding: 4px 24px 8px;
           color: var(--text);
           overflow: hidden;
+          /* Render native form controls (Branch/Team selects, date inputs, the
+             "hide former" checkbox) in dark so they don't flash white here. */
+          color-scheme: dark;
         }
         /* Light theme — applied via a class the component sets from data-theme. */
         .sl.sl--light {
+          color-scheme: light;
           --bg: transparent;
           --card-border: transparent;
           --text: #14161a;
@@ -646,6 +666,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --note-text: #1e40af;
           --guide-bg: #f8fafc;
           --rep-panel-bg: var(--surface-default);
+          --rep-field-bg: var(--surface-subtle);
+          --rep-hover: var(--surface-subtle);
         }
         .sl::before {
           content: "";
@@ -672,8 +694,14 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         }
         .sl__head-sub { margin: 8px 0 0; font-size: 15px; color: var(--muted); }
 
-        .sl__periods { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-        .sl__pill { padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--pill-text); background: transparent; border: 1px solid var(--pill-border); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+        .sl__total { text-align: right; padding: 10px 18px; border-radius: 14px; border: 1px solid var(--chip-border); background: var(--chip-bg); flex-shrink: 0; }
+        .sl__total-label { font-size: 11px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+        .sl__total-val { margin-top: 3px; font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif; font-size: clamp(24px, 3vw, 32px); font-weight: 900; line-height: 1; letter-spacing: 0.01em; color: #16a34a; }
+        @media (max-width: 560px) { .sl__total { text-align: left; } }
+
+        .sl__periods { display: flex; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; justify-content: flex-start; }
+        @media (max-width: 1100px) { .sl__periods { flex-wrap: wrap; } }
+        .sl__pill { padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--pill-text); background: transparent; border: 1px solid var(--pill-border); transition: background 0.15s, color 0.15s, border-color 0.15s; }
         .sl__pill:hover { color: var(--text); }
         .sl__pill--on { background: linear-gradient(90deg, #b30002, #e01418); color: var(--text-inverse); border-color: transparent; box-shadow: 0 6px 18px rgba(202, 0, 2, 0.35); }
 
@@ -699,19 +727,25 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__king-name { font-size: 24px; font-weight: 800; margin-top: 3px; }
         .sl__king-amount { font-size: 34px; font-weight: 900; letter-spacing: -0.5px; margin-left: auto; }
 
-        /* Above the table sibling so the "Search reps" dropdown isn't painted
-           over by it (.sl > * pins every child to z-index 1). */
-        .sl__filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; position: relative; z-index: 15; }
+        /* Above the legend/table siblings so the "Search reps" dropdown isn't
+           painted over by them (.sl > * pins every child to z-index 1). Must be
+           written child-scoped: styled-jsx compiles .sl > * with more
+           specificity than a bare .sl__filters, so a plain class rule here
+           loses and the dropdown drops back to z-index 1. */
+        .sl > .sl__filters { display: flex; gap: 9px; margin-bottom: 16px; flex-wrap: nowrap; align-items: center; position: relative; z-index: 50; }
+        @media (max-width: 1100px) { .sl > .sl__filters { flex-wrap: wrap; } }
         .sl__field { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
         .sl__select, .sl__chip { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--chip-text); font-weight: 600; font-size: 13px; cursor: pointer; }
         .sl__toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--pill-text); font-weight: 600; cursor: pointer; }
         .sl__rep-wrap { position: relative; display: inline-block; }
-        .sl__overlay { position: fixed; inset: 0; z-index: 20; }
-        .sl__rep-panel { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: 260px; background: #1a1a1d; border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); padding: 10px; }
-        .sl.sl--light .sl__rep-panel { background: var(--surface-default); box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18); }
-        .sl__rep-search { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--text); margin-bottom: 8px; box-sizing: border-box; font-size: 13px; }
+        .sl__overlay { position: fixed; inset: 0; z-index: 90; }
+        .sl__rep-panel { position: absolute; z-index: 100; top: calc(100% + 6px); left: 0; width: 260px; background: var(--rep-panel-bg); border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); padding: 10px; }
+        .sl.sl--light .sl__rep-panel { box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18); }
+        .sl__rep-search { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chip-border); background: var(--rep-field-bg); color: var(--text); margin-bottom: 8px; box-sizing: border-box; font-size: 13px; outline: none; }
+        .sl__rep-search::placeholder { color: var(--subtle); }
         .sl__rep-list { max-height: 220px; overflow-y: auto; margin-bottom: 8px; }
-        .sl__rep-item { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 13px; cursor: pointer; color: var(--text); }
+        .sl__rep-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; color: var(--text); }
+        .sl__rep-item:hover { background: var(--rep-hover); }
         .sl__rep-actions { display: flex; justify-content: space-between; align-items: center; }
         .sl__link { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0; }
         .sl__apply { padding: 7px 14px; border-radius: 8px; border: none; background: linear-gradient(90deg, #b30002, #e01418); color: var(--text-inverse); font-weight: 700; cursor: pointer; font-size: 13px; }

@@ -38,9 +38,11 @@ type AdminLayoutProps = {
   currentView: AdminViewId;
   pageTitle?: string;
   pageSubtitle?: string;
+  // Optional element shown on the same line as the page title (e.g. a back arrow).
+  back?: React.ReactNode;
 };
 
-export function AdminLayout({ children, currentView, pageTitle, pageSubtitle }: AdminLayoutProps) {
+export function AdminLayout({ children, currentView, pageTitle, pageSubtitle, back }: AdminLayoutProps) {
   const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const resolvedTitle = resolvePageTitle(adminSidebarItems, currentView, pageTitle);
@@ -66,7 +68,7 @@ export function AdminLayout({ children, currentView, pageTitle, pageSubtitle }: 
         />
       }
     >
-      {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} /> : null}
+      {resolvedTitle ? <PageHeader title={resolvedTitle} subtitle={pageSubtitle} back={back} /> : null}
       {children}
     </Layout>
   );

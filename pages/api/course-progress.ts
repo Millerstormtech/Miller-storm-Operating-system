@@ -82,24 +82,28 @@ export default async function handler(
       const progressRecords = await UserProgressModel.find({
         userId,
         courseId: { $in: courseIdArray }
-      }).select('courseId completedPages quizResults courseCompleted').lean();
-      
+      }).select('courseId completedPages quizResults courseCompleted updatedAt').lean();
+
       // Create a map of courseId -> progress
       const progressMap = new Map();
-      progressRecords.forEach(record => {
+      progressRecords.forEach((record: any) => {
         progressMap.set(record.courseId, {
           completedPages: record.completedPages || [],
           quizResults: record.quizResults || [],
-          courseCompleted: record.courseCompleted || false
+          courseCompleted: record.courseCompleted || false,
+          // Last time this course's progress changed — drives the
+          // "Continue where you left off" resume target on the client.
+          updatedAt: record.updatedAt || null
         });
       });
-      
+
       // Build result object with all requested courses
       courseIdArray.forEach(courseId => {
         const courseProgress = progressMap.get(courseId) || {
           completedPages: [],
           quizResults: [],
-          courseCompleted: false
+          courseCompleted: false,
+          updatedAt: null
         };
         result[courseId] = courseProgress;
       });

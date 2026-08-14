@@ -4,6 +4,7 @@ import { Toast } from "../../components/Toast";
 import { parseQuestionsDoc, validateQuestions } from "../../lib/quizImport";
 import { isQuizResultPassing } from "../../lib/quiz";
 import { compressImageToWebp } from "../../utils/compressImage";
+import { TRAINING_CATEGORIES } from "../../lib/training/categories";
 
 type CourseEditorProps = {
   courses: Course[];
@@ -65,6 +66,9 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isCreatingNewCourse, setIsCreatingNewCourse] = useState(false);
   const [newCourseData, setNewCourseData] = useState<Course | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  // "+ Add new category" inline input state for the course details form.
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   // 3-step delete modal
   type DeleteStep = 'choose' | 'select' | 'confirm';
@@ -2493,6 +2497,54 @@ export function CourseManagement(props: CourseEditorProps) {
                         <option value="open">Open to all members</option>
                         <option value="assigned">Assigned only (Sales Team Lead controls access)</option>
                       </select>
+                    </label>
+                    <label className="field">
+                      <span className="field-label">Category</span>
+                      {addingCategory ? (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <input
+                            className="field-input"
+                            autoFocus
+                            placeholder="New category name"
+                            value={newCategoryName}
+                            onChange={(e) => setNewCategoryName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const name = newCategoryName.trim();
+                                if (name) updateCourse({ ...selectedCourse, category: name });
+                                setAddingCategory(false); setNewCategoryName("");
+                              }
+                            }}
+                            style={{ flex: 1 }}
+                          />
+                          <button type="button" className="btn-primary btn-small" onClick={() => {
+                            const name = newCategoryName.trim();
+                            if (name) updateCourse({ ...selectedCourse, category: name });
+                            setAddingCategory(false); setNewCategoryName("");
+                          }}>Add</button>
+                          <button type="button" className="btn-secondary btn-small" onClick={() => { setAddingCategory(false); setNewCategoryName(""); }}>✕</button>
+                        </div>
+                      ) : (
+                        <select
+                          className="field-input"
+                          value={selectedCourse.category ?? ""}
+                          onChange={(e) => {
+                            if (e.target.value === "__add_new__") { setAddingCategory(true); setNewCategoryName(""); return; }
+                            updateCourse({ ...selectedCourse, category: e.target.value });
+                          }}
+                        >
+                          <option value="">Uncategorized</option>
+                          {Array.from(new Set([
+                            ...TRAINING_CATEGORIES,
+                            ...props.courses.map((c) => (c.category || "").trim()),
+                            (selectedCourse.category || "").trim(),
+                          ].filter(Boolean))).sort((a, b) => a.localeCompare(b)).map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                          <option value="__add_new__">+ Add new category…</option>
+                        </select>
+                      )}
                     </label>
                   </div>
                   <div className="course-actions">

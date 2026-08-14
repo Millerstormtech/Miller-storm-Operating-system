@@ -394,7 +394,7 @@ export function ScoreboardHome(): JSX.Element {
   }
 
   return (
-    <div style={{ position: "relative", maxWidth: 1100, margin: 0, minHeight: "calc(100vh - 220px)" }}>
+    <div style={{ position: "relative", width: "100%", maxWidth: "100%", margin: 0, minHeight: "calc(100vh - 220px)" }}>
       {/* Faded brand watermark behind the scoreboard. The min-height above keeps
           the board tall enough that the full logo shows even on the short
           empty-state (e.g. the "no branch matched" message). */}
@@ -430,6 +430,12 @@ export function ScoreboardHome(): JSX.Element {
             })}
           </div>
         </div>
+
+        {windowSel === "week" && (
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", textAlign: "right", marginTop: -8 }}>
+            Resets Mondays at 12:00 AM CT.
+          </div>
+        )}
 
         <RankStrip rank={board.rank} scopeLevel={board.scope.level} />
 

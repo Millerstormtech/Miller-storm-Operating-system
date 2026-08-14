@@ -430,7 +430,7 @@ body {
   border-radius: 12px;
   padding: 16px 18px;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-default);
   height: 100px;
   display: flex;
   flex-direction: column;
@@ -591,7 +591,7 @@ body {
   background-color: var(--surface-default);
   border-radius: 12px;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
 }
@@ -616,7 +616,7 @@ body {
 
 .panel-header {
   padding: 14px 16px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-default);
   font-size: 16px;
   font-weight: 600;
 }
@@ -822,10 +822,10 @@ body {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background-color: #2563eb;
-  color: white;
+  background-image: linear-gradient(135deg, #e01418, #b30002);
+  color: #fff;
   border: none;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 12px rgba(224, 20, 24, 0.4);
   z-index: 1000;
   cursor: pointer;
   align-items: center;
@@ -836,7 +836,7 @@ body {
 }
 
 .course-modules-mobile-toggle:hover {
-  background-color: #1d4ed8;
+  background-image: linear-gradient(135deg, #b30002, #8a0002);
   transform: scale(1.05);
 }
 
@@ -917,10 +917,15 @@ body {
   }
 
   .course-modules-mobile-header h3 {
+    font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     margin: 0;
     color: var(--text-primary);
+    border-bottom: 2px solid #e01418;
+    padding-bottom: 4px;
   }
 
   /* Responsive Playlist Cards for Tablet - Horizontal Layout */
@@ -1206,10 +1211,16 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
+  padding: 6px 8px 6px 10px;
   border-radius: 8px;
+  border-left: 3px solid #e01418;
+  font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color: var(--text-primary);
+  background-color: var(--surface-subtle);
   position: relative;
 }
 
@@ -1223,6 +1234,7 @@ body {
   border-radius: 999px;
   border: none;
   background-color: transparent;
+  color: var(--text-muted);
   font-size: 20px;
   line-height: 1;
   padding: 0;
@@ -1291,10 +1303,17 @@ body {
   justify-content: space-between;
   padding: 8px 10px;
   border-radius: 8px;
+  border: 1px solid transparent;
   font-size: 16px;
   background-color: var(--surface-subtle);
   color: var(--text-primary);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   z-index: 1;
+}
+
+.course-pages-item:hover {
+  background-color: var(--surface-muted);
+  border-color: var(--border-default);
 }
 
 .course-pages-item:has(.course-page-menu) {
@@ -1302,7 +1321,11 @@ body {
 }
 
 .course-pages-item.active {
-  background-color: rgba(202, 0, 2, 0.14);
+  background-color: rgba(224, 20, 24, 0.10);
+  border-color: rgba(224, 20, 24, 0.35);
+  color: #e01418;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 #e01418;
 }
 
 .course-pages-item-child {
@@ -1365,13 +1388,21 @@ body {
 .course-page-main {
   flex: 1;
   background-color: var(--surface-default);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 16px 18px;
   border: 1px solid var(--border-default);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
   min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
   max-height: calc(100vh - 200px);
+}
+/* Dark mode: lift the panel off the near-black page ground so it reads as a card
+   (mirrors the .training-card dark treatment). */
+:root[data-theme="dark"] .course-page-main {
+  background-color: #1e2126;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
 }
 
 .course-page-main-header {
@@ -1421,9 +1452,19 @@ body {
   min-width: 0;
   border-radius: 10px;
   border: 1px solid var(--border-default);
+  background-color: var(--surface-subtle);
+  color: var(--text-primary);
   padding: 6px 10px;
+  font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
   font-weight: 600;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.course-page-title-input:focus {
+  outline: none;
+  border-color: #e01418;
+  box-shadow: 0 0 0 3px rgba(224, 20, 24, 0.15);
 }
 
 .course-page-editor-body {
@@ -1442,6 +1483,8 @@ body {
   overflow-x: hidden;
   border-radius: 10px;
   border: 1px solid var(--border-default);
+  background-color: var(--surface-default);
+  color: var(--text-primary);
   padding: 0;
   font-size: 14px;
   resize: vertical;
@@ -1828,7 +1871,7 @@ body {
 
 .course-page-main-body {
   font-size: 13px;
-  color: #4b5563;
+  color: var(--text-tertiary);
 }
 
 .admin-course-grid-page {
@@ -2580,6 +2623,28 @@ body {
   gap: 16px;
 }
 
+/* Training Center category sections (grouping courses like Tools & Products). */
+.training-category-section { margin-bottom: 30px; }
+.training-category-heading {
+  font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.training-category-heading::before {
+  content: "";
+  width: 16px;
+  height: 3px;
+  background: #e01418;
+  border-radius: 2px;
+}
+
 @media (min-width: 640px) {
   .training-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2588,7 +2653,13 @@ body {
 
 @media (min-width: 1024px) {
   .training-card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1360px) {
+  .training-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -2598,6 +2669,7 @@ body {
   border: 1px solid var(--border-strong);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   cursor: pointer;
+  overflow: hidden;
   transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
 }
 /* Dark mode: the default card fill sits almost on the near-black page ground, so
@@ -2617,10 +2689,13 @@ body {
 
 .training-card-image {
   position: relative;
-  padding-top: 44%;
+  padding-top: 52%;
   background-image: linear-gradient(135deg, var(--gray-900) /* no semantic: gradient stop */, #4b5563);
-  background-position: center;
+  /* Anchor the crop to the TOP edge so a person's head is never sliced off the
+     top of the thumbnail; `cover` then trims from the bottom instead. */
+  background-position: center top;
   background-size: cover;
+  background-repeat: no-repeat;
 }
 
 .training-card-image-overlay {
@@ -2656,7 +2731,7 @@ body {
 }
 
 .training-card-status {
-  font-size: 16px;
+  font-size: 12.5px;
   font-weight: 800;
   flex-shrink: 0;
   white-space: nowrap;
@@ -2664,11 +2739,14 @@ body {
 
 .training-card-title {
   font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-  font-size: 18px;
+  font-size: 16.5px;
   font-weight: 800;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-primary);
+  /* Show the FULL course name; it wraps (never clips/cuts) if unusually long. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* "12 lessons" under a course title: how much is inside, before you open it. */
@@ -2676,6 +2754,49 @@ body {
   margin-top: 4px;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* Module (folder) shortcuts under the course name — click to jump straight
+   into that module's first lesson. */
+.training-card-modules {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 4px;
+}
+.training-card-module {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border-default);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.training-card-module:hover {
+  border-color: #e01418;
+  color: #e01418;
+  background: rgba(224, 20, 24, 0.06);
+}
+.training-card-module-arrow { color: #e01418; font-size: 11px; flex-shrink: 0; }
+
+/* Course description on the card — clamped to keep cards uniform. */
+.training-card-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .training-card-progress-row {
@@ -4321,7 +4442,7 @@ body {
 
 .drag-handle:hover,
 .course-pages-item:hover > span:first-child {
-  color: #4b5563;
+  color: var(--text-tertiary);
 }
 
 .drag-handle:active,
@@ -4847,7 +4968,7 @@ body {
     display: flex !important;
     padding: 16px !important;
     border-bottom: 1px solid var(--border-default) !important;
-    background: #f9fafb !important;
+    background: var(--surface-subtle) !important;
   }
 
   /* Folder items - section headers like screenshot */
@@ -4863,7 +4984,7 @@ body {
   /* Lesson items - clean rows like screenshot */
   .training-center .course-pages-sidebar .course-pages-item {
     border-radius: 0 !important;
-    border-bottom: 1px solid #f1f5f9 !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     padding: 14px 16px !important;
     font-size: 14px !important;
     background: var(--surface-default) !important;
@@ -4871,8 +4992,8 @@ body {
   }
 
   .training-center .course-pages-sidebar .course-pages-item.active {
-    background: #fef3c7 !important;
-    border-left: 3px solid #f59e0b !important;
+    background: rgba(224, 20, 24, 0.10) !important;
+    border-left: 3px solid #e01418 !important;
   }
 
   /* Child lesson items indented */

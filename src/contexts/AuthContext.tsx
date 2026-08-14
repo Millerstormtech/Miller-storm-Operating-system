@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isLoading, user, router.pathname]);
 
   function goToDashboard(u: User) {
-    if (u.role === "admin") router.push("/admin/user-management");
+    if (u.role === "admin") router.push("/admin/leaderboard");
     else if (u.role === "c-level") router.push("/c-level/dashboard");
     else if (u.role === "branch-manager") router.push("/branch-manager/dashboard");
     else if (u.role === "sales-team-lead") router.push("/manager/dashboard");
@@ -235,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRealUser(null);
     setUser(admin);
     try { localStorage.setItem("user", JSON.stringify(admin)); } catch { /* ignore */ }
-    router.push("/admin/user-management");
+    router.push("/admin/leaderboard");
   }
 
   function logout() {
