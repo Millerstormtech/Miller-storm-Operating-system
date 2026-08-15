@@ -74,7 +74,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
   Map<String, dynamic>? _contractKing;
   bool _loading = true;
   // 'leaderboard' (the live board) or 'dashboard' (the web-style Scoreboard).
-  String _tab = 'leaderboard';
+  String _tab = 'dashboard'; // default landing = My Dashboard
   String? _userId;
 
   // Rep multi-select filter (deferred apply, like web): the committed set that
