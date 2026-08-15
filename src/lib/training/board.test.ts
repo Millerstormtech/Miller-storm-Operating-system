@@ -6,6 +6,7 @@ import {
   filterRows,
   filtersActive,
   teamStandings,
+  teamMembers,
   teamSummaryFor,
   weekStartMonday,
   computeRankDeltas,
@@ -150,6 +151,47 @@ describe("teamStandings / teamSummaryFor", () => {
   it("returns null for an unknown or empty team", () => {
     expect(teamSummaryFor(rows, "Nope")).toBeNull();
     expect(teamSummaryFor(rows, "")).toBeNull();
+  });
+});
+
+describe("teamMembers", () => {
+  const roster = [
+    { id: "a", name: "Amanda Silva", team: "Luke", pct: 40 },
+    { id: "b", name: "Bea Cole", team: "Cooper", pct: 90 },
+    { id: "c", name: "Carl Ruiz", team: "Luke", pct: 0 },
+    { id: "d", name: "Dana West", team: "Luke", pct: 80 },
+    { id: "e", name: "Eli Novak", team: "", pct: 95 },
+  ];
+
+  it("returns one team's reps, highest percentage first", () => {
+    expect(teamMembers(roster, "Luke").map((r) => r.id)).toEqual(["d", "a", "c"]);
+  });
+
+  it("includes not-started members, so the list can produce the team average", () => {
+    const members = teamMembers(roster, "Luke");
+    expect(members).toHaveLength(3);
+    expect(members.some((r) => r.pct === 0)).toBe(true);
+    // The card shows avgPct over the same three, so list and number must agree.
+    expect(teamStandings(roster).find((s) => s.team === "Luke")?.size).toBe(members.length);
+  });
+
+  it("breaks a tie on name so the order never shuffles between renders", () => {
+    const tied = [
+      { name: "Zoe Park", team: "Luke", pct: 50 },
+      { name: "Adam Fry", team: "Luke", pct: 50 },
+    ];
+    expect(teamMembers(tied, "Luke").map((r) => r.name)).toEqual(["Adam Fry", "Zoe Park"]);
+  });
+
+  it("returns nothing for an unknown team, and never groups the teamless", () => {
+    expect(teamMembers(roster, "Nope")).toEqual([]);
+    expect(teamMembers(roster, "")).toEqual([]);
+  });
+
+  it("does not reorder the array it was given", () => {
+    const before = roster.map((r) => r.id);
+    teamMembers(roster, "Luke");
+    expect(roster.map((r) => r.id)).toEqual(before);
   });
 });
 

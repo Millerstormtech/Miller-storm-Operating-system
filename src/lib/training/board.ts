@@ -160,6 +160,23 @@ export function teamStandings(rows: Array<{ team: string; pct: number }>): TeamS
   return standings;
 }
 
+/**
+ * Every rep on one team, in board order: highest percentage first, then name.
+ *
+ * Not-started reps are INCLUDED at 0%, because teamStandings counts them in the
+ * average. Dropping them here would show a roster that cannot produce the
+ * number printed on the same card. Teamless reps ("") never form a team, so an
+ * empty team name returns nothing rather than every unassigned rep.
+ */
+export function teamMembers<T extends { name: string; team: string; pct: number }>(
+  rows: T[],
+  team: string
+): T[] {
+  if (!team) return [];
+  // filter() already copies, so sorting here cannot reorder the caller's array.
+  return rows.filter((r) => r.team === team).sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+}
+
 /** The one team a team lead cares about, plus how many teams it competes with. */
 export function teamSummaryFor(
   rows: Array<{ team: string; pct: number }>,
