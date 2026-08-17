@@ -9,6 +9,7 @@
 export const COURSE_CLOSERS = ["Let's goo!🔥", "Big steps!💪", "Locked in!🎯", "One more down!👊"];
 export const CLAIM_CLOSERS = ["Keep it rolling!💪", "On to the next one!👊", "Momentum!⚡", "Storm's coming!⛈️"];
 export const CONTRACT_CLOSERS = ["Big one!💪", "Get it!👏", "That's the way!🙌", "Signed and sealed!✍️"];
+export const KING_CLOSERS = ["Congrats!👏", "Well earned!🙌", "Take a bow!👑", "Respect!💪"];
 
 // Deterministic, NOT random: the same event always renders the same sentence.
 // That is what lets the tests assert exact strings and keeps a re-read of the
@@ -66,4 +67,22 @@ export function contractSignedMessage(
     return `💰 ${name.trim()} just signed a ${formatAmount(amountDollars)} contract! ${tail}`;
   }
   return `✍️ ${name.trim()} just signed a contract! ${tail}`;
+}
+
+// The month's Contract King, posted on the 1st for the month that just ended.
+// Unlike the per-deal lines above, this one names a FINISHED month, so it reads
+// as a result rather than a running score. `monthLabel` is "August 2026" from
+// kingMonthLabel(). Seeded on the month, so a given month always renders the
+// same closer.
+//
+// amountDollars is always > 0 here by construction: pickContractKing() refuses
+// to crown anyone at or below zero, so there is no amount-free variant to write.
+export function monthlyContractKingMessage(
+  name: string,
+  amountDollars: number,
+  monthLabel: string,
+  seed: string
+): string {
+  const closer = pickCloser(KING_CLOSERS, seed);
+  return `👑 ${monthLabel} Contract King: ${name.trim()}, with ${formatAmount(amountDollars)} in contracts. ${closer}`;
 }

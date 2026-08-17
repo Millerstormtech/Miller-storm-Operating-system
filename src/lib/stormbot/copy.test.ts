@@ -5,9 +5,11 @@ import {
   courseCelebrationMessage,
   claimFiledMessage,
   contractSignedMessage,
+  monthlyContractKingMessage,
   COURSE_CLOSERS,
   CLAIM_CLOSERS,
   CONTRACT_CLOSERS,
+  KING_CLOSERS,
 } from "./copy";
 
 describe("pickCloser", () => {
@@ -104,5 +106,39 @@ describe("contractSignedMessage", () => {
 
   it("never contains an em dash", () => {
     expect(contractSignedMessage("A", 3, 100, "job-1")).not.toContain("—");
+  });
+});
+
+describe("monthlyContractKingMessage", () => {
+  it("names the finished month, the rep and the total", () => {
+    const msg = monthlyContractKingMessage("Jett Miller", 412000, "August 2026", "2026-08");
+    expect(msg).toContain("👑 August 2026 Contract King: Jett Miller, with $412,000 in contracts. ");
+    expect(KING_CLOSERS).toContain(msg.split("in contracts. ")[1]);
+  });
+
+  it("is deterministic: the same month always renders the same sentence", () => {
+    expect(monthlyContractKingMessage("Jett Miller", 412000, "August 2026", "2026-08")).toBe(
+      monthlyContractKingMessage("Jett Miller", 412000, "August 2026", "2026-08")
+    );
+  });
+
+  it("varies the closer across months so it does not read as a template", () => {
+    const seeds = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
+    const closers = new Set(
+      seeds.map((s) => monthlyContractKingMessage("A", 1, "M", s).split("in contracts. ")[1])
+    );
+    expect(closers.size).toBeGreaterThan(1);
+  });
+
+  it("rounds to whole dollars, because cents on a roofing total are noise", () => {
+    expect(monthlyContractKingMessage("A", 412000.49, "August 2026", "s")).toContain("$412,000");
+  });
+
+  it("trims a padded name", () => {
+    expect(monthlyContractKingMessage("  Jett Miller  ", 100, "M", "s")).toContain("King: Jett Miller,");
+  });
+
+  it("never contains an em dash", () => {
+    expect(monthlyContractKingMessage("A", 100, "August 2026", "s")).not.toContain("—");
   });
 });

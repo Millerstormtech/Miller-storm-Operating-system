@@ -99,6 +99,27 @@ module.exports = {
       out_file: '/var/www/millerstorm/logs/weekly-digest-out.log',
       merge_logs: true,
       time: true
+    },
+    {
+      // Monthly Contract King announcement into Storm Chat, 1st of the month at
+      // 09:00 CENTRAL (the script reads America/Chicago explicitly, so it does
+      // not depend on the server's timezone). PORT must be the MAIN app's port
+      // (6790) — the cron POSTs to http://127.0.0.1:$PORT/api/stormbot/monthly-king.
+      // Override KING_DAY/KING_HOUR via .env for a different slot.
+      name: 'monthly-king',
+      script: 'scripts/monthly-king-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 6790
+      },
+      error_file: '/var/www/millerstorm/logs/monthly-king-err.log',
+      out_file: '/var/www/millerstorm/logs/monthly-king-out.log',
+      merge_logs: true,
+      time: true
     }
   ]
 };
