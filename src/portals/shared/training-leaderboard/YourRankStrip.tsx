@@ -1,18 +1,18 @@
-import { nextMilestone } from "../../../lib/training/board";
+import { nextCredential } from "../../../lib/training/credentials";
 import { RepCard, type RepCardData } from "./RepCard";
 
 /**
- * The logged-in ranked user, pinned above the board with their next
- * milestone. Same RepCard, indigo emphasis.
+ * The logged-in ranked user, pinned above the board with the credential they
+ * are closest to finishing. Same RepCard, indigo emphasis.
  */
 export function YourRankStrip({
   row,
-  totalCourses,
   isNarrow,
   onClick,
 }: {
   row: RepCardData & { rank: number | null; coursesCompleted: number };
-  totalCourses: number;
+  /** Unused since the rank ladder was retired; kept so callers need no change. */
+  totalCourses?: number;
   isNarrow: boolean;
   onClick?: () => void;
 }) {
@@ -35,7 +35,7 @@ export function YourRankStrip({
         primaryRank={row.rank}
         isNarrow={isNarrow}
         youTag
-        milestone={nextMilestone(row.coursesCompleted, totalCourses)}
+        milestone={row.credentials ? nextCredential(row.credentials) : null}
         containerStyle={{ background: "#eef2ff", border: "1.5px solid #c7d2fe", marginBottom: 0 }}
         onClick={onClick}
       />

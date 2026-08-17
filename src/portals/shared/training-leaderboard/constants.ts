@@ -1,27 +1,9 @@
 // Shared visual tokens for the training leaderboard. One place for tier
 // colors and badge metadata so cards and legend can never drift apart.
-import type { RankTitle, BadgeId } from "../../../lib/training/scoring";
 
 export const GREEN = "#10b981"; // same green as the lesson ticks
 export const RING_TRACK = "#e5e7eb";
 export const DELTA_DOWN = "#dc2626"; // ▼ moved down; ▲ up reuses GREEN
-
-export const TIER_COLORS: Record<RankTitle, { bg: string; fg: string }> = {
-  Rookie: { bg: "#f3f4f6", fg: "#6b7280" },
-  Rising: { bg: "#dbeafe", fg: "#1d4ed8" },
-  Pro: { bg: "#dcfce7", fg: "#15803d" },
-  Ace: { bg: "#ede9fe", fg: "#6d28d9" },
-  Elite: { bg: "#fef3c7", fg: "#b45309" },
-  Legend: { bg: "linear-gradient(90deg,#fde68a,#fca5a5)", fg: "#7c2d12" },
-};
-
-// Copy rule: "Label: meaning". Colons, never em dashes.
-export const BADGE_META: Record<BadgeId, { emoji: string; label: string; meaning: string }> = {
-  halfway: { emoji: "🚀", label: "Halfway", meaning: "50% of the library" },
-  finisher: { emoji: "🏁", label: "Finisher", meaning: "a course fully done" },
-  graduate: { emoji: "🎓", label: "Graduate", meaning: "every course done" },
-  "test-ace": { emoji: "🎯", label: "Test Ace", meaning: "100% on a Final Test" },
-};
 
 export const PODIUM = { emoji: "🏆", label: "Podium", meaning: "currently top 3 (live)" };
 

@@ -11,8 +11,6 @@ import {
   type CourseStats,
   isRankedUser,
   RANKED_ROLES,
-  rankTitleFor,
-  badgesFor,
 } from "./scoring";
 import { aggregateOverall, type OverallRow } from "./board";
 import { resolveTeam, TEAM_BRANCH, resolveNameBranch } from "../repcard/org-chart";
@@ -97,16 +95,6 @@ export async function loadBoardData(): Promise<BoardData> {
       quizzesPassed: agg.quizzesPassed,
       coursesCompleted: agg.coursesCompleted,
       pct: agg.pct,
-      // Kept until the row is rebuilt around the three tracks, so this change
-      // is additive and nothing on screen breaks in between.
-      rankTitle: rankTitleFor(agg.coursesCompleted, totalCourses),
-      badges: badgesFor({
-        itemsCompleted: agg.itemsCompleted,
-        itemsTotal: agg.itemsTotal,
-        coursesCompleted: agg.coursesCompleted,
-        totalCourses,
-        hasTestAce: agg.hasTestAce,
-      }),
       credentials,
       rank: null,
       isPodium: false,

@@ -98,3 +98,27 @@ export function credentialProgress(
     };
   });
 }
+
+/**
+ * The credential a rep is closest to finishing, phrased for the "Your rank"
+ * strip. Null when every credential is earned, or when none holds a course.
+ *
+ * Replaces nextMilestone(), which chased the retired Rookie-to-Legend ladder.
+ * "Closest" is by percentage, not by courses remaining: a rep two long courses
+ * from one credential and one barely-started course from another is genuinely
+ * nearer the first, and percentage is the figure already on their row.
+ *
+ * Ties break by row order, so the diploma is offered before the certificates.
+ * Copy uses parentheses, never em dashes.
+ */
+export function nextCredential(progress: CredentialProgress[]): string | null {
+  const chaseable = progress.filter((c) => c.coursesTotal > 0 && !c.earned);
+  if (chaseable.length === 0) return null;
+  const order = new Map(CREDENTIALS.map((c, i) => [c.key, i]));
+  const best = chaseable.reduce((a, b) =>
+    b.pct > a.pct || (b.pct === a.pct && (order.get(b.key) ?? 0) < (order.get(a.key) ?? 0)) ? b : a
+  );
+  const label = CREDENTIALS.find((c) => c.key === best.key)?.label || best.key;
+  const left = best.coursesTotal - best.coursesCompleted;
+  return `${label} (${left} course${left === 1 ? "" : "s"} left)`;
+}

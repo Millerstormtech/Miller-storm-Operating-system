@@ -2,7 +2,7 @@
 // scoring.ts: no database, no React, no I/O. The API route and the UI both
 // import from here so the board can never disagree with itself.
 
-import type { CourseStats, RankTitle, BadgeId } from "./scoring";
+import type { CourseStats } from "./scoring";
 import type { CredentialProgress } from "./credentials";
 
 export type OverallAggregate = {
@@ -65,21 +65,6 @@ export function nextMilestone(coursesCompleted: number, totalCourses: number): s
   return `Legend 🌟 (${more(totalCourses - coursesCompleted)})`;
 }
 
-/**
- * Legend-panel labels for each rank, computed from the real course count so a
- * grown library never shows a stale "all 10".
- */
-export function rankRequirementLabels(totalCourses: number): Record<RankTitle, string> {
-  return {
-    Rookie: "0 courses",
-    Rising: "1 to 2",
-    Pro: "3 to 4",
-    Ace: "5 to 6",
-    Elite: `7 to ${Math.max(7, totalCourses - 1)}`,
-    Legend: `all ${totalCourses}`,
-  };
-}
-
 /** One row of the Overall board. Produced by /api/training/leaderboard. */
 export type OverallRow = {
   id: string;
@@ -94,14 +79,6 @@ export type OverallRow = {
   quizzesPassed: number;
   coursesCompleted: number;
   pct: number;
-  /**
-   * @deprecated Retired by the Triple Track decision of 2026-08-15. Still
-   * populated so the board keeps rendering until the row is rebuilt around the
-   * three tracks; delete with badges in that UI change.
-   */
-  rankTitle: RankTitle;
-  /** @deprecated Retired with rankTitle. See above. */
-  badges: BadgeId[];
   /**
    * Progress through each of the three credentials, in row order. Replaces
    * rankTitle and badges: the titles only ever appeared as hover text, and the

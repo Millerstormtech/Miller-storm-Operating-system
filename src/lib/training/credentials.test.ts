@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { credentialProgress, CREDENTIALS } from "./credentials";
+import { credentialProgress, nextCredential, CREDENTIALS } from "./credentials";
 import type { CourseStats } from "./scoring";
 
 const stats = (over: Partial<CourseStats>): CourseStats => ({
@@ -123,5 +123,55 @@ describe("credentialProgress", () => {
       "knockers",
       "hustlers",
     ]);
+  });
+});
+
+describe("nextCredential", () => {
+  const prog = (over: Partial<import("./credentials").CredentialProgress> & { key: any }) => ({
+    itemsCompleted: 0, itemsTotal: 10, pct: 0, coursesCompleted: 0, coursesTotal: 2, earned: false, ...over,
+  });
+
+  it("names the credential closest to done, by percentage", () => {
+    expect(
+      nextCredential([
+        prog({ key: "diploma", pct: 20, coursesCompleted: 0, coursesTotal: 4 }),
+        prog({ key: "knockers", pct: 75, coursesCompleted: 0, coursesTotal: 1 }),
+        prog({ key: "hustlers", pct: 10, coursesCompleted: 0, coursesTotal: 4 }),
+      ])
+    ).toBe("Millionaire Knockers (1 course left)");
+  });
+
+  it("counts courses remaining, not courses total", () => {
+    expect(
+      nextCredential([prog({ key: "hustlers", pct: 60, coursesCompleted: 3, coursesTotal: 4 })])
+    ).toBe("Roof Hustlers (1 course left)");
+  });
+
+  it("skips credentials already earned", () => {
+    expect(
+      nextCredential([
+        prog({ key: "diploma", pct: 100, coursesCompleted: 4, coursesTotal: 4, earned: true }),
+        prog({ key: "knockers", pct: 30, coursesCompleted: 0, coursesTotal: 2 }),
+      ])
+    ).toBe("Millionaire Knockers (2 courses left)");
+  });
+
+  it("returns null when everything is earned", () => {
+    expect(
+      nextCredential([prog({ key: "diploma", pct: 100, coursesCompleted: 2, coursesTotal: 2, earned: true })])
+    ).toBeNull();
+  });
+
+  it("ignores credentials holding no courses", () => {
+    expect(nextCredential([prog({ key: "knockers", coursesTotal: 0, pct: 0 })])).toBeNull();
+  });
+
+  it("breaks a tie in row order, so the diploma is offered first", () => {
+    expect(
+      nextCredential([
+        prog({ key: "diploma", pct: 50, coursesCompleted: 1, coursesTotal: 2 }),
+        prog({ key: "hustlers", pct: 50, coursesCompleted: 1, coursesTotal: 2 }),
+      ])
+    ).toBe("Miller Storm Diploma (1 course left)");
   });
 });

@@ -172,49 +172,10 @@ export function courseStats(course: CourseLike, progress: ProgressLike): CourseS
   };
 }
 
-export const RANK_TITLES = ["Rookie", "Rising", "Pro", "Ace", "Elite", "Legend"] as const;
-export type RankTitle = (typeof RANK_TITLES)[number];
 
-/**
- * Rank title from courses completed. Legend is DYNAMIC ("every published
- * course"), never hard-coded to 10 — the library can grow. The middle bands are
- * tuned for today's 10-course library.
- */
-export function rankTitleFor(coursesCompleted: number, totalCourses: number): RankTitle {
-  if (totalCourses > 0 && coursesCompleted >= totalCourses) return "Legend";
-  if (coursesCompleted >= 7) return "Elite";
-  if (coursesCompleted >= 5) return "Ace";
-  if (coursesCompleted >= 3) return "Pro";
-  if (coursesCompleted >= 1) return "Rising";
-  return "Rookie";
-}
 
-export type BadgeId = "halfway" | "finisher" | "graduate" | "test-ace";
 
-export type BadgeInput = {
-  itemsCompleted: number;
-  itemsTotal: number;
-  coursesCompleted: number;
-  totalCourses: number;
-  hasTestAce: boolean;
-};
 
-/**
- * Permanent badges only. 🏆 Podium is deliberately absent: it is derived live
- * from the current standings, so persisting it would let it drift out of sync.
- *
- * 🌱 First Steps was removed on purpose (2026-07-20): a badge nearly everyone
- * earns carries no signal. 🎯 was renamed quiz-ace -> test-ace because it is
- * earned on the Final TEST.
- */
-export function badgesFor(input: BadgeInput): BadgeId[] {
-  const badges: BadgeId[] = [];
-  if (input.itemsTotal > 0 && input.itemsCompleted / input.itemsTotal >= 0.5) badges.push("halfway");
-  if (input.coursesCompleted >= 1) badges.push("finisher");
-  if (input.totalCourses > 0 && input.coursesCompleted >= input.totalCourses) badges.push("graduate");
-  if (input.hasTestAce) badges.push("test-ace");
-  return badges;
-}
 
 /**
  * A team's score is the AVERAGE of its members' percentages, so a tight
