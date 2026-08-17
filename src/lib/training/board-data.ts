@@ -2,11 +2,13 @@
 // /api/training/rep/[id]. NOT pure (queries Mongo): the rules themselves stay
 // in scoring.ts/board.ts; this module only assembles their inputs, so the two
 // endpoints can never disagree. Caller must connectMongo() first.
+import { credentialProgress } from "./credentials";
 import { CourseModel } from "../models/Course";
 import { UserModel } from "../models/User";
 import { UserProgressModel } from "../models/UserProgress";
 import {
   courseStats,
+  type CourseStats,
   isRankedUser,
   RANKED_ROLES,
   rankTitleFor,
@@ -72,6 +74,12 @@ export async function loadBoardData(): Promise<BoardData> {
       courseStats(c, progressByUserCourse.get(`${u.id}:${c.id}`))
     );
     const agg = aggregateOverall(perCourse);
+    // Per-credential bars. Built from the SAME per-course stats as the overall
+    // bar, so a rep's three tracks can never disagree with their percentage.
+    const statsById = new Map<string, CourseStats>(
+      courses.map((c: any, i: number): [string, CourseStats] => [String(c.id), perCourse[i]])
+    );
+    const credentials = credentialProgress(courses as any, statsById);
     // Branch and Team resolved by NAME via the org chart, the same source the
     // Sales Leaderboard uses, so labels agree across both boards (master 2.5).
     const team = resolveTeam(u.name);
@@ -89,6 +97,8 @@ export async function loadBoardData(): Promise<BoardData> {
       quizzesPassed: agg.quizzesPassed,
       coursesCompleted: agg.coursesCompleted,
       pct: agg.pct,
+      // Kept until the row is rebuilt around the three tracks, so this change
+      // is additive and nothing on screen breaks in between.
       rankTitle: rankTitleFor(agg.coursesCompleted, totalCourses),
       badges: badgesFor({
         itemsCompleted: agg.itemsCompleted,
@@ -97,6 +107,7 @@ export async function loadBoardData(): Promise<BoardData> {
         totalCourses,
         hasTestAce: agg.hasTestAce,
       }),
+      credentials,
       rank: null,
       isPodium: false,
       rankDelta: null,

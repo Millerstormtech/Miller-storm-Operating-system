@@ -3,6 +3,7 @@
 // import from here so the board can never disagree with itself.
 
 import type { CourseStats, RankTitle, BadgeId } from "./scoring";
+import type { CredentialProgress } from "./credentials";
 
 export type OverallAggregate = {
   itemsCompleted: number;
@@ -93,8 +94,21 @@ export type OverallRow = {
   quizzesPassed: number;
   coursesCompleted: number;
   pct: number;
+  /**
+   * @deprecated Retired by the Triple Track decision of 2026-08-15. Still
+   * populated so the board keeps rendering until the row is rebuilt around the
+   * three tracks; delete with badges in that UI change.
+   */
   rankTitle: RankTitle;
+  /** @deprecated Retired with rankTitle. See above. */
   badges: BadgeId[];
+  /**
+   * Progress through each of the three credentials, in row order. Replaces
+   * rankTitle and badges: the titles only ever appeared as hover text, and the
+   * badges measured how MUCH of the library a rep had done rather than WHAT
+   * they could now do. Counted per credential, never against the library.
+   */
+  credentials: CredentialProgress[];
   /** Company-wide rank among started reps; null when notStarted. */
   rank: number | null;
   /** True for the company-wide top 3. Derived, never persisted. */
