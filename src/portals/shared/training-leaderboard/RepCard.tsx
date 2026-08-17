@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import type { BadgeId, RankTitle } from "../../../lib/training/scoring";
+import type { CredentialProgress } from "../../../lib/training/credentials";
+import { CREDENTIALS } from "../../../lib/training/credentials";
 import {
-  BADGE_META,
   PODIUM,
   GREEN,
   RING_TRACK,
@@ -19,8 +19,8 @@ export type RepCardData = {
   branch: string;
   team: string;
   pct: number;
-  rankTitle: RankTitle;
-  badges: BadgeId[];
+  /** Progress through each of the three credentials, in row order. */
+  credentials?: CredentialProgress[];
   isPodium: boolean;
   videosWatched?: number;
   quizzesPassed?: number;
@@ -146,7 +146,7 @@ export function RepCard({
             }
           : undefined
       }
-      title={`${row.rankTitle}${typeof coRank === "number" ? ` · co.#${coRank}` : ""}${milestone ? ` · next: ${milestone}` : ""}`}
+      title={`${typeof coRank === "number" ? `co.#${coRank}` : ""}${milestone ? `${typeof coRank === "number" ? " · " : ""}next: ${milestone}` : ""}`}
       style={{
         display: "flex",
         alignItems: "center",
@@ -225,27 +225,77 @@ export function RepCard({
         {Math.round(pct)}%
       </span>
 
-      {/* Achievement badges */}
-      {row.badges.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-          {row.badges.map((b) => (
-            <Tooltip key={b} text={`${BADGE_META[b].label}: ${BADGE_META[b].meaning}`}>
-              <span
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: "50%",
-                  background: "var(--surface-muted)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 13,
-                }}
+      {/* Triple Track: one labelled track per credential, each with its own mark,
+          bar and percentage. Approved 2026-08-15; the point is that a rep can be
+          read without anyone clicking into them, which is why the exact figure is
+          on the row rather than only in a tooltip.
+
+          These deliberately do NOT sum to the overall percentage on the left:
+          each counts only the courses inside its own credential. A rep can be
+          86% overall while holding two credentials outright. */}
+      {!isNarrow && row.credentials && row.credentials.length > 0 && (
+        <div style={{ display: "flex", gap: 14, flexShrink: 0 }}>
+          {row.credentials.map((c) => {
+            const meta = CREDENTIALS.find((m) => m.key === c.key);
+            const label = meta?.label || c.key;
+            return (
+              <Tooltip
+                key={c.key}
+                text={
+                  c.earned
+                    ? `${label}: earned (${c.coursesTotal} course${c.coursesTotal === 1 ? "" : "s"})`
+                    : `${label}: ${c.pct}% (${c.coursesCompleted} of ${c.coursesTotal} courses)`
+                }
               >
-                {BADGE_META[b].emoji}
-              </span>
-            </Tooltip>
-          ))}
+                <div style={{ width: 104 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                    {/* Filled mark = earned, outlined = in progress. Shape and
+                        weight carry it, so the row still reads in greyscale. */}
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 3,
+                        flexShrink: 0,
+                        background: c.earned ? "#ca0002" : "transparent",
+                        border: `1.5px solid ${c.earned ? "#ca0002" : "var(--border-default)"}`,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: 0.6,
+                        textTransform: "uppercase",
+                        color: "var(--text-muted)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {meta?.short || c.key}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ flex: 1, height: 6, borderRadius: 4, background: "var(--surface-muted)", overflow: "hidden" }}>
+                      <div
+                        style={{
+                          width: `${Math.min(100, Math.max(0, c.pct))}%`,
+                          height: "100%",
+                          borderRadius: 4,
+                          background: "linear-gradient(90deg, #b30002, #e01418)",
+                        }}
+                      />
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", minWidth: 30, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      {c.pct}%
+                    </span>
+                  </div>
+                </div>
+              </Tooltip>
+            );
+          })}
         </div>
       )}
     </div>
