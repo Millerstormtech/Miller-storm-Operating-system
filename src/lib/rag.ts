@@ -101,8 +101,18 @@ function buildSourceChunks(bot: any): SourceChunk[] {
   for (const c of chunkText(bot.courseTrainingText || "")) {
     items.push({ source: "course", label: "Course", content: c });
   }
+  // Roleplay content (personas / scenarios / in-character rules) — indexed as
+  // its OWN source so it can be retrieved with priority in roleplay mode and
+  // excluded from normal training Q&A.
+  for (const c of chunkText(bot.roleplayContent || "")) {
+    items.push({ source: "roleplay", label: "Roleplay", content: c });
+  }
   return items;
 }
+
+// The training-knowledge sources (everything EXCEPT roleplay behavior content).
+export const TRAINING_SOURCES = ["qa", "text", "course"];
+export const ROLEPLAY_SOURCES = ["roleplay"];
 
 /**
  * Rebuild the embedding index for one bot: chunk all its training material,
@@ -142,34 +152,108 @@ export function reindexBotInBackground(botId: string): void {
     .catch((e) => console.error(`[RAG] Reindex failed for bot ${botId}:`, e?.message || e));
 }
 
+// Very common words carry no retrieval signal — drop them so keyword matching
+// keys off the distinctive terms of a question ("roofer", "objection", "price").
+const STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "but", "if", "of", "to", "in", "on", "for", "with",
+  "how", "what", "why", "when", "where", "who", "should", "would", "could", "do", "does",
+  "did", "i", "you", "we", "they", "it", "he", "she", "is", "are", "was", "were", "be",
+  "been", "am", "my", "me", "your", "our", "their", "this", "that", "these", "those",
+  "can", "will", "at", "as", "by", "from", "about", "into", "over", "than", "then",
+  "so", "just", "like", "get", "got", "there", "here", "have", "has", "had", "not",
+  "no", "yes", "okay", "ok", "please", "tell", "say", "said", "says", "want", "need",
+]);
+
+/** Distinctive lowercased terms from a query for keyword/lexical matching. */
+function keywordTerms(q: string): string[] {
+  return Array.from(
+    new Set(
+      q
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length >= 3 && !STOPWORDS.has(w))
+    )
+  );
+}
+
+/** Fraction of the query's distinctive terms that appear in a chunk (0..1),
+ *  with a small bonus for a chunk that contains most of them. */
+function lexicalScore(content: string, terms: string[]): number {
+  if (!terms.length) return 0;
+  const lc = content.toLowerCase();
+  let hits = 0;
+  for (const t of terms) if (lc.includes(t)) hits += 1;
+  const frac = hits / terms.length;
+  // Reward chunks that match the bulk of the keywords (likely the real answer).
+  return frac >= 0.6 ? Math.min(1, frac + 0.15) : frac;
+}
+
 /**
  * Return the most relevant training chunks for a query, capped by count and a
  * total character budget. Empty array means "no index yet" — callers should
  * fall back to the legacy full-text approach.
+ *
+ * HYBRID retrieval: blends semantic (embedding cosine) with a keyword/lexical
+ * layer and reranks by the combined score. Pure vector search sometimes ranks
+ * the right chunk just outside the top-K when the answer is worded differently
+ * or the key term is buried — the keyword layer surfaces those exact-term
+ * matches so the bot stops saying "not in the training material" for content
+ * that is actually there. Operates on the existing index (no reindex needed).
  */
 export async function retrieveRelevant(
   botId: string,
   query: string,
   topK = 40,
-  maxChars = 120000
+  maxChars = 120000,
+  opts?: { sources?: string[] }
 ): Promise<string[]> {
   const q = (query || "").trim();
   if (!q) return [];
 
-  const chunks = await BotChunkModel.find({ botId }).lean<any[]>();
+  // Optionally restrict to specific knowledge sources (e.g. training-only for
+  // normal Q&A, or roleplay-only for the priority roleplay retrieval). Omitted
+  // = every source, which is the original behavior.
+  const filter: any = { botId };
+  if (opts?.sources?.length) filter.source = { $in: opts.sources };
+  const chunks = await BotChunkModel.find(filter).lean<any[]>();
   if (!chunks.length) return [];
 
   const qEmb = await embedQuery(q);
-  const scored = chunks
-    .map((c) => ({ content: c.content as string, score: cosineSim(qEmb, c.embedding || []) }))
+  const terms = keywordTerms(q);
+
+  const scored = chunks.map((c) => {
+    const content = (c.content as string) || "";
+    return {
+      content,
+      semantic: cosineSim(qEmb, c.embedding || []),
+      lexical: lexicalScore(content, terms),
+    };
+  });
+
+  // Normalize each signal across the candidate set so the blend is meaningful
+  // regardless of the absolute scales (cosine ~0.2–0.6, lexical 0–1).
+  const maxSem = Math.max(1e-9, ...scored.map((s) => s.semantic));
+  const maxLex = Math.max(1e-9, ...scored.map((s) => s.lexical));
+  const ranked = scored
+    .map((s) => ({
+      content: s.content,
+      // Semantic leads; a strong keyword match can still pull a chunk up.
+      score: 0.62 * (s.semantic / maxSem) + 0.38 * (s.lexical / maxLex),
+    }))
     .sort((a, b) => b.score - a.score);
 
   const out: string[] = [];
+  const seen = new Set<string>();
   let used = 0;
-  for (const s of scored.slice(0, topK)) {
-    if (used + s.content.length > maxChars) break;
+  for (const s of ranked.slice(0, topK)) {
+    if (seen.has(s.content)) continue;
+    // Keep filling with smaller relevant chunks rather than stopping at the
+    // first oversize one, so the budget is used well.
+    if (used + s.content.length > maxChars) continue;
     out.push(s.content);
     used += s.content.length;
+    seen.add(s.content);
   }
   return out;
 }

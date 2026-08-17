@@ -104,6 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       safeUpdates.trainingText !== undefined ||
       safeUpdates.courseTrainingText !== undefined ||
       safeUpdates.qaItems !== undefined ||
+      safeUpdates.roleplayContent !== undefined ||
       safeUpdates.selectedPages !== undefined ||
       safeUpdates.selectedCourses !== undefined ||
       safeUpdates.selectedFolders !== undefined
