@@ -348,30 +348,17 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
       </div>
 
-      {/* "Your rank" pop-out — any user on the board sees their own standing. */}
-      {me && (
-        <div className="sl__banner sl__banner--rank" data-tour="your-rank">
-          <div className="sl__banner-emoji">🏆</div>
-          <div className="sl__banner-main">
-            <div className="sl__banner-eyebrow">
-              YOUR RANK · {isCustom ? "Custom range" : WINDOWS.find((w) => w.key === window)?.label}
-            </div>
-            <div className="sl__banner-title">
-              #{me.rank}
-              <span className="sl__banner-sub"> of {rows.length}</span>
-            </div>
-          </div>
-          <div className="sl__banner-stats">
-            <div><div className="sl__stat-val">{fmtMoney(me.revenue)}</div><div className="sl__stat-lbl">Contract Amount</div></div>
-            <div><div className="sl__stat-val">{me.won ?? 0}</div><div className="sl__stat-lbl">Contracts</div></div>
-            <div><div className="sl__stat-val">{me.verifiedKnocks ?? 0}</div><div className="sl__stat-lbl">Knocks</div></div>
-          </div>
-        </div>
-      )}
-
       {/* YTD Top Sales: the year's podium, with the monthly Contract King on its
           own bar underneath, both inside one plate so they read as one object.
           Approved 2026-08-15; design in docs/design/2026-08-13-ytd-king.
+
+          FIRST on the page and ALWAYS shown (Youssef, 2026-08-15). It must never
+          respond to a filter: the branch, team, rep and former-rep filters are
+          client-side and are applied to `rows` alone, never to this, and the
+          server computes both the podium and the crown on their own year and
+          month windows rather than the selected period. Do not move this inside
+          the `loading` guard either, or it will blink out every time a period
+          pill is pressed.
 
           The podium renders only the places that exist, so the first days of a
           year show one card rather than two empty medals. The plate itself is
@@ -411,6 +398,27 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
               <div className="sl__king-amount">{fmtMoney(contractKing.revenue)}</div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* "Your rank" pop-out — any user on the board sees their own standing. */}
+      {me && (
+        <div className="sl__banner sl__banner--rank" data-tour="your-rank">
+          <div className="sl__banner-emoji">🏆</div>
+          <div className="sl__banner-main">
+            <div className="sl__banner-eyebrow">
+              YOUR RANK · {isCustom ? "Custom range" : WINDOWS.find((w) => w.key === window)?.label}
+            </div>
+            <div className="sl__banner-title">
+              #{me.rank}
+              <span className="sl__banner-sub"> of {rows.length}</span>
+            </div>
+          </div>
+          <div className="sl__banner-stats">
+            <div><div className="sl__stat-val">{fmtMoney(me.revenue)}</div><div className="sl__stat-lbl">Contract Amount</div></div>
+            <div><div className="sl__stat-val">{me.won ?? 0}</div><div className="sl__stat-lbl">Contracts</div></div>
+            <div><div className="sl__stat-val">{me.verifiedKnocks ?? 0}</div><div className="sl__stat-lbl">Knocks</div></div>
+          </div>
         </div>
       )}
 
