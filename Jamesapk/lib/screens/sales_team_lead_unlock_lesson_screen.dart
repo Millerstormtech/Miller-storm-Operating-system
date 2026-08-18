@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 
-/// Managers unlock a specific lesson/quiz for a team member without the member
-/// watching it. Unlock is stored separately from completed pages (never counts
-/// toward progress %); the member is notified. Reached from the View Team page.
+/// Managers unlock a specific lesson/quiz for team members without them watching
+/// it. Unlock is stored separately from completed pages (never counts toward
+/// progress %); each member is notified. Reached from the View Team page.
+/// Two-step flow: pick many members, then bulk-unlock lessons/quizzes (and
+/// optionally toggle fast-forward) for all of them at once — mirrors the web.
 class SalesTeamLeadUnlockLessonScreen extends StatefulWidget {
   const SalesTeamLeadUnlockLessonScreen({super.key});
 
@@ -26,13 +28,13 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
   List<dynamic> _team = [];
   List<dynamic> _courses = [];
 
-  dynamic _selectedMember;
-  bool _loadingProgress = false;
-  // courseId -> { 'completed': Set, 'unlocked': Set, 'quizResults': List }
-  final Map<String, Map<String, dynamic>> _progress = {};
+  // Step 1: pick many members. Step 2: pick lessons/quizzes for all of them.
+  final Set<String> _selectedMemberIds = {};
+  bool _pickingMembers = true;
   // Selected page keys "courseId::pageId".
   final Set<String> _selected = {};
   bool _busy = false;
+  bool _ffBusy = false;
   String _search = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -61,7 +63,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
       // web even when the network is slow/timing out (course list = light pages).
       await _loadCachedCourses();
       // Show the member list the moment the team loads. The course list is only
-      // needed once a member is picked (and is already cache-filled above), so it
+      // needed once members are picked (and is already cache-filled above), so it
       // must not gate the initial list behind a second, heavier request.
       await _fetchTeam();
       if (mounted) setState(() => _loading = false);
@@ -133,55 +135,39 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
     }
   }
 
-  Future<void> _selectMember(dynamic member) async {
+  // ---- Step 1: member multi-select ----
+
+  void _toggleMember(String id) {
+    if (id.isEmpty) return;
     setState(() {
-      _selectedMember = member;
-      _loadingProgress = true;
-      _progress.clear();
-      _selected.clear();
-      _search = '';
-      _searchController.clear();
-    });
-    final mid = (member['id'] ?? member['_id'] ?? '').toString();
-    await Future.wait(_courses.map((course) async {
-      final cid = (course['id'] ?? '').toString();
-      try {
-        final res = await api.get(Uri.parse(
-                'https://millerstorm.tech/api/manager/unlock-lesson?memberUserId=$mid&courseId=$cid'))
-            .timeout(const Duration(seconds: 20));
-        if (res.statusCode == 200) {
-          final data = jsonDecode(res.body);
-          _progress[cid] = {
-            'completed': (data['completedPages'] as List? ?? []).map((e) => e.toString()).toSet(),
-            'unlocked': (data['unlockedPages'] as List? ?? []).map((e) => e.toString()).toSet(),
-            'quizResults': data['quizResults'] as List? ?? [],
-          };
-        } else {
-          _progress[cid] = {'completed': <String>{}, 'unlocked': <String>{}, 'quizResults': []};
-        }
-      } catch (_) {
-        _progress[cid] = {'completed': <String>{}, 'unlocked': <String>{}, 'quizResults': []};
+      if (_selectedMemberIds.contains(id)) {
+        _selectedMemberIds.remove(id);
+      } else {
+        _selectedMemberIds.add(id);
       }
-    }));
-    if (mounted) setState(() => _loadingProgress = false);
+    });
   }
 
-  bool _isCompleted(String courseId, dynamic page) {
-    final prog = _progress[courseId];
-    if (prog == null) return false;
-    final id = (page['id'] ?? '').toString();
-    if (page['isQuiz'] == true) {
-      // A saved quiz result = passed (only passing attempts are ever saved).
-      // Don't re-derive from the score — see isQuizResultPassing on the web.
-      final results = prog['quizResults'] as List;
-      return results.any((r) =>
-          r['pageId']?.toString() == id && r['passed'] != false);
-    }
-    return (prog['completed'] as Set).contains(id);
+  List<String> _allMemberIds() => _team
+      .map((m) => (m['id'] ?? m['_id'] ?? '').toString())
+      .where((s) => s.isNotEmpty)
+      .toList();
+
+  void _toggleSelectAllMembers() {
+    final allIds = _allMemberIds();
+    setState(() {
+      final allSelected = allIds.isNotEmpty && allIds.every(_selectedMemberIds.contains);
+      if (allSelected) {
+        _selectedMemberIds.clear();
+      } else {
+        _selectedMemberIds
+          ..clear()
+          ..addAll(allIds);
+      }
+    });
   }
 
-  bool _isUnlocked(String courseId, String pageId) =>
-      (_progress[courseId]?['unlocked'] as Set?)?.contains(pageId) ?? false;
+  // ---- Step 2: lesson/quiz selection ----
 
   void _toggleSelect(String courseId, String pageId) {
     final key = '$courseId::$pageId';
@@ -194,17 +180,16 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
     });
   }
 
-  // Keys of every unlockable (not-yet-completed) page in a course. Completed
-  // pages are skipped since they can't be unlocked.
-  List<String> _unlockableKeys(String courseId, List pages) => pages
-      .where((p) => !_isCompleted(courseId, p))
+  // Keys of every (published) page in a course — with many members we no longer
+  // show per-member unlocked/completed status, so every lesson/quiz is selectable.
+  List<String> _pageKeys(String courseId, List pages) => pages
       .map((p) => '$courseId::${(p['id'] ?? '').toString()}')
       .toList();
 
   // Select (or clear) the whole course at once, so a manager can unlock every
   // lesson/quiz in one go via the existing "Unlock selected" button.
   void _toggleSelectWholeCourse(String courseId, List pages) {
-    final keys = _unlockableKeys(courseId, pages);
+    final keys = _pageKeys(courseId, pages);
     if (keys.isEmpty) return;
     setState(() {
       final allSelected = keys.every(_selected.contains);
@@ -217,10 +202,10 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
   }
 
   Future<void> _unlockSelected() async {
-    if (_selected.isEmpty || _selectedMember == null) return;
+    if (_selected.isEmpty || _selectedMemberIds.isEmpty) return;
     setState(() => _busy = true);
-    final mid = (_selectedMember['id'] ?? _selectedMember['_id'] ?? '').toString();
-    // Group selected page ids by course.
+    final ids = _selectedMemberIds.toList();
+    // Group selected page ids by course, then send one request per course.
     final byCourse = <String, List<String>>{};
     for (final key in _selected) {
       final parts = key.split('::');
@@ -229,27 +214,25 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
     try {
       for (final entry in byCourse.entries) {
         final course = _courses.firstWhere((c) => (c['id'] ?? '').toString() == entry.key, orElse: () => null);
-        final res = await api.post(
+        await api.post(
           Uri.parse('https://millerstorm.tech/api/manager/unlock-lesson'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'memberUserId': mid,
+            'memberUserIds': ids,
             'courseId': entry.key,
             'pageIds': entry.value,
             'action': 'unlock',
             'courseName': course?['title'] ?? '',
           }),
         ).timeout(const Duration(seconds: 25));
-        if (res.statusCode == 200) {
-          final data = jsonDecode(res.body);
-          _progress[entry.key]?['unlocked'] =
-              (data['unlockedPages'] as List? ?? []).map((e) => e.toString()).toSet();
-        }
       }
       if (mounted) {
         setState(() { _selected.clear(); _busy = false; });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unlocked — the team member has been notified.'), backgroundColor: _primary),
+          SnackBar(
+            content: Text('Unlocked for ${ids.length} member${ids.length == 1 ? '' : 's'} — they\'ve been notified.'),
+            backgroundColor: _primary,
+          ),
         );
       }
     } catch (e) {
@@ -263,40 +246,41 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
     }
   }
 
-  Future<void> _toggleOne(String courseId, String pageId, bool unlock) async {
-    final mid = (_selectedMember['id'] ?? _selectedMember['_id'] ?? '').toString();
-    final course = _courses.firstWhere((c) => (c['id'] ?? '').toString() == courseId, orElse: () => null);
+  Future<void> _setFastForward(bool allowed) async {
+    if (_selectedMemberIds.isEmpty) return;
+    setState(() => _ffBusy = true);
+    final ids = _selectedMemberIds.toList();
     try {
-      final res = await api.post(
-        Uri.parse('https://millerstorm.tech/api/manager/unlock-lesson'),
+      await api.post(
+        Uri.parse('https://millerstorm.tech/api/manager/allow-fast-forward'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'memberUserId': mid,
-          'courseId': courseId,
-          'pageId': pageId,
-          'action': unlock ? 'unlock' : 'lock',
-          'courseName': course?['title'] ?? '',
-        }),
+        body: jsonEncode({'memberUserIds': ids, 'allowed': allowed}),
       ).timeout(const Duration(seconds: 25));
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        setState(() {
-          _progress[courseId]?['unlocked'] =
-              (data['unlockedPages'] as List? ?? []).map((e) => e.toString()).toSet();
-        });
-        if (unlock && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unlocked — the team member has been notified.'), backgroundColor: _primary),
-          );
-        }
+      if (mounted) {
+        setState(() => _ffBusy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(allowed
+                ? 'Fast-forward enabled for ${ids.length} member${ids.length == 1 ? '' : 's'}.'
+                : 'Fast-forward disabled for ${ids.length} member${ids.length == 1 ? '' : 's'}.'),
+            backgroundColor: _primary,
+          ),
+        );
       }
     } catch (e) {
-      print('Toggle unlock error: $e');
+      print('Fast-forward error: $e');
+      if (mounted) {
+        setState(() => _ffBusy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not update fast-forward. Please try again.')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final n = _selectedMemberIds.length;
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
@@ -304,43 +288,64 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
         elevation: 0.5,
         foregroundColor: _textDark,
         title: Text(
-          _selectedMember == null ? 'Unlock Lesson' : (_selectedMember['name'] ?? 'Member').toString(),
+          _pickingMembers ? 'Unlock Lesson' : '$n member${n == 1 ? '' : 's'} selected',
           style: const TextStyle(color: _textDark, fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        leading: _selectedMember == null
+        leading: _pickingMembers
             ? null
             : IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => setState(() { _selectedMember = null; _selected.clear(); }),
+                onPressed: () => setState(() { _pickingMembers = true; _selected.clear(); }),
               ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
-          : _selectedMember == null
+          : _pickingMembers
               ? _buildMemberList()
               : _buildUnlockView(),
-      bottomNavigationBar: (_selectedMember != null && _selected.isNotEmpty)
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: ElevatedButton.icon(
-                  onPressed: _busy ? null : _unlockSelected,
-                  icon: _busy
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.lock_open),
-                  label: Text(_busy ? 'Unlocking…' : 'Unlock selected (${_selected.length})'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _blue,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-            )
-          : null,
+      bottomNavigationBar: _loading
+          ? null
+          : _pickingMembers
+              ? (_selectedMemberIds.isNotEmpty ? _continueBar() : null)
+              : (_selected.isNotEmpty ? _unlockBar() : null),
     );
   }
+
+  Widget _continueBar() => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: ElevatedButton(
+            onPressed: () => setState(() => _pickingMembers = false),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _blue,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('Continue (${_selectedMemberIds.length})',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+      );
+
+  Widget _unlockBar() => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: ElevatedButton.icon(
+            onPressed: _busy ? null : _unlockSelected,
+            icon: _busy
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.lock_open),
+            label: Text(_busy ? 'Unlocking…' : 'Unlock selected (${_selected.length})'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _blue,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      );
 
   Widget _buildMemberList() {
     if (_team.isEmpty) {
@@ -348,22 +353,47 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
         child: Text('No team members found', style: TextStyle(fontSize: 16, color: _textLight)),
       );
     }
+    final allIds = _allMemberIds();
+    final allSelected = allIds.isNotEmpty && allIds.every(_selectedMemberIds.contains);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Select a team member to unlock lessons or quizzes for them',
-            style: TextStyle(fontSize: 14, color: _textLight, fontWeight: FontWeight.w500)),
+        Row(
+          children: [
+            Expanded(
+              child: Text('Select team members to unlock lessons or quizzes for them',
+                  style: TextStyle(fontSize: 14, color: _textLight, fontWeight: FontWeight.w500)),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _toggleSelectAllMembers,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: allSelected ? const Color(0xFFE0E7FF) : const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: Text(allSelected ? 'Clear all' : 'Select all',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _blue)),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         ..._team.map((member) {
           final name = (member['name'] ?? 'Unknown').toString();
+          final id = (member['id'] ?? member['_id'] ?? '').toString();
+          final checked = _selectedMemberIds.contains(id);
           return GestureDetector(
-            onTap: () => _selectMember(member),
+            onTap: () => _toggleMember(id),
             child: Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: _white,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: checked ? _blue : const Color(0x00000000), width: checked ? 1.5 : 1),
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Row(
@@ -385,7 +415,11 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: Color(0xFFBDBDBD)),
+                  Checkbox(
+                    value: checked,
+                    activeColor: _blue,
+                    onChanged: (_) => _toggleMember(id),
+                  ),
                 ],
               ),
             ),
@@ -396,9 +430,6 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
   }
 
   Widget _buildUnlockView() {
-    if (_loadingProgress) {
-      return const Center(child: CircularProgressIndicator(color: _primary));
-    }
     final q = _search.trim().toLowerCase();
     // Build the visible course blocks (filtered by search).
     final blocks = <Map<String, dynamic>>[];
@@ -414,6 +445,37 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
 
     return Column(
       children: [
+        // Fast-forward controls apply to every selected member at once.
+        Container(
+          color: _white,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _ffBusy ? null : () => _setFastForward(true),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _blue,
+                    side: const BorderSide(color: Color(0xFFBFDBFE)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('⏩ Enable Fast-Forward',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: _ffBusy ? null : () => _setFastForward(false),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _textLight,
+                  side: const BorderSide(color: Color(0xFFE5E7EB)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Disable', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
         // Search bar
         Container(
           color: _white,
@@ -460,8 +522,8 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
   }
 
   Widget _courseCard(dynamic course, String cid, List pages) {
-    final unlockableKeys = _unlockableKeys(cid, pages);
-    final allSelected = unlockableKeys.isNotEmpty && unlockableKeys.every(_selected.contains);
+    final pageKeys = _pageKeys(cid, pages);
+    final allSelected = pageKeys.isNotEmpty && pageKeys.every(_selected.contains);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -485,7 +547,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
                   child: Text((course['title'] ?? 'Course').toString(),
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
                 ),
-                if (unlockableKeys.isNotEmpty) ...[
+                if (pageKeys.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () => _toggleSelectWholeCourse(cid, pages),
@@ -508,25 +570,20 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
           ),
           ...pages.map<Widget>((p) {
             final pid = (p['id'] ?? '').toString();
-            final done = _isCompleted(cid, p);
-            final unlocked = _isUnlocked(cid, pid);
             final key = '$cid::$pid';
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFF1F5F9)))),
               child: Row(
                 children: [
-                  if (!done)
-                    SizedBox(
-                      width: 34,
-                      child: Checkbox(
-                        value: _selected.contains(key),
-                        activeColor: _blue,
-                        onChanged: (_) => _toggleSelect(cid, pid),
-                      ),
-                    )
-                  else
-                    const SizedBox(width: 34),
+                  SizedBox(
+                    width: 34,
+                    child: Checkbox(
+                      value: _selected.contains(key),
+                      activeColor: _blue,
+                      onChanged: (_) => _toggleSelect(cid, pid),
+                    ),
+                  ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,30 +595,12 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (done)
-                    _statusChip('✓ Completed', const Color(0xFFD1FAE5), const Color(0xFF065F46))
-                  else if (unlocked)
-                    GestureDetector(
-                      onTap: () => _toggleOne(cid, pid, false),
-                      child: _statusChip('🔓 Unlocked ✕', const Color(0xFFFEF3C7), const Color(0xFF92400E)),
-                    )
-                  else
-                    _statusChip('🔒 Locked', const Color(0xFFF3F4F6), _textLight),
                 ],
               ),
             );
           }),
         ],
       ),
-    );
-  }
-
-  Widget _statusChip(String text, Color bg, Color fg) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
     );
   }
 }

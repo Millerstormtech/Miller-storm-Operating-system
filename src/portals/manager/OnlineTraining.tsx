@@ -2969,251 +2969,140 @@ function UnlockLessonPanel(props: {
   teamUsers: any[];
   publishedCourses: Course[];
 }) {
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  // courseId -> { completed:Set, unlocked:Set, quizResults }
-  const [progress, setProgress] = useState<Record<string, { completed: Set<string>; unlocked: Set<string>; quizResults: any[] }>>({});
-  const [loading, setLoading] = useState(false);
-  // Pending selections as "courseId::pageId".
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Two steps: pick MANY team members, then unlock lessons/quizzes (and/or turn
+  // on fast-forward) for ALL of them at once. Each affected rep is notified.
+  const [step, setStep] = useState<'members' | 'courses'>('members');
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set()); // "courseId::pageId"
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  // Filter lessons/quizzes by name so managers don't have to scroll long lists.
-  const [search, setSearch] = useState('');
-  // Whether the selected member may fast-forward videos (+ in-flight guard).
-  const [fastForward, setFastForward] = useState(false);
   const [ffBusy, setFfBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
-  const selectedMember = props.teamUsers.find(u => u.id === selectedMemberId) || null;
+  const memberIds = Array.from(selectedMemberIds);
+  const memberCount = memberIds.length;
+  const memberLabel = `${memberCount} member${memberCount === 1 ? '' : 's'}`;
 
-  // Load the member's fast-forward grant when one is selected.
-  useEffect(() => {
-    if (!selectedMemberId) { setFastForward(false); return; }
-    let active = true;
-    fetch(`/api/manager/allow-fast-forward?memberUserId=${encodeURIComponent(selectedMemberId)}`)
-      .then(r => r.ok ? r.json() : { fastForwardAllowed: false })
-      .then(d => { if (active) setFastForward(!!d.fastForwardAllowed); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [selectedMemberId]);
-
-  const toggleFastForward = async () => {
-    if (!selectedMemberId || ffBusy) return;
-    const next = !fastForward;
-    setFfBusy(true);
-    setFastForward(next); // optimistic
-    try {
-      const res = await fetch('/api/manager/allow-fast-forward', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberUserId: selectedMemberId, allowed: next }),
-      });
-      if (!res.ok) throw new Error('failed');
-      const d = await res.json();
-      setFastForward(!!d.fastForwardAllowed);
-      setToast(next ? 'Fast-forward enabled for this rep' : 'Fast-forward disabled for this rep');
-    } catch {
-      setFastForward(!next); // revert
-      setToast('Could not update fast-forward');
-    } finally {
-      setFfBusy(false);
-    }
-  };
-
-  // Load the member's progress across all courses when one is selected.
-  useEffect(() => {
-    if (!selectedMemberId) return;
-    let active = true;
-    setLoading(true);
-    setSelected(new Set());
-    setSearch('');
-    (async () => {
-      const map: Record<string, { completed: Set<string>; unlocked: Set<string>; quizResults: any[] }> = {};
-      await Promise.all(
-        props.publishedCourses.map(async (course) => {
-          try {
-            const res = await fetch(
-              `/api/manager/unlock-lesson?memberUserId=${encodeURIComponent(selectedMemberId)}&courseId=${encodeURIComponent(course.id)}`
-            );
-            const data = res.ok ? await res.json() : {};
-            map[course.id] = {
-              completed: new Set(data.completedPages || []),
-              unlocked: new Set(data.unlockedPages || []),
-              quizResults: data.quizResults || [],
-            };
-          } catch {
-            map[course.id] = { completed: new Set(), unlocked: new Set(), quizResults: [] };
-          }
-        })
-      );
-      if (active) { setProgress(map); setLoading(false); }
-    })();
-    return () => { active = false; };
-  }, [selectedMemberId, props.publishedCourses]);
-
-  const isCompleted = (courseId: string, p: any) => {
-    const prog = progress[courseId];
-    if (!prog) return false;
-    if (p.isQuiz) return isQuizResultPassing(prog.quizResults.find((q: any) => q.pageId === p.id));
-    return prog.completed.has(p.id);
-  };
-  const isUnlocked = (courseId: string, pageId: string) => progress[courseId]?.unlocked.has(pageId) ?? false;
+  const toggleMember = (id: string) =>
+    setSelectedMemberIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const allMembersSelected = props.teamUsers.length > 0 && props.teamUsers.every(u => selectedMemberIds.has(u.id));
+  const toggleAllMembers = () =>
+    setSelectedMemberIds(allMembersSelected ? new Set() : new Set(props.teamUsers.map(u => u.id)));
 
   const toggleSelect = (courseId: string, pageId: string) => {
     const key = `${courseId}::${pageId}`;
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
+    setSelected(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   };
-
-  // Select (or clear) every unlockable page in a course at once — a completed
-  // page is skipped since it can't be unlocked. Lets a manager unlock a whole
-  // course in one go via the existing "Unlock selected" button.
   const toggleSelectWholeCourse = (courseId: string, pages: any[]) => {
-    const keys = pages
-      .filter(p => !isCompleted(courseId, p))
-      .map(p => `${courseId}::${p.id}`);
+    const keys = pages.map(p => `${courseId}::${p.id}`);
     if (keys.length === 0) return;
     setSelected(prev => {
-      const next = new Set(prev);
-      const allSelected = keys.every(k => next.has(k));
-      if (allSelected) keys.forEach(k => next.delete(k));
-      else keys.forEach(k => next.add(k));
-      return next;
+      const n = new Set(prev);
+      const allSel = keys.every(k => n.has(k));
+      if (allSel) keys.forEach(k => n.delete(k)); else keys.forEach(k => n.add(k));
+      return n;
     });
   };
 
   const doUnlock = async () => {
-    if (selected.size === 0 || !selectedMemberId) return;
+    if (selected.size === 0 || memberIds.length === 0) return;
     setBusy(true);
-    // Group selected page ids by course.
     const byCourse: Record<string, string[]> = {};
-    selected.forEach(key => {
-      const [courseId, pageId] = key.split("::");
-      (byCourse[courseId] ||= []).push(pageId);
-    });
+    selected.forEach(key => { const [c, p] = key.split('::'); (byCourse[c] ||= []).push(p); });
     try {
       for (const [courseId, pageIds] of Object.entries(byCourse)) {
         const course = props.publishedCourses.find(c => c.id === courseId);
-        const res = await fetch("/api/manager/unlock-lesson", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            memberUserId: selectedMemberId,
-            courseId,
-            pageIds,
-            action: "unlock",
-            courseName: course?.title || "",
-          }),
+        await fetch('/api/manager/unlock-lesson', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memberUserIds: memberIds, courseId, pageIds, action: 'unlock', courseName: course?.title || '' }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          setProgress(prev => ({
-            ...prev,
-            [courseId]: { ...prev[courseId], unlocked: new Set(data.unlockedPages || []) },
-          }));
-        }
       }
       setSelected(new Set());
-      setToast("Unlocked — the team member has been notified.");
-    } finally {
-      setBusy(false);
-    }
+      setToast(`Unlocked for ${memberLabel} — they've been notified.`);
+    } catch {
+      setToast('Could not unlock — please try again.');
+    } finally { setBusy(false); }
   };
 
-  const toggleUnlockOne = async (courseId: string, pageId: string, unlock: boolean) => {
-    if (!selectedMemberId) return;
-    const course = props.publishedCourses.find(c => c.id === courseId);
-    const res = await fetch("/api/manager/unlock-lesson", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        memberUserId: selectedMemberId,
-        courseId,
-        pageId,
-        action: unlock ? "unlock" : "lock",
-        courseName: course?.title || "",
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setProgress(prev => ({
-        ...prev,
-        [courseId]: { ...prev[courseId], unlocked: new Set(data.unlockedPages || []) },
-      }));
-      if (unlock) setToast("Unlocked — the team member has been notified.");
-    }
+  const setFastForwardFor = async (allow: boolean) => {
+    if (memberIds.length === 0 || ffBusy) return;
+    setFfBusy(true);
+    try {
+      const res = await fetch('/api/manager/allow-fast-forward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberUserIds: memberIds, allowed: allow }),
+      });
+      if (!res.ok) throw new Error('failed');
+      setToast(allow ? `Fast-forward enabled for ${memberLabel} — they've been notified.` : `Fast-forward disabled for ${memberLabel}.`);
+    } catch {
+      setToast('Could not update fast-forward.');
+    } finally { setFfBusy(false); }
   };
 
-  // Member picker.
-  if (!selectedMember) {
+  // STEP 1 — pick MANY team members (checkboxes + Select all).
+  if (step === 'members') {
     return (
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 12 }}>
-          Select a team member to unlock lessons or quizzes for them
+        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-tertiary)' }}>
+            Select team members to unlock lessons/quizzes or fast-forward for — pick as many as you like.
+          </div>
+          <button
+            type="button"
+            disabled={memberCount === 0}
+            onClick={() => setStep('courses')}
+            style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: memberCount === 0 ? 'default' : 'pointer', background: memberCount === 0 ? 'var(--surface-muted)' : '#e01418', color: memberCount === 0 ? 'var(--text-subtle)' : 'var(--text-inverse)', whiteSpace: 'nowrap' }}
+          >
+            Continue{memberCount ? ` (${memberCount})` : ''} →
+          </button>
         </div>
         {props.teamUsers.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>No team members found.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {props.teamUsers.map(user => (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() => setSelectedMemberId(user.id)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}
-              >
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{user.name}</span>
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Select →</span>
-              </button>
-            ))}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'var(--surface-subtle)', border: '1px solid var(--border-default)', borderRadius: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={allMembersSelected} onChange={toggleAllMembers} style={{ width: 16, height: 16 }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Select all ({props.teamUsers.length})</span>
+            </label>
+            {props.teamUsers.map(user => {
+              const checked = selectedMemberIds.has(user.id);
+              return (
+                <label key={user.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: checked ? 'rgba(202,0,2,0.06)' : 'var(--surface-default)', border: '1px solid ' + (checked ? 'rgba(224,20,24,0.35)' : 'var(--border-default)'), borderRadius: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleMember(user.id)} style={{ width: 16, height: 16 }} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{user.name}</span>
+                </label>
+              );
+            })}
           </div>
         )}
       </div>
     );
   }
 
-  // Member selected → show courses + lessons with checkboxes.
+  // STEP 2 — choose lessons/quizzes + fast-forward for the selected members.
   return (
     <div>
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <button type="button" onClick={() => setSelectedMemberId(null)} style={{ background: 'transparent', border: 'none', color: '#e01418', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>← Team members</button>
+          <button type="button" onClick={() => { setStep('members'); setSelected(new Set()); }} style={{ background: 'transparent', border: 'none', color: '#e01418', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>← Members</button>
           <span style={{ color: 'var(--border-strong)' }}>·</span>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedMember.name}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{memberLabel} selected</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Allow this rep to fast-forward / freely seek training videos. */}
-          <button
-            type="button"
-            onClick={toggleFastForward}
-            disabled={ffBusy}
-            title="Let this rep skip/scrub freely in training videos"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 8,
-              border: '1px solid ' + (fastForward ? '#16a34a' : 'var(--border-default)'), cursor: ffBusy ? 'default' : 'pointer',
-              background: fastForward ? '#ecfdf5' : 'var(--surface-default)', color: fastForward ? '#166534' : 'var(--text-tertiary)',
-              fontSize: 13, fontWeight: 700,
-            }}
-          >
-            <span
-              style={{
-                width: 34, height: 18, borderRadius: 999, position: 'relative', flexShrink: 0,
-                background: fastForward ? '#16a34a' : '#cbd5e1', transition: 'background 0.15s',
-              }}
-            >
-              <span style={{ position: 'absolute', top: 2, left: fastForward ? 18 : 2, width: 14, height: 14, borderRadius: 999, background: 'var(--surface-default)', transition: 'left 0.15s' }} />
-            </span>
-            ⏩ Fast-forward
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => setFastForwardFor(true)} disabled={ffBusy} title="Enable fast-forward for the selected reps"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 8, border: '1px solid #16a34a', cursor: ffBusy ? 'default' : 'pointer', background: '#ecfdf5', color: '#166534', fontSize: 13, fontWeight: 700 }}>
+            ⏩ Enable Fast-Forward
           </button>
-          <button
-            type="button"
-            disabled={busy || selected.size === 0}
-            onClick={doUnlock}
-            style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: (busy || selected.size === 0) ? 'default' : 'pointer', background: (busy || selected.size === 0) ? 'var(--gray-400) /* no semantic: gray-400 as surface */' : '#e01418', color: 'var(--text-inverse)' }}
-          >
+          <button type="button" onClick={() => setFastForwardFor(false)} disabled={ffBusy} title="Disable fast-forward for the selected reps"
+            style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-default)', cursor: ffBusy ? 'default' : 'pointer', background: 'var(--surface-default)', color: 'var(--text-tertiary)', fontSize: 13, fontWeight: 700 }}>
+            Disable
+          </button>
+          <button type="button" disabled={busy || selected.size === 0} onClick={doUnlock}
+            style={{ padding: '9px 18px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700, cursor: (busy || selected.size === 0) ? 'default' : 'pointer', background: (busy || selected.size === 0) ? 'var(--surface-muted)' : '#e01418', color: (busy || selected.size === 0) ? 'var(--text-subtle)' : 'var(--text-inverse)' }}>
             {busy ? 'Unlocking…' : `🔓 Unlock selected${selected.size ? ` (${selected.size})` : ''}`}
           </button>
         </div>
@@ -3221,97 +3110,56 @@ function UnlockLessonPanel(props: {
 
       <div style={{ position: 'relative', marginBottom: 16 }}>
         <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', fontSize: 15 }}>🔍</span>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search a lesson or quiz by name…"
-          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid var(--border-default)', fontSize: 14, outline: 'none', background: 'var(--surface-default)', color: 'var(--text-primary)' }}
-        />
-        {search && (
-          <button type="button" onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-subtle)', fontSize: 16, cursor: 'pointer' }}>✕</button>
-        )}
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a lesson or quiz by name…"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid var(--border-default)', fontSize: 14, outline: 'none', background: 'var(--surface-default)', color: 'var(--text-primary)' }} />
+        {search && (<button type="button" onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-subtle)', fontSize: 16, cursor: 'pointer' }}>✕</button>)}
       </div>
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading…</div>
-      ) : (() => {
+      {(() => {
         const q = search.trim().toLowerCase();
         const courseBlocks = props.publishedCourses.map(course => {
           const allPages = (course.pages || []).filter((p: any) => p.status === 'published');
-          // When searching, keep pages whose title matches — or every page if the
-          // course title itself matches the query.
           const courseMatches = q !== '' && (course.title || '').toLowerCase().includes(q);
-          const pages = q === ''
-            ? allPages
-            : (courseMatches ? allPages : allPages.filter((p: any) => (p.title || '').toLowerCase().includes(q)));
+          const pages = q === '' ? allPages : (courseMatches ? allPages : allPages.filter((p: any) => (p.title || '').toLowerCase().includes(q)));
           return { course, pages };
         }).filter(b => b.pages.length > 0);
 
         if (courseBlocks.length === 0) {
-          return (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>
-              {q ? `No lessons or quizzes match “${search}”.` : 'No courses found.'}
-            </div>
-          );
+          return (<div style={{ textAlign: 'center', padding: 40, color: 'var(--text-subtle)' }}>{q ? `No lessons or quizzes match “${search}”.` : 'No courses found.'}</div>);
         }
 
         return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {courseBlocks.map(({ course, pages }) => {
-            return (
-              <div key={course.id} style={{ background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{course.title}</span>
-                  {(() => {
-                    const checkable = pages.filter((p: any) => !isCompleted(course.id, p));
-                    if (checkable.length === 0) return null;
-                    const allSelected = checkable.every((p: any) => selected.has(`${course.id}::${p.id}`));
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => toggleSelectWholeCourse(course.id, pages)}
-                        style={{ background: allSelected ? 'rgba(202,0,2,0.16)' : 'rgba(202,0,2,0.08)', color: '#e01418', border: '1px solid rgba(224,20,24,0.35)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                      >
-                        {allSelected ? 'Deselect all' : '🔓 Unlock whole course'}
-                      </button>
-                    );
-                  })()}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {courseBlocks.map(({ course, pages }) => {
+              const keys = pages.map((p: any) => `${course.id}::${p.id}`);
+              const allSel = keys.length > 0 && keys.every((k: string) => selected.has(k));
+              return (
+                <div key={course.id} style={{ background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px', background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{course.title}</span>
+                    <button type="button" onClick={() => toggleSelectWholeCourse(course.id, pages)}
+                      style={{ background: allSel ? 'rgba(202,0,2,0.16)' : 'rgba(202,0,2,0.08)', color: '#e01418', border: '1px solid rgba(224,20,24,0.35)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      {allSel ? 'Deselect all' : '🔓 Unlock whole course'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {pages.map((p: any) => {
+                      const key = `${course.id}::${p.id}`;
+                      return (
+                        <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={selected.has(key)} onChange={() => toggleSelect(course.id, p.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-subtle)', marginRight: 6 }}>{p.isQuiz ? 'Quiz' : 'Lesson'}</span>
+                            <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>{p.title}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {pages.map((p: any) => {
-                    const done = isCompleted(course.id, p);
-                    const unlocked = isUnlocked(course.id, p.id);
-                    const key = `${course.id}::${p.id}`;
-                    const checkable = !done;
-                    return (
-                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-                        <input
-                          type="checkbox"
-                          disabled={!checkable}
-                          checked={selected.has(key)}
-                          onChange={() => toggleSelect(course.id, p.id)}
-                          style={{ width: 16, height: 16, cursor: checkable ? 'pointer' : 'not-allowed' }}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 11, color: 'var(--text-subtle)', marginRight: 6 }}>{p.isQuiz ? 'Quiz' : 'Lesson'}</span>
-                          <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>{p.title}</span>
-                        </div>
-                        {done ? (
-                          <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>✓ Completed</span>
-                        ) : unlocked ? (
-                          <button type="button" onClick={() => toggleUnlockOne(course.id, p.id, false)} style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>🔓 Unlocked ✕</button>
-                        ) : (
-                          <span style={{ background: 'var(--surface-subtle)', color: 'var(--text-muted)', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>🔒 Locked</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
         );
       })()}
     </div>
