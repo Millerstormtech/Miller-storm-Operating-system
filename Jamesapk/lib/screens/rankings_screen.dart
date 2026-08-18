@@ -72,6 +72,8 @@ class _RankingsScreenState extends State<RankingsScreen> {
   // This calendar month's top rep by Contract Amount, computed server-side and
   // returned by /api/leaderboard. Null until someone signs something this month.
   Map<String, dynamic>? _contractKing;
+  // YTD Top Sales: the year's gold/silver/bronze (from /api/leaderboard).
+  List<dynamic> _ytdPodium = [];
   bool _loading = true;
   // 'leaderboard' (the live board) or 'dashboard' (the web-style Scoreboard).
   String _tab = 'dashboard'; // default landing = My Dashboard
@@ -125,6 +127,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         setState(() {
           _rows = (data['leaderboard'] as List?) ?? [];
           _contractKing = (data['contractKing'] as Map?)?.cast<String, dynamic>();
+          _ytdPodium = (data['ytdPodium'] as List?) ?? [];
           _loading = false;
         });
       } else {
@@ -462,6 +465,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
     // view (as list headers) so they scroll away with the rows instead
     // of staying pinned under the filters.
     final headerWidgets = <Widget>[
+      if (_ytdPodium.isNotEmpty) _ytdPodiumCard(),
       if (_contractKing != null) _contractKingBanner(),
       if (visible.isNotEmpty) _buildTotalsStats(),
     ];
@@ -875,6 +879,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
   Widget _row(Map<String, dynamic> r, int index) {
     final rank = index + 1;
     final name = (r['name'] ?? 'Unknown Rep').toString();
+    final isFormer = r['former'] == true || ['❌','❎','✖','✗','✘','×'].any((m) => name.contains(m));
     final branch = (r['branch'] ?? '').toString();
     final team = (r['team'] ?? '').toString();
     final img = (r['headshotUrl'] ?? '').toString();
@@ -929,10 +934,28 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        isYou ? '$name (You)' : name,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              isYou ? '$name (You)' : name,
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isFormer) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text('(former)',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _textLight)),
+                            ),
+                          ],
+                        ],
                       ),
                       if (subtitle.isNotEmpty)
                         Text(subtitle, style: const TextStyle(fontSize: 12, color: _textPlaceholder),
@@ -1041,6 +1064,92 @@ class _RankingsScreenState extends State<RankingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // YTD Top Sales: the year's gold / silver / bronze, mirroring the web podium.
+  Widget _ytdPodiumCard() {
+    const placeColors = {1: Color(0xFFF1C33C), 2: Color(0xFFB8BCC4), 3: Color(0xFFC08457)};
+    final podium = _ytdPodium;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('YTD TOP SALES',
+              style: TextStyle(color: _textLight, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+          const SizedBox(height: 12),
+          for (int i = 0; i < podium.length; i++) ...[
+            _ytdRow(podium[i] as Map, placeColors),
+            if (i != podium.length - 1) const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _ytdRow(Map p, Map<int, Color> placeColors) {
+    final place = (p['place'] as num?)?.toInt() ?? 0;
+    final name = (p['name'] ?? '').toString();
+    final img = (p['headshotUrl'] ?? '').toString();
+    final behindBy = p['behindBy'];
+    final behindName = (p['behindName'] ?? '').toString();
+    final medal = placeColors[place] ?? placeColors[1]!;
+    return Row(
+      children: [
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(color: medal, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: Text('$place',
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+        ),
+        const SizedBox(width: 10),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF374151)),
+          clipBehavior: Clip.antiAlias,
+          alignment: Alignment.center,
+          child: img.isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: 'https://millerstorm.tech$img',
+                  fit: BoxFit.cover, width: 40, height: 40,
+                  errorWidget: (_, __, ___) => _initial(name),
+                )
+              : _initial(name),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name,
+                  style: const TextStyle(color: _textDark, fontSize: 14.5, fontWeight: FontWeight.w700),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(
+                behindBy == null
+                    ? 'Leads the company'
+                    : 'Behind $behindName by ${_money(behindBy)}',
+                style: const TextStyle(color: _textLight, fontSize: 11.5),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(_money(p['revenue']),
+            style: const TextStyle(color: _textDark, fontSize: 15, fontWeight: FontWeight.w800)),
+      ],
     );
   }
 

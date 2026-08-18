@@ -792,6 +792,7 @@ class _TrainingLeaderboardScreenState extends State<TrainingLeaderboardScreen> {
                       style: const TextStyle(fontSize: 13),
                     ),
                   ),
+                _credentialTracks(r),
               ],
             ),
           ),
@@ -800,6 +801,64 @@ class _TrainingLeaderboardScreenState extends State<TrainingLeaderboardScreen> {
         ],
       ),
     ),
+    );
+  }
+
+  // Per-credential progress: one mini track per credential (Diploma / Knockers /
+  // Hustlers), mirroring the web Course Leaderboard's triple track.
+  Widget _credentialTracks(Map<String, dynamic> r) {
+    final creds = (r['credentials'] as List?) ?? [];
+    if (creds.isEmpty) return const SizedBox.shrink();
+    const labels = {'diploma': 'Diploma', 'knockers': 'Knockers', 'hustlers': 'Hustlers'};
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          for (int i = 0; i < creds.length; i++) ...[
+            Expanded(child: _credTrack(Map<String, dynamic>.from(creds[i] as Map), labels)),
+            if (i != creds.length - 1) const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _credTrack(Map<String, dynamic> c, Map<String, String> labels) {
+    final key = (c['key'] ?? '').toString();
+    final label = labels[key] ?? key;
+    final pctRaw = (c['pct'] is num) ? (c['pct'] as num).toDouble() : 0.0;
+    final pct = pctRaw.clamp(0.0, 100.0);
+    final earned = c['earned'] == true;
+    final color = earned ? _green : _indigo;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Flexible(
+              child: Text(label,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: _textLight)),
+            ),
+            if (earned)
+              const Padding(
+                padding: EdgeInsets.only(left: 3),
+                child: Text('✓', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: _green)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: pct / 100.0,
+            minHeight: 5,
+            backgroundColor: const Color(0xFFE5E7EB),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
     );
   }
 

@@ -410,7 +410,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
   Widget _buildBotListItem(dynamic bot) {
     final name = bot['name'] ?? 'Unknown Bot';
     final description = bot['description'] ?? '';
-    final imageUrl = bot['imageUrl'] ?? '';
+    // Prefer the admin-set bot avatar (botAvatarUrl); fall back to the legacy
+    // imageUrl. Handles both full URLs and relative paths so the bot's own
+    // profile photo shows instead of the generic robot icon.
+    final rawAvatar = (bot['botAvatarUrl'] ?? bot['imageUrl'] ?? '').toString();
+    final imageUrl = rawAvatar.isEmpty
+        ? ''
+        : (rawAvatar.startsWith('http') ? rawAvatar : 'https://millerstorm.tech$rawAvatar');
 
     return GestureDetector(
       onTap: () {
@@ -431,7 +437,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               borderRadius: BorderRadius.circular(12),
               image: imageUrl.isNotEmpty
                   ? DecorationImage(
-                      image: NetworkImage('https://millerstorm.tech$imageUrl'),
+                      image: NetworkImage(imageUrl),
                       fit: BoxFit.cover,
                     )
                   : null,

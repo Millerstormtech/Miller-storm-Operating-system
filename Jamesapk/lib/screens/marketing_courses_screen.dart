@@ -67,6 +67,7 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
     super.initState();
     _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
     _tabController.addListener(_onTabChanged);
+    _loadCachedJayAvatar();
     _loadData();
   }
 
@@ -127,11 +128,32 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
       }
       setState(() {
         _jayBots = assigned;
-        _jayAvatarUrl = avatar;
+        // Only overwrite with a REAL avatar — never null out a cached one on a
+        // transient/empty fetch, so the photo doesn't revert to the robot.
+        if (avatar != null && avatar.isNotEmpty) _jayAvatarUrl = avatar;
       });
+      // Cache it so the next app open shows the photo instantly (no robot flash).
+      if (avatar != null && avatar.isNotEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('jay_avatar_url', avatar);
+        } catch (_) {}
+      }
     } catch (_) {
       // Keep the fallback robot icon on any error.
     }
+  }
+
+  // Show the last-known Jay avatar from cache immediately on open, so the robot
+  // icon doesn't flash before the network fetch completes.
+  Future<void> _loadCachedJayAvatar() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString('jay_avatar_url');
+      if (cached != null && cached.isNotEmpty && mounted) {
+        setState(() => _jayAvatarUrl = cached);
+      }
+    } catch (_) {}
   }
 
   // Open Jay's AI Clone: a single bot goes straight into chat (no list screen);
@@ -590,48 +612,116 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
                     setState(() => _isLoading = true);
                     await _loadData();
                   },
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredCourses.length,
-                    itemBuilder: (context, index) {
-                      final course = _filteredCourses[index];
-                      final Widget card = Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CourseDetailScreen(
-                                  courseId: course['id'] ?? '',
-                                  courseTitle: course['title'] ?? 'Course',
-                                ),
+                  child: Builder(
+                    builder: (context) {
+                      // Group courses under category section headings (like the
+                      // web Training Center). Uncategorized courses render last
+                      // with no heading.
+                      final items = _groupCoursesByCategory(_filteredCourses);
+                      final firstCourseIdx = items.indexWhere(
+                          (it) => !(it is Map && it.containsKey('__header__')));
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          if (item is Map && item.containsKey('__header__')) {
+                            return _categoryHeader(item['__header__'] as String);
+                          }
+                          final course = item;
+                          final Widget card = Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CourseDetailScreen(
+                                      courseId: course['id'] ?? '',
+                                      courseTitle: course['title'] ?? 'Course',
+                                    ),
+                                  ),
+                                ).then((_) => _loadData());
+                              },
+                              child: _buildCourseCard(
+                                course['title'] ?? 'Untitled',
+                                '${course['progress']?['progressPercent'] ?? 0}%',
+                                _getCourseIcon(course['icon']),
+                                course['coverImageUrl'],
                               ),
-                            ).then((_) => _loadData());
-                          },
-                          child: _buildCourseCard(
-                            course['title'] ?? 'Untitled',
-                            '${course['progress']?['progressPercent'] ?? 0}%',
-                            _getCourseIcon(course['icon']),
-                            course['coverImageUrl'],
-                          ),
-                        ),
+                            ),
+                          );
+                          // Spotlight the first course card for the tour.
+                          if (index == firstCourseIdx) {
+                            return Showcase(
+                              key: _kGrid,
+                              title: 'Pick a course',
+                              description: 'Each card shows your progress. Tap a course to open it and continue where you left off.',
+                              child: card,
+                            );
+                          }
+                          return card;
+                        },
                       );
-                      // Spotlight the first course card for the tour.
-                      if (index == 0) {
-                        return Showcase(
-                          key: _kGrid,
-                          title: 'Pick a course',
-                          description: 'Each card shows your progress. Tap a course to open it and continue where you left off.',
-                          child: card,
-                        );
-                      }
-                      return card;
                     },
                   ),
                 ),
         ),
       ],
+    );
+  }
+
+  // Group courses into category sections. Predefined categories first (in the
+  // web's order), then any custom categories (alphabetical), then uncategorized
+  // courses last WITHOUT a heading. Header entries are marked with '__header__'.
+  List<dynamic> _groupCoursesByCategory(List<dynamic> courses) {
+    const predefined = [
+      'Miller Storm Diploma',
+      'Matt Mulholland Certificate',
+      'DeShaun Bryant (Roof Hustlers) Certificate',
+    ];
+    final byCat = <String, List<dynamic>>{};
+    for (final c in courses) {
+      final cat = (c['category'] ?? '').toString().trim();
+      byCat.putIfAbsent(cat.isEmpty ? '__none__' : cat, () => <dynamic>[]).add(c);
+    }
+    final ordered = <String>[];
+    for (final p in predefined) {
+      if (byCat.containsKey(p)) ordered.add(p);
+    }
+    final custom = byCat.keys.where((k) => k != '__none__' && !predefined.contains(k)).toList()
+      ..sort();
+    ordered.addAll(custom);
+    final items = <dynamic>[];
+    for (final cat in ordered) {
+      items.add({'__header__': cat});
+      items.addAll(byCat[cat]!);
+    }
+    if (byCat.containsKey('__none__')) items.addAll(byCat['__none__']!);
+    return items;
+  }
+
+  Widget _categoryHeader(String name) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 16,
+            height: 3,
+            decoration: BoxDecoration(color: const Color(0xFFE01418), borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              name.toUpperCase(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: _textDark),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

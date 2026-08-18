@@ -1061,11 +1061,20 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
       }
       return const Center(child: Text('No courses available'));
     }
+    // Group courses under category section headings (like the web Training
+    // Center). Uncategorized courses render last with no heading.
+    final items = _groupCoursesByCategory(_courses);
+    final firstCourseIdx =
+        items.indexWhere((it) => !(it is Map && it.containsKey('__header__')));
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _courses.length,
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        final course = _courses[index];
+        final item = items[index];
+        if (item is Map && item.containsKey('__header__')) {
+          return _categoryHeader(item['__header__'] as String);
+        }
+        final course = item;
         final Widget card = Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: GestureDetector(
@@ -1089,7 +1098,7 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
           ),
         );
         // Spotlight the first course card for the tour.
-        if (index == 0) {
+        if (index == firstCourseIdx) {
           return Showcase(
             key: _kGrid,
             title: 'Pick a course',
@@ -1099,6 +1108,60 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
         }
         return card;
       },
+    );
+  }
+
+  // Group courses into category sections. Predefined categories first (in the
+  // web's order), then any custom categories (alphabetical), then uncategorized
+  // courses last WITHOUT a heading. Header entries are marked with '__header__'.
+  List<dynamic> _groupCoursesByCategory(List<dynamic> courses) {
+    const predefined = [
+      'Miller Storm Diploma',
+      'Matt Mulholland Certificate',
+      'DeShaun Bryant (Roof Hustlers) Certificate',
+    ];
+    final byCat = <String, List<dynamic>>{};
+    for (final c in courses) {
+      final cat = (c['category'] ?? '').toString().trim();
+      byCat.putIfAbsent(cat.isEmpty ? '__none__' : cat, () => <dynamic>[]).add(c);
+    }
+    final ordered = <String>[];
+    for (final p in predefined) {
+      if (byCat.containsKey(p)) ordered.add(p);
+    }
+    final custom = byCat.keys.where((k) => k != '__none__' && !predefined.contains(k)).toList()
+      ..sort();
+    ordered.addAll(custom);
+    final items = <dynamic>[];
+    for (final cat in ordered) {
+      items.add({'__header__': cat});
+      items.addAll(byCat[cat]!);
+    }
+    if (byCat.containsKey('__none__')) items.addAll(byCat['__none__']!);
+    return items;
+  }
+
+  Widget _categoryHeader(String name) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 16,
+            height: 3,
+            decoration: BoxDecoration(color: const Color(0xFFE01418), borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              name.toUpperCase(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: _textDark),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

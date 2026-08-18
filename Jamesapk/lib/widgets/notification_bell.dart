@@ -35,12 +35,17 @@ class _NotificationBellState extends State<NotificationBell> {
   }
 
   Future<void> _handleNotificationTap(ns.Notification notification) async {
-    // Delete the notification
-    await ns.NotificationService.deleteNotification(notification.id);
-    
-    // Refresh the list
-    await _fetchNotifications();
-    
+    // Close the notification popup FIRST so the destination screen isn't pushed
+    // behind the open menu (that's why tapping used to do "nothing").
+    final nav = Navigator.of(context);
+    if (nav.canPop()) nav.pop();
+
+    // Mark it read / remove it and refresh in the background — navigation must
+    // not wait on the network round-trip.
+    ns.NotificationService.deleteNotification(notification.id)
+        .then((_) { if (mounted) _fetchNotifications(); })
+        .catchError((_) {});
+
     // Handle navigation based on notification type
     if (notification.type == 'stormchat_message' || notification.type == 'stormchat_mention') {
       // Get group info from metadata
@@ -93,8 +98,15 @@ class _NotificationBellState extends State<NotificationBell> {
 
     return PopupMenuButton<int>(
       icon: Stack(
+        clipBehavior: Clip.none,
         children: [
-          const Icon(Icons.notifications_outlined, size: 24),
+          // Gold 🔔 emoji to match the web notification bell (was a plain
+          // outlined Material icon). Nudged up a touch so it sits centered in
+          // the header instead of low.
+          Transform.translate(
+            offset: const Offset(0, -7),
+            child: const Text('🔔', style: TextStyle(fontSize: 27)),
+          ),
           if (_unreadCount > 0)
             Positioned(
               right: 0,
@@ -163,9 +175,7 @@ class _NotificationBellState extends State<NotificationBell> {
                   )
                 else
                   ..._notifications.take(10).map((notification) {
-                    return PopupMenuItem<int>(
-                      value: 0,
-                      child: InkWell(
+                    return InkWell(
                         onTap: () => _handleNotificationTap(notification),
                         child: Container(
                           width: double.infinity,
@@ -206,8 +216,7 @@ class _NotificationBellState extends State<NotificationBell> {
                             ],
                           ),
                         ),
-                      ),
-                    );
+                      );
                   }).toList(),
               ],
             ),
