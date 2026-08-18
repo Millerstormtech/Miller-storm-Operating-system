@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { BotChatModel } from "../../../src/lib/models/BotChat";
+import { CourseModel } from "../../../src/lib/models/Course";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { retrieveRelevant, TRAINING_SOURCES, ROLEPLAY_SOURCES } from "../../../src/lib/rag";
 import { normalizeCountryCode } from "../../../src/lib/isoCountries";
@@ -23,6 +24,42 @@ function detectRoleplayState(messages: any[]): { inRoleplay: boolean; roleplayIn
     else if (START.test(t)) { inRoleplay = true; roleplayInvolved = true; }
   }
   return { inRoleplay, roleplayInvolved };
+}
+
+// True when the latest user turn is an end-of-roleplay / "evaluate me" request —
+// i.e. this reply should be the structured EVALUATION.
+const EVAL_TRIGGER =
+  /\b(end role[\s-]?play|end practice|finish (the )?practice|stop role[\s-]?play|exit role[\s-]?play|evaluate me|score me|how did i do|give me feedback|how was my performance|grade my performance|rate my performance|my results)\b/i;
+function isEvaluationTurn(messages: any[]): boolean {
+  const last = [...(messages || [])].reverse().find((m: any) => m?.role === "user")?.content || "";
+  return EVAL_TRIGGER.test(String(last));
+}
+
+// The bot's REAL course/lesson catalog, so evaluation recommendations come from
+// actual courses (never invented). Only the courses attached to this bot, and
+// only their published, non-quiz lessons.
+async function buildCourseCatalog(
+  bot: any
+): Promise<{ text: string; items: { courseId: string; courseTitle: string; lessonId: string; lessonTitle: string }[] }> {
+  const ids = Array.isArray(bot?.selectedCourses) ? bot.selectedCourses : [];
+  if (!ids.length) return { text: "", items: [] };
+  const courses = await CourseModel.find(
+    { id: { $in: ids } },
+    { id: 1, title: 1, "pages.id": 1, "pages.title": 1, "pages.status": 1, "pages.isQuiz": 1 }
+  ).lean<any[]>();
+  const items: { courseId: string; courseTitle: string; lessonId: string; lessonTitle: string }[] = [];
+  const lines: string[] = [];
+  for (const c of courses) {
+    const lessons = (Array.isArray(c.pages) ? c.pages : []).filter(
+      (p: any) => p?.status === "published" && !p?.isQuiz
+    );
+    lines.push(`- Course: "${c.title}" (courseId: ${c.id})`);
+    for (const l of lessons) {
+      lines.push(`    - Lesson: "${l.title}" (lessonId: ${l.id})`);
+      items.push({ courseId: String(c.id), courseTitle: c.title, lessonId: String(l.id), lessonTitle: l.title });
+    }
+  }
+  return { text: lines.join("\n"), items };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -79,6 +116,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // for RETRIEVAL routing — the model still does the actual mode behavior.
   const hasRoleplayContent = !!(bot.roleplayContent && bot.roleplayContent.trim());
   const roleplayState = detectRoleplayState(messages);
+
+  // On the evaluation turn, load the bot's REAL course catalog so the
+  // "Recommended Training" section can only reference actual courses/lessons
+  // (with IDs the frontend can turn into a "Start Training" button). Kept in
+  // handler scope so we can validate the model's recommended IDs against it.
+  const evaluating = roleplayState.roleplayInvolved && isEvaluationTurn(messages);
+  let courseCatalog: { text: string; items: { courseId: string; courseTitle: string; lessonId: string; lessonTitle: string }[] } = { text: "", items: [] };
+  if (evaluating) {
+    try { courseCatalog = await buildCourseCatalog(bot); } catch (e) { console.error("[eval] catalog load failed:", e); }
+    if (courseCatalog.text) {
+      systemContent += `\n\n=== AVAILABLE COURSE CATALOG (for RECOMMENDED TRAINING) ===\nRECOMMENDED TRAINING must be chosen ONLY from this list. Use the EXACT course and lesson titles as written, and their IDs. NEVER invent, rename, or guess a course/lesson. If nothing here fits a weak area, say no direct training was found for it.\n${courseCatalog.text}`;
+    } else {
+      systemContent += `\n\nNOTE FOR EVALUATION: This bot has no course catalog attached. For RECOMMENDED TRAINING, do NOT invent course names — say no direct training is available in the catalog and give a focus area to practise instead.`;
+    }
+  }
 
   let usedRag = false;
   // (1) ROLEPLAY CONTENT — highest priority for behavior. Retrieved only when a
@@ -175,13 +227,40 @@ Enter this mode when the user breaks character to ask for help or feedback — e
 
 MODE 4 — EVALUATION (end of the roleplay):
 Enter this mode when the user ENDS the practice or asks for an overall assessment — e.g. "end roleplay", "end practice", "finish roleplay", "stop roleplay", "evaluate me", "score me", "how did I do overall", "grade my performance", "give me my results".
-Step OUT of character and evaluate the WHOLE roleplay conversation, grounded in the training material and what actually happened. Produce a structured report with these labelled sections:
-- SCORE: an overall score out of 10, with a one-line rationale.
-- FEEDBACK: what the rep did well, and the main things to improve.
-- WEAK AREAS: the specific skills or steps that were weakest (e.g. discovery, a particular objection, building trust, closing).
-- RECOMMENDED TRAINING: point them to the specific topics/lessons in THEIR training material that address those weak areas, so they know exactly what to review next. Recommend by the names/topics that appear in the training material — do not invent course names.
-Be concise, specific to this conversation, and actionable. Afterwards: "continue roleplay" starts a fresh scenario; anything else is answered in normal Q&A/Trainer mode.
-(If you are in VOICE mode, deliver the evaluation as a short spoken summary — the score, the top one or two improvements, and what to review — NOT a written list.)
+Step OUT of character and produce a VISUALLY STRUCTURED coaching report (NOT one paragraph), based on the REAL conversation, the training material, and the roleplay content. Judge the rep against the methodology the training actually teaches — never a generic or invented methodology; if the training defines a specific process, assess whether they followed it. Use this shape (adapt the sections to what actually happened):
+
+🏆 ROLEPLAY COMPLETE
+
+━━━━━━━━━━━━━━━━━━━━━━
+        SCORE
+       X.X / 10
+━━━━━━━━━━━━━━━━━━━━━━
+Reason: one or two lines that reference specific moments from THIS conversation.
+
+📊 PERFORMANCE
+Only the skills that are actually RELEVANT to this roleplay and supported by the training — do NOT force fixed categories. For each, a 10-block bar + score, e.g. "Objection Handling  ██████░░░░  6/10".
+
+💪 WHAT YOU DID WELL
+✓ 2–4 specific things the rep did, drawn from the conversation.
+
+🎯 BIGGEST OPPORTUNITY
+The single most important improvement, specific to what happened (not generic).
+
+🚧 WEAK AREAS
+1–3 ranked weak skills, each with a severity tag (🔴 Needs Work / 🟡 Improve).
+
+📚 RECOMMENDED TRAINING
+Pick 1–3 items ONLY from the AVAILABLE COURSE CATALOG provided above — use the EXACT course and lesson titles. For each: the course name, the lesson name, and a short "Why:" tied to the specific weak area. If NO catalog item fits a weak area, write exactly: "No direct training found for this weak area in your current training catalog." and give a focus area to practise instead. NEVER invent or rename a course or lesson.
+
+💡 COACH'S TIP — one short, actionable tip.
+🔥 NEXT CHALLENGE — one specific thing to focus on in the next roleplay.
+
+After the human-readable report, on a NEW line, output a machine-readable block (the user will not see it) listing ONLY the catalog items you actually recommended, using their real IDs from the catalog:
+<<RECS>>[{"courseId":"","lessonId":"","title":"","lessonTitle":"","reason":""}]<<END>>
+If you recommended nothing from the catalog, output <<RECS>>[]<<END>>. Never put an ID that is not in the catalog.
+
+Afterwards: "continue roleplay" starts a fresh scenario; anything else is answered in normal Q&A/Trainer mode.
+(If you are in VOICE mode, do NOT read the whole report or the block aloud — give a short spoken summary: the score, the top strength, the biggest opportunity, and the one recommended lesson by name.)
 
 MODE DETECTION RULES:
 - Explicit roleplay request → ROLEPLAY. A training question with no roleplay request → TRAINER/Q&A. A quick "how should I handle this?" DURING roleplay → COACHING. Ending the practice / asking for an overall score or results → EVALUATION.
@@ -220,7 +299,35 @@ MODE DETECTION RULES:
 
     if (!response.ok) throw new Error(`OpenAI error: ${response.statusText}`);
     const data = await response.json();
-    const reply = data.choices[0].message.content;
+    const rawReply = data.choices[0].message.content;
+
+    // Pull the hidden <<RECS>>…<<END>> block (evaluation only) out of the reply,
+    // validate every ID against the real catalog (drop any the model invented),
+    // and strip the block from what the user sees. `recommendations` carries the
+    // real course/lesson IDs so the frontend can build a "Start Training" button.
+    let reply = rawReply;
+    let recommendations: { courseId: string; lessonId?: string; title: string; lessonTitle?: string; reason?: string }[] = [];
+    const recMatch = /<<RECS>>([\s\S]*?)<<END>>/.exec(rawReply);
+    if (recMatch) {
+      reply = rawReply.replace(recMatch[0], "").trim();
+      try {
+        const parsed = JSON.parse(recMatch[1].trim());
+        if (Array.isArray(parsed) && courseCatalog.items.length) {
+          const byCourse = new Set(courseCatalog.items.map((i) => i.courseId));
+          const byLesson = new Set(courseCatalog.items.map((i) => i.lessonId));
+          recommendations = parsed
+            .filter((r: any) => r && byCourse.has(String(r.courseId)) && (!r.lessonId || byLesson.has(String(r.lessonId))))
+            .slice(0, 3)
+            .map((r: any) => ({
+              courseId: String(r.courseId),
+              lessonId: r.lessonId ? String(r.lessonId) : undefined,
+              title: String(r.title || courseCatalog.items.find((i) => i.courseId === String(r.courseId))?.courseTitle || ""),
+              lessonTitle: r.lessonTitle ? String(r.lessonTitle) : undefined,
+              reason: r.reason ? String(r.reason) : undefined,
+            }));
+        }
+      } catch { /* malformed block → no structured recs, the text report still stands */ }
+    }
 
     // Auto-generate a title ONLY on the first turn — doing it on every message
     // added a second, blocking OpenAI round-trip that slowed every reply.
@@ -271,7 +378,7 @@ MODE DETECTION RULES:
     // Update bot stats
     await AiBotModel.findOneAndUpdate({ id: botId }, { $inc: { totalMessages: 1 } });
 
-    return res.status(200).json({ message: reply });
+    return res.status(200).json({ message: reply, recommendations });
   } catch (err) {
     console.error("Bot chat error:", err);
     return res.status(500).json({ error: "Failed to get response" });
