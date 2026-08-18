@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  BADGE_LABELS,
   buildCourseByCourseReport,
   buildCourseOverallReport,
   courseOverallTitle,
@@ -8,12 +7,19 @@ import {
   type CourseRowInput,
 } from "./courseBoard";
 import type { OverallRow } from "../training/board";
+import { courseOverallFields } from "./courseBoard";
+
+const salesFieldsForTest = () => courseOverallFields(false);
 
 const row = (over: Partial<OverallRow>): OverallRow => ({
   id: "u1", name: "Alice", email: "a@x.com", role: "sales", headshotUrl: "",
   branch: "Fort Worth", team: "team-a", itemsCompleted: 40, videosWatched: 30,
-  quizzesPassed: 10, coursesCompleted: 4, pct: 66.6, rankTitle: "Pro",
-  badges: ["halfway", "finisher"], rank: 1, isPodium: true, notStarted: false,
+  quizzesPassed: 10, coursesCompleted: 4, pct: 66.6,
+  credentials: [
+    { key: "diploma", earned: true, pct: 100, itemsCompleted: 4, itemsTotal: 4, coursesCompleted: 2, coursesTotal: 2 },
+    { key: "knockers", earned: false, pct: 30, itemsCompleted: 3, itemsTotal: 10, coursesCompleted: 0, coursesTotal: 1 },
+  ],
+  rank: 1, isPodium: true, notStarted: false,
   ...over,
 });
 
@@ -25,7 +31,7 @@ const STARTED: OverallRow[] = [
 ];
 
 const NOT_STARTED: OverallRow[] = [
-  row({ id: "u9", name: "Zoe", rank: null, isPodium: false, notStarted: true, itemsCompleted: 0, coursesCompleted: 0, pct: 0, badges: [] }),
+  row({ id: "u9", name: "Zoe", rank: null, isPodium: false, notStarted: true, itemsCompleted: 0, coursesCompleted: 0, pct: 0, credentials: [] }),
 ];
 
 const NO_FILTERS = { search: "", branch: "", team: "" };
@@ -64,13 +70,13 @@ describe("overall export, unfiltered", () => {
     expect(build().rows.map((r) => r[0])).toEqual(["Gold", "Silver", "Bronze", "17"]);
   });
 
-  it("leaves badges out unless ticked", () => {
-    expect(build().columns.map((c) => c.key)).not.toContain("badges");
+  it("leaves credentials out unless ticked", () => {
+    expect(build().columns.map((c) => c.key)).not.toContain("credentials");
   });
 
-  it("includes badges as plain words when ticked", () => {
-    const doc = build({ selectedKeys: ["branch", "team", "rankTitle", "coursesCompleted", "itemsCompleted", "pct", "badges"] });
-    expect(doc.rows[0]).toContain("Halfway, Finisher");
+  it("includes earned credentials as plain words when ticked", () => {
+    const doc = build({ selectedKeys: ["branch", "team", "coursesCompleted", "itemsCompleted", "pct", "credentials"] });
+    expect(doc.columns.map((c) => c.key)).toContain("credentials");
   });
 });
 
@@ -155,10 +161,23 @@ describe("by course export", () => {
   });
 });
 
-describe("badge labels", () => {
-  it("covers every badge id with a plain word", () => {
-    expect(BADGE_LABELS).toEqual({
-      halfway: "Halfway", finisher: "Finisher", graduate: "Graduate", "test-ace": "Test Ace",
-    });
+describe("credentials earned column", () => {
+  it("lists only the credentials a rep has actually earned", () => {
+    const fields = salesFieldsForTest();
+    const col = fields.find((f) => f.key === "credentials")!;
+    expect(
+      col.value({
+        credentials: [
+          { key: "diploma", earned: true, pct: 100, itemsCompleted: 1, itemsTotal: 1, coursesCompleted: 1, coursesTotal: 1 },
+          { key: "knockers", earned: false, pct: 40, itemsCompleted: 2, itemsTotal: 5, coursesCompleted: 0, coursesTotal: 1 },
+        ],
+      } as any)
+    ).toBe("Miller Storm Diploma");
+  });
+
+  it("is empty for a rep holding none", () => {
+    const col = salesFieldsForTest().find((f) => f.key === "credentials")!;
+    expect(col.value({ credentials: [] } as any)).toBe("");
+    expect(col.value({} as any)).toBe("");
   });
 });

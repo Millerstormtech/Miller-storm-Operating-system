@@ -7,7 +7,7 @@ import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, customRange, centralDateStr } from "../../src/lib/acculynx/windows";
 import type { Window } from "../../src/lib/acculynx/windows";
-import { pickContractKing, kingMonthLabel } from "../../src/lib/leaderboard/contractKing";
+import { pickContractKing, pickYtdPodium, kingMonthLabel } from "../../src/lib/leaderboard/contractKing";
 import { courseStats, isRankedUser, RANKED_ROLES } from "../../src/lib/training/scoring";
 import { computeSalesRows } from "../../src/lib/leaderboard/compute";
 
@@ -138,10 +138,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     : null;
 
+  // YTD Top Sales: gold, silver and bronze for the whole year, on its own year
+  // window for the same reason the monthly crown has its own month window. A rep
+  // filtering the table to "this week" must not see the week's top three sitting
+  // under a "year to date" heading. When the selected period already IS the year,
+  // no second query runs.
+  const yearRange = getWindowRange("year");
+  const podiumSource = isCustom || w !== "year" ? await computeSalesRows(yearRange) : rows;
+  const ytdPodium = pickYtdPodium(
+    podiumSource.map((m) => ({
+      id: m.id, name: m.name, revenue: m.revenue, won: m.won,
+      filed: m.filed, lead: m.leadsCreated, verifiedKnocks: m.verifiedKnocks,
+    }))
+  ).map((p) => ({
+    ...p,
+    headshotUrl: podiumSource.find((m) => m.id === p.id)?.headshotUrl || "",
+  }));
+
   return res.status(200).json({
     window: isCustom ? "custom" : w,
     range: { from: isCustom ? fromQ : centralDateStr(start), to: isCustom ? toQ : centralDateStr(end) },
     leaderboard,
     contractKing,
+    ytdPodium,
   });
 }

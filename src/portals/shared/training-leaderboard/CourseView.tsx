@@ -107,8 +107,10 @@ export function CourseView({
       branch: overall?.branch || "",
       team: overall?.team || "",
       pct: r.pct,
-      rankTitle: overall?.rankTitle || "Rookie",
-      badges: overall?.badges || [],
+      // By Course shows one course at a time, so the three credential tracks
+      // are deliberately NOT passed here: they describe the whole library and
+      // would contradict the single-course percentage beside them.
+
       isPodium: overall?.isPodium || false,
       rankDelta: overall?.rankDelta ?? null,
       videosWatched: overall?.videosWatched,
