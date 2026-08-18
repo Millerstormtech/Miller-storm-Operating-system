@@ -335,12 +335,24 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       });
       const data = await res.json();
       const replyText = data.message || "Sorry, I couldn't respond.";
-      // Append onto React's authoritative latest state (prev), not the ref —
-      // this can never drop the prior answer even if the ref lagged — and sync
-      // the ref inside the updater so the next turn builds on the full history.
-      appendAssistant(replyText);
-      // Voice mode: read the bot's reply aloud so it's a spoken conversation.
-      if (speakReply) speakText(replyText);
+      if (speakReply) {
+        // Voice-FIRST: kick off TTS immediately and reveal the transcript the
+        // moment the bot actually starts speaking, so the spoken reply is the
+        // primary response and the text stays in sync (never shown before the
+        // voice). `shown` guards against the text being appended twice.
+        let shown = false;
+        const showTranscript = () => {
+          if (shown) return;
+          shown = true;
+          appendAssistant(replyText);
+        };
+        speakText(replyText, showTranscript);
+      } else {
+        // Text chat: show the reply immediately, exactly as before. Appends onto
+        // React's authoritative latest state (prev) and syncs messagesRef inside
+        // the updater so the next turn builds on the full history.
+        appendAssistant(replyText);
+      }
       loadChatSessions();
     } catch {
       appendAssistant("Failed to get a response. Please try again.");
@@ -374,15 +386,21 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   // so it's both heard AND captured into the conversation recording. Falls back
   // to the browser voice if TTS fails. When done (in conversation mode) it
   // re-opens the mic for the next question.
-  async function speakText(text: string) {
+  // `onStart` fires the instant the voice actually begins (or right away if
+  // there's nothing to play / TTS can't run) so the caller can reveal the text
+  // transcript in sync with the spoken reply — the voice leads, the text follows.
+  // It is invoked at most once and never blocks audio playback.
+  async function speakText(text: string, onStart?: () => void) {
     const clean = (text || "").trim();
+    let started = false;
+    const fireStart = () => { if (!started) { started = true; onStart?.(); } };
     const afterSpeak = () => {
       speakingRef.current = false;
       setSpeaking(false);
       ttsSourceRef.current = null;
       if (conversingRef.current) listenUtterance();
     };
-    if (!clean || typeof window === "undefined") { afterSpeak(); return; }
+    if (!clean || typeof window === "undefined") { fireStart(); afterSpeak(); return; }
     speakingRef.current = true;
     setSpeaking(true);
     detachMicFromRecording(); // don't record the bot's voice twice via the mic
@@ -403,7 +421,9 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
       src.onended = afterSpeak;
       ttsSourceRef.current = src;
       src.start();
+      fireStart(); // voice is now playing → reveal the transcript in sync
     } catch {
+      fireStart(); // TTS unavailable → still show the text, then browser-speak
       speakBrowser(clean, afterSpeak); // fallback (not captured in the recording)
     }
   }
@@ -848,6 +868,17 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
               <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFileAttach} />
               <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
                 style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "var(--text-secondary)", alignSelf: "center" }} />
+              {/* Hands-free voice: tap to start a spoken conversation — the mic
+                  stays open (listen → answer with a voice reply → listen). Tap
+                  again to stop. Pulses while listening; shows 🔊 while the bot speaks. */}
+              <button
+                onClick={toggleVoice}
+                title={conversing ? "Stop voice conversation" : "Talk to the bot (hands-free voice)"}
+                aria-label={conversing ? "Stop voice conversation" : "Start voice conversation"}
+                className={listening ? "bcw-pulse" : ""}
+                style={{ width: 34, height: 34, borderRadius: "50%", border: "none", flexShrink: 0, cursor: "pointer", background: conversing ? "#e01418" : "var(--surface-muted)", color: conversing ? "#fff" : "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "background 0.15s" }}>
+                {speaking ? "🔊" : "🎤"}
+              </button>
               <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}
                 style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "var(--surface-muted)" : "#e01418", color: loading || (!input.trim() && attachments.length === 0) ? "var(--text-subtle)" : "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0, transition: "background 0.15s" }}>↑</button>
             </div>

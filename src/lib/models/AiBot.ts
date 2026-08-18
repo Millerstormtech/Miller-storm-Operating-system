@@ -24,6 +24,12 @@ const aiBotSchema = new Schema({
   trainingLinks: [trainingLinkSchema],
   trainingText: { type: String, default: "" },
   qaItems: [qaSchema],
+
+  // Optional, separate knowledge source that defines HOW the bot behaves during
+  // roleplay (personas, scenarios, objections, in-character rules). Indexed as
+  // its own `roleplay` source so it can be retrieved with priority in roleplay
+  // mode without polluting normal training Q&A. Empty = existing behavior.
+  roleplayContent: { type: String, default: "" },
   // Course training data
   selectedCourses: [{ type: String }],
   selectedFolders: [{ type: String }],

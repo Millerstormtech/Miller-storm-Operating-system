@@ -1,4 +1,5 @@
 // src/lib/report/courseBoard.ts
+import { CREDENTIALS, type CredentialProgress } from "../training/credentials";
 // Course Leaderboard -> ReportDocument. Pure.
 //
 // The screen is a card list (RosterGrid.tsx), so this flattens cards into a
@@ -21,14 +22,6 @@ import {
 } from "./document";
 import { filtersActive, type BoardFilters, type OverallRow } from "../training/board";
 import { TEAM_LEADS } from "../repcard/org-chart";
-
-/** badgesFor() returns ids; the on-screen labels carry emoji, so keep plain words here. */
-export const BADGE_LABELS: Record<string, string> = {
-  halfway: "Halfway",
-  finisher: "Finisher",
-  graduate: "Graduate",
-  "test-ace": "Test Ace",
-};
 
 export type CourseExportScope = "view" | "board";
 
@@ -110,16 +103,22 @@ export function courseOverallFields(filtered: boolean): FieldSpec<OverallRow>[] 
   fields.push(
     { key: "branch", label: "Branch", align: "left", value: (r) => r.branch || "" },
     { key: "team", label: "Team", align: "left", value: (r) => teamLabel(r.team) },
-    { key: "rankTitle", label: "Rank Title", align: "left", value: (r) => r.rankTitle },
     { key: "coursesCompleted", label: "Courses Completed", align: "right", value: (r) => fmtInt(r.coursesCompleted) },
     { key: "itemsCompleted", label: "Lessons & Quizzes Completed", align: "right", value: (r) => fmtInt(r.itemsCompleted) },
     { key: "pct", label: "Progress", align: "right", value: (r) => fmtPct(r.pct) },
     {
-      key: "badges",
-      label: "Badges",
+      // Replaces the Badges column, retired 2026-08-15 with the rank titles.
+      // Earned credentials only: a list of three percentages in a PDF cell is
+      // unreadable, and the point of the column is who holds what.
+      key: "credentials",
+      label: "Credentials Earned",
       align: "left",
       optionalByDefault: true,
-      value: (r) => (r.badges || []).map((b) => BADGE_LABELS[b] || b).join(", "),
+      value: (r) =>
+        (r.credentials || [])
+          .filter((c) => c.earned)
+          .map((c) => CREDENTIALS.find((m) => m.key === c.key)?.label || c.key)
+          .join(", "),
     }
   );
   return fields;

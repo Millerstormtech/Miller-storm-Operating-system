@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { rankRequirementLabels } from "../../../lib/training/board";
-import type { RankTitle } from "../../../lib/training/scoring";
-import { RANK_TITLES } from "../../../lib/training/scoring";
-import { BADGE_META, PODIUM, TIER_COLORS } from "./constants";
+import { PODIUM } from "./constants";
+import { CREDENTIALS } from "../../../lib/training/credentials";
 
 /**
  * The always-available key: what every icon means (Label: meaning) and how
@@ -10,9 +8,10 @@ import { BADGE_META, PODIUM, TIER_COLORS } from "./constants";
  * default on every screen size (same interaction as the Sales Leaderboard's
  * "How to read this board" panel); the header toggles it.
  */
-export function Legend({ totalCourses }: { totalCourses: number }) {
+// totalCourses is retained in the signature (callers still pass it) but is no
+// longer read: it fed the retired rank ladder labels.
+export function Legend({ totalCourses: _totalCourses }: { totalCourses: number }) {
   const [open, setOpen] = useState(false);
-  const rankLabels = rankRequirementLabels(totalCourses);
   return (
     <div
       data-tour="clb-legend"
@@ -42,48 +41,40 @@ export function Legend({ totalCourses }: { totalCourses: number }) {
           color: "#d99a1c",
         }}
       >
-        <span>ⓘ What the icons and ranks mean</span>
+        <span>&#9432; What the marks mean</span>
         <span>{open ? "▴" : "▸"}</span>
       </button>
       {open && (
         <>
-          <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16, rowGap: 6, fontSize: 12, color: "var(--text-tertiary)" }}>
-            {Object.values(BADGE_META).map((m) => (
-              <span key={m.label}>
-                {m.emoji} {m.label}: {m.meaning}
+          {/* The three credentials replace the four badges and the six rank
+              titles, all retired 2026-08-15. Each track on a row counts only
+              the courses inside that credential, which is why the three never
+              add up to the overall percentage beside them. */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: "var(--text-tertiary)" }}>
+            {CREDENTIALS.map((c) => (
+              <span key={c.key} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 13,
+                    height: 13,
+                    borderRadius: 3,
+                    background: "#ca0002",
+                    border: "1.5px solid #ca0002",
+                    flexShrink: 0,
+                  }}
+                />
+                <b style={{ color: "var(--text-secondary)" }}>{c.label}</b>
               </span>
             ))}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16, rowGap: 6, fontSize: 12, color: "var(--text-tertiary)", marginTop: 10 }}>
+            <span>Filled mark: credential earned. Outlined: still in progress.</span>
+            <span>Each percentage counts only that credential's courses, so the three do not add up to the overall bar.</span>
             <span>
               {PODIUM.emoji} {PODIUM.label}: {PODIUM.meaning}
             </span>
-            <span>▲▼ Rank change: since last week</span>
-          </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#d99a1c", textTransform: "uppercase", letterSpacing: 0.5, margin: "12px 0 8px" }}>
-            Ranks (by courses finished)
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {RANK_TITLES.map((title: RankTitle) => {
-              const tier = TIER_COLORS[title];
-              return (
-                <span
-                  key={title}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    background: tier.bg,
-                    color: tier.fg,
-                    borderRadius: 999,
-                    padding: "3px 10px",
-                    fontSize: 12,
-                    fontWeight: title === "Legend" ? 700 : 600,
-                  }}
-                >
-                  {title === "Legend" ? "🌟 Legend" : title}
-                  <span style={{ opacity: 0.7, fontWeight: 500 }}>{rankLabels[title]}</span>
-                </span>
-              );
-            })}
+            <span>&#9650;&#9660; Rank change: since last week</span>
           </div>
         </>
       )}

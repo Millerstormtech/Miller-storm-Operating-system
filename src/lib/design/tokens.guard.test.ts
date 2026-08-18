@@ -143,9 +143,11 @@ const LEAVE_ALONE = new Set<string>([
   // (MetricTile.tsx:9-11's old entries were removed 2026-08 — see the block below;
   // NEUTRAL/BAR are no longer tracked colours and TRACK was already var(...).)
   "src/portals/shared/scoreboard/ConversionStrip.tsx:9",
-  "src/portals/shared/training-leaderboard/constants.ts:6",
-  "src/portals/shared/training-leaderboard/constants.ts:10",
-  "src/portals/shared/training-leaderboard/constants.ts:29",
+  // Re-anchored 2026-08-15: TIER_COLORS and BADGE_META were deleted with the
+  // rank titles and badges, which moved RING_TRACK 6->5 and MEDAL_EDGE 29->11.
+  // The old :10 entry was a TIER_COLORS row and no longer exists.
+  "src/portals/shared/training-leaderboard/constants.ts:5",
+  "src/portals/shared/training-leaderboard/constants.ts:11",
 
   // rgba(255,255,255,<alpha>) translucent accents that sit against a BESPOKE,
   // non-shared-token background (a component-local dark palette, or a fixed

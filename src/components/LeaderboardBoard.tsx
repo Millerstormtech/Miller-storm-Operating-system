@@ -17,6 +17,11 @@ import {
 } from "../lib/report/salesBoard";
 
 type Window = "day" | "week" | "month" | "year";
+// YTD podium places. Keyed by place number rather than array index so the
+// medal a rep is wearing can never drift from the number printed on it.
+const PLACE_KEY: Record<number, string> = { 1: "gold", 2: "silver", 3: "bronze" };
+const PLACE_LABEL: Record<number, string> = { 1: "Gold", 2: "Silver", 3: "Bronze" };
+
 const WINDOWS: { key: Window; label: string }[] = [
   { key: "day", label: "Today" },
   { key: "week", label: "Week to Date" },
@@ -59,9 +64,27 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   // This calendar month's top rep by Contract Amount. Computed server-side from
   // its OWN month window, so it does not change meaning when a different period
   // is selected. null until someone signs their first contract of the month.
+  // YTD Top Sales: the year's gold, silver and bronze. Its own year window
+  // server-side, so it means the same thing whatever period the table shows.
+  // Fewer than three entries when fewer than three reps have earned anything.
+  const [ytdPodium, setYtdPodium] = useState<
+    Array<{
+      place: number; id: string; name: string; revenue: number;
+      behindBy: number | null; behindName: string | null; headshotUrl: string;
+    }>
+  >([]);
   const [contractKing, setContractKing] = useState<
     { id: string; name: string; revenue: number; headshotUrl: string; monthLabel: string } | null
   >(null);
+
+  /** Which YTD place a rep holds ("Gold"/"Silver"/"Bronze"), or null. */
+  const ytdCrownFor = useCallback(
+    (id: string) => {
+      const place = ytdPodium.find((p) => p.id === id);
+      return place ? PLACE_LABEL[place.place] || null : null;
+    },
+    [ytdPodium]
+  );
 
   // Filters + sort (all applied client-side over the fetched rows).
   const [branchFilter, setBranchFilter] = useState<string>(ALL);
@@ -88,6 +111,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         const data = await res.json();
         setRows(data.leaderboard ?? []);
         setContractKing(data.contractKing ?? null);
+        setYtdPodium(data.ytdPodium ?? []);
         // Echo the resolved range into the From/To boxes (fills them for quick views).
         if (data.range) { setFrom(data.range.from); setTo(data.range.to); }
       }
@@ -337,6 +361,62 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
       </div>
 
+      {/* YTD Top Sales: the year's podium, with the monthly Contract King on its
+          own bar underneath, both inside one plate so they read as one object.
+          Approved 2026-08-15; design in docs/design/2026-08-13-ytd-king.
+
+          FIRST on the page and ALWAYS shown (Youssef, 2026-08-15). It must never
+          respond to a filter: the branch, team, rep and former-rep filters are
+          client-side and are applied to `rows` alone, never to this, and the
+          server computes both the podium and the crown on their own year and
+          month windows rather than the selected period. Do not move this inside
+          the `loading` guard either, or it will blink out every time a period
+          pill is pressed.
+
+          The podium renders only the places that exist, so the first days of a
+          year show one card rather than two empty medals. The plate itself is
+          drawn whenever EITHER exists, so the monthly king never loses its bar
+          just because nobody has earned a year place yet. */}
+      {(ytdPodium.length > 0 || contractKing) && (
+        <div className="sl__podium" data-tour="ytd-podium">
+          {ytdPodium.length > 0 && (
+            <>
+              <div className="sl__podium-title">YTD Top Sales</div>
+              <div className="sl__podium-row">
+                {ytdPodium.map((p) => (
+                  <div key={p.id} className={`sl__pod sl__pod--${PLACE_KEY[p.place] || "gold"}`}>
+                    <div className="sl__pod-place">
+                      <span className="sl__pod-medal">{p.place}</span>
+                      {PLACE_LABEL[p.place] || ""}
+                    </div>
+                    <RepAvatar name={stripFormerMarker(p.name)} url={p.headshotUrl} size={54} fontSize={21} />
+                    <div className="sl__pod-name">{stripFormerMarker(p.name)}</div>
+                    <div className="sl__pod-amt">{fmtMoney(p.revenue)}</div>
+                    <div className="sl__pod-gap">
+                      {p.behindBy === null
+                        ? "Leads the company"
+                        : <>Behind {p.behindName} by <b>{fmtMoney(p.behindBy)}</b></>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Contract King: this month's top rep by Contract Amount. */}
+          {contractKing && (
+            <div className="sl__king" data-tour="contract-king">
+              <div className="sl__king-eyebrow">&#128081; {contractKing.monthLabel.toUpperCase()} CONTRACT KING</div>
+              {/* A departed rep can still have topped the month, so the bar strips
+                  the marker the same way the Storm Chat announcement does: this is a
+                  celebration, and "❌ Waylon Marked" reads as a rendering glitch. */}
+              <div className="sl__king-name">{stripFormerMarker(contractKing.name)}</div>
+              <div className="sl__king-amount">{fmtMoney(contractKing.revenue)}</div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* "Your rank" pop-out — any user on the board sees their own standing. */}
       {me && (
         <div className="sl__banner sl__banner--rank" data-tour="your-rank">
@@ -355,24 +435,6 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             <div><div className="sl__stat-val">{me.won ?? 0}</div><div className="sl__stat-lbl">Contracts</div></div>
             <div><div className="sl__stat-val">{me.verifiedKnocks ?? 0}</div><div className="sl__stat-lbl">Knocks</div></div>
           </div>
-        </div>
-      )}
-
-      {/* Contract King: this month's top rep by Contract Amount. */}
-      {contractKing && (
-        <div className="sl__king" data-tour="contract-king">
-          <div className="sl__king-medal">
-            <RepAvatar name={stripFormerMarker(contractKing.name)} url={contractKing.headshotUrl} size={54} fontSize={22} />
-            <span className="sl__king-crown">1</span>
-          </div>
-          <div className="sl__king-main">
-            <div className="sl__king-eyebrow">👑 {contractKing.monthLabel.toUpperCase()} CONTRACT KING</div>
-            {/* A departed rep can still have topped the month, so the banner strips
-                the marker the same way the Storm Chat announcement does: this is a
-                celebration, and "❌ Waylon Marked" reads as a rendering glitch. */}
-            <div className="sl__king-name">{stripFormerMarker(contractKing.name)}</div>
-          </div>
-          <div className="sl__king-amount">{fmtMoney(contractKing.revenue)}</div>
         </div>
       )}
 
@@ -549,8 +611,23 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                         {/* Strip any marker already baked into the synced name so reps whose
                             snapshot DOES carry one do not end up with two. */}
                         <span className="sl__rep-name">{stripFormerMarker(r.name)}{isYou ? " (You)" : ""}</span>
+                        {/* Two crowns now exist and must be told apart at this
+                            size. The year crown is a gold ring around the same
+                            glyph; the month crown is the bare glyph. Shape
+                            carries the meaning and weight carries the rank, so
+                            the pair still reads in greyscale. A rep who holds
+                            both (common: the year leader is often also the
+                            month leader) shows both. */}
+                        {ytdCrownFor(r.id) ? (
+                          <span
+                            className="sl__crown-year"
+                            title={`${ytdCrownFor(r.id)} in YTD Top Sales`}
+                          >
+                            &#128081;
+                          </span>
+                        ) : null}
                         {contractKing && r.id === contractKing.id ? (
-                          <span title={`Top Contract Amount this month (${contractKing.monthLabel})`}>👑</span>
+                          <span title={`Top Contract Amount this month (${contractKing.monthLabel})`}>&#128081;</span>
                         ) : null}
                       </span>
                     </td>
@@ -781,13 +858,49 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__stat-val { font-size: 18px; font-weight: 800; }
         .sl__stat-lbl { font-size: 11px; opacity: 0.8; }
 
-        .sl__king { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; background: linear-gradient(100deg, #7a0d10 0%, #b31217 55%, #7a0d10 100%); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px 22px; margin-bottom: 18px; color: var(--text-inverse); box-shadow: 0 10px 30px rgba(150, 10, 14, 0.35); }
-        .sl__king-medal { position: relative; flex-shrink: 0; }
-        .sl__king-crown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; color: #3a2400; background: radial-gradient(circle at 50% 35%, #ffe27a, #e8b923 55%, #a9800f); border-radius: 50%; border: 3px solid #f6d976; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
-        .sl__king-main { flex: 1; min-width: 160px; }
-        .sl__king-eyebrow { font-size: 12px; letter-spacing: 1.5px; font-weight: 700; opacity: 0.9; text-transform: uppercase; }
-        .sl__king-name { font-size: 24px; font-weight: 800; margin-top: 3px; }
-        .sl__king-amount { font-size: 34px; font-weight: 900; letter-spacing: -0.5px; margin-left: auto; }
+        /* YTD Top Sales plate. Fixed dark in both themes, the same precedent as
+           the Contract King bar being fixed red: these are branded objects, not
+           surfaces, so they deliberately do not follow the app theme.
+           --text-inverse is used wherever text must stay white on that fixed
+           dark ground, because it is the one token that does not flip. */
+        .sl__podium { position: relative; border-radius: 16px; padding: 18px 18px 14px; margin-bottom: 18px; overflow: hidden; background: linear-gradient(168deg, #252A34 0%, #171A21 46%, #0F1218 100%); border: 1px solid rgb(var(--white-rgb) / 0.13); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34); }
+        .sl__podium-title { font-family: 'Arial Narrow', 'Roboto Condensed', sans-serif; font-size: 17px; font-weight: 800; letter-spacing: 2.6px; text-transform: uppercase; color: #8D96A6; margin-bottom: 12px; }
+        .sl__podium-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        @media (min-width: 720px) { .sl__podium-row { grid-template-columns: repeat(3, 1fr); } }
+        .sl__pod { position: relative; border-radius: 13px; padding: 14px 14px 12px; background: rgb(var(--white-rgb) / 0.038); border: 1px solid rgb(var(--white-rgb) / 0.11); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; overflow: hidden; }
+        /* The metal: a top edge band plus a tinted wash, so the three read as
+           different materials rather than three colours of the same chip. */
+        .sl__pod::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--metal); }
+        .sl__pod::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 80% at 50% 0%, var(--wash) 0%, transparent 62%); }
+        .sl__pod > * { position: relative; z-index: 1; }
+        .sl__pod--gold { --metal: linear-gradient(90deg, #A9800F, #F4C542 48%, #A9800F); --wash: rgba(244, 197, 66, 0.16); }
+        .sl__pod--silver { --metal: linear-gradient(90deg, #79828F, #D8DDE4 48%, #79828F); --wash: rgba(216, 221, 228, 0.10); }
+        .sl__pod--bronze { --metal: linear-gradient(90deg, #7A4A22, #D89A62 48%, #7A4A22); --wash: rgba(216, 154, 98, 0.11); }
+        .sl__pod-place { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1.7px; text-transform: uppercase; }
+        .sl__pod--gold .sl__pod-place { color: #F4C542; }
+        .sl__pod--silver .sl__pod-place { color: #D8DDE4; }
+        .sl__pod--bronze .sl__pod-place { color: #D89A62; }
+        .sl__pod-medal { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Arial Narrow', 'Roboto Condensed', sans-serif; font-size: 12px; font-weight: 800; color: #2A2205; }
+        .sl__pod--gold .sl__pod-medal { background: radial-gradient(circle at 50% 32%, #FFE27A, #E8B923 56%, #A9800F); }
+        .sl__pod--silver .sl__pod-medal { background: radial-gradient(circle at 50% 32%, #F2F5F8, #C3CAD3 56%, #79828F); color: #20242B; }
+        .sl__pod--bronze .sl__pod-medal { background: radial-gradient(circle at 50% 32%, #EFBE90, #C07C44 56%, #7A4A22); color: #2B1808; }
+        .sl__pod-name { font-family: 'Arial Narrow', 'Roboto Condensed', sans-serif; font-size: 21px; font-weight: 800; line-height: 1.05; text-transform: uppercase; color: var(--text-inverse); }
+        .sl__pod-amt { font-family: 'Arial Narrow', 'Roboto Condensed', sans-serif; font-size: 27px; font-weight: 800; color: #F0F2F5; font-variant-numeric: tabular-nums; }
+        .sl__pod--gold .sl__pod-amt { font-size: 31px; color: #FFD65C; }
+        .sl__pod-gap { font-size: 12px; line-height: 1.4; color: #98A1B0; border-top: 1px solid rgb(var(--white-rgb) / 0.10); padding-top: 8px; width: 100%; }
+        .sl__pod-gap b { color: #E7EAEF; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .sl__pod--gold .sl__pod-gap { color: #F4C542; }
+
+        /* The monthly crown now sits inside the plate as a bar, not as its own
+           full-width red banner: the year race outranks it, and two competing
+           red banners was the problem the design set out to solve. */
+        .sl__king { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: rgba(202, 0, 2, 0.16); border: 1px solid rgba(202, 0, 2, 0.38); border-radius: 12px; padding: 11px 18px; margin-top: 10px; color: #F0F2F5; }
+        /* Year crown: the same glyph in a gold ring. Shape carries the
+           meaning, weight carries the rank, so the pair reads in greyscale. */
+        .sl__crown-year { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #F4C542; background: rgba(244, 197, 66, 0.16); font-size: 10px; line-height: 1; }
+        .sl__king-eyebrow { font-size: 11px; letter-spacing: 1.6px; font-weight: 800; text-transform: uppercase; color: #FF8A85; }
+        .sl__king-name { font-size: 15px; font-weight: 700; }
+        .sl__king-amount { font-size: 17px; font-weight: 800; margin-left: auto; font-variant-numeric: tabular-nums; }
 
         /* Above the legend/table siblings so the "Search reps" dropdown isn't
            painted over by them (.sl > * pins every child to z-index 1). Must be

@@ -52,8 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     totalItems: data.totalItems,
     coursesCompleted: row.coursesCompleted,
     totalCourses: data.totalCourses,
-    rankTitle: row.rankTitle,
-    badges: row.badges,
+    credentials: row.credentials,
     courses,
   });
 }

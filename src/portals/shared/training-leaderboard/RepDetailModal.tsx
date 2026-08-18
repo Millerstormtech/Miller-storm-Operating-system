@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { BadgeId, RankTitle } from "../../../lib/training/scoring";
-import { BADGE_META, PODIUM, TIER_COLORS, MEDALS, GREEN, RING_TRACK } from "./constants";
+import { PODIUM, MEDALS, GREEN, RING_TRACK } from "./constants";
+import { CREDENTIALS, type CredentialProgress } from "../../../lib/training/credentials";
 import { ProgressRing, Avatar } from "./RepCard";
 import { Tooltip } from "./Tooltip";
 
@@ -32,8 +32,7 @@ type RepDetail = {
   totalItems: number;
   coursesCompleted: number;
   totalCourses: number;
-  rankTitle: RankTitle;
-  badges: BadgeId[];
+  credentials?: CredentialProgress[];
   courses: RepCourse[];
 };
 
@@ -41,7 +40,8 @@ type RepDetail = {
  * Click-in rep detail (spec 2026-07-23 §3): anyone can open anyone. Fetches
  * on open; the board payload stays light. Courses are ordered complete first,
  * then in progress (highest pct first), then not started, matching the
- * approved mockup. Locked badges are greyed with a how-to-earn tooltip.
+ * approved mockup. Unearned credentials are greyed with their progress in
+ * the tooltip.
  *
  * Brand redesign: red gradient header + carded sections, driven entirely by
  * semantic tokens so it reads correctly in both light and dark mode.
@@ -87,7 +87,6 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const tier = data ? TIER_COLORS[data.rankTitle] : null;
   const orderedCourses = data
     ? [
         ...data.courses.filter((c) => c.complete),
@@ -208,21 +207,6 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-primary)", fontFamily: HEAD_FONT, letterSpacing: 0.2 }}>
                     {data.name}{" "}
-                    {tier && (
-                      <span
-                        style={{
-                          background: tier.bg,
-                          color: tier.fg,
-                          padding: "1px 8px",
-                          borderRadius: 999,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          verticalAlign: "middle",
-                        }}
-                      >
-                        {data.rankTitle}
-                      </span>
-                    )}
                     {data.isPodium && (
                       <Tooltip text={`${PODIUM.label}: ${PODIUM.meaning}`}>
                         <span style={{ fontSize: 13, marginLeft: 4 }}>{PODIUM.emoji}</span>
@@ -247,34 +231,56 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                 <ProgressRing pct={data.pct} size={56} />
               </div>
 
-              {/* Badges. */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
-                {(Object.keys(BADGE_META) as BadgeId[]).map((b) => {
-                  const meta = BADGE_META[b];
-                  const earned = data.badges.includes(b);
-                  return (
-                    <Tooltip key={b} text={`${meta.label}: ${meta.meaning}`}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 5,
-                          padding: "4px 11px",
-                          borderRadius: 999,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          background: earned ? "rgba(16,185,129,0.15)" : "var(--surface-subtle)",
-                          color: earned ? "#10b981" : "var(--text-subtle)",
-                          border: earned ? "1px solid rgba(16,185,129,0.4)" : "1px solid var(--border-default)",
-                          opacity: earned ? 1 : 0.65,
-                        }}
+              {/* The three credentials, replacing the four badges retired on
+                  2026-08-15. Each percentage counts only that credential's own
+                  courses, which is why they do not add up to the ring above. */}
+              {data.credentials && data.credentials.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
+                  {data.credentials.map((c) => {
+                    const meta = CREDENTIALS.find((m) => m.key === c.key);
+                    const label = meta?.label || c.key;
+                    return (
+                      <Tooltip
+                        key={c.key}
+                        text={
+                          c.earned
+                            ? `${label}: earned`
+                            : `${label}: ${c.coursesCompleted} of ${c.coursesTotal} courses complete`
+                        }
                       >
-                        {meta.emoji} {meta.label}
-                      </span>
-                    </Tooltip>
-                  );
-                })}
-              </div>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "4px 11px",
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            background: c.earned ? "rgba(202,0,2,0.14)" : "var(--surface-subtle)",
+                            color: c.earned ? "#ca0002" : "var(--text-subtle)",
+                            border: c.earned ? "1px solid rgba(202,0,2,0.4)" : "1px solid var(--border-default)",
+                            opacity: c.earned ? 1 : 0.75,
+                          }}
+                        >
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              width: 11,
+                              height: 11,
+                              borderRadius: 3,
+                              flexShrink: 0,
+                              background: c.earned ? "#ca0002" : "transparent",
+                              border: `1.5px solid ${c.earned ? "#ca0002" : "var(--border-default)"}`,
+                            }}
+                          />
+                          {label} {c.pct}%
+                        </span>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Section label. */}
               <div

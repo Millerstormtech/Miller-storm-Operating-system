@@ -97,7 +97,45 @@ async function extractFileContent(file: formidable.File): Promise<string> {
     return text;
   }
 
+  // Audio / video (e.g. .mov training recordings): transcribe the spoken words
+  // with OpenAI Whisper and use the transcript as the training text.
+  if (MEDIA_EXTS.includes(ext)) {
+    return await transcribeMedia(filePath, file.originalFilename || `media${ext}`);
+  }
+
   throw new Error("Unsupported file type");
+}
+
+// Audio/video extensions we transcribe instead of parsing as text.
+const MEDIA_EXTS = [".mov", ".mp4", ".m4a", ".mp3", ".wav", ".webm", ".mpeg", ".mpga", ".ogg", ".oga"];
+
+// Transcribe an audio/video file to text via OpenAI's Whisper API. The API
+// caps uploads at 25MB, so we surface a clear message for anything larger
+// (formidable still accepts up to 70MB for documents).
+async function transcribeMedia(filePath: string, filename: string): Promise<string> {
+  if (!process.env.OPENAI_API_KEY) throw new Error("Transcription is not configured (missing OpenAI key).");
+  const MAX_BYTES = 25 * 1024 * 1024;
+  const size = fs.statSync(filePath).size;
+  if (size > MAX_BYTES) {
+    throw new Error(
+      `This clip is ${(size / 1024 / 1024).toFixed(0)}MB — audio/video transcription is limited to 25MB. Please upload a shorter or compressed clip.`
+    );
+  }
+  const buffer = fs.readFileSync(filePath);
+  const form = new FormData();
+  form.append("file", new Blob([buffer]), filename);
+  form.append("model", "whisper-1");
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Transcription failed${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+  }
+  const data = await res.json();
+  return (data.text || "").trim();
 }
 
 function getFileType(filename: string): string {
@@ -105,5 +143,6 @@ function getFileType(filename: string): string {
   if (ext === ".pdf") return "pdf";
   if (ext === ".docx" || ext === ".doc") return "word-doc";
   if (ext === ".xlsx" || ext === ".xls" || ext === ".csv") return "excel-csv";
+  if (MEDIA_EXTS.includes(ext)) return "video";
   return "webpage";
 }
