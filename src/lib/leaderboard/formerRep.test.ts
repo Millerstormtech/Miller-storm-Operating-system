@@ -70,6 +70,14 @@ describe("stripFormerMarker", () => {
     expect(stripFormerMarker("")).toBe("");
     expect(stripFormerMarker("❌")).toBe("");
   });
+
+  it("accepts null and undefined, because optional fields reach it directly", () => {
+    // The YTD podium's `behindName` is `string | null`. Forcing callers to write
+    // their own `?? ""` is how one of them ends up forgetting, which is exactly
+    // how the marker leaked into "Behind ❌ Waylon Marked by $47,000".
+    expect(stripFormerMarker(null)).toBe("");
+    expect(stripFormerMarker(undefined)).toBe("");
+  });
 });
 
 describe("compareRepOptions", () => {
