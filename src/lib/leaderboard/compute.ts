@@ -8,6 +8,7 @@ import { UserModel } from "../models/User";
 import { mergeLeaderboard } from "./merge";
 import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
+import { isDeletedFromRepCard } from "./roster";
 import { officeToBranch, saleRegion } from "../repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch, isBranchless } from "../repcard/org-chart";
 
@@ -175,10 +176,21 @@ export async function computeSalesRows(
 
   // Build the roster: everyone with in-range knocks (active or former), PLUS idle ACTIVE
   // door-knockers as zero rows. Former reps with no in-range activity fall off.
+  //
+  // Reps DELETED from RepCard are excluded outright. Deleted is not the same as
+  // deactivated: a deactivated rep is still a real rep, keeps their row, their totals
+  // and their ❌; a deleted rep has been erased from the system of record, so there is
+  // no status to mark them with, no office to place them in, and nothing to show. They
+  // were previously stranded on the board permanently, unmarkable and unhideable.
+  // See roster.ts for the safety valve that stops an unsynced directory emptying the
+  // whole board. (The second loop below already excludes them: it requires a directory
+  // row with status ACTIVE.)
+  const directoryIds = new Set<string>(rcById.keys());
   const rc: any[] = [];
   const rosterIds = new Set<string>();
   for (const r of rcRaw) {
     const id = String(r._id);
+    if (isDeletedFromRepCard(id, directoryIds)) continue;
     rosterIds.add(id);
     rc.push({
       repcardUserId: id, email: normEmail(r.email), phone: normPhone(r.phone),

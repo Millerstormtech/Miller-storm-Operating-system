@@ -61,6 +61,30 @@ export function getWindowRange(window: Window, now: Date = new Date()): { start:
   return { start: centralWallToUtc(mp.year, mp.month, mp.day), end: now };
 }
 
+// The COMPLETE previous calendar month in Central time: 00:00 on the 1st through
+// the last instant before this month began.
+//
+// Every other range here is "to date" and ends at `now`. This one is the only
+// CLOSED range in the file, and that is the whole point: the monthly Contract
+// King announcement fires on the 1st and must report a month that is finished
+// and can no longer change. A "to date" range on the 1st would report the new
+// month, which is hours old and empty.
+//
+// The end is derived by stepping back 1ms from the start of the CURRENT month
+// rather than by computing how many days the previous month had. That sidesteps
+// leap years and 30-vs-31-day months entirely, and it guarantees the two ranges
+// abut exactly with no gap and no overlap.
+export function previousMonthRange(now: Date = new Date()): { start: Date; end: Date } {
+  const { year, month } = centralParts(now);
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const thisMonthStart = centralWallToUtc(year, month, 1);
+  return {
+    start: centralWallToUtc(prevYear, prevMonth, 1),
+    end: new Date(thisMonthStart.getTime() - 1),
+  };
+}
+
 // Format an instant as its YYYY-MM-DD calendar date in Central time (for echoing a
 // resolved quick-view range back to the UI's From/To boxes).
 export function centralDateStr(d: Date): string {

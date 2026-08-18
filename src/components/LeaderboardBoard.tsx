@@ -5,6 +5,7 @@ import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { SALES_LEADERBOARD_TOUR } from "../portals/shared/guided-tour/definitions/salesLeaderboard";
 import { compareStanding } from "../lib/leaderboard/ranking";
+import { isFormerRep, buildRepOptions, stripFormerMarker } from "../lib/leaderboard/formerRep";
 import { RepAvatar } from "./RepAvatar";
 import { ExportReportButton, type ExportRequest, type ExportScope } from "./report/ExportReportButton";
 import {
@@ -182,12 +183,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   );
 
   // Every rep on the board (stable across windows -> roster = all active reps), for the
-  // Rep multi-select. De-duplicated by id, sorted by name.
-  const repList = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const r of rows) if (r.id && !seen.has(r.id)) seen.set(r.id, r.name || "Unknown Rep");
-    return [...seen.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [rows]);
+  // Rep multi-select. De-duplicated by id; current reps first (A-Z), then former reps
+  // (A-Z), and former reps dropped entirely while "Hide former reps" is on so the filter
+  // never offers someone the board is refusing to show. Ordering lives in formerRep.ts:
+  // a plain name sort pinned the departed reps to the TOP, because the cross mark in
+  // their synced RepCard name sorts ahead of every letter.
+  const repList = useMemo(() => buildRepOptions(rows, { hideFormer }), [rows, hideFormer]);
 
   const visible = useMemo(() => {
     const branchActive = !!branchFilter && branchFilter !== NONE;
@@ -204,7 +205,11 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       })
       .filter((r: any) => r !== null)
       .filter((r: any) => {
-        if (hideFormer && r.former) return false; // "Hide former reps" toggle
+        // "Hide former reps" toggle. isFormerRep() reads BOTH signals (RepCard's
+        // status flag and a cross mark in the synced name), the same call the Rep
+        // dropdown makes, so the table and the dropdown can never disagree about
+        // who has left. Rank is unaffected: this only hides rows.
+        if (hideFormer && isFormerRep(r)) return false;
         if (appliedReps.size > 0 && !appliedReps.has(r.id)) return false; // Rep multi-select
         if (branchFilter === NONE && r.branch) return false; // "(No branch)" bucket only
         // Team filter
@@ -216,8 +221,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     const col = COLUMNS.find((c) => c.key === sortKey);
     const dir = sortDir === "asc" ? 1 : -1;
     const sorted = [...filtered].sort((a, b) => {
+      // Sort the Rep column on the name as DISPLAYED (marker stripped). The raw
+      // name can start with a cross mark, which sorts ahead of every letter, so
+      // sorting it raw would scatter former reps to the top of an A-Z list for
+      // no reason the reader can see, now that the marker is a separate badge.
+      const text = (r: any) => (sortKey === "name" ? stripFormerMarker(String(r.name ?? "")) : String(r[sortKey] ?? ""));
       const primary = col?.type === "text"
-        ? String(a[sortKey] ?? "").localeCompare(String(b[sortKey] ?? "")) * dir
+        ? text(a).localeCompare(text(b)) * dir
         : ((a[sortKey] ?? 0) - (b[sortKey] ?? 0)) * dir;
       // On any tie in the clicked column, fall back to overall standing (Contract
       // Amount -> Contracts -> Claims Filed -> Leads Created -> Verified Door Knocks).
@@ -290,7 +300,10 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   const toExportRow = (r: any): SalesExportRow => ({
     id: r.id,
-    name: r.name,
+    // Mirror the screen: marker drawn from the status flag, not from whatever the
+    // synced name happens to carry. A PDF outlives the screen it came from, so it
+    // must not disagree with it about who has left.
+    name: `${isFormerRep(r) ? "❌ " : ""}${stripFormerMarker(r.name)}`,
     branch: r.branch || "",
     team: r.team || "",
     verifiedKnocks: r.verifiedKnocks ?? 0,
@@ -376,8 +389,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                       <span className="sl__pod-medal">{p.place}</span>
                       {PLACE_LABEL[p.place] || ""}
                     </div>
-                    <RepAvatar name={p.name} url={p.headshotUrl} size={54} fontSize={21} />
-                    <div className="sl__pod-name">{p.name}</div>
+                    <RepAvatar name={stripFormerMarker(p.name)} url={p.headshotUrl} size={54} fontSize={21} />
+                    <div className="sl__pod-name">{stripFormerMarker(p.name)}</div>
                     <div className="sl__pod-amt">{fmtMoney(p.revenue)}</div>
                     <div className="sl__pod-gap">
                       {p.behindBy === null
@@ -394,7 +407,10 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           {contractKing && (
             <div className="sl__king" data-tour="contract-king">
               <div className="sl__king-eyebrow">&#128081; {contractKing.monthLabel.toUpperCase()} CONTRACT KING</div>
-              <div className="sl__king-name">{contractKing.name}</div>
+              {/* A departed rep can still have topped the month, so the bar strips
+                  the marker the same way the Storm Chat announcement does: this is a
+                  celebration, and "❌ Waylon Marked" reads as a rendering glitch. */}
+              <div className="sl__king-name">{stripFormerMarker(contractKing.name)}</div>
               <div className="sl__king-amount">{fmtMoney(contractKing.revenue)}</div>
             </div>
           )}
@@ -473,6 +489,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                   {repList.filter((rp) => rp.name.toLowerCase().includes(repSearch.toLowerCase())).map((rp) => (
                     <label key={rp.id} className="sl__rep-item">
                       <input type="checkbox" checked={draftReps.has(rp.id)} onChange={() => toggleDraftRep(rp.id)} />
+                      {rp.former ? <span aria-label="Former rep">❌</span> : null}
+                      {/* Already stripped by buildRepOptions, which sorts on this
+                          same text so the order matches what is read here. */}
                       {rp.name}
                     </label>
                   ))}
@@ -574,9 +593,24 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     <td className={`sl__rank${i === 0 ? " sl__rank--gold" : ""}`}>{i + 1}</td>
                     <td className="sl__rep">
                       <span className="sl__rep-inner">
-                        <RepAvatar name={r.name} url={r.headshotUrl} size={26} />
+                        {/* Stripped: RepAvatar falls back to the name's first character
+                            when there is no headshot, so a marker baked into the synced
+                            name renders "❌" as the initial instead of the rep's letter. */}
+                        <RepAvatar name={stripFormerMarker(r.name)} url={r.headshotUrl} size={26} />
                         {r.source === "repcard" ? <span title="No AccuLynx account" className="sl__dot" /> : null}
-                        <span className="sl__rep-name">{r.name}{isYou ? " (You)" : ""}</span>
+                        {/* The ❌ is DRAWN here, from the rep's RepCard status. It used to
+                            arrive only as literal characters inside the name, which meant a
+                            rep deactivated after their last door knock never showed one: the
+                            board renders the name snapshotted on the day of that knock, and
+                            that snapshot is frozen once they stop knocking. Painting it from
+                            the status flag makes the legend below true for every former rep
+                            the moment RepCard deactivates them. */}
+                        {isFormerRep(r) ? (
+                          <span title="Former rep (deactivated in RepCard)" aria-label="Former rep">❌</span>
+                        ) : null}
+                        {/* Strip any marker already baked into the synced name so reps whose
+                            snapshot DOES carry one do not end up with two. */}
+                        <span className="sl__rep-name">{stripFormerMarker(r.name)}{isYou ? " (You)" : ""}</span>
                         {/* Two crowns now exist and must be told apart at this
                             size. The year crown is a gold ring around the same
                             glyph; the month crown is the bare glyph. Shape
@@ -665,11 +699,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
               <div key={r.id} className={`sl__card${i === 0 ? " sl__card--top" : ""}${isYou ? " sl__card--you" : ""}`}>
                 <div className="sl__card-head">
                   <div className={`sl__card-rank${i === 0 ? " sl__rank--gold" : ""}`}>{medal || i + 1}</div>
-                  <RepAvatar name={r.name} url={r.headshotUrl} size={44} fontSize={18} />
+                  <RepAvatar name={stripFormerMarker(r.name)} url={r.headshotUrl} size={44} fontSize={18} />
                   <div className="sl__card-id">
                     <div className="sl__card-name">
                       {r.source === "repcard" ? <span title="No AccuLynx account" className="sl__dot" /> : null}
-                      {r.name}{isYou ? " (You)" : ""}
+                      {/* Same drawn-from-status marker as the table view above. */}
+                      {isFormerRep(r) ? <span aria-label="Former rep">❌</span> : null}
+                      {stripFormerMarker(r.name)}{isYou ? " (You)" : ""}
                     </div>
                     {subtitle ? <div className="sl__card-sub">{subtitle}</div> : null}
                   </div>
