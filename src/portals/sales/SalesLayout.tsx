@@ -46,7 +46,7 @@ export function SalesLayout({ children, currentView, userName, userId, pageTitle
         <Header
           title="Miller Storm Operating System"
           userName={userName ?? "Sales Rep"}
-          userId={userId}
+          userId={userId ?? user?.id}
           roleLabel="Sales Rep"
           panelName="Sales Portal"
           onLogout={logout}
