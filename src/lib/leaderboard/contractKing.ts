@@ -55,9 +55,14 @@ export type PodiumPlace = {
 };
 
 /**
- * The year's top three by Contract Amount: gold, silver, bronze (decided
- * 2026-08-14 from Jay's whiteboard; the design artifact is
- * docs/design/2026-08-13-ytd-king).
+ * The top three by Contract Amount for whatever set of rows it is given: gold,
+ * silver, bronze (decided 2026-08-14 from Jay's whiteboard; the design artifact
+ * is docs/design/2026-08-13-ytd-king).
+ *
+ * There is NO period logic in here -- it sorts and takes three. The caller
+ * decides the window by choosing which rows to pass, which is why the C-level
+ * dashboard can reuse it for week and month while /api/leaderboard uses it for
+ * the year. `pickYtdPodium` is kept below as the original name.
  *
  * Gaps are CHAINED on purpose. Bronze is told how far behind silver it is, not
  * how far behind gold, because the only rep third place can realistically pass
@@ -73,7 +78,7 @@ export type PodiumPlace = {
  * Ordering reuses compareStanding, so the podium can never disagree with the
  * table underneath it about who is ahead.
  */
-export function pickYtdPodium(rows: KingCandidate[]): PodiumPlace[] {
+export function pickPodium(rows: KingCandidate[]): PodiumPlace[] {
   const earning = rows.filter((r) => (r.revenue ?? 0) > 0);
   if (earning.length === 0) return [];
   // Copy before sorting: callers pass the live board array.
@@ -90,6 +95,12 @@ export function pickYtdPodium(rows: KingCandidate[]): PodiumPlace[] {
     };
   });
 }
+
+/**
+ * The original name, from when the podium was only ever used for the year.
+ * Kept so /api/leaderboard and its tests are untouched by the generalisation.
+ */
+export const pickYtdPodium = pickPodium;
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",

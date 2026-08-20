@@ -87,6 +87,21 @@ const CARD = {
   borderRadius: 12,
 };
 
+export interface ScoreboardHomeProps {
+  /**
+   * Extra content rendered below the board, receiving the period the viewer
+   * currently has selected so it can stay in step with the tiles above it.
+   *
+   * A SLOT rather than a role check inside this component, deliberately. Only
+   * the C-level dashboard passes anything (the sales/training podiums); the
+   * other three roles pass nothing and are completely unaffected. It also keeps
+   * a company-wide podium out of the branch-manager and team-lead boards, whose
+   * tiles are BRANCH and TEAM scoped -- a company top three sitting under
+   * "Dallas · 13 people contributed" would read as Dallas's top three.
+   */
+  renderFooter?: (window: ToggleWindow) => JSX.Element;
+}
+
 /**
  * The Scoreboard home screen every non-admin role lands on after login. Fetches
  * /api/scoreboard once (and again on every period-toggle change) and renders
@@ -98,7 +113,8 @@ const CARD = {
  * tests -- this component only decides layout and which pre-computed piece
  * to show where.
  */
-export function ScoreboardHome(): JSX.Element {
+export function ScoreboardHome(props: ScoreboardHomeProps = {}): JSX.Element {
+  const { renderFooter } = props;
   const { user } = useAuth();
   const router = useRouter();
 
@@ -442,6 +458,11 @@ export function ScoreboardHome(): JSX.Element {
         {!scopeUnresolved && scopeText && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{scopeText}</div>}
 
         {dataRegion}
+
+        {/* Rendered outside dataRegion on purpose: the footer's data is fetched
+            independently, so a period-toggle refetch of the tiles above must
+            not blank it, and a failure up there must not hide it. */}
+        {renderFooter && renderFooter(windowSel)}
       </div>
     </div>
   );

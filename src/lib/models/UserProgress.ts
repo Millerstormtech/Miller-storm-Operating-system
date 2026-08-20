@@ -26,11 +26,28 @@ const quizResultSchema = new Schema(
   { _id: false }
 );
 
+// When each completed page was FIRST completed. Purely additive alongside
+// completedPages, which stays the source of truth for whether a page is done:
+// roughly fifteen readers and two Flutter screens depend on that field and none
+// of them change. This one exists because completedPages carries no dates, so
+// the training board can only report all-time standing; recording dates from
+// now on is what makes a week/month/year training board possible later.
+//
+// Populated by stampNewCompletions() in src/lib/training/completions.ts, which
+// every writer calls so the two lists can never drift apart. NOT backfillable:
+// pages completed before this shipped have no date and never will, so a reader
+// must treat a missing entry as "unknown", never as zero.
+const pageCompletionSchema = new Schema(
+  { pageId: String, completedAt: Date },
+  { _id: false }
+);
+
 const userProgressSchema = new Schema(
   {
     userId: { type: String, required: true },
     courseId: { type: String, required: true },
     completedPages: [String],
+    pageCompletions: [pageCompletionSchema],
     // Pages a manager has manually unlocked for this user WITHOUT them watching.
     // Kept SEPARATE from completedPages so unlocking never counts toward progress
     // %/leaderboard — only actually watching a video marks a page completed.

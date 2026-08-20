@@ -6,6 +6,7 @@ import { resolveIncomingQuizResults } from "../../src/lib/training/quiz-intake";
 import { loadGradableQuizPages } from "../../src/lib/training/quiz-pages";
 import { logToDb } from "../../src/lib/models/SystemLog";
 import { celebrateIfCourseCompleted } from "../../src/lib/training/celebration";
+import { stampNewCompletions } from "../../src/lib/training/completions";
 
 export default async function handler(
   req: NextApiRequest,
@@ -149,8 +150,13 @@ export default async function handler(
         }
       }
 
+      // Which pages this request is the FIRST to report complete. Only these
+      // may be dated: see the note at the stampNewCompletions() call below.
+      let justCompleted: string[] = [];
+
       if (!progress) {
         // Create new progress record
+        const initialPages = Array.isArray(completedPages) ? completedPages : [];
         progress = new UserProgressModel({
           userId,
           courseId,
@@ -158,11 +164,20 @@ export default async function handler(
           quizResults: quizResultsToStore || [],
           courseCompleted: courseCompleted || false
         });
+        justCompleted = initialPages;
         console.log('📝 Creating new progress record');
       } else {
         // Update existing progress
         if (completedPages !== undefined) {
           const incoming = Array.isArray(completedPages) ? completedPages : [];
+          const alreadyStored = new Set<string>(progress.completedPages || []);
+          // The admin Override tool is deliberately excluded: an admin ticking
+          // a box is a correction to the record, not evidence of when the rep
+          // actually watched the lesson, so it adds pages WITHOUT dating them.
+          // Only a learner's own save counts as a live completion.
+          justCompleted = req.body.replace === true
+            ? []
+            : incoming.filter((id: string) => !alreadyStored.has(id));
           // The admin Override tool sends replace:true to set an EXACT set (it
           // can uncheck pages to reset a rep). Every OTHER caller is a learner
           // recording a watched page, where completedPages must only ever GROW.
@@ -187,6 +202,20 @@ export default async function handler(
         }
         console.log('📝 Updating existing progress record');
       }
+
+      // Record WHEN each page was completed, alongside the completedPages list
+      // that says WHETHER it was. Only pages this request is the first to
+      // report get a date; anything already in completedPages was finished at
+      // an unknown past time (very possibly before dates were recorded at all)
+      // and dating it now would report a rep's entire back catalogue as
+      // completed today. Pages already carrying a date keep it, and pages that
+      // are no longer completed lose theirs, so the two lists cannot drift.
+      progress.pageCompletions = stampNewCompletions(
+        progress.pageCompletions,
+        progress.completedPages,
+        justCompleted,
+        new Date()
+      );
 
       // Save to database
       await progress.save();

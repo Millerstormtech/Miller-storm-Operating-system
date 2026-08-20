@@ -1,6 +1,7 @@
 import type { NextPage } from "next";
 import { CLevelLayout } from "../../src/portals/c-level/CLevelLayout";
 import { ScoreboardHome } from "../../src/portals/shared/scoreboard/ScoreboardHome";
+import { PodiumStrip } from "../../src/portals/shared/scoreboard/PodiumStrip";
 import { ProtectedRoute } from "../../src/components/ProtectedRoute";
 import { useAuth } from "../../src/contexts/AuthContext";
 
@@ -26,7 +27,11 @@ const CLevelDashboardPage: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["c-level"]}>
       <CLevelLayout currentView="dashboard">
-        <ScoreboardHome />
+        {/* The podiums are C-level only. Passing them as a footer keeps the
+            shared ScoreboardHome free of role checks, and keeps a COMPANY-wide
+            top three off the branch-manager and team-lead boards, where the
+            tiles above it are branch and team scoped. */}
+        <ScoreboardHome renderFooter={(window) => <PodiumStrip window={window} />} />
       </CLevelLayout>
     </ProtectedRoute>
   );
