@@ -108,12 +108,12 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
             onMouseLeave={() => setHoveredId(null)}
           />
           {pct >= 4 && (
-            <text x={ix} y={iy} textAnchor="middle" dominantBaseline="middle" style={{ pointerEvents: "none", fontSize: 11, fontWeight: 700, fill: "#fff" }}>
+            <text x={ix} y={iy} textAnchor="middle" dominantBaseline="middle" style={{ pointerEvents: "none", fontSize: 11, fontWeight: 700, fill: "#fff" /* tokens-guard-ignore: svg-attr */ }}>
               {pct}%
             </text>
           )}
           {angle >= 15 && (
-            <text x={ox} y={oy} textAnchor={labelAnchor} dominantBaseline="middle" style={{ pointerEvents: "none", fontSize: 11, fontWeight: 600, fill: "#374151" }}>
+            <text x={ox} y={oy} textAnchor={labelAnchor} dominantBaseline="middle" style={{ pointerEvents: "none", fontSize: 11, fontWeight: 600, fill: "#374151" /* tokens-guard-ignore: svg-attr */ }}>
               {slice.label}
             </text>
           )}

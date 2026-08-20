@@ -354,14 +354,14 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
           --ms-bg: #0a0a0b;
           --ms-glow: rgba(202, 0, 2, 0.22);
           --ms-card: rgba(26, 26, 28, 0.55);
-          --ms-card-border: rgba(255, 255, 255, 0.08);
+          --ms-card-border: rgba(255, 255, 255, 0.08);  /* tokens-guard-ignore: bespoke-dark */
           --ms-card-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
           --ms-text: #f5f5f7;
           --ms-muted: #9aa0a6;
           --ms-input-bg: rgba(0, 0, 0, 0.35);
-          --ms-input-border: rgba(255, 255, 255, 0.1);
+          --ms-input-border: rgba(255, 255, 255, 0.1);  /* tokens-guard-ignore: bespoke-dark */
           --ms-input-text: #f5f5f7;
-          --ms-placeholder: #6b7280;
+          --ms-placeholder: #6b7280;  /* tokens-guard-ignore: theme-invariant, no token matches this dark value */
           --ms-wm-opacity: 0.14;
           --ms-glass-blur: 22px;
           --ms-good: #34d399;

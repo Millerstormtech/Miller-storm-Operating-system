@@ -85,8 +85,8 @@ export default function WorldMap({ data }: WorldMapProps) {
                     }}
                     onMouseLeave={() => setTooltip(null)}
                     style={{
-                      default: { fill: base, stroke: "#fff", strokeWidth: 0.4, outline: "none" },
-                      hover: { fill: count ? "#0369a1" : "#94a3b8", stroke: "#fff", strokeWidth: 0.4, outline: "none", cursor: "pointer" },
+                      default: { fill: base, stroke: "#fff", strokeWidth: 0.4, outline: "none" },  /* tokens-guard-ignore: svg-attr */
+                      hover: { fill: count ? "#0369a1" : "#94a3b8", stroke: "#fff", strokeWidth: 0.4, outline: "none", cursor: "pointer" },  /* tokens-guard-ignore: svg-attr */
                       pressed: { fill: "#075985", outline: "none" },
                     }}
                   />

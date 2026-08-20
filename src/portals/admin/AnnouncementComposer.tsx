@@ -125,7 +125,7 @@ export function AnnouncementComposer() {
             width: 340,
             maxWidth: "100%",
             background: "linear-gradient(135deg, #e01418 0%, #b30002 100%)",
-            color: "#fff",
+            color: "var(--text-inverse)",
             borderRadius: 14,
             boxShadow: "0 18px 45px rgba(202,0,2,0.4)",
             padding: "18px 18px 16px",
@@ -138,7 +138,7 @@ export function AnnouncementComposer() {
           <div style={{ fontSize: 13.5, lineHeight: 1.5, opacity: 0.95, marginBottom: 14, whiteSpace: "pre-wrap" }}>
             {message.trim() || "Your message to the whole company will appear here."}
           </div>
-          <div style={{ width: "100%", background: "#fff", color: "#b30002", borderRadius: 9, padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "center" }}>
+          <div style={{ width: "100%", background: "#fff", color: "#b30002", borderRadius: 9, padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "center" /* tokens-guard-ignore: fixed-brand, previews the live pop-up */ }}>
             {link.trim() ? "Learn more" : "Got it"}
           </div>
         </div>

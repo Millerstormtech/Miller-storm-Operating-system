@@ -45,7 +45,7 @@ export function RankStrip(props: {
         ? "radial-gradient(circle at 40% 30%, #e9edf2, #b9c0c9 60%, #8b929c)"
         : rank.rank === 3
           ? "radial-gradient(circle at 40% 30%, #f0b98a, #cd7f45 60%, #9a5a2c)"
-          : "rgba(255,255,255,0.18)";
+          : "rgba(255,255,255,0.18)";  /* tokens-guard-ignore: bespoke-dark, blends to invisible over surface-default */
   const medalText = isTop ? "#3a2400" : "var(--text-inverse)";
 
   return (
@@ -76,7 +76,7 @@ export function RankStrip(props: {
           fontWeight: 900,
           fontSize: 18,
           flexShrink: 0,
-          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.3)",
+          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.3)",  /* tokens-guard-ignore: fixed-brand, metallic gloss on the medal */
         }}
       >
         {rank.rank}

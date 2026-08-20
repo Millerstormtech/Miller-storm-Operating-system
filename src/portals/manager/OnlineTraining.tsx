@@ -1957,7 +1957,7 @@ export function ManagerOnlineTrainingPage(props: {
             {/* Desktop: show all buttons inline */}
             <div className="course-header-desktop-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {!viewingPlaylist && (
-                <button type="button" className="btn-primary btn-small" style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 700, boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
+                <button type="button" className="btn-primary btn-small" style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: 'var(--text-inverse)', border: 'none', fontSize: '14px', fontWeight: 700, boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }} onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
               )}
               <button type="button" className="btn-secondary btn-small" style={{ background: 'var(--surface-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', fontSize: '14px', fontWeight: 700 }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>← Back to Courses</button>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
@@ -2490,11 +2490,11 @@ export function ManagerOnlineTrainingPage(props: {
                 .tc-resume { position: relative; overflow: hidden; width: 100%; display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin: -22px 0 16px; border: none; border-radius: 16px; cursor: pointer; text-align: left;
                   background: linear-gradient(90deg, #b30002, #e01418, #b30002); background-size: 200% 100%; animation: tcResumeShine 6s linear infinite, tcResumePulse 2.8s ease-in-out infinite; transition: transform .15s ease; }
                 .tc-resume:hover { transform: translateY(-2px); }
-                .tc-resume-play { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+                .tc-resume-play { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text-inverse); }  /* tokens-guard-ignore: fixed-brand, translucent white on the red resume card */
                 .tc-resume-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-                .tc-resume-title { font-family: "Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif; font-size: 19px; font-weight: 800; letter-spacing: 0.3px; color: #fff; }
-                .tc-resume-sub { font-size: 13px; color: rgba(255,255,255,0.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                .tc-resume-arrow { flex-shrink: 0; font-size: 22px; color: #fff; }
+                .tc-resume-title { font-family: "Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif; font-size: 19px; font-weight: 800; letter-spacing: 0.3px; color: var(--text-inverse); }
+                .tc-resume-sub { font-size: 13px; color: rgba(255,255,255,0.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* tokens-guard-ignore: fixed-brand, translucent white on the red resume card */
+                .tc-resume-arrow { flex-shrink: 0; font-size: 22px; color: var(--text-inverse); }
               `}</style>
               <button type="button" className="tc-resume" onClick={() => openCourse(resumeTarget.course, resumeTarget.pageId)}>
                 <span className="tc-resume-play">▶</span>
@@ -2646,7 +2646,7 @@ export function ManagerOnlineTrainingPage(props: {
                         <button
                           type="button"
                           className="btn-primary playlist-action-btn"
-                          style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: '#fff', border: 'none', boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }}
+                          style={{ background: 'linear-gradient(90deg,#b30002,#e01418)', color: 'var(--text-inverse)', border: 'none', boxShadow: '0 3px 10px rgba(202,0,2,0.3)' }}
                           onClick={() => {
                             const course = publishedCourses.find(c => c.id === playlist.courseId);
                             if (course) {
@@ -2750,7 +2750,7 @@ export function ManagerOnlineTrainingPage(props: {
                   border: 'none',
                   cursor: 'pointer',
                   background: teamProgressView === 'courses' ? 'linear-gradient(90deg,#b30002,#e01418)' : 'transparent',
-                  color: teamProgressView === 'courses' ? '#fff' : 'var(--text-muted)',
+                  color: teamProgressView === 'courses' ? 'var(--text-inverse)' : 'var(--text-muted)',
                   boxShadow: teamProgressView === 'courses' ? '0 3px 10px rgba(202,0,2,0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
@@ -2769,7 +2769,7 @@ export function ManagerOnlineTrainingPage(props: {
                   border: 'none',
                   cursor: 'pointer',
                   background: teamProgressView === 'playlists' ? 'linear-gradient(90deg,#b30002,#e01418)' : 'transparent',
-                  color: teamProgressView === 'playlists' ? '#fff' : 'var(--text-muted)',
+                  color: teamProgressView === 'playlists' ? 'var(--text-inverse)' : 'var(--text-muted)',
                   boxShadow: teamProgressView === 'playlists' ? '0 3px 10px rgba(202,0,2,0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
@@ -2790,7 +2790,7 @@ export function ManagerOnlineTrainingPage(props: {
                   border: 'none',
                   cursor: 'pointer',
                   background: teamProgressView === 'unlock' ? 'linear-gradient(90deg,#b30002,#e01418)' : 'transparent',
-                  color: teamProgressView === 'unlock' ? '#fff' : 'var(--text-muted)',
+                  color: teamProgressView === 'unlock' ? 'var(--text-inverse)' : 'var(--text-muted)',
                   boxShadow: teamProgressView === 'unlock' ? '0 3px 10px rgba(202,0,2,0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}

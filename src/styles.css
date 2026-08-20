@@ -44,9 +44,9 @@ body {
   --sb-bg: #0d0d0f;
   --sb-text: #d3d6db;
   --sb-muted: #6c717a;
-  --sb-border: rgba(255, 255, 255, 0.08);
+  --sb-border: rgba(255, 255, 255, 0.08);  /* tokens-guard-ignore: bespoke-dark, sidebar palette */
   --sb-icon: #c2c6cd;
-  --sb-hover-bg: rgba(255, 255, 255, 0.05);
+  --sb-hover-bg: rgba(255, 255, 255, 0.05);  /* tokens-guard-ignore: bespoke-dark, sidebar palette */
   --sb-active-bg: rgba(255, 92, 94, 0.14);
   --sb-active-text: #ff6b6d;
   --sb-active-icon: #ff6b6d;
@@ -295,7 +295,7 @@ body {
   left: calc(100% + 10px);
   top: 50%;
   transform: translateY(-50%);
-  background: #111827;
+  background: #111827;  /* tokens-guard-ignore: theme-invariant, unconditional tooltip rule */
   color: var(--text-inverse);
   padding: 6px 11px;
   border-radius: 8px;
@@ -823,7 +823,7 @@ body {
   height: 56px;
   border-radius: 50%;
   background-image: linear-gradient(135deg, #e01418, #b30002);
-  color: #fff;
+  color: var(--text-inverse);
   border: none;
   box-shadow: 0 4px 12px rgba(224, 20, 24, 0.4);
   z-index: 1000;
@@ -1401,7 +1401,7 @@ body {
    (mirrors the .training-card dark treatment). */
 :root[data-theme="dark"] .course-page-main {
   background-color: #1e2126;
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.12);  /* tokens-guard-ignore: bespoke-dark, card raised off the page ground */
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
 }
 
@@ -2677,7 +2677,7 @@ body {
    (matching how it looks in light mode). */
 :root[data-theme="dark"] .training-card {
   background-color: #1e2126;
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.12);  /* tokens-guard-ignore: bespoke-dark, card raised off the page ground */
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
 }
 

@@ -135,7 +135,7 @@ export function UserManagementView() {
             text-align: center;
           }
           .um-tab--active .um-tab__badge {
-            background: rgba(255, 255, 255, 0.28) !important;
+            background: rgba(255, 255, 255, 0.28) !important;  /* tokens-guard-ignore: fixed-brand */
           }
         `}</style>
       </div>

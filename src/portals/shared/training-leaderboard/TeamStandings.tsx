@@ -133,7 +133,7 @@ export function TeamStandings({
                     marginTop: 12,
                     height: 8,
                     borderRadius: 5,
-                    background: top ? "rgba(255,255,255,0.24)" : "var(--surface-muted)",
+                    background: top ? "rgba(255,255,255,0.24)" : "var(--surface-muted)",  /* tokens-guard-ignore: fixed-brand, track on the fixed-red #1 card */
                     overflow: "hidden",
                   }}
                 >

@@ -731,36 +731,36 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl {
           /* Dark theme (default) */
           --bg: #0d0d0f;
-          --card-border: rgba(255, 255, 255, 0.06);
+          --card-border: rgba(255, 255, 255, 0.06);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
           --text: #f4f4f6;
           --muted: #9aa0a6;
           --subtle: #7f858c;
-          --line: rgba(255, 255, 255, 0.06);
+          --line: rgba(255, 255, 255, 0.06);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
           --th: #8b9096;
           --th-bg: #0d0d0f;
           --th-active: #ff5a5c;
           --chip-bg: #1c1e22;
-          --chip-border: rgba(255, 255, 255, 0.18);
+          --chip-border: rgba(255, 255, 255, 0.18);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
           --chip-text: #e7e8ea;
           --pill-text: #c7c9ce;
-          --pill-border: rgba(255, 255, 255, 0.2);
+          --pill-border: rgba(255, 255, 255, 0.2);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
           --num: #e7e8ea;
           --amount: var(--text-inverse);
           --rank: #6b7075;
           --gold: #f1c33c;
           --panel: #141416;
-          --panel-line: rgba(255, 255, 255, 0.12);
-          --hover: rgba(255, 255, 255, 0.03);
+          --panel-line: rgba(255, 255, 255, 0.12);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
+          --hover: rgba(255, 255, 255, 0.03);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
           --you: rgba(202, 0, 2, 0.1);
           --top-grad: linear-gradient(90deg, rgba(202, 0, 2, 0.28), rgba(202, 0, 2, 0.04) 70%, transparent);
           --wm-op: 0.08;
           --note-bg: rgba(37, 99, 235, 0.12);
           --note-border: rgba(37, 99, 235, 0.35);
           --note-text: #bcd0ff;
-          --guide-bg: rgba(255, 255, 255, 0.03);
+          --guide-bg: rgba(255, 255, 255, 0.03);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
           --rep-panel-bg: #1e2024;
-          --rep-field-bg: rgba(255, 255, 255, 0.07);
-          --rep-hover: rgba(255, 255, 255, 0.07);
+          --rep-field-bg: rgba(255, 255, 255, 0.07);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
+          --rep-hover: rgba(255, 255, 255, 0.07);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
 
           position: relative;
           background: var(--bg);
