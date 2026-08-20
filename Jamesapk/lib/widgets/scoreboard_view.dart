@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
 import '../services/api_client.dart';
 
 // Sales Scoreboard — a faithful port of the web ScoreboardHome (/api/scoreboard).
 // Greeting, rank strip, Week/Month/Year toggle, three metric tiles (value +
-// honest trend + goal bar with pace notch), the two funnel conversion rates, an
-// optional personal strip, and the freshness note. Rendered inside the
-// "My Dashboard" tab of the Sales Leaderboard page.
+// honest trend + goal bar with pace notch), an optional personal strip, and the
+// freshness note. Rendered inside the "My Dashboard" tab of the Sales
+// Leaderboard page. The C-level dashboard also passes showPodiums, adding the
+// Top 3 Sales + Top 3 Training strip (parity with the web PodiumStrip).
 class ScoreboardView extends StatefulWidget {
   // Called by the "Full Sales Leaderboard" link to switch back to the board tab.
   final VoidCallback? onOpenLeaderboard;
-  const ScoreboardView({super.key, this.onOpenLeaderboard});
+  // C-level dashboard shows Top 3 Sales + Top 3 Training podiums under the board.
+  // Every other role passes false and is completely unaffected.
+  final bool showPodiums;
+  const ScoreboardView({super.key, this.onOpenLeaderboard, this.showPodiums = false});
 
   @override
   State<ScoreboardView> createState() => _ScoreboardViewState();
@@ -37,11 +42,23 @@ class _ScoreboardViewState extends State<ScoreboardView> {
   bool _error = false;
   String _firstName = 'there';
 
+  // C-level podiums (parity with web PodiumStrip). Sales follows the Week/Month/
+  // Year toggle; training is all-time and fetched once.
+  List<dynamic>? _salesPodium;
+  bool _salesPodiumLoading = false;
+  bool _salesPodiumError = false;
+  List<dynamic>? _trainingPodium;
+  bool _trainingPodiumError = false;
+
   @override
   void initState() {
     super.initState();
     _loadName();
     _fetch();
+    if (widget.showPodiums) {
+      _fetchSalesPodium();
+      _fetchTrainingPodium();
+    }
   }
 
   Future<void> _loadName() async {
@@ -96,6 +113,62 @@ class _ScoreboardViewState extends State<ScoreboardView> {
     if (w == _window) return;
     setState(() => _window = w);
     _fetch();
+    // Sales podium follows the toggle; training is all-time, so it stays put.
+    if (widget.showPodiums) _fetchSalesPodium();
+  }
+
+  Future<void> _fetchSalesPodium() async {
+    setState(() {
+      _salesPodiumLoading = true;
+      _salesPodiumError = false;
+    });
+    final w = _window;
+    try {
+      final res = await api
+          .get(Uri.parse('https://millerstorm.tech/api/scoreboard/podiums?window=$w'))
+          .timeout(const Duration(seconds: 20));
+      // A slow "year" response must never overwrite a newer toggle's result.
+      if (!mounted || w != _window) return;
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        setState(() {
+          _salesPodium = (json['sales'] as List?) ?? const [];
+          _salesPodiumLoading = false;
+        });
+      } else {
+        setState(() {
+          _salesPodiumError = true;
+          _salesPodiumLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted && w == _window) {
+        setState(() {
+          _salesPodiumError = true;
+          _salesPodiumLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchTrainingPodium() async {
+    try {
+      // Reuse the board's own company top-three flag (isPodium) so this strip can
+      // never disagree with the Course Leaderboard screen.
+      final res = await api
+          .get(Uri.parse('https://millerstorm.tech/api/training/leaderboard?scope=overall'))
+          .timeout(const Duration(seconds: 20));
+      if (!mounted) return;
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        final rows = (json['rows'] as List?) ?? const [];
+        setState(() => _trainingPodium = rows.where((r) => r['isPodium'] == true).take(3).toList());
+      } else {
+        setState(() => _trainingPodiumError = true);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _trainingPodiumError = true);
+    }
   }
 
   // ── Formatting helpers (ported from src/lib/scoreboard/display.ts) ──────────
@@ -478,10 +551,193 @@ class _ScoreboardViewState extends State<ScoreboardView> {
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w700, color: _link, decoration: TextDecoration.underline)),
                 ),
+              if (widget.showPodiums) ...[
+                const SizedBox(height: 18),
+                _podiumSection(),
+              ],
             ],
           ],
         ],
       ),
     );
+  }
+
+  // ---- C-level podiums (Top 3 Sales + Top 3 Training) ----
+
+  Widget _podiumSection() {
+    final windowCaption = _window == 'week'
+        ? 'This week'
+        : _window == 'year'
+            ? 'This year'
+            : 'This month';
+
+    final salesRows = (_salesPodium ?? const []).map<Map<String, dynamic>>((p) {
+      return {
+        'place': (p['place'] as num?)?.toInt() ?? 0,
+        'name': (p['name'] ?? '').toString(),
+        'headshotUrl': (p['headshotUrl'] ?? '').toString(),
+        'value': _fmtMoney((p['revenue'] as num?) ?? 0),
+      };
+    }).toList();
+
+    var ti = 0;
+    final trainingRows = (_trainingPodium ?? const []).map<Map<String, dynamic>>((r) {
+      ti++;
+      return {
+        'place': (r['rank'] as num?)?.toInt() ?? ti,
+        'name': (r['name'] ?? '').toString(),
+        'headshotUrl': (r['headshotUrl'] ?? '').toString(),
+        'value': '${_fmtCount((r['itemsCompleted'] as num?) ?? 0)} lessons',
+      };
+    }).toList();
+
+    return Column(
+      children: [
+        _podiumCard(
+          title: 'Top 3 in Sales',
+          caption: windowCaption,
+          loading: _salesPodiumLoading,
+          error: _salesPodiumError,
+          // An empty period early in the week is a real, honest state, not a
+          // failure — it gets its own wording rather than a blank card.
+          emptyMessage: 'No contracts recorded yet for this period.',
+          rows: salesRows,
+          linkLabel: 'Full Sales Leaderboard',
+          onLink: widget.onOpenLeaderboard,
+        ),
+        const SizedBox(height: 12),
+        _podiumCard(
+          title: 'Top 3 in Training',
+          caption: 'All time',
+          // Says plainly why this half does not move with the toggle.
+          note:
+              'Lifetime standing, so this does not change with the period. Lesson completions were not dated before August 2026.',
+          loading: _trainingPodium == null && !_trainingPodiumError,
+          error: _trainingPodiumError,
+          emptyMessage: 'No one has started a course yet.',
+          rows: trainingRows,
+        ),
+      ],
+    );
+  }
+
+  Widget _podiumCard({
+    required String title,
+    required String caption,
+    String? note,
+    required bool loading,
+    required bool error,
+    required String emptyMessage,
+    required List<Map<String, dynamic>> rows,
+    String? linkLabel,
+    VoidCallback? onLink,
+  }) {
+    Widget body;
+    if (loading) {
+      body = const Text('Loading…', style: TextStyle(fontSize: 13, color: _textLight));
+    } else if (error) {
+      // Never fall through to an empty podium on a failed request: three blank
+      // medals would falsely claim "nobody is winning".
+      body = const Text("Couldn't load this right now.", style: TextStyle(fontSize: 13, color: _textLight));
+    } else if (rows.isEmpty) {
+      body = Text(emptyMessage, style: const TextStyle(fontSize: 13, color: _textLight));
+    } else {
+      body = Column(children: rows.map(_podiumRow).toList());
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: _card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title.toUpperCase(),
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.5)),
+          const SizedBox(height: 2),
+          Text(caption, style: const TextStyle(fontSize: 12, color: _textPlaceholder)),
+          const SizedBox(height: 12),
+          body,
+          if (note != null) ...[
+            const SizedBox(height: 10),
+            Text(note, style: const TextStyle(fontSize: 11.5, color: _textPlaceholder, height: 1.4)),
+          ],
+          if (linkLabel != null && onLink != null) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: onLink,
+              child: Text(linkLabel,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700, color: _link, decoration: TextDecoration.underline)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _podiumRow(Map<String, dynamic> row) {
+    final place = row['place'] as int;
+    final name = row['name'] as String;
+    final value = row['value'] as String;
+    final img = row['headshotUrl'] as String;
+
+    const medals = <int, List<Color>>{
+      1: [Color(0xFFFFE488), Color(0xFFE8B923)],
+      2: [Color(0xFFE9EDF2), Color(0xFFB9C0C9)],
+      3: [Color(0xFFF0B98A), Color(0xFFCD7F45)],
+    };
+    final grad = medals[place] ?? const [_border, _border];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+            ),
+            alignment: Alignment.center,
+            child: Text('$place',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF3A2400))),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF374151)),
+            clipBehavior: Clip.antiAlias,
+            alignment: Alignment.center,
+            child: img.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: img.startsWith('http') ? img : 'https://millerstorm.tech$img',
+                    fit: BoxFit.cover,
+                    width: 32,
+                    height: 32,
+                    errorWidget: (_, __, ___) => _podiumInitial(name),
+                  )
+                : _podiumInitial(name),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
+          ),
+          const SizedBox(width: 8),
+          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _textDark)),
+        ],
+      ),
+    );
+  }
+
+  Widget _podiumInitial(String name) {
+    final letter = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
+    return Text(letter, style: const TextStyle(color: _white, fontSize: 14, fontWeight: FontWeight.w700));
   }
 }

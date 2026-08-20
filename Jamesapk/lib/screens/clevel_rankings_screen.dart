@@ -545,7 +545,7 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
             ),
             Expanded(
               child: _tab == 'dashboard'
-                  ? ScoreboardView(onOpenLeaderboard: () => setState(() => _tab = 'leaderboard'))
+                  ? ScoreboardView(showPodiums: true, onOpenLeaderboard: () => setState(() => _tab = 'leaderboard'))
                   : _loading
                   ? const Center(child: CircularProgressIndicator(color: _primary))
                   : RefreshIndicator(
