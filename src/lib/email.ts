@@ -8,6 +8,13 @@ type EmailOptions = {
   subject: string;
   html: string;
   text?: string;
+  /**
+   * Optional file attachments. Resend takes the raw bytes as `content`, so a
+   * caller passes a Buffer rather than a path: nothing here reads the disk.
+   * Resend's own ceiling is 40MB per message across all attachments; a
+   * certificate PDF is far under that, but do not attach anything unbounded.
+   */
+  attachments?: Array<{ filename: string; content: Buffer }>;
 };
 
 export async function sendEmail(options: EmailOptions) {
@@ -22,6 +29,8 @@ export async function sendEmail(options: EmailOptions) {
       subject: options.subject,
       text: options.text,
       html: options.html,
+      // Omitted entirely when there are none: Resend rejects an empty array.
+      ...(options.attachments?.length ? { attachments: options.attachments } : {}),
     });
     if (error) {
       throw new Error(error.message || JSON.stringify(error));
@@ -309,4 +318,60 @@ export async function sendTicketStatusEmail(params: {
     "{{adminNote}}": params.adminNote || "",
   });
   return sendEmail({ to: params.email, subject, html, text });
+}
+
+/**
+ * The certificate a rep earned, emailed to them with the PDF attached
+ * (2026-08-19). The attachment is the point: Jay asked for something they
+ * "can print out and frame".
+ *
+ * `pdf` may be null when the render failed. The email still goes, without the
+ * attachment and without the line promising one, because telling someone they
+ * earned a credential is worth more than silence. The caller records that so it
+ * can be reissued.
+ */
+export async function sendCertificateEarnedEmail(params: {
+  name: string;
+  email: string;
+  credential: string;
+  courses: string[];
+  issuedDate: string;
+  credentialId: string;
+  pdf: { filename: string; content: Buffer } | null;
+}) {
+  const tmpl = await getEmailTemplate("certificateEarned");
+  if (tmpl.status === "draft") {
+    console.log("[Email] certificateEarned is draft, skipping");
+    return;
+  }
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": params.name,
+    "{{credential}}": params.credential,
+    "{{courses}}": params.courses.map((c) => `- ${c}`).join("\n"),
+    "{{issuedDate}}": params.issuedDate,
+    "{{credentialId}}": params.credentialId,
+    "{{appUrl}}": process.env.NEXT_PUBLIC_APP_URL || "https://millerstorm.tech",
+  });
+
+  // Do not promise an attachment that is not there.
+  const body = params.pdf
+    ? { html, text }
+    : {
+        html: html.replace(
+          /Your certificate is attached[^<]*/i,
+          "Your certificate is being prepared and will follow shortly."
+        ),
+        text: (text || "").replace(
+          /Your certificate is attached.*/i,
+          "Your certificate is being prepared and will follow shortly."
+        ),
+      };
+
+  return sendEmail({
+    to: params.email,
+    subject,
+    html: body.html,
+    text: body.text,
+    ...(params.pdf ? { attachments: [params.pdf] } : {}),
+  });
 }

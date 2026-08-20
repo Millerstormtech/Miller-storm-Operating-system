@@ -1,5 +1,33 @@
 // Browser-safe: no mongoose imports here
 export const EMAIL_DEFAULTS: Record<string, { subject: string; body: string; variables: string[] }> = {
+  certificateEarned: {
+    subject: "You earned your {{credential}}",
+    body: `Hi {{name}},
+
+You have earned your {{credential}}.
+
+Your certificate is attached to this email as a PDF. Print it, frame it, put it on the wall. You earned it.
+
+What you completed:
+{{courses}}
+
+Issued: {{issuedDate}}
+Certificate number: {{credentialId}}
+
+Congratulations from everyone at Miller Storm.
+
+{{appUrl}}
+
+(c) 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: [
+      "{{name}}",
+      "{{credential}}",
+      "{{courses}}",
+      "{{issuedDate}}",
+      "{{credentialId}}",
+      "{{appUrl}}",
+    ],
+  },
   passwordReset: {
     subject: "Reset Your Password - Miller Storm OS",
     body: `Hi {{name}},

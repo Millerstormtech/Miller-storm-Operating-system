@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { credentialProgress, nextCredential, CREDENTIALS } from "./credentials";
+import { credentialProgress, nextCredential, orphanCategories, CREDENTIALS } from "./credentials";
 import { TRAINING_CATEGORIES, UNCATEGORIZED_LABEL } from "./categories";
 import type { CourseStats } from "./scoring";
 
@@ -202,5 +202,53 @@ describe("the category strings stay in step with the Course Builder", () => {
     for (const c of CREDENTIALS) {
       expect(`${c.label} ${c.short} ${c.category}`).not.toMatch(/diploma/i);
     }
+  });
+});
+
+describe("orphanCategories", () => {
+  // The 2026-08-20 bug: five published courses carried "Millionaire Knockers"
+  // and "Roof Hustlers" while CREDENTIALS matched on the longer certificate
+  // strings that no course had ever been filed under. Nothing errored. Both bars read 0% for every rep while
+  // real progress sat in those courses. Code-level drift is caught by the suite
+  // above; this catches the DATA-level drift the suite cannot see, and
+  // scripts/check-credential-categories.js runs it against a live database.
+  it("names a category that belongs to no credential", () => {
+    // The two strings CREDENTIALS matched on until 2026-08-20. Nothing carries
+    // them now, so a course filed under either is unreachable by any bar.
+    expect(
+      orphanCategories([
+        { id: "a", category: CREDENTIALS[0].category },
+        { id: "b", category: "Matt Mulholland Certificate" },
+        { id: "c", category: "DeShaun Bryant (Roof Hustlers) Certificate" },
+      ])
+    ).toEqual(["DeShaun Bryant (Roof Hustlers) Certificate", "Matt Mulholland Certificate"]);
+  });
+
+  it("is quiet when every course matches a credential", () => {
+    expect(
+      orphanCategories(CREDENTIALS.map((c, i) => ({ id: String(i), category: c.category })))
+    ).toEqual([]);
+  });
+
+  it("ignores uncategorised courses, which are a deliberate state", () => {
+    // An admin filling in a new course has not broken anything yet.
+    expect(orphanCategories([{ id: "a" }, { id: "b", category: "" }, { id: "c", category: "   " }])).toEqual([]);
+  });
+
+  it("reports each distinct category once, sorted, however many courses carry it", () => {
+    expect(
+      orphanCategories([
+        { id: "a", category: "Sales Bootcamp" },
+        { id: "b", category: "Sales Bootcamp" },
+        { id: "c", category: "Matt Mulholland Certificate" },
+      ])
+    ).toEqual(["Matt Mulholland Certificate", "Sales Bootcamp"]);
+  });
+
+  it("matches the way credentialProgress does, trimmed and case sensitive", () => {
+    // credentialProgress trims but does NOT lowercase, so this must agree or
+    // the check would pass while the board still reads 0%.
+    expect(orphanCategories([{ id: "a", category: `  ${CREDENTIALS[0].category}  ` }])).toEqual([]);
+    expect(orphanCategories([{ id: "b", category: CREDENTIALS[0].category.toLowerCase() }])).toHaveLength(1);
   });
 });

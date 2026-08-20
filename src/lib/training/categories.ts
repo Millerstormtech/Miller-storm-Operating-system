@@ -3,10 +3,15 @@
 // distinct `category` value used across courses becomes a Training Center
 // section, grouped like Tools & Products. Courses with no category fall into an
 // "Other Courses" bucket rendered last.
+//
+// These MUST stay in step with the `category` values in credentials.ts: a course
+// is joined to its credential by this exact string, so a pick that no credential
+// recognises silently zeroes a bar on the Course Leaderboard, with no error
+// anywhere. credentials.test.ts asserts the two lists agree.
 export const TRAINING_CATEGORIES = [
   "Miller Storm Certificate",
-  "Matt Mulholland Certificate",
-  "DeShaun Bryant (Roof Hustlers) Certificate",
+  "Millionaire Knockers",
+  "Roof Hustlers",
 ];
 
 export const UNCATEGORIZED_LABEL = "Other Courses";

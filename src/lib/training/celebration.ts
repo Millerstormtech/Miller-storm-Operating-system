@@ -13,6 +13,7 @@ import { logToDb } from "../models/SystemLog";
 import { courseStats, isRankedUser, type ProgressLike } from "./scoring";
 import { courseCelebrationMessage } from "../stormbot/copy";
 import { announce } from "../stormbot/announce";
+import { awardCertificatesIfEarned } from "./certificateAward";
 
 // Same heavy-field strip the leaderboard uses: courseStats only needs page
 // metadata (id/status/isQuiz/isFinalTest/folderId).
@@ -45,6 +46,19 @@ export async function celebrateIfCourseCompleted(params: {
       .select("id name email role")
       .lean();
     if (!user || !isRankedUser({ role: user.role, email: user.email })) return;
+
+    // Certificates ride the same event and the same gates, but deliberately
+    // NOT the same ledger: they are issued BEFORE the announcement is claimed,
+    // so turning Storm Bot celebrations off can never stop a rep receiving the
+    // credential they earned. Failure-isolated inside; never throws.
+    await awardCertificatesIfEarned({
+      userId,
+      userName: user.name || user.email || "",
+      userEmail: user.email || "",
+      courseId,
+      progressBefore,
+      progressAfter,
+    });
 
     // Once ever: insert the ledger row before posting. A duplicate-key error
     // means a racing save already celebrated; stop silently.

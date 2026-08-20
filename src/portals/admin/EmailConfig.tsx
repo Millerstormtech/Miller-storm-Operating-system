@@ -4,6 +4,7 @@ import { EMAIL_DEFAULTS } from "../../lib/emailTemplates";
 type EmailKey = keyof typeof EMAIL_DEFAULTS;
 
 const EMAIL_LABELS: Record<string, string> = {
+  certificateEarned: "Certificate Earned (Rep)",
   passwordReset: "Password Reset",
   registrationConfirmation: "Registration Confirmation",
   accountApproved: "Account Approved",
