@@ -395,7 +395,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                     <div className="sl__pod-gap">
                       {p.behindBy === null
                         ? "Leads the company"
-                        : <>Behind {p.behindName} by <b>{fmtMoney(p.behindBy)}</b></>}
+                        : <>Behind {stripFormerMarker(p.behindName)} by <b>{fmtMoney(p.behindBy)}</b></>}
                     </div>
                   </div>
                 ))}

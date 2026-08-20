@@ -50,8 +50,14 @@ export function isFormerRep(rep: FormerRepInput): boolean {
  * correct there: the marker is the whole point of the column. But a Storm Chat
  * celebration naming "❌ Dakota Porter" reads as a glitch, so announcements
  * strip it. Returns the original string when there is nothing to strip.
+ *
+ * Accepts null/undefined because several of the fields that reach here are
+ * optional on the wire (the YTD podium's `behindName` is `string | null`, and a
+ * row's name can be absent). The body has always handled that; the signature now
+ * says so, rather than forcing every caller into its own `?? ""` and inviting one
+ * of them to forget.
  */
-export function stripFormerMarker(name: string): string {
+export function stripFormerMarker(name: string | null | undefined): string {
   let out = name ?? "";
   for (const m of FORMER_NAME_MARKERS) out = out.split(m).join(" ");
   return out.replace(/\s+/g, " ").trim();
