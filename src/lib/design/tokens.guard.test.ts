@@ -89,169 +89,49 @@ const BANNED_RGB: Record<string, string> = {
 // source of truth this list transcribes. Do not add a new entry here without
 // the same kind of documented review — this list is a record of decisions
 // already made, not a place to quietly wave through a new one.
-const LEAVE_ALONE = new Set<string>([
-  // Bound to a JS identifier that can flow from a DB-backed field
-  // (selectedBot.colorTheme) rather than a CSS declaration (Task 5).
-  "src/components/BotChatWidget.tsx:664",
-
-  // fill/stroke set via a JS object literal on an SVG element. categorise()
-  // has no fill/stroke branch by design; getting it wrong renders content
-  // invisible/black, the worst failure mode for this project (Task 5).
-  "src/components/SocialMediaCharts.tsx:111",
-  "src/components/SocialMediaCharts.tsx:116",
-  "src/components/WorldMap.tsx:88",
-  "src/components/WorldMap.tsx:89",
-
-  // STATUS_COLOR: Record<string,{bg,fg}> — object-literal colour map, the
-  // exact bg/fg pattern named as a leave-alone example (Task 5).
-  "src/components/TicketButton.tsx:28",
-  "src/components/TicketButton.tsx:31",
-
-  // AiBotBuilder.tsx (Task 10): sidebarBg/sidebarDark JS identifiers; roleColor/
-  // roleText/statusColor/statusDot Record<string,string> maps; COLOR_THEMES
-  // (line 2097) is PERSISTED TO MONGODB as colorTheme, never touched; line 2487
-  // is a direct `c === "#ffffff"` comparison against a COLOR_THEMES-sourced
-  // value — converting would silently break which swatch renders a contrast ring.
-  "src/portals/admin/AiBotBuilder.tsx:739",
-  "src/portals/admin/AiBotBuilder.tsx:740",
-  "src/portals/admin/AiBotBuilder.tsx:1283",
-  "src/portals/admin/AiBotBuilder.tsx:1284",
-  "src/portals/admin/AiBotBuilder.tsx:1428",
-  "src/portals/admin/AiBotBuilder.tsx:1534",
-  "src/portals/admin/AiBotBuilder.tsx:2097",
-  "src/portals/admin/AiBotBuilder.tsx:2487",
-
-  // CourseAiBotBuilder.tsx (Task 10): COLOR_THEMES (persisted, same as above)
-  // and ROLE_COLORS Record<string,{bg,...}> object-literal map + its fallback.
-  "src/portals/admin/CourseAiBotBuilder.tsx:495",
-  "src/portals/admin/CourseAiBotBuilder.tsx:627",
-  "src/portals/admin/CourseAiBotBuilder.tsx:635",
-
-  // StormChatRoom.tsx (Task 11): one interconnected comparison-operand hazard.
-  // textColor (line 1063's ternary result) is compared against a raw hex
-  // literal at 645/659; converting any one side independently changes which
-  // branch fires at runtime. Proof A cannot detect this class of bug because
-  // it resolves colour VALUES, not JS string-equality semantics — see the
-  // task-10-12-report.md "codemod misfire" writeup for the full incident.
-  "src/portals/admin/StormChatRoom.tsx:645",
-  "src/portals/admin/StormChatRoom.tsx:659",
-  "src/portals/admin/StormChatRoom.tsx:1063",
-
-  // Module-level exported/reusable JS identifiers (const NEUTRAL/TRACK/RING_TRACK,
-  // Record bg/fg maps, MEDAL_EDGE colour array) — Task 6's named leave-alone
-  // category, not CSS declarations.
-  // (MetricTile.tsx:9-11's old entries were removed 2026-08 — see the block below;
-  // NEUTRAL/BAR are no longer tracked colours and TRACK was already var(...).)
-  "src/portals/shared/scoreboard/ConversionStrip.tsx:9",
-  // Re-anchored 2026-08-15: TIER_COLORS and BADGE_META were deleted with the
-  // rank titles and badges, which moved RING_TRACK 6->5 and MEDAL_EDGE 29->11.
-  // The old :10 entry was a TIER_COLORS row and no longer exists.
-  "src/portals/shared/training-leaderboard/constants.ts:5",
-  "src/portals/shared/training-leaderboard/constants.ts:11",
-
-  // rgba(255,255,255,<alpha>) translucent accents that sit against a BESPOKE,
-  // non-shared-token background (a component-local dark palette, or a fixed
-  // brand-red/gold treatment) rather than against var(--surface-*). Converting
-  // to rgb(var(--white-rgb) / <alpha>) would still be VALUE-CORRECT in light
-  // mode, but --white-rgb is re-pointed to rgb(23 24 27) in dark mode (tokens.css
-  // dark block) — calibrated to blend with --surface-default's dark value
-  // (#17181b, the same 23,24,27), not with these components' own bespoke dark
-  // colours. Computed alpha-blend against each actual background below; where the
-  // result lands within ~1 unit (out of 255) of the background, the accent
-  // becomes invisible in dark mode, a real zero-visual-change violation, not a
-  // Proof A false positive. Reviewed 2026-08-13.
-  //
-  // AuthShell.tsx's own dark "glass card" palette (html[data-theme="dark"] .ms-auth):
-  // --ms-card is rgba(26,26,28,0.55) over an --ms-bg of #0a0a0b, an effective
-  // ~rgb(19,19,20) — 0.92*(19,19,20)+0.08*(23,24,27) ~= (19.3,19.4,20.6), a <1-unit
-  // shift from the card: the "glass" border/input edge would vanish.
-  "src/components/AuthShell.tsx:357",
-  "src/components/AuthShell.tsx:362",
-  // Line 364 is the SAME dark-block --ms-placeholder, but with a plain hex
-  // (#6b7280) rather than rgba: it's inside html[data-theme="dark"] .ms-auth, so
-  // it only ever renders while data-theme="dark" -- but #6b7280 does not equal
-  // ANY semantic token's dark-mode value (--text-subtle dark is #6c7278, close
-  // but not equal; --text-muted dark is #9aa1a8). No token substitution is
-  // value-identical here; tokenizing it would shift the placeholder colour.
-  "src/components/AuthShell.tsx:364",
-  // LeaderboardBoard.tsx's own bespoke dark "glass" widget palette (the default,
-  // non--light .sl block): --bg is #0d0d0f = rgb(13,13,15). 0.94*(13,13,15) +
-  // 0.06*(23,24,27) ~= (13.6,13.7,15.7), a <1-unit shift -- every one of these
-  // subtle hairline borders/hovers/note fills would disappear against the
-  // widget's own background.
-  "src/components/LeaderboardBoard.tsx:581",
-  "src/components/LeaderboardBoard.tsx:585",
-  "src/components/LeaderboardBoard.tsx:589",
-  "src/components/LeaderboardBoard.tsx:590",
-  "src/components/LeaderboardBoard.tsx:593",
-  "src/components/LeaderboardBoard.tsx:599",
-  "src/components/LeaderboardBoard.tsx:600",
-  "src/components/LeaderboardBoard.tsx:607",
-  // .sl__king's border sits on the fixed brand red/gold "king" banner, shown
-  // identically regardless of app theme (no .sl--light override exists for
-  // .sl__king) -- same reasoning as the TeamStandings/RankStrip fixed-brand
-  // entries below, not the .sl palette above, but the fix is identical (raw).
-  "src/components/LeaderboardBoard.tsx:694",
-  // RankStrip.tsx medal circle (non-top-3 fallback): sits directly on
-  // var(--surface-default), which in dark mode IS rgb(23,24,27) -- the exact
-  // same value --white-rgb re-points to. rgb(var(--white-rgb) / 0.18) over
-  // var(--surface-default) in dark mode is therefore a ZERO-unit blend: the
-  // "unranked" medal circle would be perfectly invisible, not merely subtle.
-  "src/portals/shared/scoreboard/RankStrip.tsx:48",
-  // Same medal circle's inset glossy highlight (0.4 alpha) -- a decorative
-  // metallic/glass sheen on the medal itself (gold/silver/bronze gradient or the
-  // line-48 fallback above), not a themed UI surface; converting would flatten
-  // the deliberate 3D gloss to a much fainter mark in dark mode.
-  "src/portals/shared/scoreboard/RankStrip.tsx:79",
-  // TeamStandings.tsx: the file's own header comment says the #1 team gets a
-  // "fixed brand red + gold" treatment specifically so it does NOT theme itself
-  // (unlike every other row, which uses var(--surface-*)/var(--text-*) and does).
-  // This is the progress-bar TRACK for that fixed-red #1 card; converting to
-  // rgb(var(--white-rgb) / 0.24) would, in dark mode, blend the track almost into
-  // the red card itself (computed ~55-unit shift from the intended light overlay),
-  // defeating the "how much of the bar is filled" readability the track exists
-  // for. See TeamStandings.tsx:94 for the matching fill, converted to
-  // var(--text-inverse) instead of var(--surface-default) for the same reason.
-  "src/portals/shared/training-leaderboard/TeamStandings.tsx:85",
-  // styles.css .app-sidebar's own dark palette (:root[data-theme="dark"]
-  // .app-sidebar): --sb-bg is #0d0d0f, the identical near-invisible-blend case as
-  // LeaderboardBoard.tsx above (same background value).
-  "src/styles.css:47",
-  "src/styles.css:49",
-  // styles.css .training-card dark override: background is #1e2126 (deliberately
-  // "raised a couple of shades" per the comment two lines above it, NOT
-  // var(--surface-default)). 0.88*(30,33,38)+0.12*(23,24,27) ~= (29.2,31.9,36.7),
-  // a <2-unit shift from the card -- the card border would disappear.
-  "src/styles.css:2608",
-  // styles.css collapsed-sidebar hover tooltip (.sidebar-item::after): this rule
-  // is UNCONDITIONAL -- not scoped to light or dark -- so the token used here
-  // must resolve identically in both themes, same requirement as the rgba block
-  // above but for a solid hex. #111827 is --surface-inverse's LIGHT value only;
-  // its dark value is #050506, a real (non-invisible, ~15-unit) colour shift, so
-  // this native-tooltip-style background stays raw rather than adopting
-  // --surface-inverse's dark repoint. The sibling `color: #ffffff` on the same
-  // rule DID convert, to var(--text-inverse), which is identical in both themes.
-  "src/styles.css:298",
-
-  // Badge/notch highlights on a FIXED (hardcoded, non-token) brand-red gradient
-  // background, e.g. background: "linear-gradient(90deg, #b30002, #e01418)" a
-  // few lines above each of these. Same --white-rgb dark-repoint hazard as the
-  // block above, just against a fixed red instead of a fixed dark: computed
-  // 0.72*(224,20,24)+0.28*(23,24,27) ~= (167.7,21.1,24.8) in dark mode vs the
-  // intended 0.72*(224,20,24)+0.28*(255,255,255) ~= (232.7,85.8,88.7) -- the
-  // lighter accent that's supposed to stand out on the red tab/pill collapses
-  // to nearly the same red as the tab itself. Reviewed 2026-08-13.
-  "src/portals/admin/UserManagementView.tsx:138",
-  "src/portals/sales/TrainingCenter.tsx:728",
-  // MetricTile.tsx's NOTCH sits on TRACK (var(--surface-muted)); unlike
-  // RankStrip's medal circle, TRACK's dark value (#24262b, i.e. rgb(36,38,43))
-  // does NOT exactly equal --white-rgb's dark repoint (23,24,27), so the notch
-  // does not go fully invisible -- but 0.45*(36,38,43)+0.55*(23,24,27) ~=
-  // (28.9,30.3,34.2) is within ~8 units of the track it's supposed to mark
-  // against, versus ~120 units for the intended white notch: the "expected
-  // pace" marker becomes very hard to see in dark mode. Reviewed 2026-08-13.
-  "src/portals/shared/scoreboard/MetricTile.tsx:12",
-]);
+// Lines carrying an inline `tokens-guard-ignore:` marker are skipped by RULE 1.
+// Rule 2's ratchet still counts them: a marker says "this colour is legitimately
+// raw HERE", not "this colour stopped existing", and the ratchet's job is to stop
+// new colours being invented.
+//
+// This replaces a LEAVE_ALONE set that keyed exemptions by "file:line". That
+// list drifted every time anyone inserted code above an exempted line: the
+// approval silently slid onto an unrelated line while the colour it was meant
+// to excuse became an "offence", turning this test red for no real reason. It
+// was re-anchored by hand at least twice (2026-08, 2026-08-15) and had drifted
+// again by 2026-08-20 -- by which point 9 of LeaderboardBoard's 9 approvals
+// pointed at table markup. A red guard guards nothing, so ~26 genuine
+// violations then accumulated behind the noise unnoticed.
+//
+// A marker written ON the line cannot separate from the code it describes.
+// Keep the inline reason SHORT; the categories that justify a marker at all are
+// documented here, once:
+//
+//   persisted-value   The colour is written to MongoDB, or compared as a string
+//                     (e.g. AiBotBuilder's COLOR_THEMES -> bot.colorTheme, and
+//                     the `c === "#ffffff"` swatch check). A var() would be
+//                     stored verbatim, break the equality, and render as nothing
+//                     in the Flutter app, which cannot resolve CSS variables.
+//   js-identifier     Bound to a JS identifier or an object-literal colour map
+//                     rather than a CSS declaration, so categorise() cannot tell
+//                     whether it lands on a background, text or a border.
+//   svg-attr          fill/stroke on an SVG element: var() there resolves to
+//                     nothing and renders BLACK.
+//   bespoke-dark      Sits on a component's OWN dark palette, not on
+//                     var(--surface-*). --white-rgb re-points to rgb(23 24 27)
+//                     in dark mode, calibrated to blend with --surface-default;
+//                     over a bespoke dark background the accent blends to within
+//                     ~1 unit and becomes invisible. Real breakage, not a false
+//                     positive.
+//   fixed-brand       Sits on a hardcoded brand red/gold treatment that is shown
+//                     identically in both themes, so a theme-flipping token
+//                     would collapse the accent into its own background.
+//   theme-invariant   An unconditional rule needing one value in BOTH themes,
+//                     where the candidate token re-points in dark mode.
+//
+// Before adding a marker, check the colour is not simply convertible. The
+// default is to convert.
+const GUARD_IGNORE = /tokens-guard-ignore/;
 
 const RATCHET_BASELINE = 1404; // measured 2026-08-12; may only go DOWN
 
@@ -282,7 +162,7 @@ describe("design tokens", () => {
     for (const file of sourceFiles()) {
       const text = readFileSync(file, "utf8").replace(SVG_ATTR, "").replace(HTML_STYLE_ATTR, "");
       text.split("\n").forEach((line, i) => {
-        if (LEAVE_ALONE.has(`${file}:${i + 1}`)) return;
+        if (GUARD_IGNORE.test(line)) return;
         for (const m of line.matchAll(/#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)) {
           const use = BANNED[norm(m[0])];
           if (use) offences.push(`${file}:${i + 1}  found "${m[0]}"  ->  use ${use}`);

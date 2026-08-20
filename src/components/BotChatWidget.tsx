@@ -681,7 +681,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
   );
 
   // Appearance values with fallbacks
-  const theme      = selectedBot?.colorTheme || "#1f2937";
+  const theme      = selectedBot?.colorTheme || "#1f2937";  /* tokens-guard-ignore: persisted-value, fallback for bot.colorTheme */
   const botTitle   = selectedBot?.botTitle || selectedBot?.name || "AI Assistant";
   const avatarUrl  = selectedBot?.botAvatarUrl || "";
   const welcome    = selectedBot?.welcomeMessage || "Hi, How can I help you today?";
@@ -876,7 +876,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
                 title={conversing ? "Stop voice conversation" : "Talk to the bot (hands-free voice)"}
                 aria-label={conversing ? "Stop voice conversation" : "Start voice conversation"}
                 className={listening ? "bcw-pulse" : ""}
-                style={{ width: 34, height: 34, borderRadius: "50%", border: "none", flexShrink: 0, cursor: "pointer", background: conversing ? "#e01418" : "var(--surface-muted)", color: conversing ? "#fff" : "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "background 0.15s" }}>
+                style={{ width: 34, height: 34, borderRadius: "50%", border: "none", flexShrink: 0, cursor: "pointer", background: conversing ? "#e01418" : "var(--surface-muted)", color: conversing ? "var(--text-inverse)" : "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "background 0.15s" }}>
                 {speaking ? "🔊" : "🎤"}
               </button>
               <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}

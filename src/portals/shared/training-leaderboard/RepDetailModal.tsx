@@ -139,7 +139,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
             style={{
               fontWeight: 800,
               fontSize: 19,
-              color: "#fff",
+              color: "var(--text-inverse)",
               fontFamily: HEAD_FONT,
               letterSpacing: 0.4,
               textTransform: "uppercase",
@@ -151,11 +151,11 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
             onClick={onClose}
             aria-label="Close"
             style={{
-              background: "rgba(255,255,255,0.18)",
+              background: "rgba(255,255,255,0.18)",  /* tokens-guard-ignore: fixed-brand, on the red modal header */
               border: "none",
               cursor: "pointer",
               fontSize: 18,
-              color: "#fff",
+              color: "var(--text-inverse)",
               lineHeight: 1,
               width: 30,
               height: 30,

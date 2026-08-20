@@ -6,7 +6,7 @@ import { fmtConversionRate } from "../../../lib/scoreboard/display";
 // subsystem and two hex codes don't justify a cross-import.
 const GREEN = "#10b981";
 const RED = "#dc2626";
-const NEUTRAL = "#6b7280";
+const NEUTRAL = "#6b7280";  /* tokens-guard-ignore: js-identifier */
 
 interface ConversionCell {
   rate: number;

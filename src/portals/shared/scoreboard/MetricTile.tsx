@@ -9,7 +9,7 @@ const RED = "#ff6b6d";
 const NEUTRAL = "#9aa1b3";
 const BAR = "#e01418";
 const TRACK = "var(--surface-muted)";
-const NOTCH = "rgba(255,255,255,0.55)";
+const NOTCH = "rgba(255,255,255,0.55)";  /* tokens-guard-ignore: fixed-brand, pace notch must stay light on the track */
 
 // The goal link is hidden until My Goals launches (no goals are set yet, the
 // backfill is deliberately unapplied). Flip to true to bring back
