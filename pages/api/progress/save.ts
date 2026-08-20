@@ -6,6 +6,7 @@ import { resolveIncomingQuizResults } from "../../../src/lib/training/quiz-intak
 import { loadGradableQuizPages } from "../../../src/lib/training/quiz-pages";
 import { logToDb } from "../../../src/lib/models/SystemLog";
 import { celebrateIfCourseCompleted } from "../../../src/lib/training/celebration";
+import { stampNewCompletions } from "../../../src/lib/training/completions";
 
 export default async function handler(
   req: NextApiRequest,
@@ -61,10 +62,24 @@ export default async function handler(
       }
 
       // Update completed pages
+      const justCompleted: string[] = [];
       if (pageId && !progress.completedPages.includes(pageId)) {
         progress.completedPages.push(pageId);
+        justCompleted.push(pageId);
         console.log('✅ Added page to completed:', pageId);
       }
+
+      // Record WHEN this page was completed. Only the page added just now is
+      // dated: pages already in completedPages were finished at some unknown
+      // past time (possibly before dates were recorded at all), and dating
+      // those "now" would report a rep's whole back catalogue as completed
+      // today. Pages already carrying a date keep it.
+      progress.pageCompletions = stampNewCompletions(
+        progress.pageCompletions,
+        progress.completedPages,
+        justCompleted,
+        new Date()
+      );
 
       // The server re-grades the incoming quiz result from its own answer key;
       // the caller's claimed score and passed flag are ignored entirely (spec

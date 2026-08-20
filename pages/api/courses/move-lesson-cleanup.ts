@@ -28,6 +28,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         completedPages: pageId,
         unlockedPages: pageId,
         quizResults: { pageId },
+        // Pulled alongside completedPages so the completion DATE never
+        // outlives the completion itself. A leftover entry here would let a
+        // future period-based training board credit a lesson the course no
+        // longer contains.
+        pageCompletions: { pageId },
       },
     }
   );
