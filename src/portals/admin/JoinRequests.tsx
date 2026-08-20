@@ -11,7 +11,7 @@ type JoinRequest = {
 // Standalone page: pending "request to join" a private group. Group admins /
 // system admins approve or deny here. Kept out of the StormChat page so the
 // chat list stays clean.
-export function JoinRequests() {
+export function JoinRequests({ backPath = "/admin/storm-chat" }: { backPath?: string } = {}) {
   const router = useRouter();
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,7 @@ export function JoinRequests() {
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
         <button
           type="button"
-          onClick={() => router.push("/admin/storm-chat")}
+          onClick={() => router.push(backPath)}
           style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px 8px 12px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, cursor: "pointer", fontWeight: 700, fontSize: 14 }}
         >
           <span style={{ fontSize: 17, lineHeight: 1 }}>←</span> Back

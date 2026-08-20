@@ -1,14 +1,11 @@
 import type { NextPage } from "next";
 import { CLevelLayout } from "../../src/portals/c-level/CLevelLayout";
-import { StormChatViewer } from "../../src/components/StormChatViewer";
-import { useAuth } from "../../src/contexts/AuthContext";
+import { StormChatManagement } from "../../src/portals/admin/StormChat";
 
 const CLevelStormChatPage: NextPage = () => {
-  const { user } = useAuth();
-  if (!user) return <div>Loading...</div>;
   return (
     <CLevelLayout currentView="storm-chat" pageTitle="">
-      <StormChatViewer />
+      <StormChatManagement joinRequestsPath="/c-level/join-requests" />
     </CLevelLayout>
   );
 };

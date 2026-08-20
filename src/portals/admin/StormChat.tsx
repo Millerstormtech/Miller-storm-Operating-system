@@ -30,7 +30,7 @@ type ChatGroup = {
   dmOther?: DmOther;
 };
 
-export function StormChatManagement() {
+export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' }: { joinRequestsPath?: string } = {}) {
   const { user } = useAuth();
   const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -920,7 +920,7 @@ export function StormChatManagement() {
             <button
               type="button"
               className="sc-btn sc-btn-ghost"
-              onClick={() => router.push('/admin/join-requests')}
+              onClick={() => router.push(joinRequestsPath)}
               style={{ position: 'relative' }}
             >
               🔔 Join Requests

@@ -122,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Check if only admin can chat
       if (group.onlyAdminCanChat) {
         // Check if sender is system admin or group admin
-        const isAdmin = senderRole === 'admin';
+        const isAdmin = senderRole === 'admin' || senderRole === 'c-level';
         const isGroupAdmin = group.admins.some((m: string) => senderIds.includes(m));
 
         if (!isAdmin && !isGroupAdmin) {
@@ -340,7 +340,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const isMember = (grp.members || []).some((m: string) => myIds.includes(m));
         const isGroupAdmin = (grp.admins || []).some((m: string) => myIds.includes(m));
         const dm = isDmGroup(grp);
-        const canPin = dm ? isMember : (isGroupAdmin || auth.role === 'admin');
+        const canPin = dm ? isMember : (isGroupAdmin || auth.role === 'admin' || auth.role === 'c-level');
         if (!canPin) {
           return res.status(403).json({ error: 'Only group admins can pin messages' });
         }
@@ -407,7 +407,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // while deleting a message that actually lives in a private DM, bypassing
       // the "admins can't touch DMs" rule.
       let adminCanModerate = false;
-      if (!isSender && auth.role === 'admin') {
+      if (!isSender && (auth.role === 'admin' || auth.role === 'c-level')) {
         const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
         adminCanModerate = !!grp && !grp.isDirect;
       }

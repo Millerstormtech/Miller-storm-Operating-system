@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const me = await UserModel.findOne({ id: auth.sub }, { _id: 1, name: 1, role: 1 }).lean() as any;
   const myMongoId = me?._id?.toString() || '';
-  const isSystemAdmin = auth.role === 'admin';
+  const isSystemAdmin = auth.role === 'admin' || auth.role === 'c-level';
 
   const notify = async (appUserId: string, type: string, title: string, message: string, metadata: any) => {
     if (!appUserId) return;
