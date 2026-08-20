@@ -238,7 +238,12 @@ function PodiumCard(props: {
                 justifyContent: "center",
                 fontWeight: 900,
                 fontSize: 12,
-                boxShadow: "inset 0 1px 2px rgb(var(--white-rgb) / 0.4)",
+                // Raw white on purpose, NOT rgb(var(--white-rgb) / 0.4).
+                // --white-rgb re-points to rgb(23 24 27) in dark mode, which
+                // would turn this metallic sheen into a dark smudge across the
+                // gold/silver/bronze gradient. Same call, same reason, as
+                // RankStrip.tsx's medal gloss.
+                boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4)",  /* tokens-guard-ignore: fixed-brand, metallic gloss on the medal */
               }}
             >
               {row.place}
