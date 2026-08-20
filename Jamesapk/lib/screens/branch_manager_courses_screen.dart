@@ -1115,10 +1115,13 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
   // web's order), then any custom categories (alphabetical), then uncategorized
   // courses last WITHOUT a heading. Header entries are marked with '__header__'.
   List<dynamic> _groupCoursesByCategory(List<dynamic> courses) {
+    // MUST match TRAINING_CATEGORIES in src/lib/training/categories.ts. Used for
+    // section ORDER only, so a stale entry misplaces a heading rather than
+    // hiding a course, but it should still be kept in step.
     const predefined = [
-      'Miller Storm Diploma',
-      'Matt Mulholland Certificate',
-      'DeShaun Bryant (Roof Hustlers) Certificate',
+      'Miller Storm Certificate',
+      'Millionaire Knockers',
+      'Roof Hustlers',
     ];
     final byCat = <String, List<dynamic>>{};
     for (final c in courses) {

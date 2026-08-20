@@ -24,10 +24,19 @@ export type CredentialKey = "certificate" | "knockers" | "hustlers";
  * string stop matching, which is what scripts/rename-diploma-category.js is
  * for. Run it once against any environment that had categories set.
  *
- * The other two still disagree with their printed names: the categories say
+ * Tiers 2 and 3 used to disagree with their printed names: the categories said
  * "Matt Mulholland Certificate" and "DeShaun Bryant (Roof Hustlers)
- * Certificate" while the labels say "Millionaire Knockers" and "Roof
- * Hustlers". Jay has not settled those, so they are left alone.
+ * Certificate" while the labels said "Millionaire Knockers" and "Roof
+ * Hustlers". No course was ever filed under those longer strings. Admins filed
+ * the five real courses under the printed names instead, so both credentials
+ * matched nothing and every rep's Knockers and Hustlers bar read 0% while their
+ * progress sat in the courses. Found and corrected 2026-08-20 by pointing
+ * `category` at the strings the courses actually carry, which also leaves the
+ * Training Center headings learners already know untouched.
+ *
+ * The lesson, and the reason orphanCategories() exists below: `category` is a
+ * plain string doing two jobs at once, a visible heading AND the join key. A
+ * mismatch cannot raise an error, it can only report zero.
  */
 export const CREDENTIALS: ReadonlyArray<{
   key: CredentialKey;
@@ -41,10 +50,10 @@ export const CREDENTIALS: ReadonlyArray<{
     label: "Miller Storm Certificate",
     short: "Miller Storm",
   },
-  { key: "knockers", category: "Matt Mulholland Certificate", label: "Millionaire Knockers", short: "Knockers" },
+  { key: "knockers", category: "Millionaire Knockers", label: "Millionaire Knockers", short: "Knockers" },
   {
     key: "hustlers",
-    category: "DeShaun Bryant (Roof Hustlers) Certificate",
+    category: "Roof Hustlers",
     label: "Roof Hustlers",
     short: "Hustlers",
   },
@@ -133,4 +142,37 @@ export function nextCredential(progress: CredentialProgress[]): string | null {
   const label = CREDENTIALS.find((c) => c.key === best.key)?.label || best.key;
   const left = best.coursesTotal - best.coursesCompleted;
   return `${label} (${left} course${left === 1 ? "" : "s"} left)`;
+}
+
+type OrphanCourse = { id: string; category?: string };
+
+/**
+ * Categories carried by real courses that belong to no credential.
+ *
+ * `category` is a plain string shared by two jobs: it is the Training Center's
+ * visible section heading AND the only join between a course and its
+ * credential. So editing a heading silently unhooks a credential, which is
+ * exactly what happened on 2026-08-20: five published courses were filed under
+ * "Millionaire Knockers" and "Roof Hustlers" (the labels) while CREDENTIALS was
+ * matching on the longer certificate strings. No error was raised anywhere,
+ * the two bars simply read 0% for every rep.
+ *
+ * Nothing here can fail loudly at runtime without breaking the board for a
+ * legitimately empty category, so this is a REPORTING helper:
+ * scripts/check-credential-categories.js runs it against a live database and
+ * exits non-zero, and the tests run it against the constants.
+ *
+ * An empty or whitespace category is NOT an orphan: a course an admin has not
+ * filed yet is a normal state, and it lands in the "Other Courses" bucket by
+ * design. Matching is trimmed and case sensitive, exactly as
+ * credentialProgress() matches, so a clean report here means the bars work.
+ */
+export function orphanCategories(courses: OrphanCourse[]): string[] {
+  const known = new Set(CREDENTIALS.map((c) => c.category));
+  const orphans = new Set<string>();
+  for (const c of courses) {
+    const cat = (c.category || "").trim();
+    if (cat && !known.has(cat)) orphans.add(cat);
+  }
+  return [...orphans].sort();
 }

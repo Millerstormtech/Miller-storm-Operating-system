@@ -804,12 +804,14 @@ class _TrainingLeaderboardScreenState extends State<TrainingLeaderboardScreen> {
     );
   }
 
-  // Per-credential progress: one mini track per credential (Diploma / Knockers /
-  // Hustlers), mirroring the web Course Leaderboard's triple track.
+  // Per-credential progress: one mini track per credential (Miller Storm /
+  // Knockers / Hustlers), mirroring the web Course Leaderboard's triple track.
+  // The keys MUST match CredentialKey in src/lib/training/credentials.ts: an
+  // unknown key falls through to the raw key below and shows as lowercase text.
   Widget _credentialTracks(Map<String, dynamic> r) {
     final creds = (r['credentials'] as List?) ?? [];
     if (creds.isEmpty) return const SizedBox.shrink();
-    const labels = {'diploma': 'Diploma', 'knockers': 'Knockers', 'hustlers': 'Hustlers'};
+    const labels = {'certificate': 'Miller Storm', 'knockers': 'Knockers', 'hustlers': 'Hustlers'};
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Row(
