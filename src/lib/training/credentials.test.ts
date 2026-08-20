@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { credentialProgress, nextCredential, orphanCategories, CREDENTIALS } from "./credentials";
-import { TRAINING_CATEGORIES, UNCATEGORIZED_LABEL } from "./categories";
+import {
+  credentialProgress,
+  nextCredential,
+  orphanCategories,
+  canonicalCategory,
+  CREDENTIALS,
+} from "./credentials";
+import { TRAINING_CATEGORIES, UNCATEGORIZED_LABEL, groupCoursesByCategory } from "./categories";
 import type { CourseStats } from "./scoring";
 
 const stats = (over: Partial<CourseStats>): CourseStats => ({
@@ -250,5 +256,78 @@ describe("orphanCategories", () => {
     // the check would pass while the board still reads 0%.
     expect(orphanCategories([{ id: "a", category: `  ${CREDENTIALS[0].category}  ` }])).toEqual([]);
     expect(orphanCategories([{ id: "b", category: CREDENTIALS[0].category.toLowerCase() }])).toHaveLength(1);
+  });
+});
+
+describe("legacy category aliases", () => {
+  // Why aliases exist: renaming a credential's category means the code and the
+  // stored course documents disagree until a migration runs, and during that
+  // window the bar reads 0% for every rep. Worse, the order is a trap: migrate
+  // BEFORE the new code is live and the OLD code stops matching instead. An
+  // alias removes the window and the ordering rule entirely. The migration
+  // becomes tidy-up, not a deploy step that can break the board.
+  const LEGACY = "Miller Storm Diploma";
+
+  it("counts a course still carrying the pre-rename category", () => {
+    const byId = new Map([["old", stats({ itemsCompleted: 5, itemsTotal: 10 })]]);
+    expect(
+      credentialProgress([{ id: "old", category: LEGACY }], byId).find((c) => c.key === "certificate")
+    ).toMatchObject({ pct: 50, itemsCompleted: 5, itemsTotal: 10, coursesTotal: 1 });
+  });
+
+  it("merges old and new spellings into ONE credential, never two", () => {
+    const byId = new Map([
+      ["old", stats({ itemsCompleted: 5, itemsTotal: 10, complete: false })],
+      ["new", stats({ itemsCompleted: 10, itemsTotal: 10, complete: true })],
+    ]);
+    const out = credentialProgress(
+      [{ id: "old", category: LEGACY }, { id: "new", category: MSCERT }],
+      byId
+    ).find((c) => c.key === "certificate")!;
+    // Half a mid-migration library must not read as two separate credentials.
+    expect(out).toMatchObject({ itemsCompleted: 15, itemsTotal: 20, pct: 75, coursesTotal: 2, coursesCompleted: 1 });
+  });
+
+  it("does not report a known legacy spelling as orphaned", () => {
+    expect(orphanCategories([{ id: "a", category: LEGACY }])).toEqual([]);
+  });
+
+  it("still reports a genuinely unknown category as orphaned", () => {
+    expect(orphanCategories([{ id: "a", category: "Miller Storm Dipoma" }])).toEqual(["Miller Storm Dipoma"]);
+  });
+
+  it("resolves a legacy spelling to the name shown today", () => {
+    expect(canonicalCategory(LEGACY)).toBe(MSCERT);
+    expect(canonicalCategory(`  ${LEGACY}  `)).toBe(MSCERT);
+    expect(canonicalCategory(MSCERT)).toBe(MSCERT);
+  });
+
+  it("leaves an unrecognised or empty category exactly as it found it", () => {
+    expect(canonicalCategory("Sales Bootcamp")).toBe("Sales Bootcamp");
+    expect(canonicalCategory("")).toBe("");
+    expect(canonicalCategory(undefined)).toBe("");
+  });
+
+  it("never lets a legacy alias double as a live category", () => {
+    // An alias that is also some other credential's category would make one
+    // course count towards two bars.
+    const live = new Set(CREDENTIALS.map((c) => c.category));
+    for (const c of CREDENTIALS) for (const a of c.aliases || []) expect(live.has(a)).toBe(false);
+  });
+
+  it("keeps retired spellings OUT of the Course Builder dropdown", () => {
+    // An admin must never be offered the old name as a fresh pick.
+    for (const c of CREDENTIALS) for (const a of c.aliases || []) expect(TRAINING_CATEGORIES).not.toContain(a);
+  });
+
+  it("files a mid-migration library under ONE Training Center heading, the new one", () => {
+    const sections = groupCoursesByCategory([
+      { id: "old", category: LEGACY },
+      { id: "new", category: MSCERT },
+    ] as any);
+    const mine = sections.filter((s) => s.category === MSCERT);
+    expect(mine).toHaveLength(1);
+    expect(mine[0].courses).toHaveLength(2);
+    expect(sections.map((s) => s.category)).not.toContain(LEGACY);
   });
 });

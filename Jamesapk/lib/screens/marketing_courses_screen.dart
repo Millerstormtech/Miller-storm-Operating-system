@@ -683,9 +683,14 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
       'Millionaire Knockers',
       'Roof Hustlers',
     ];
+    // Retired spellings still stored on some courses, folded onto the name in
+    // use so a library mid-rename shows ONE section, not an old and a new one.
+    // Mirrors canonicalCategory() in src/lib/training/credentials.ts.
+    const aliases = {'Miller Storm Diploma': 'Miller Storm Certificate'};
     final byCat = <String, List<dynamic>>{};
     for (final c in courses) {
-      final cat = (c['category'] ?? '').toString().trim();
+      final raw = (c['category'] ?? '').toString().trim();
+      final cat = aliases[raw] ?? raw;
       byCat.putIfAbsent(cat.isEmpty ? '__none__' : cat, () => <dynamic>[]).add(c);
     }
     final ordered = <String>[];

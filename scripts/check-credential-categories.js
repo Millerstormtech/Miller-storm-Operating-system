@@ -15,7 +15,12 @@
 //
 // Exits 1 when a published course carries a category no credential recognises,
 // or when a credential holds no published course at all. RUN THIS AFTER ANY
-// DEPLOY THAT RENAMES A CATEGORY, and after scripts/rename-diploma-category.js.
+// DEPLOY THAT RENAMES A CATEGORY.
+//
+// A course stored under a RETIRED spelling is not a failure: credentials.ts
+// lists those as aliases and counts them, so the board is correct either way
+// and the deploy order does not matter. It is reported as a pending tidy-up so
+// the migration is not forgotten, and the exit code stays 0.
 //
 //   node scripts/check-credential-categories.js
 //
@@ -29,10 +34,27 @@ const path = require("path");
 // Duplicated here rather than imported because this is plain CommonJS run by
 // node against a live database, the same way the other scripts/ files are.
 const CREDENTIALS = [
-  { key: "certificate", category: "Miller Storm Certificate", label: "Miller Storm Certificate" },
-  { key: "knockers", category: "Millionaire Knockers", label: "Millionaire Knockers" },
-  { key: "hustlers", category: "Roof Hustlers", label: "Roof Hustlers" },
+  {
+    key: "certificate",
+    category: "Miller Storm Certificate",
+    aliases: ["Miller Storm Diploma"],
+    label: "Miller Storm Certificate",
+  },
+  { key: "knockers", category: "Millionaire Knockers", aliases: [], label: "Millionaire Knockers" },
+  { key: "hustlers", category: "Roof Hustlers", aliases: [], label: "Roof Hustlers" },
 ];
+
+// Same rule as canonicalCategory() in credentials.ts: fold a retired spelling
+// onto the name in use, leave anything unrecognised alone.
+function canonical(category) {
+  const c = (category || "").trim();
+  if (!c) return "";
+  for (const cred of CREDENTIALS) {
+    if (c === cred.category) return cred.category;
+    if ((cred.aliases || []).includes(c)) return cred.category;
+  }
+  return c;
+}
 
 function loadEnv() {
   const file = path.join(__dirname, "..", ".env");
@@ -58,20 +80,28 @@ function loadEnv() {
     .toArray();
 
   const known = new Set(CREDENTIALS.map((c) => c.category));
+  // Keyed on the STORED string, so the report can name what is actually on the
+  // course, then grouped by canonical name for the per-credential totals.
   const byCategory = new Map();
   for (const c of courses) {
     const cat = (c.category || "").trim();
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat).push(c);
   }
+  const forCredential = (cred) =>
+    courses.filter((c) => canonical(c.category) === cred.category);
 
   let bad = false;
 
   console.log(`published courses: ${courses.length}\n`);
   for (const cred of CREDENTIALS) {
-    const mine = byCategory.get(cred.category) || [];
+    const mine = forCredential(cred);
     console.log(`${mine.length ? "OK  " : "FAIL"}  ${cred.label}: ${mine.length} course(s)`);
-    for (const c of mine) console.log(`        ${c.title || c.id}`);
+    for (const c of mine) {
+      const stored = (c.category || "").trim();
+      const via = stored === cred.category ? "" : `   [stored as "${stored}"]`;
+      console.log(`        ${c.title || c.id}${via}`);
+    }
     // An empty credential is not proof of a rename, an admin may still be
     // filling it in, but on this board it always shows as a 0% bar, so it is
     // worth failing on rather than discovering from a rep.
@@ -83,7 +113,20 @@ function loadEnv() {
   const loose = byCategory.get("") || [];
   if (loose.length) console.log(`\nuncategorised (fine, no credential): ${loose.length} course(s)`);
 
-  const orphans = [...byCategory.keys()].filter((k) => k && !known.has(k)).sort();
+  // Pending migrations: a real, counted category, just an out-of-date spelling.
+  const legacy = [...byCategory.keys()].filter((k) => k && !known.has(k) && known.has(canonical(k))).sort();
+  if (legacy.length) {
+    console.log("\nPENDING TIDY-UP (not a failure, the board is correct):");
+    for (const cat of legacy) {
+      const cred = CREDENTIALS.find((c) => c.category === canonical(cat));
+      console.log(
+        `  ${byCategory.get(cat).length} course(s) still stored as ${JSON.stringify(cat)}, counted towards ${cred.label} via an alias.`
+      );
+    }
+    console.log("  Run scripts/rename-diploma-category.js --apply when convenient.");
+  }
+
+  const orphans = [...byCategory.keys()].filter((k) => k && !known.has(canonical(k))).sort();
   if (orphans.length) {
     bad = true;
     console.log("\nORPHANED CATEGORIES: carried by a published course, matched by no credential.");

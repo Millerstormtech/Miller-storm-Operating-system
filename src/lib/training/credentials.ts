@@ -41,12 +41,34 @@ export type CredentialKey = "certificate" | "knockers" | "hustlers";
 export const CREDENTIALS: ReadonlyArray<{
   key: CredentialKey;
   category: string;
+  /**
+   * Categories this credential ALSO answers to: spellings it used to be
+   * stored under, kept so a rename cannot break the board.
+   *
+   * Without them a rename has a window and an ordering rule. Deploy the new
+   * code first and every bar reads 0% until the migration runs; run the
+   * migration first and the code still live stops matching instead. Both
+   * failures are silent, because a category mismatch cannot raise an error, it
+   * can only count to zero. With an alias the two orders are equivalent and
+   * the migration becomes tidy-up rather than a step that can break a board.
+   *
+   * An alias is a STORED value only. It is never displayed, never offered in
+   * the Course Builder dropdown, and canonicalCategory() folds it into the
+   * current name so the Training Center shows one heading, not two. Retire an
+   * alias only once no course carries it: check-credential-categories.js
+   * reports when one is still in use.
+   */
+  aliases?: readonly string[];
   label: string;
   short: string;
 }> = [
   {
     key: "certificate",
     category: "Miller Storm Certificate",
+    // Tier 1 was stored as "Miller Storm Diploma" until Jay dropped the word on
+    // 2026-08-19. scripts/rename-diploma-category.js migrates it; until that has
+    // run everywhere, courses still carrying the old value count here.
+    aliases: ["Miller Storm Diploma"],
     label: "Miller Storm Certificate",
     short: "Miller Storm",
   },
@@ -58,6 +80,25 @@ export const CREDENTIALS: ReadonlyArray<{
     short: "Hustlers",
   },
 ];
+
+/**
+ * The category a course should be counted and filed under today.
+ *
+ * Folds a retired spelling onto the name in use, trims, and leaves anything it
+ * does not recognise untouched: a custom category an admin invented is not an
+ * error, and neither is a course nobody has filed yet. Everything that matches
+ * a course to a credential, or groups courses into Training Center sections,
+ * goes through here so the two can never disagree about what a course is.
+ */
+export function canonicalCategory(category: string | undefined): string {
+  const c = (category || "").trim();
+  if (!c) return "";
+  for (const cred of CREDENTIALS) {
+    if (c === cred.category) return cred.category;
+    if (cred.aliases && cred.aliases.includes(c)) return cred.category;
+  }
+  return c;
+}
 
 export type CredentialProgress = {
   key: CredentialKey;
@@ -97,7 +138,7 @@ export function credentialProgress(
   statsByCourseId: Map<string, CourseStats>
 ): CredentialProgress[] {
   return CREDENTIALS.map((cred) => {
-    const mine = courses.filter((c) => (c.category || "").trim() === cred.category);
+    const mine = courses.filter((c) => canonicalCategory(c.category) === cred.category);
     let itemsCompleted = 0;
     let itemsTotal = 0;
     let coursesCompleted = 0;
@@ -171,8 +212,11 @@ export function orphanCategories(courses: OrphanCourse[]): string[] {
   const known = new Set(CREDENTIALS.map((c) => c.category));
   const orphans = new Set<string>();
   for (const c of courses) {
+    // Canonical, so a retired spelling is recognised rather than reported: it
+    // still counts towards its bar. Report the ORIGINAL string, since that is
+    // what someone would have to go and find on the course.
     const cat = (c.category || "").trim();
-    if (cat && !known.has(cat)) orphans.add(cat);
+    if (cat && !known.has(canonicalCategory(cat))) orphans.add(cat);
   }
   return [...orphans].sort();
 }
