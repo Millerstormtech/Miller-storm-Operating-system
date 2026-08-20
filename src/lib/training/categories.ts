@@ -8,6 +8,8 @@
 // is joined to its credential by this exact string, so a pick that no credential
 // recognises silently zeroes a bar on the Course Leaderboard, with no error
 // anywhere. credentials.test.ts asserts the two lists agree.
+import { canonicalCategory } from "./credentials";
+
 export const TRAINING_CATEGORIES = [
   "Miller Storm Certificate",
   "Millionaire Knockers",
@@ -24,7 +26,9 @@ export function groupCoursesByCategory<T extends { category?: string }>(
 ): { category: string; courses: T[] }[] {
   const byCategory = new Map<string, T[]>();
   for (const item of items) {
-    const key = (item.category || "").trim();
+    // Canonical, so a library mid-rename shows ONE section under the current
+    // name instead of splitting into an old and a new heading.
+    const key = canonicalCategory(item.category);
     const bucket = key || UNCATEGORIZED_LABEL;
     if (!byCategory.has(bucket)) byCategory.set(bucket, []);
     byCategory.get(bucket)!.push(item);
