@@ -16,7 +16,7 @@ const row = (over: Partial<OverallRow>): OverallRow => ({
   branch: "Fort Worth", team: "team-a", itemsCompleted: 40, videosWatched: 30,
   quizzesPassed: 10, coursesCompleted: 4, pct: 66.6,
   credentials: [
-    { key: "diploma", earned: true, pct: 100, itemsCompleted: 4, itemsTotal: 4, coursesCompleted: 2, coursesTotal: 2 },
+    { key: "certificate", earned: true, pct: 100, itemsCompleted: 4, itemsTotal: 4, coursesCompleted: 2, coursesTotal: 2 },
     { key: "knockers", earned: false, pct: 30, itemsCompleted: 3, itemsTotal: 10, coursesCompleted: 0, coursesTotal: 1 },
   ],
   rank: 1, isPodium: true, notStarted: false,
@@ -168,11 +168,11 @@ describe("credentials earned column", () => {
     expect(
       col.value({
         credentials: [
-          { key: "diploma", earned: true, pct: 100, itemsCompleted: 1, itemsTotal: 1, coursesCompleted: 1, coursesTotal: 1 },
+          { key: "certificate", earned: true, pct: 100, itemsCompleted: 1, itemsTotal: 1, coursesCompleted: 1, coursesTotal: 1 },
           { key: "knockers", earned: false, pct: 40, itemsCompleted: 2, itemsTotal: 5, coursesCompleted: 0, coursesTotal: 1 },
         ],
       } as any)
-    ).toBe("Miller Storm Diploma");
+    ).toBe("Miller Storm Certificate");
   });
 
   it("is empty for a rep holding none", () => {
