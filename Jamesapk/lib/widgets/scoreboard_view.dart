@@ -113,14 +113,6 @@ class _ScoreboardViewState extends State<ScoreboardView> {
   String _fmtMoney(num n) => '\$${_thousands((n.isFinite ? n : 0).round())}';
   String _fmtCount(num n) => _thousands((n.isFinite ? n : 0).round());
 
-  String _fmtRate(num rate) {
-    final pct = rate.isFinite ? rate * 100 : 0.0;
-    final decimals = pct.abs() < 10 ? 1 : 0;
-    return '${pct.toStringAsFixed(decimals)}%';
-  }
-
-  String _fmtConversion(num rate, bool hidden) =>
-      hidden ? 'not enough data yet' : _fmtRate(rate);
 
   // value/goal as 0..1, or null when no goal is set (renders no bar).
   double? _barFill(num value, num? goal) {
@@ -318,56 +310,6 @@ class _ScoreboardViewState extends State<ScoreboardView> {
     );
   }
 
-  Widget _conversionCell(String label, Map cell) {
-    final rate = (cell['rate'] as num?) ?? 0;
-    final hidden = cell['hidden'] == true;
-    final dir = cell['dir'] as String?;
-    final text = _fmtConversion(rate, hidden);
-    final color = dir == 'up' ? _green : dir == 'down' ? _red : _neutral;
-    final arrow = dir == 'up' ? '▲' : dir == 'down' ? '▼' : dir == 'flat' ? '●' : null;
-    final word = dir == 'up' ? 'up' : dir == 'down' ? 'down' : dir == 'flat' ? 'flat' : null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label.toUpperCase(),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.5)),
-        const SizedBox(height: 4),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Flexible(
-              child: Text(text,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _textDark),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            if (arrow != null && word != null) ...[
-              const SizedBox(width: 6),
-              Text('$arrow $word', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _conversionStrip(Map ktc, Map ctc) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: _card,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: _conversionCell('knock to claim', ktc)),
-          const SizedBox(width: 16),
-          Expanded(child: _conversionCell('claim to contract', ctc)),
-        ],
-      ),
-    );
-  }
-
   Widget _personalNumber(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +397,6 @@ class _ScoreboardViewState extends State<ScoreboardView> {
     final totals = (data['totals'] as Map?) ?? const {};
     final goals = (data['goals'] as Map?) ?? const {};
     final trends = (data['trends'] as Map?) ?? const {};
-    final conversions = (data['conversions'] as Map?) ?? const {};
     final rank = data['rank'] as Map?;
     final pace = (data['pace'] as num?) ?? 0;
     final contracts = (data['contracts'] as num?) ?? 0;
@@ -523,10 +464,6 @@ class _ScoreboardViewState extends State<ScoreboardView> {
                 goal: goals['claims'] as num?,
                 pace: pace,
                 trend: (trends['claims'] as Map?) ?? const {},
-              ),
-              _conversionStrip(
-                (conversions['knockToClaim'] as Map?) ?? const {},
-                (conversions['claimToContract'] as Map?) ?? const {},
               ),
               if (personal != null) _personalStrip(personal),
               Padding(
