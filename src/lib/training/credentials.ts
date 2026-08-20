@@ -6,7 +6,7 @@
 
 import type { CourseStats } from "./scoring";
 
-export type CredentialKey = "diploma" | "knockers" | "hustlers";
+export type CredentialKey = "certificate" | "knockers" | "hustlers";
 
 /**
  * The three credentials, in the order they are drawn on a row.
@@ -16,11 +16,18 @@ export type CredentialKey = "diploma" | "knockers" | "hustlers";
  * between a course and a credential.
  *
  * `label` is the user-facing name and is deliberately the ONLY place it
- * appears. The printed certificates use "Millionaire Knockers" and "Roof
- * Hustlers" while the Course Builder categories still say "Matt Mulholland
- * Certificate" and "DeShaun Bryant (Roof Hustlers) Certificate"; Jay has not
- * settled which wins. Changing a label here changes it everywhere on the board
- * without touching the stored category on any course.
+ * appears. Changing one here changes it everywhere on the board.
+ *
+ * Tier 1 was "Miller Storm Diploma" until 2026-08-19, when Jay dropped the word
+ * Diploma entirely: it is the Miller Storm Certificate now. Renaming `category`
+ * as well as `label` means existing Course documents still carrying the old
+ * string stop matching, which is what scripts/rename-diploma-category.js is
+ * for. Run it once against any environment that had categories set.
+ *
+ * The other two still disagree with their printed names: the categories say
+ * "Matt Mulholland Certificate" and "DeShaun Bryant (Roof Hustlers)
+ * Certificate" while the labels say "Millionaire Knockers" and "Roof
+ * Hustlers". Jay has not settled those, so they are left alone.
  */
 export const CREDENTIALS: ReadonlyArray<{
   key: CredentialKey;
@@ -28,7 +35,12 @@ export const CREDENTIALS: ReadonlyArray<{
   label: string;
   short: string;
 }> = [
-  { key: "diploma", category: "Miller Storm Diploma", label: "Miller Storm Diploma", short: "Diploma" },
+  {
+    key: "certificate",
+    category: "Miller Storm Certificate",
+    label: "Miller Storm Certificate",
+    short: "Miller Storm",
+  },
   { key: "knockers", category: "Matt Mulholland Certificate", label: "Millionaire Knockers", short: "Knockers" },
   {
     key: "hustlers",
@@ -56,8 +68,8 @@ type CourseLike = { id: string; category?: string };
 /**
  * One rep's progress through each credential.
  *
- * Counting is per credential ONLY: the diploma bar divides by the diploma's
- * own items, not by the library. This is why the three bars and the overall
+ * Counting is per credential ONLY: each bar divides by its own credential's
+ * items, not by the library. This is why the three bars and the overall
  * bar do not add up and must not be expected to, and it is the whole point of
  * the row: a rep can be 86% overall while holding two credentials outright,
  * because the third has barely started.
@@ -108,7 +120,7 @@ export function credentialProgress(
  * from one credential and one barely-started course from another is genuinely
  * nearer the first, and percentage is the figure already on their row.
  *
- * Ties break by row order, so the diploma is offered before the certificates.
+ * Ties break by row order, so Miller Storm is offered before the other two.
  * Copy uses parentheses, never em dashes.
  */
 export function nextCredential(progress: CredentialProgress[]): string | null {

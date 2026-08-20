@@ -4,7 +4,7 @@
 // section, grouped like Tools & Products. Courses with no category fall into an
 // "Other Courses" bucket rendered last.
 export const TRAINING_CATEGORIES = [
-  "Miller Storm Diploma",
+  "Miller Storm Certificate",
   "Matt Mulholland Certificate",
   "DeShaun Bryant (Roof Hustlers) Certificate",
 ];
