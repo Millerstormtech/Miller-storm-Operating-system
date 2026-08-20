@@ -5,6 +5,7 @@ type EmailKey = keyof typeof EMAIL_DEFAULTS;
 
 const EMAIL_LABELS: Record<string, string> = {
   certificateEarned: "Certificate Earned (Rep)",
+  contractKingCertificate: "Contract King Certificate (Rep)",
   passwordReset: "Password Reset",
   registrationConfirmation: "Registration Confirmation",
   accountApproved: "Account Approved",

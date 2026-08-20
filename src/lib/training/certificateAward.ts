@@ -16,19 +16,18 @@ import { courseStats, type CourseStats, type ProgressLike } from "./scoring";
 import { credentialProgress, CREDENTIALS } from "./credentials";
 import { renderCertificatePdf, certificateFilename } from "../certificate/render";
 import { credentialNumber } from "../certificate/template";
+import { certificateDate } from "../certificate/date";
 import { sendCertificateEarnedEmail } from "../email";
 
 const COURSE_SELECT =
   "-pages.body -pages.transcript -pages.quizQuestions -pages.resourceLinks -pages.fileUrls -pages.pinnedCommunityPostUrl -quizQuestions -links";
 
-/** "19 August 2026". Hand-built: no locale surprises on a server in another zone. */
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-export function certificateDate(d: Date): string {
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-}
+// Moved to certificate/date.ts when the Contract King began printing sheets
+// too, so both callers format the day identically. Imported AND re-exported:
+// this file calls it below, and its own tests and callers already import it
+// from this path. A bare `export ... from` would re-export without binding the
+// name locally, which is a type error rather than a runtime surprise.
+export { certificateDate };
 
 /**
  * Which credentials this save just completed.

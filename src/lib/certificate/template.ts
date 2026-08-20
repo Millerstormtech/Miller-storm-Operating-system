@@ -16,7 +16,12 @@ export type CertificateInput = {
   name: string;
   /** The credential's user-facing label, e.g. "Miller Storm Certificate". */
   credential: string;
-  /** Course titles making up the credential, in the order they are listed. */
+  /**
+   * The ticked list in the bottom-left. Course titles for a training
+   * credential; for the Contract King it is the month and the numbers behind
+   * the crown. Kept named `courses` because the training path is the older
+   * caller and renaming it would touch tested code for no gain.
+   */
   courses: string[];
   /** Human date, e.g. "19 August 2026". Formatted by the caller. */
   issuedDate: string;
@@ -31,6 +36,20 @@ export type CertificateInput = {
   signature?: { name: string; title: string } | null;
   /** Ring text on the seal. Defaults to Miller Storm. */
   sealRing?: string;
+  /**
+   * The three wording slots that differ between an EARNED credential and an
+   * AWARDED honour. They default to the training wording, so every existing
+   * caller keeps the sheet Jay approved on 2026-08-19 without passing anything.
+   *
+   * They exist so the Contract King prints from the SAME template rather than a
+   * copy of it: two files would be free to drift, and the whole point of the
+   * approved design is that every Miller Storm certificate looks like a set.
+   */
+  citation?: string;
+  /** Heading over the ticked list. Defaults to "Program completed". */
+  detailsHeading?: string;
+  /** The word under the year inside the seal. Defaults to "CERTIFICATE". */
+  sealCaption?: string;
 };
 
 /** Minimal HTML escape. Rep names are user data and reach this unfiltered. */
@@ -52,9 +71,22 @@ export function certificateHtml(input: CertificateInput): string {
     credentialId,
     signature = null,
     sealRing = "Miller Storm",
+    citation = "has completed the training below and is hereby awarded the",
+    detailsHeading = "Program completed",
+    sealCaption = "CERTIFICATE",
   } = input;
 
   const courseItems = courses.map((c) => `<li>${esc(c)}</li>`).join("");
+
+  // The seal's inner ring is 132 units across and the caption sits inside it.
+  // "CERTIFICATE" (11 characters) fits naturally; "CONTRACT KING" does not, and
+  // ran straight through the ring on both sides. textLength squeezes anything
+  // longer back inside instead of capping how the award may be named.
+  //
+  // Applied ONLY past 11 characters so the training sheet, which Jay approved
+  // on 2026-08-19, renders byte-for-byte as it did then.
+  const sealCapFit =
+    sealCaption.length > 11 ? ` textLength="104" lengthAdjust="spacingAndGlyphs"` : "";
 
   // The signature block and the seal share the base row. Without a signature
   // the seal keeps its place at the right rather than sliding to the middle,
@@ -177,11 +209,11 @@ html, body { margin: 0; padding: 0; }
     <p class="presented">This certifies that</p>
     <p class="name">${esc(name)}</p>
     <div class="rule"></div>
-    <p class="cite">has completed the training below and is hereby awarded the</p>
+    <p class="cite">${esc(citation)}</p>
     <p class="award">${esc(credential)}</p>
     <div class="base">
       <div class="incl">
-        <p class="incl-h">Program completed</p>
+        <p class="incl-h">${esc(detailsHeading)}</p>
         <ul class="incl-l">${courseItems}</ul>
       </div>
       ${signatureBlock}
@@ -196,7 +228,7 @@ html, body { margin: 0; padding: 0; }
           <text class="ring-t"><textPath href="#arcTop" startOffset="50%" text-anchor="middle">${esc(sealRing)}</textPath></text>
           <text class="ring-t"><textPath href="#arcBot" startOffset="50%" text-anchor="middle">Certified</textPath></text>
           <text class="core" x="100" y="104">${esc(issuedDate.slice(-4))}</text>
-          <text class="core-sub" x="100" y="126">CERTIFICATE</text>
+          <text class="core-sub" x="100" y="126"${sealCapFit}>${esc(sealCaption)}</text>
         </svg>
       </div>
     </div>
@@ -225,9 +257,21 @@ export function credentialNumber(params: {
       : params.credentialKey === "knockers"
         ? "MKC"
         : "RHC";
+  return `MS-${prefix}-${params.year}-${stableSuffix(`${params.userId}:${params.credentialKey}`)}`;
+}
+
+/**
+ * The four digits at the end of a certificate number.
+ *
+ * Shared by the training credentials and the Contract King so the two families
+ * of number are visibly the same species. Changing this function renumbers
+ * every certificate ever issued, so do not "improve" the hash: the number is
+ * only useful while it stays the same for a given seed, forever.
+ */
+export function stableSuffix(seed: string): string {
   let h = 0;
-  for (const ch of `${params.userId}:${params.credentialKey}`) {
+  for (const ch of seed) {
     h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   }
-  return `MS-${prefix}-${params.year}-${String(h % 10000).padStart(4, "0")}`;
+  return String(h % 10000).padStart(4, "0");
 }

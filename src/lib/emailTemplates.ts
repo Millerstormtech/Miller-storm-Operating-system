@@ -28,6 +28,34 @@ Congratulations from everyone at Miller Storm.
       "{{appUrl}}",
     ],
   },
+  contractKingCertificate: {
+    subject: "You are the {{monthLabel}} Contract King",
+    body: `Hi {{name}},
+
+You finished {{monthLabel}} at the top of the Miller Storm sales leaderboard. That makes you the Contract King for the month.
+
+{{monthLabel}} by the numbers:
+{{stats}}
+
+Your certificate is attached to this email as a PDF. Print it, frame it, put it on the wall. You earned it.
+
+Issued: {{issuedDate}}
+Certificate number: {{certificateId}}
+
+Congratulations from everyone at Miller Storm.
+
+{{appUrl}}
+
+(c) 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: [
+      "{{name}}",
+      "{{monthLabel}}",
+      "{{stats}}",
+      "{{issuedDate}}",
+      "{{certificateId}}",
+      "{{appUrl}}",
+    ],
+  },
   passwordReset: {
     subject: "Reset Your Password - Miller Storm OS",
     body: `Hi {{name}},
