@@ -21,6 +21,7 @@ export default defineConfig({
   test: {
     include: [
       "src/lib/training/**/*.test.ts",
+      "src/lib/certificate/**/*.test.ts",
       "src/lib/stormbot/**/*.test.ts",
       "src/lib/stormchat/**/*.test.ts",
       "src/lib/scoreboard/**/*.test.ts",
