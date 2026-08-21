@@ -463,6 +463,42 @@ export async function initVideoSequence(
     }
   }
 
+  // When a video ends we do NOT hide it and we do NOT auto-restart it — the last
+  // frame stays on screen with a centered Replay button laid over it. The video
+  // only restarts if the rep clicks Replay (which seeks to 0 and plays), so a
+  // finished lesson never silently loops or goes blank. `onReplay` is the
+  // provider-specific restart (html5 / Vimeo SDK / YouTube API).
+  function showReplayOverlay(mount: HTMLElement | null, onReplay: () => void) {
+    if (!mount) return;
+    if (mount.querySelector(':scope > [data-replay-overlay]')) return; // already shown
+    if (getComputedStyle(mount).position === 'static') mount.style.position = 'relative';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('data-replay-overlay', '');
+    btn.title = 'Replay';
+    btn.style.cssText =
+      'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:72px;height:72px;' +
+      'border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;cursor:pointer;z-index:6;' +
+      'display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);transition:background 0.2s;';
+    btn.onmouseover = () => { btn.style.background = 'rgba(0,0,0,0.78)'; };
+    btn.onmouseout = () => { btn.style.background = 'rgba(0,0,0,0.6)'; };
+    // Circular-arrow "replay" glyph.
+    btn.innerHTML =
+      '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>';
+    btn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      btn.remove();
+      try { onReplay(); } catch { /* ignore */ }
+    });
+    mount.appendChild(btn);
+  }
+
+  const removeReplayOverlay = (mount: HTMLElement | null) => {
+    mount?.querySelector(':scope > [data-replay-overlay]')?.remove();
+  };
+
   // Whether to auto-start the first video on this page
   const startFirst = shouldAutoStartFirst && autoPlayRef.current;
 
@@ -504,7 +540,12 @@ export async function initVideoSequence(
         vp.on('ended', () => {
           console.log(`[VideoSeq] Vimeo video ${seqIdx} ended. Total videos: ${total}`);
           finishVideo(seqIdx);
+          // Keep the finished Vimeo player on screen with a centered Replay button.
+          showReplayOverlay((vp as any).element?.parentElement || iframe.parentElement, () => {
+            Promise.resolve(vp.setCurrentTime(0)).then(() => vp.play()).catch(() => {});
+          });
         });
+        vp.on('play', () => removeReplayOverlay((vp as any).element?.parentElement || iframe.parentElement));
       } catch (err) {
         console.error('[VideoSeq] VimeoPlayer init failed for index', seqIdx, err);
       }
@@ -551,7 +592,14 @@ export async function initVideoSequence(
     e.video.addEventListener('ended', () => {
       console.log(`[VideoSeq] HTML5 video ${e.seqIdx} ended. Total videos: ${total}`);
       finishVideo(e.seqIdx);
+      // Keep the finished video on screen with a centered Replay button.
+      showReplayOverlay(e.video.parentElement, () => {
+        e.video.currentTime = 0;
+        e.video.play().catch(() => {});
+      });
     });
+    // Clear the overlay if playback resumes by any means (native controls, etc.).
+    e.video.addEventListener('play', () => removeReplayOverlay(e.video.parentElement));
     if (e.seqIdx === 0 && startFirst) {
       e.video.muted = true;
       attemptMobileAutoplay(() => e.video.play());
@@ -570,6 +618,9 @@ export async function initVideoSequence(
       const divId = `yt-${Date.now()}-${seqIdx}`;
       wrapper.id = divId;
       iframe.parentNode?.replaceChild(wrapper, iframe);
+      // The YouTube API replaces `wrapper` with its own iframe inside this same
+      // container, so this is where the Replay overlay is mounted after the video ends.
+      const ytMount = wrapper.parentElement;
 
       const ytEntry = entries[seqIdx] as Extract<Entry, { type: 'yt' }>;
 
@@ -627,6 +678,10 @@ export async function initVideoSequence(
             if (ev.data === 0) { // ended
               console.log(`[VideoSeq] YouTube video ${seqIdx} ended. Total videos: ${total}`);
               finishVideo(seqIdx);
+              // Keep the finished video on screen with a centered Replay button.
+              showReplayOverlay(ytMount, () => { player.seekTo(0, true); player.playVideo(); });
+            } else if (ev.data === 1) { // playing → clear any lingering Replay overlay
+              removeReplayOverlay(ytMount);
             }
           },
         },
