@@ -463,68 +463,72 @@ export async function initVideoSequence(
     }
   }
 
-  // When a video ends we do NOT hide it and we do NOT auto-restart it — the last
-  // frame stays on screen with a centered Replay button laid over it. The video
-  // only restarts if the rep clicks Replay (which seeks to 0 and plays), so a
-  // finished lesson never silently loops or goes blank. `onReplay` is the
-  // provider-specific restart (html5 / Vimeo SDK / YouTube API).
-  function showReplayOverlay(mount: HTMLElement | null, onReplay: () => void) {
+  // When a video ends we do NOT hide it and we do NOT auto-restart it. Instead a
+  // single full-cover overlay is laid over the video area: it shows the video's
+  // last still (so the area never goes blank) with a centered Replay button. The
+  // still is set with setProperty(...'important') on purpose — the training CSS
+  // forces `background: transparent !important` on the video container, which
+  // would otherwise swallow a plain inline background. The video only restarts on
+  // a Replay click (onReplay = provider-specific seek-to-0 + play).
+  function showReplayOverlay(mount: HTMLElement | null, onReplay: () => void, stillUrl?: string) {
     if (!mount) return;
-    if (mount.querySelector(':scope > [data-replay-overlay]')) return; // already shown
-    if (getComputedStyle(mount).position === 'static') mount.style.position = 'relative';
+    let overlay = mount.querySelector(':scope > [data-replay-overlay]') as HTMLElement | null;
+    if (getComputedStyle(mount).position === 'static') mount.style.setProperty('position', 'relative');
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.setAttribute('data-replay-overlay', '');
-    btn.title = 'Replay';
-    btn.style.cssText =
-      'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:72px;height:72px;' +
-      'border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;cursor:pointer;z-index:6;' +
-      'display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);transition:background 0.2s;';
-    btn.onmouseover = () => { btn.style.background = 'rgba(0,0,0,0.78)'; };
-    btn.onmouseout = () => { btn.style.background = 'rgba(0,0,0,0.6)'; };
-    // Circular-arrow "replay" glyph.
-    btn.innerHTML =
-      '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>';
-    btn.addEventListener('click', (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      btn.remove();
-      try { onReplay(); } catch { /* ignore */ }
-    });
-    mount.appendChild(btn);
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.setAttribute('data-replay-overlay', '');
+      overlay.style.cssText =
+        'position:absolute;inset:0;padding:0;margin:0;z-index:5;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.title = 'Replay';
+      btn.style.cssText =
+        'width:72px;height:72px;border-radius:50%;border:none;background:rgba(0,0,0,0.62);color:#fff;' +
+        'cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;';
+      btn.onmouseover = () => { btn.style.background = 'rgba(0,0,0,0.8)'; };
+      btn.onmouseout = () => { btn.style.background = 'rgba(0,0,0,0.62)'; };
+      btn.innerHTML =
+        '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>';
+      overlay.appendChild(btn);
+      overlay.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        overlay!.remove();
+        try { onReplay(); } catch { /* ignore */ }
+      });
+      mount.appendChild(overlay);
+    }
+
+    // Paint (or repaint) the still. !important beats the container's transparent
+    // background rule. No still (capture failed / cross-origin) → a dim scrim so
+    // the button still reads against whatever is behind it.
+    overlay.style.setProperty(
+      'background',
+      stillUrl ? `#000 center/contain no-repeat url("${stillUrl}")` : 'rgba(0,0,0,0.4)',
+      'important'
+    );
   }
 
   const removeReplayOverlay = (mount: HTMLElement | null) => {
     mount?.querySelector(':scope > [data-replay-overlay]')?.remove();
   };
 
-  // Some browsers blank a <video> once it ends, leaving the lesson area empty
-  // behind the Replay button. Capture the last frame to an <img> and lay it over
-  // the (now-blank) video so the finished lesson still shows its final frame.
-  // Only works for same-origin uploaded videos (our /uploads files); cross-origin
-  // iframes (YouTube/Vimeo) can't be captured and keep their own end screen.
-  function freezeLastFrame(video: HTMLVideoElement) {
-    const mount = video.parentElement;
-    if (!mount) return;
-    if (mount.querySelector(':scope > [data-frozen-frame]')) return;
+  // Grab a same-origin uploaded video's last frame as a data URL (empty on a
+  // cross-origin/tainted source or before metadata is ready).
+  function captureFrame(video: HTMLVideoElement): string {
     try {
       const w = video.videoWidth, h = video.videoHeight;
-      if (!w || !h) return;
+      if (!w || !h) return '';
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d')?.drawImage(video, 0, 0, w, h);
-      const img = document.createElement('img');
-      img.setAttribute('data-frozen-frame', '');
-      img.src = canvas.toDataURL('image/jpeg', 0.85); // toDataURL throws if tainted
-      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:4;background:#000;';
-      if (getComputedStyle(mount).position === 'static') mount.style.position = 'relative';
-      mount.appendChild(img);
-    } catch { /* cross-origin/tainted or not ready — leave the native end frame */ }
+      return canvas.toDataURL('image/jpeg', 0.85); // throws if tainted
+    } catch {
+      return '';
+    }
   }
-  const removeFrozenFrame = (mount: HTMLElement | null) => {
-    mount?.querySelector(':scope > [data-frozen-frame]')?.remove();
-  };
 
   // Whether to auto-start the first video on this page
   const startFirst = shouldAutoStartFirst && autoPlayRef.current;
@@ -568,30 +572,23 @@ export async function initVideoSequence(
           console.log(`[VideoSeq] Vimeo video ${seqIdx} ended. Total videos: ${total}`);
           finishVideo(seqIdx);
           const mount: HTMLElement | null = (vp as any).element?.parentElement || iframe.parentElement;
-          // The Vimeo iframe can blank on end — drop the video's own thumbnail
-          // behind the button so a still stays visible. oEmbed is CORS-enabled.
+          const replay = () => { Promise.resolve(vp.setCurrentTime(0)).then(() => vp.play()).catch(() => {}); };
+          // Show the button now; repaint with the Vimeo thumbnail once oEmbed
+          // resolves (CORS-enabled), so the area never sits blank.
+          showReplayOverlay(mount, replay);
           const vid = (iframe.src.match(/vimeo\.com\/video\/(\d+)/) || [])[1];
           if (vid && mount) {
             fetch(`https://vimeo.com/api/oembed.json?url=https%3A%2F%2Fvimeo.com%2F${vid}&width=1280`)
               .then((r) => (r.ok ? r.json() : null))
               .then((j) => {
-                // Only apply if the Replay overlay is still up (rep hasn't replayed).
                 if (j?.thumbnail_url && mount.querySelector(':scope > [data-replay-overlay]')) {
-                  mount.style.background = `#000 url(${j.thumbnail_url}) center/contain no-repeat`;
+                  showReplayOverlay(mount, replay, j.thumbnail_url); // repaint with still
                 }
               })
               .catch(() => {});
           }
-          showReplayOverlay(mount, () => {
-            if (mount) mount.style.background = '';
-            Promise.resolve(vp.setCurrentTime(0)).then(() => vp.play()).catch(() => {});
-          });
         });
-        vp.on('play', () => {
-          const mount: HTMLElement | null = (vp as any).element?.parentElement || iframe.parentElement;
-          removeReplayOverlay(mount);
-          if (mount) mount.style.background = '';
-        });
+        vp.on('play', () => removeReplayOverlay((vp as any).element?.parentElement || iframe.parentElement));
       } catch (err) {
         console.error('[VideoSeq] VimeoPlayer init failed for index', seqIdx, err);
       }
@@ -638,19 +635,13 @@ export async function initVideoSequence(
     e.video.addEventListener('ended', () => {
       console.log(`[VideoSeq] HTML5 video ${e.seqIdx} ended. Total videos: ${total}`);
       finishVideo(e.seqIdx);
-      // Freeze the last frame (so the area doesn't go blank) then show Replay.
-      freezeLastFrame(e.video);
+      // Show the last frame (captured) behind the Replay button.
       showReplayOverlay(e.video.parentElement, () => {
-        removeFrozenFrame(e.video.parentElement);
         e.video.currentTime = 0;
         e.video.play().catch(() => {});
-      });
+      }, captureFrame(e.video));
     });
-    // Clear the overlay + frozen frame if playback resumes by any means.
-    e.video.addEventListener('play', () => {
-      removeReplayOverlay(e.video.parentElement);
-      removeFrozenFrame(e.video.parentElement);
-    });
+    e.video.addEventListener('play', () => removeReplayOverlay(e.video.parentElement));
     if (e.seqIdx === 0 && startFirst) {
       e.video.muted = true;
       attemptMobileAutoplay(() => e.video.play());
@@ -729,20 +720,12 @@ export async function initVideoSequence(
             if (ev.data === 0) { // ended
               console.log(`[VideoSeq] YouTube video ${seqIdx} ended. Total videos: ${total}`);
               finishVideo(seqIdx);
-              // The YouTube iframe can blank on end, leaving the lesson area white.
-              // Drop the video's own thumbnail behind the button so a still stays
-              // visible, then show Replay.
-              if (ytMount) {
-                ytMount.style.background = `#000 url(https://img.youtube.com/vi/${videoId}/hqdefault.jpg) center/contain no-repeat`;
-              }
-              showReplayOverlay(ytMount, () => {
-                if (ytMount) ytMount.style.background = '';
-                player.seekTo(0, true);
-                player.playVideo();
-              });
-            } else if (ev.data === 1) { // playing → clear the still + Replay overlay
+              // Show the video's own thumbnail behind the Replay button so the
+              // area never blanks when the iframe clears on end.
+              showReplayOverlay(ytMount, () => { player.seekTo(0, true); player.playVideo(); },
+                `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+            } else if (ev.data === 1) { // playing → clear the Replay overlay
               removeReplayOverlay(ytMount);
-              if (ytMount) ytMount.style.background = '';
             }
           },
         },
