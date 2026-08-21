@@ -499,6 +499,33 @@ export async function initVideoSequence(
     mount?.querySelector(':scope > [data-replay-overlay]')?.remove();
   };
 
+  // Some browsers blank a <video> once it ends, leaving the lesson area empty
+  // behind the Replay button. Capture the last frame to an <img> and lay it over
+  // the (now-blank) video so the finished lesson still shows its final frame.
+  // Only works for same-origin uploaded videos (our /uploads files); cross-origin
+  // iframes (YouTube/Vimeo) can't be captured and keep their own end screen.
+  function freezeLastFrame(video: HTMLVideoElement) {
+    const mount = video.parentElement;
+    if (!mount) return;
+    if (mount.querySelector(':scope > [data-frozen-frame]')) return;
+    try {
+      const w = video.videoWidth, h = video.videoHeight;
+      if (!w || !h) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d')?.drawImage(video, 0, 0, w, h);
+      const img = document.createElement('img');
+      img.setAttribute('data-frozen-frame', '');
+      img.src = canvas.toDataURL('image/jpeg', 0.85); // toDataURL throws if tainted
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:4;background:#000;';
+      if (getComputedStyle(mount).position === 'static') mount.style.position = 'relative';
+      mount.appendChild(img);
+    } catch { /* cross-origin/tainted or not ready — leave the native end frame */ }
+  }
+  const removeFrozenFrame = (mount: HTMLElement | null) => {
+    mount?.querySelector(':scope > [data-frozen-frame]')?.remove();
+  };
+
   // Whether to auto-start the first video on this page
   const startFirst = shouldAutoStartFirst && autoPlayRef.current;
 
@@ -540,12 +567,31 @@ export async function initVideoSequence(
         vp.on('ended', () => {
           console.log(`[VideoSeq] Vimeo video ${seqIdx} ended. Total videos: ${total}`);
           finishVideo(seqIdx);
-          // Keep the finished Vimeo player on screen with a centered Replay button.
-          showReplayOverlay((vp as any).element?.parentElement || iframe.parentElement, () => {
+          const mount: HTMLElement | null = (vp as any).element?.parentElement || iframe.parentElement;
+          // The Vimeo iframe can blank on end — drop the video's own thumbnail
+          // behind the button so a still stays visible. oEmbed is CORS-enabled.
+          const vid = (iframe.src.match(/vimeo\.com\/video\/(\d+)/) || [])[1];
+          if (vid && mount) {
+            fetch(`https://vimeo.com/api/oembed.json?url=https%3A%2F%2Fvimeo.com%2F${vid}&width=1280`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((j) => {
+                // Only apply if the Replay overlay is still up (rep hasn't replayed).
+                if (j?.thumbnail_url && mount.querySelector(':scope > [data-replay-overlay]')) {
+                  mount.style.background = `#000 url(${j.thumbnail_url}) center/contain no-repeat`;
+                }
+              })
+              .catch(() => {});
+          }
+          showReplayOverlay(mount, () => {
+            if (mount) mount.style.background = '';
             Promise.resolve(vp.setCurrentTime(0)).then(() => vp.play()).catch(() => {});
           });
         });
-        vp.on('play', () => removeReplayOverlay((vp as any).element?.parentElement || iframe.parentElement));
+        vp.on('play', () => {
+          const mount: HTMLElement | null = (vp as any).element?.parentElement || iframe.parentElement;
+          removeReplayOverlay(mount);
+          if (mount) mount.style.background = '';
+        });
       } catch (err) {
         console.error('[VideoSeq] VimeoPlayer init failed for index', seqIdx, err);
       }
@@ -592,14 +638,19 @@ export async function initVideoSequence(
     e.video.addEventListener('ended', () => {
       console.log(`[VideoSeq] HTML5 video ${e.seqIdx} ended. Total videos: ${total}`);
       finishVideo(e.seqIdx);
-      // Keep the finished video on screen with a centered Replay button.
+      // Freeze the last frame (so the area doesn't go blank) then show Replay.
+      freezeLastFrame(e.video);
       showReplayOverlay(e.video.parentElement, () => {
+        removeFrozenFrame(e.video.parentElement);
         e.video.currentTime = 0;
         e.video.play().catch(() => {});
       });
     });
-    // Clear the overlay if playback resumes by any means (native controls, etc.).
-    e.video.addEventListener('play', () => removeReplayOverlay(e.video.parentElement));
+    // Clear the overlay + frozen frame if playback resumes by any means.
+    e.video.addEventListener('play', () => {
+      removeReplayOverlay(e.video.parentElement);
+      removeFrozenFrame(e.video.parentElement);
+    });
     if (e.seqIdx === 0 && startFirst) {
       e.video.muted = true;
       attemptMobileAutoplay(() => e.video.play());
@@ -678,10 +729,20 @@ export async function initVideoSequence(
             if (ev.data === 0) { // ended
               console.log(`[VideoSeq] YouTube video ${seqIdx} ended. Total videos: ${total}`);
               finishVideo(seqIdx);
-              // Keep the finished video on screen with a centered Replay button.
-              showReplayOverlay(ytMount, () => { player.seekTo(0, true); player.playVideo(); });
-            } else if (ev.data === 1) { // playing → clear any lingering Replay overlay
+              // The YouTube iframe can blank on end, leaving the lesson area white.
+              // Drop the video's own thumbnail behind the button so a still stays
+              // visible, then show Replay.
+              if (ytMount) {
+                ytMount.style.background = `#000 url(https://img.youtube.com/vi/${videoId}/hqdefault.jpg) center/contain no-repeat`;
+              }
+              showReplayOverlay(ytMount, () => {
+                if (ytMount) ytMount.style.background = '';
+                player.seekTo(0, true);
+                player.playVideo();
+              });
+            } else if (ev.data === 1) { // playing → clear the still + Replay overlay
               removeReplayOverlay(ytMount);
+              if (ytMount) ytMount.style.background = '';
             }
           },
         },
