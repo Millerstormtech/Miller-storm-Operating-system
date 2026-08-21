@@ -375,3 +375,60 @@ export async function sendCertificateEarnedEmail(params: {
     ...(params.pdf ? { attachments: [params.pdf] } : {}),
   });
 }
+
+/**
+ * The Contract King certificate, mailed on the 1st alongside the Storm Chat
+ * crowning.
+ *
+ * Separate from sendCertificateEarnedEmail rather than a variant of it: the two
+ * have different variables and an admin editing one in Email Config must not
+ * silently reword the other. The missing-PDF fallback is the same rule, and
+ * both templates keep the literal phrase "Your certificate is attached" so the
+ * one regex below can find and soften it.
+ */
+export async function sendKingCertificateEmail(params: {
+  name: string;
+  email: string;
+  monthLabel: string;
+  /** Already-formatted lines, e.g. ["$412,880 in signed contracts"]. */
+  stats: string[];
+  issuedDate: string;
+  certificateId: string;
+  pdf: { filename: string; content: Buffer } | null;
+}) {
+  const tmpl = await getEmailTemplate("contractKingCertificate");
+  if (tmpl.status === "draft") {
+    console.log("[Email] contractKingCertificate is draft, skipping");
+    return;
+  }
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": params.name,
+    "{{monthLabel}}": params.monthLabel,
+    "{{stats}}": params.stats.map((s) => `- ${s}`).join("\n"),
+    "{{issuedDate}}": params.issuedDate,
+    "{{certificateId}}": params.certificateId,
+    "{{appUrl}}": process.env.NEXT_PUBLIC_APP_URL || "https://millerstorm.tech",
+  });
+
+  // Do not promise an attachment that is not there.
+  const body = params.pdf
+    ? { html, text }
+    : {
+        html: html.replace(
+          /Your certificate is attached[^<]*/i,
+          "Your certificate is being prepared and will follow shortly."
+        ),
+        text: (text || "").replace(
+          /Your certificate is attached.*/i,
+          "Your certificate is being prepared and will follow shortly."
+        ),
+      };
+
+  return sendEmail({
+    to: params.email,
+    subject,
+    html: body.html,
+    text: body.text,
+    ...(params.pdf ? { attachments: [params.pdf] } : {}),
+  });
+}

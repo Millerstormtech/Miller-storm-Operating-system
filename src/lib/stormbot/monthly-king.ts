@@ -18,6 +18,8 @@ import { stripFormerMarker } from "../leaderboard/formerRep";
 import { previousMonthRange, centralDateStr } from "../acculynx/windows";
 import { monthlyContractKingMessage } from "./copy";
 import { announce } from "./announce";
+import { issueKingCertificate, type KingCertificateResult } from "./kingCertificate";
+import { certificateDate } from "../certificate/date";
 
 // Deliberately the SAME switch as the per-deal claim and contract celebrations,
 // so Storm Bot's sales voice has one on/off control rather than two that can
@@ -32,6 +34,8 @@ export interface MonthlyKingResult {
   month: string;
   king?: { id: string; name: string; revenue: number };
   text?: string;
+  /** What happened to the king's certificate. Absent on a dry run. */
+  certificate?: KingCertificateResult;
 }
 
 /**
@@ -72,7 +76,12 @@ export async function announceMonthlyKing(now: Date = new Date()): Promise<Month
     // along, so they are not excluded here. The marker is stripped only so the
     // sentence reads as a celebration rather than a glitch.
     const name = stripFormerMarker(king.name) || king.name;
-    const text = monthlyContractKingMessage(name, king.revenue, kingMonthLabel(monthIso), month);
+    const monthLabel = kingMonthLabel(monthIso);
+    const text = monthlyContractKingMessage(name, king.revenue, monthLabel, month);
+    // The winning row itself, for the two facts the crowned-king shape drops:
+    // the Contracts count that goes on the certificate, and the Miller Storm
+    // account to email it to.
+    const kingRow = rows.find((r) => r.id === king.id);
 
     // Checked HERE rather than at the top, matching sales-celebration.ts: an
     // early return would skip the computation and log nothing, so a dry run
@@ -81,8 +90,39 @@ export async function announceMonthlyKing(now: Date = new Date()): Promise<Month
     // does not swallow the first real month.
     if (!salesCelebrationsEnabled()) {
       await logToDb("info", "CELEBRATION", `monthly-king would-announce ${month}: ${text}`);
+      // Named separately so a dry run reports BOTH things the 1st would do.
+      // Without this line the rehearsal is silent about the certificate, which
+      // is the half that leaves the building.
+      await logToDb(
+        "info",
+        "CERTIFICATE",
+        `king ${month}: would issue to ${name} (${king.id}), ${kingRow?.won ?? 0} contracts`
+      ).catch(() => {});
       return { status: "dry-run", month, king, text };
     }
+
+    // The certificate rides the same event, the same clock and the same switch
+    // as the announcement, but NOT the same ledger: it is issued BEFORE the
+    // announcement row is claimed, so a Storm Chat outage cannot cost the king
+    // the certificate they won. Failure-isolated inside; never throws.
+    //
+    // Note it sits AFTER the dry-run gate, unlike the training certificates
+    // which are deliberately independent of Storm Bot. The difference is that
+    // this switch is what holds the whole monthly crowning in rehearsal: mailing
+    // a real certificate while the post is still a dry run would announce the
+    // king to the king alone, and silently, which is the one outcome a dry run
+    // exists to prevent.
+    const certificate = await issueKingCertificate({
+      monthIso: month,
+      monthLabel,
+      repName: name,
+      repId: king.id,
+      repUserId: kingRow?.repUserId ?? null,
+      revenue: king.revenue,
+      contracts: kingRow?.won ?? 0,
+      issuedDate: certificateDate(now),
+      now: new Date(),
+    });
 
     // Once ever: insert before posting. A duplicate-key error means a previous
     // run already announced this month (a PM2 restart at 09:00, a re-deploy, a
@@ -96,19 +136,19 @@ export async function announceMonthlyKing(now: Date = new Date()): Promise<Month
         sentAt: new Date(),
       });
     } catch (e: any) {
-      if (e && e.code === 11000) return { status: "already-sent", month, king };
+      if (e && e.code === 11000) return { status: "already-sent", month, king, certificate };
       throw e;
     }
 
     const posted = await announce(text);
     if (posted) {
       await logToDb("info", "CELEBRATION", `monthly-king announced ${month}: ${text}`);
-      return { status: "posted", month, king, text };
+      return { status: "posted", month, king, text, certificate };
     }
     // announce() already logged the reason. The ledger row stays: re-posting on
     // the next tick would risk a duplicate far more visibly than a missed post,
     // and the row records exactly which month needs a manual follow-up.
-    return { status: "post-failed", month, king, text };
+    return { status: "post-failed", month, king, text, certificate };
   } catch (e: any) {
     try {
       await logToDb("error", "CELEBRATION", `monthly-king failed for ${month}: ${e?.message}`);
