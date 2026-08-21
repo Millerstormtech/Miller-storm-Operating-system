@@ -2206,8 +2206,27 @@ export function CourseManagement(props: CourseEditorProps) {
           
           const isYouTube = trimmed.includes("youtube.com") || trimmed.includes("youtu.be");
           const isVimeo = trimmed.includes("vimeo.com");
+          const isLoom = trimmed.includes("loom.com");
+          const isWistia = trimmed.includes("wistia.com") || trimmed.includes("wistia.net") || trimmed.includes("wi.st");
           const isUploadedFile = trimmed.startsWith("/uploads/");
           let videoHtml = "";
+
+          // Shared iframe embed markup (with Copy Link + Delete overlay buttons),
+          // matching the YouTube/Vimeo blocks. Used for Loom and Wistia, which are
+          // page URLs — a bare <video src> can't play them, so they need an iframe.
+          const buildIframeEmbed = (type: string, videoId: string, embedUrl: string, shareUrl: string, allow: string) => `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="${type}" data-video-id="${videoId}" data-share-url="${shareUrl}">
+                <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
+                  <iframe src="${embedUrl}" loading="lazy" style="width: 100%; height: 100%; border: none;" allow="${allow}" allowfullscreen></iframe>
+                  <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
+                    <button type="button" data-video-share contenteditable="false" title="Copy Link" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    </button>
+                    <button type="button" data-video-delete contenteditable="false" title="Delete Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="video-delete-btn">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>`;
           
           if (isYouTube) {
             const match = trimmed.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/);
@@ -2252,6 +2271,32 @@ export function CourseManagement(props: CourseEditorProps) {
                   </div>
                 </div>
               </div>`;
+            }
+          } else if (isLoom) {
+            // Loom share/embed URL -> https://www.loom.com/embed/<id>
+            const match = trimmed.match(/loom\.com\/(?:share|embed)\/([a-zA-Z0-9]+)/);
+            const videoId = match ? match[1] : "";
+            if (videoId) {
+              videoHtml = buildIframeEmbed(
+                "loom",
+                videoId,
+                `https://www.loom.com/embed/${videoId}`,
+                `https://www.loom.com/share/${videoId}`,
+                "autoplay; fullscreen; picture-in-picture"
+              );
+            }
+          } else if (isWistia) {
+            // Wistia media URL (accounts vary) -> fast.wistia.net/embed/iframe/<id>
+            const match = trimmed.match(/(?:wistia\.(?:com|net)|wi\.st)\/(?:medias|embed\/(?:iframe|medias|playlists))\/([a-zA-Z0-9]+)/);
+            const videoId = match ? match[1] : "";
+            if (videoId) {
+              videoHtml = buildIframeEmbed(
+                "wistia",
+                videoId,
+                `https://fast.wistia.net/embed/iframe/${videoId}`,
+                `https://fast.wistia.net/embed/iframe/${videoId}`,
+                "autoplay; fullscreen"
+              );
             }
           } else if (isUploadedFile) {
             // Uploaded file from /uploads/ folder
