@@ -40,14 +40,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!course) return res.status(404).json({ error: "Not found" });
 
   const page = (course.pages || []).find((p: any) => p.id === pageId);
-  const publishedFolders = new Set(
-    (course.folders || []).filter((f: any) => f.status === "published").map((f: any) => f.id)
+  // Exclude ONLY explicitly-draft folders — matching the learner UI, the
+  // progress denominator, publishedItems() (scoring.ts) and loadGradableQuizPages
+  // (quiz-pages.ts). The old rule required a folder to be explicitly
+  // status==="published"; on legacy/imported courses folders often have no
+  // status, so this endpoint 404'd on their quizzes: the rep saw the quiz, passed
+  // it, but the pass was never stored — the green tick vanished on refresh and
+  // the course never reached 100%. Keeping this in step fixes that.
+  const draftFolders = new Set(
+    (course.folders || []).filter((f: any) => f.status === "draft").map((f: any) => f.id)
   );
   const visible =
     !!page &&
     page.status === "published" &&
     !!page.isQuiz &&
-    (!page.folderId || publishedFolders.has(page.folderId));
+    (!page.folderId || !draftFolders.has(page.folderId));
   if (!visible) return res.status(404).json({ error: "Not found" });
 
   const grade = gradeQuizAttempt(page, answers);
