@@ -260,7 +260,19 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                 totalCount = progressData['totalLessons'] ?? lessons.length;
                 progressPercent = progressData['progressPercent'] ?? 0;
               } else {
-                completedCount = completedPages.length;
+                // Fallback only (the API now sends progressPercent). Count video
+                // lessons via completedPages AND passed quizzes via quizResults,
+                // out of all pages — matching the server. Counting completedPages
+                // alone ignored quizzes, so a course with any quiz never hit 100%.
+                final completedSet = completedPages.map((p) => p.toString()).toSet();
+                completedCount = lessons.where((l) {
+                  final id = (l['id'] ?? '').toString();
+                  if (l['isQuiz'] == true) {
+                    return savedQuizResults.any((r) => r['pageId'].toString() == id && r['passed'] != false);
+                  }
+                  return completedSet.contains(id);
+                }).length;
+                totalCount = lessons.length;
                 progressPercent = totalCount > 0 ? ((completedCount / totalCount) * 100).round() : 0;
               }
               

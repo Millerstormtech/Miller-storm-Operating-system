@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
+import { CourseModel } from "../../src/lib/models/Course";
+import { isQuizResultPassing } from "../../src/lib/quiz";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { resolveIncomingQuizResults } from "../../src/lib/training/quiz-intake";
 import { loadGradableQuizPages } from "../../src/lib/training/quiz-pages";
@@ -79,11 +81,44 @@ export default async function handler(
         courseCompleted: progress.courseCompleted
       });
       
+      // Also compute the completion %, matching /api/courses/[id] so the mobile
+      // lesson player (which reads THIS endpoint, not the course endpoint) shows
+      // the same number as the course overview. Videos count via completedPages,
+      // quizzes via a passing quizResult — identical to the web progress bar.
+      // Without this the mobile fell back to counting completedPages only, which
+      // ignores passed quizzes, so a course with any quiz never reached 100%.
+      // Wrapped so a course-load hiccup can never break the core payload.
+      let progressPercent: number | undefined;
+      let completedLessons: number | undefined;
+      let totalLessons: number | undefined;
+      try {
+        const course = await CourseModel.findOne({ id: courseId })
+          .select("pages.id pages.status pages.isQuiz")
+          .lean() as any;
+        if (course) {
+          const publishedPages: any[] = (course.pages || []).filter((p: any) => p.status === 'published');
+          const completedSet = new Set(progress.completedPages || []);
+          const quizResults = progress.quizResults || [];
+          totalLessons = publishedPages.length;
+          completedLessons = publishedPages.filter((p: any) =>
+            p.isQuiz
+              ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
+              : completedSet.has(p.id)
+          ).length;
+          progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+        }
+      } catch (e) {
+        console.error('⚠️ Could not compute progressPercent:', e);
+      }
+
       res.status(200).json({
         completedPages: progress.completedPages || [],
         unlockedPages: progress.unlockedPages || [],
         quizResults: progress.quizResults || [],
-        courseCompleted: progress.courseCompleted || false
+        courseCompleted: progress.courseCompleted || false,
+        ...(progressPercent !== undefined
+          ? { progressPercent, completedLessons: completedLessons ?? 0, totalLessons: totalLessons ?? 0 }
+          : {}),
       });
       return;
     } catch (error) {
