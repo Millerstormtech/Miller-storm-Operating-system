@@ -49,6 +49,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // session (paired with the token in authToken.ts). Cleared on logout / no session.
 const SESSION_USER_KEY = "ms_auth_user";
 
+// "View As" stashes the admin's own token + user here so exiting (and a page
+// refresh mid-view) can restore the real admin session. While viewing, the live
+// token in sessionStorage is the TARGET's impersonation token; these keys hold
+// the admin's, kept separate so a refresh doesn't strand the admin as the rep.
+const VIEWAS_ADMIN_TOKEN_KEY = "ms_viewas_admin_token";
+const VIEWAS_ADMIN_USER_KEY = "ms_viewas_admin_user";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,6 +91,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resolved = true;
       setUser(persistedUser);
       try { enableWebPush(persistedUser.id); } catch { /* ignore */ }
+      // Mid-"View As" refresh: the live token/user above are the TARGET's. If the
+      // admin's session was stashed, restore the impersonation state so the exit
+      // banner reappears and writes stay blocked.
+      try {
+        const adminRaw = sessionStorage.getItem(VIEWAS_ADMIN_USER_KEY);
+        if (adminRaw && sessionStorage.getItem(VIEWAS_ADMIN_TOKEN_KEY)) {
+          setRealUser(JSON.parse(adminRaw));
+          setViewOnly(true);
+        }
+      } catch { /* ignore */ }
       setIsLoading(false);
     }
 
@@ -214,27 +231,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return enableBio(user as any, token);
   }
 
-  // Enter a read-only view of another user's account. Keeps the admin's own
-  // token (so reads stay authorized) but flips the fetch layer into view-only,
-  // so no write can ever reach the API. Uses client-side navigation so the
-  // AuthProvider never remounts (a full reload would clear the session).
-  function viewAs(target: User) {
+  // Enter a read-only view of another user's account. We SWAP the live token for
+  // an impersonation token whose subject is the target, so every API call returns
+  // the TARGET's data (sales, courses, progress, profile — everything), not the
+  // admin's. The admin's own token + user are stashed so exitViewAs (and a page
+  // refresh mid-view) can restore them. view-only mode still blocks every write.
+  async function viewAs(target: User) {
     if (!user) return;
-    setRealUser((prev) => prev ?? user); // remember the admin, even if called twice
+    const adminUser = user;
+    const adminToken = getToken();
+
+    // Mint the target's token BEFORE flipping into view-only (this POST would be
+    // blocked once viewOnly is on). Server checks the caller is an admin and
+    // signs the token with the target's own DB role.
+    let targetToken: string | null = null;
+    try {
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: target.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        targetToken = typeof data?.token === "string" ? data.token : null;
+      }
+    } catch { /* ignore */ }
+    if (!targetToken) {
+      try { window.dispatchEvent(new CustomEvent("viewas-blocked")); } catch { /* noop */ }
+      return;
+    }
+
+    // Stash the admin session so we can come back (survives a refresh too).
+    try {
+      if (adminToken) sessionStorage.setItem(VIEWAS_ADMIN_TOKEN_KEY, adminToken);
+      sessionStorage.setItem(VIEWAS_ADMIN_USER_KEY, JSON.stringify(adminUser));
+    } catch { /* ignore */ }
+
+    setRealUser((prev) => prev ?? adminUser); // remember the admin, even if called twice
     setViewOnly(true);
+    setToken(targetToken); // from now on the app IS the target
     setUser(target);
-    try { localStorage.setItem("user", JSON.stringify(target)); } catch { /* ignore */ }
+    try {
+      sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(target));
+      localStorage.setItem("user", JSON.stringify(target));
+    } catch { /* ignore */ }
     goToDashboard(target);
   }
 
-  // Leave the read-only view and restore the admin account.
+  // Leave the read-only view and restore the admin account + token.
   function exitViewAs() {
     if (!realUser) return;
     const admin = realUser;
+    let adminToken: string | null = null;
+    try { adminToken = sessionStorage.getItem(VIEWAS_ADMIN_TOKEN_KEY); } catch { /* ignore */ }
+
     setViewOnly(false);
     setRealUser(null);
+    if (adminToken) setToken(adminToken); // restore the admin's own token
     setUser(admin);
-    try { localStorage.setItem("user", JSON.stringify(admin)); } catch { /* ignore */ }
+    try {
+      sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(admin));
+      localStorage.setItem("user", JSON.stringify(admin));
+      sessionStorage.removeItem(VIEWAS_ADMIN_TOKEN_KEY);
+      sessionStorage.removeItem(VIEWAS_ADMIN_USER_KEY);
+    } catch { /* ignore */ }
     router.push("/admin/leaderboard");
   }
 
@@ -243,6 +303,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRealUser(null);
     setUser(null);
     try { sessionStorage.removeItem(SESSION_USER_KEY); } catch { /* ignore */ }
+    try {
+      sessionStorage.removeItem(VIEWAS_ADMIN_TOKEN_KEY);
+      sessionStorage.removeItem(VIEWAS_ADMIN_USER_KEY);
+    } catch { /* ignore */ }
     localStorage.removeItem("user");
     clearToken();
     // Fully clear the session: also drop the stored biometric credential + JWT,
