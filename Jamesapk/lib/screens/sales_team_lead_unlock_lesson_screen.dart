@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 
@@ -16,11 +17,11 @@ class SalesTeamLeadUnlockLessonScreen extends StatefulWidget {
 }
 
 class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLessonScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
   static const _blue = Color(0xFF2563EB);
 
   String _managerId = '';
@@ -289,7 +290,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
         foregroundColor: _textDark,
         title: Text(
           _pickingMembers ? 'Unlock Lesson' : '$n member${n == 1 ? '' : 's'} selected',
-          style: const TextStyle(color: _textDark, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: _textDark, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         leading: _pickingMembers
             ? null
@@ -409,7 +410,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _textDark)),
+                        Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _textDark)),
                         const SizedBox(height: 2),
                         Text((member['email'] ?? '').toString(), style: TextStyle(fontSize: 12, color: _textLight)),
                       ],
@@ -468,7 +469,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
                 onPressed: _ffBusy ? null : () => _setFastForward(false),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _textLight,
-                  side: const BorderSide(color: Color(0xFFE5E7EB)),
+                  side: BorderSide(color: AppColors.border),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 child: const Text('Disable', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
@@ -529,7 +530,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
       decoration: BoxDecoration(
         color: _white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,7 +546,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
               children: [
                 Expanded(
                   child: Text((course['title'] ?? 'Course').toString(),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
                 ),
                 if (pageKeys.isNotEmpty) ...[
                   const SizedBox(width: 8),
@@ -591,7 +592,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
                         Text(p['isQuiz'] == true ? 'Quiz' : 'Lesson',
                             style: TextStyle(fontSize: 10, color: _textLight)),
                         Text((p['title'] ?? '').toString(),
-                            style: const TextStyle(fontSize: 13, color: _textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            style: TextStyle(fontSize: 13, color: _textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
