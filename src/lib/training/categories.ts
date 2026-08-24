@@ -16,6 +16,16 @@ export const TRAINING_CATEGORIES = [
   "Roof Hustlers",
 ];
 
+// Training Center section order: these categories render first, in this exact
+// order, ahead of everything else. Pinned entries that aren't credential
+// categories (e.g. a custom "Miller Storm Certification") can lead here without
+// touching TRAINING_CATEGORIES / credentials.ts. A pinned category no course
+// uses is simply skipped (empty sections are omitted below).
+export const CATEGORY_DISPLAY_ORDER = [
+  "Miller Storm Certification",
+  ...TRAINING_CATEGORIES,
+];
+
 export const UNCATEGORIZED_LABEL = "Other Courses";
 
 // Group items (each carrying an optional `category`) for display. Predefined
@@ -35,7 +45,7 @@ export function groupCoursesByCategory<T extends { category?: string }>(
   }
 
   const sections: { category: string; courses: T[] }[] = [];
-  for (const cat of TRAINING_CATEGORIES) {
+  for (const cat of CATEGORY_DISPLAY_ORDER) {
     const list = byCategory.get(cat);
     if (list && list.length) sections.push({ category: cat, courses: list });
     byCategory.delete(cat);
