@@ -87,6 +87,7 @@ flutter:
   assets:
     - assets/images/logo.jpeg
     - assets/images/logo-1.png
+    - assets/images/logo-dark.png
 
 flutter_launcher_icons:
   android: true

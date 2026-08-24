@@ -230,9 +230,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Logo
+                          // Logo — dark mode uses the transparent logo (no white
+                          // box on the dark card), matching the web login.
                           Image.asset(
-                            'assets/images/logo.jpeg',
+                            themeController.isDark
+                                ? 'assets/images/logo-dark.png'
+                                : 'assets/images/logo.jpeg',
                             width: 180,
                             height: 96,
                             fit: BoxFit.contain,
