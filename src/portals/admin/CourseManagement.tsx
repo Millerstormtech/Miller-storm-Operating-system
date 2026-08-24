@@ -99,7 +99,7 @@ export function CourseManagement(props: CourseEditorProps) {
       deleteCourse(selectedCourse.id);
     } else if (deleteTarget === 'lesson') {
       const nextPages = (selectedCourse.pages ?? []).filter(p => !deleteSelectedIds.has(p.id));
-      updateCourse({ ...selectedCourse, pages: nextPages });
+      persistCourse({ ...selectedCourse, pages: nextPages });
       if (activePageId && deleteSelectedIds.has(activePageId)) {
         const fallback = nextPages[nextPages.length - 1] ?? nextPages[0];
         setActivePageId(fallback ? fallback.id : null);
@@ -107,7 +107,7 @@ export function CourseManagement(props: CourseEditorProps) {
     } else if (deleteTarget === 'module') {
       const remainingFolders = (selectedCourse.folders ?? []).filter(f => !deleteSelectedIds.has(f.id));
       const remainingPages = (selectedCourse.pages ?? []).filter(p => !deleteSelectedIds.has(p.folderId ?? ''));
-      updateCourse({ ...selectedCourse, folders: remainingFolders, pages: remainingPages });
+      persistCourse({ ...selectedCourse, folders: remainingFolders, pages: remainingPages });
       if (activePageId && !remainingPages.some(p => p.id === activePageId)) {
         const fallback = remainingPages[remainingPages.length - 1] ?? remainingPages[0];
         setActivePageId(fallback ? fallback.id : null);
@@ -660,6 +660,31 @@ export function CourseManagement(props: CourseEditorProps) {
     } else {
       const next = props.courses.map((course) => (course.id === updated.id ? updated : course));
       props.onCoursesChange(next);
+    }
+  }
+
+  // Update local state AND persist the course to the DB right away. Structural
+  // edits like deleting a lesson/module must save immediately — updateCourse
+  // alone only changes local state, so a refresh reloaded the DB copy and the
+  // "deleted" lesson came back. Skips the API while creating a brand-new course
+  // (it isn't saved until the user hits Save).
+  async function persistCourse(updated: Course, successMsg?: string) {
+    updateCourse(updated);
+    if (isCreatingNewCourse) return;
+    try {
+      const cleaned = props.cleanCourses ? props.cleanCourses([updated])[0] : updated;
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify([cleaned]),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setOriginalCourse(JSON.parse(JSON.stringify(updated)));
+      setHasChanges(false);
+      if (successMsg) showToast(successMsg, "success");
+    } catch (e) {
+      console.error("Failed to persist course change:", e);
+      showToast("Couldn't save the change. Please try again.", "error");
     }
   }
 
