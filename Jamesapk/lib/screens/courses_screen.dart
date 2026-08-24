@@ -1221,6 +1221,18 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                     style: const TextStyle(fontSize: 13, height: 1.35, color: _textLight),
                   ),
                 ],
+                const SizedBox(height: 12),
+                // Completion progress bar (matches the web card).
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: (progressValue / 100).clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor: _bg,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        progressValue == 100 ? const Color(0xFF16A34A) : _primary),
+                  ),
+                ),
               ],
             ),
           ),
