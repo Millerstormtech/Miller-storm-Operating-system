@@ -673,6 +673,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                           final page = pageEntry.value;
                           final pageId = page['id'].toString();
                           final isCompleted = _completedPageIds.contains(pageId);
+                          // Done = video watched OR quiz passed — drives the green tick.
+                          final isDone = isCompleted || _isQuizPassed(pageId);
                           final isUnlocked = isPageUnlocked(pageId);
                           
                           return GestureDetector(
@@ -795,6 +797,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                           color: Colors.orange.shade700,
                                         ),
                                       ),
+                                    ),
+                                  // Green tick once the video is watched / quiz passed.
+                                  if (isDone)
+                                    const Padding(
+                                      padding: EdgeInsets.only(left: 8),
+                                      child: Icon(Icons.check_circle,
+                                          color: Color(0xFF16A34A), size: 22),
                                     ),
                                 ],
                               ),
