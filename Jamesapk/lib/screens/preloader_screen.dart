@@ -123,20 +123,16 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
     final c = _controller;
     return Scaffold(
       backgroundColor: AppColors.bg,
+      // Only the animation shows — no logo/spinner placeholder. While the clip
+      // loads (a brief moment for a local asset) the plain themed background
+      // shows, then the video fades in.
       body: Center(
         child: (c != null && c.value.isInitialized)
             ? AspectRatio(
                 aspectRatio: c.value.aspectRatio,
                 child: VideoPlayer(c),
               )
-            : Image.asset(
-                themeController.isDark
-                    ? 'assets/images/logo-dark.png'
-                    : 'assets/images/logo.jpeg',
-                width: 200,
-                height: 120,
-                fit: BoxFit.contain,
-              ),
+            : const SizedBox.shrink(),
       ),
     );
   }
