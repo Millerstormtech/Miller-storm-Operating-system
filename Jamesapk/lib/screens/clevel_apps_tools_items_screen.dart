@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import '../widgets/clevel_bottom_nav.dart';
 import '../services/api_client.dart';
 import 'dart:convert';
@@ -13,13 +14,13 @@ class CLevelAppsToolsItemsScreen extends StatefulWidget {
 }
 
 class _CLevelAppsToolsItemsScreenState extends State<CLevelAppsToolsItemsScreen> with SingleTickerProviderStateMixin {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textMedium = Color(0xFF374151);
-  static const _textLight = Color(0xFF6B7280);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textMedium => AppColors.textLight;
+  Color get _textLight => AppColors.textLight;
+  Color get _border => AppColors.border;
 
   // All published items are fetched ONCE and cached here; switching category
   // tabs just filters this list locally (no network round-trip per tab).
@@ -127,7 +128,7 @@ class _CLevelAppsToolsItemsScreenState extends State<CLevelAppsToolsItemsScreen>
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Apps & Tools',
           style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
@@ -161,14 +162,14 @@ class _CLevelAppsToolsItemsScreenState extends State<CLevelAppsToolsItemsScreen>
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: _primary))
                 : _categories.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'No categories available',
                           style: TextStyle(color: _textLight, fontSize: 14),
                         ),
                       )
                     : _items.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'No items available',
                               style: TextStyle(color: _textLight, fontSize: 14),
@@ -263,7 +264,7 @@ class _CLevelAppsToolsItemsScreenState extends State<CLevelAppsToolsItemsScreen>
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: _textDark,
@@ -275,7 +276,7 @@ class _CLevelAppsToolsItemsScreenState extends State<CLevelAppsToolsItemsScreen>
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         color: _textLight,
                       ),
@@ -287,7 +288,7 @@ class _CLevelAppsToolsItemsScreenState extends State<CLevelAppsToolsItemsScreen>
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(
+            Icon(
               Icons.chevron_right,
               color: _textLight,
               size: 24,

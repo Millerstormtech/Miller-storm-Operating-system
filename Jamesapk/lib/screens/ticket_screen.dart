@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../services/api_client.dart';
@@ -11,11 +12,11 @@ class TicketScreen extends StatefulWidget {
 }
 
 class _TicketScreenState extends State<TicketScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textMedium = Color(0xFF374151);
+  Color get _textDark => AppColors.textDark;
+  Color get _textMedium => AppColors.textLight;
 
   // Support categories — mirrors src/lib/support/categories.ts on the web. The
   // per-category email routing is handled server-side in /api/tickets; the app
@@ -226,9 +227,9 @@ class _TicketScreenState extends State<TicketScreen> {
       backgroundColor: _bg,
       appBar: AppBar(
         backgroundColor: _primary,
-        title: const Text('Support',
+        title: Text('Support',
             style: TextStyle(color: _white, fontSize: 20, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: _white),
+        iconTheme: IconThemeData(color: _white),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -240,7 +241,7 @@ class _TicketScreenState extends State<TicketScreen> {
                 _label('Reason', required: true),
                 Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFD1D5DB)),
+                    border: Border.all(color: AppColors.border),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -268,7 +269,7 @@ class _TicketScreenState extends State<TicketScreen> {
                   if (f['type'] == 'select')
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFD1D5DB)),
+                        border: Border.all(color: AppColors.border),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -314,16 +315,16 @@ class _TicketScreenState extends State<TicketScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 10),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
             child: Text('Your Tickets',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
           ),
           if (_loadingList)
             const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
           else if (_tickets.isEmpty)
-            _card(child: const Text("You haven't raised any tickets yet.",
-                style: TextStyle(color: Color(0xFF9CA3AF))))
+            _card(child: Text("You haven't raised any tickets yet.",
+                style: TextStyle(color: AppColors.textPlaceholder)))
           else
             ..._tickets.map(_ticketCard),
         ],
@@ -361,7 +362,7 @@ class _TicketScreenState extends State<TicketScreen> {
       decoration: BoxDecoration(
         color: _white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +372,7 @@ class _TicketScreenState extends State<TicketScreen> {
             children: [
               Expanded(
                 child: Text(_typeLabelFor(type),
-                    style: const TextStyle(fontWeight: FontWeight.w600, color: _textDark)),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: _textDark)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -389,10 +390,10 @@ class _TicketScreenState extends State<TicketScreen> {
           ),
           const SizedBox(height: 6),
           for (final line in lines)
-            Text(line, style: const TextStyle(color: Color(0xFF374151), fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(line, style: TextStyle(color: AppColors.textLight, fontSize: 12, fontWeight: FontWeight.w600)),
           if (lines.isNotEmpty) const SizedBox(height: 4),
           Text(t['note']?.toString() ?? '',
-              style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
+              style: TextStyle(color: AppColors.textLight, fontSize: 13)),
         ],
       ),
     );
@@ -413,7 +414,7 @@ class _TicketScreenState extends State<TicketScreen> {
         child: RichText(
           text: TextSpan(
             text: text,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textMedium),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textMedium),
             children: required
                 ? const [TextSpan(text: ' *', style: TextStyle(color: _primary, fontWeight: FontWeight.w700))]
                 : const [],
@@ -433,7 +434,7 @@ class _TicketScreenState extends State<TicketScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            borderSide: BorderSide(color: AppColors.border),
           ),
         ),
       );

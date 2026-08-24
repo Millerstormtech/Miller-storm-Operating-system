@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AppsToolsDetailScreen extends StatelessWidget {
   const AppsToolsDetailScreen({super.key});
 
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textMedium = Color(0xFF374151);
-  static const _textLight = Color(0xFF6B7280);
+  Color get _textDark => AppColors.textDark;
+  Color get _textMedium => AppColors.textLight;
+  Color get _textLight => AppColors.textLight;
 
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
@@ -29,7 +30,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
           backgroundColor: _white,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: _textDark),
+            icon: Icon(Icons.arrow_back, color: _textDark),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -68,7 +69,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: _textDark),
+                icon: Icon(Icons.arrow_back, color: _textDark),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
@@ -87,7 +88,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               color: _bg,
-                              child: const Center(
+                              child: Center(
                                 child: Icon(Icons.image_not_supported, color: _textLight, size: 60),
                               ),
                             );
@@ -102,7 +103,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                         color: _bg,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(Icons.apps, color: _textLight, size: 60),
                       ),
                     ),
@@ -123,7 +124,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         color: _textDark,
@@ -132,7 +133,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                     ),
                     if (description.isNotEmpty) ...[
                       const SizedBox(height: 20),
-                      const Text(
+                      Text(
                         'Description',
                         style: TextStyle(
                           fontSize: 16,
@@ -143,7 +144,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         description,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           color: _textMedium,
                           height: 1.5,
@@ -152,7 +153,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                     ],
                     const SizedBox(height: 24),
                     if (webLink.isNotEmpty || appStoreLink.isNotEmpty || link.isNotEmpty) ...[
-                      const Text(
+                      Text(
                         'Available On',
                         style: TextStyle(
                           fontSize: 16,
@@ -194,7 +195,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: _primary,
-            foregroundColor: _white,
+            foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
