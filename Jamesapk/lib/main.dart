@@ -5,6 +5,7 @@ import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/firebase_messaging_service.dart';
+import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
@@ -62,6 +63,9 @@ import 'screens/branch_manager_user_management_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load the saved light/dark preference before the first frame.
+  await themeController.load();
 
   // Android 15 (target SDK 35) enforces edge-to-edge display. Opt in globally
   // so the app draws behind the system bars for ALL users (fixes Play Console's
@@ -160,16 +164,23 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    // Rebuild the whole app when the user toggles light/dark.
+    return AnimatedBuilder(
+      animation: themeController,
+      builder: (context, _) => MaterialApp(
       navigatorKey: navigatorKey,
       title: 'Miller Storm',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFCB0002)),
-        fontFamily: 'sans-serif',
-        useMaterial3: true,
-        // Smooth fade when moving between screens (no zoom/rotation) — pages
-        // open like WhatsApp/Instagram instead of the default Android zoom.
+      themeMode: themeController.isDark ? ThemeMode.dark : ThemeMode.light,
+      theme: appLightTheme.copyWith(
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: _FadePageTransitionsBuilder(),
+            TargetPlatform.iOS: _FadePageTransitionsBuilder(),
+          },
+        ),
+      ),
+      darkTheme: appDarkTheme.copyWith(
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
             TargetPlatform.android: _FadePageTransitionsBuilder(),
@@ -296,6 +307,7 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const SplashScreen());
         }
       },
+      ),
     );
   }
 }

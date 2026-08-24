@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import 'course_detail_screen.dart';
 import 'jays_ai_clone_screen.dart';
 import 'ai_clone_chat_screen.dart';
@@ -23,11 +24,11 @@ class CoursesScreen extends StatefulWidget {
 }
 
 class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProviderStateMixin {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
   static const _blue = Color(0xFF2563EB);
 
   List<dynamic> _courses = [];
@@ -384,7 +385,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
         appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Miller Storm Training Center',
           style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
@@ -414,7 +415,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
             title: 'Replay anytime',
             description: 'Tap here to replay this quick tour whenever you want a refresher.',
             child: IconButton(
-              icon: const Icon(Icons.help_outline, color: _textLight, size: 24),
+              icon: Icon(Icons.help_outline, color: _textLight, size: 24),
               tooltip: 'Guided tour',
               onPressed: () => _startTour(context),
             ),
@@ -645,10 +646,10 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
             decoration: InputDecoration(
               hintText: 'Search courses...',
               hintStyle: TextStyle(color: _textLight, fontSize: 14),
-              prefixIcon: const Icon(Icons.search, color: _textLight),
+              prefixIcon: Icon(Icons.search, color: _textLight),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, color: _textLight),
+                      icon: Icon(Icons.clear, color: _textLight),
                       onPressed: () {
                         _searchController.clear();
                         _filterCourses('');
@@ -678,7 +679,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                         children: [
                           Icon(Icons.cloud_off, size: 64, color: _textLight.withOpacity(0.4)),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             "Couldn't load courses",
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _textDark),
                           ),
@@ -716,7 +717,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                         const SizedBox(height: 16),
                         Text(
                           _searchQuery.isEmpty ? 'No courses available' : 'No courses found',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _textDark),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _textDark),
                         ),
                         if (_searchQuery.isNotEmpty) const SizedBox(height: 8),
                         if (_searchQuery.isNotEmpty) Text(
@@ -846,7 +847,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           Expanded(
             child: Text(
               name.toUpperCase(),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: _textDark),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: _textDark),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -866,7 +867,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
             children: [
               Icon(Icons.playlist_add, size: 64, color: _textLight.withOpacity(0.3)),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'No Playlists Yet',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _textDark),
               ),
@@ -901,7 +902,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
             children: [
               Icon(Icons.assignment, size: 64, color: _textLight.withOpacity(0.3)),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'No Assigned Playlists',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _textDark),
               ),
@@ -959,7 +960,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                   children: [
                     Text(
                       playlistName ?? 'Untitled Playlist',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: _textDark,
@@ -968,12 +969,12 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                     const SizedBox(height: 4),
                     Text(
                       'Course: $courseName',
-                      style: const TextStyle(fontSize: 13, color: _textLight),
+                      style: TextStyle(fontSize: 13, color: _textLight),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '$moduleCount module${moduleCount != 1 ? 's' : ''}',
-                      style: const TextStyle(fontSize: 13, color: _textLight),
+                      style: TextStyle(fontSize: 13, color: _textLight),
                     ),
                     if (managerName != null) const SizedBox(height: 2),
                     if (managerName != null) Text(
@@ -1009,7 +1010,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primary,
-                    foregroundColor: _white,
+                    foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -1136,7 +1137,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                                       ),
                                     ),
                                     child: Center(
-                                      child: Icon(icon, size: 64, color: _white),
+                                      child: Icon(icon, size: 64, color: Colors.white),
                                     ),
                                   );
                                 },
@@ -1155,7 +1156,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                                       end: Alignment.bottomRight,
                                     ),
                                   ),
-                                  child: Center(child: CircularProgressIndicator(color: _white, strokeWidth: 2)),
+                                  child: Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
                                 ),
                                 errorWidget: (context, url, error) {
                                   return Container(
@@ -1167,14 +1168,14 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                                       ),
                                     ),
                                     child: Center(
-                                      child: Icon(icon, size: 64, color: _white),
+                                      child: Icon(icon, size: 64, color: Colors.white),
                                     ),
                                   );
                                 },
                               ),
                       )
                     : Center(
-                        child: Icon(icon, size: 64, color: _white),
+                        child: Icon(icon, size: 64, color: Colors.white),
                       ),
               ),
               Positioned(
@@ -1189,7 +1190,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                   child: Text(
                     statusText,
                     style: const TextStyle(
-                      color: _white,
+                      color: Colors.white,
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.3,
@@ -1206,7 +1207,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: _textDark,
@@ -1218,7 +1219,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                     description.trim(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13, height: 1.35, color: _textLight),
+                    style: TextStyle(fontSize: 13, height: 1.35, color: _textLight),
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -1292,7 +1293,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
               const SizedBox(height: 4),
               Text(
                 label,
-                style: const TextStyle(fontSize: 10, color: _textLight),
+                style: TextStyle(fontSize: 10, color: _textLight),
                 maxLines: 1,
                 softWrap: false,
                 overflow: TextOverflow.ellipsis,

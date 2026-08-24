@@ -6,6 +6,7 @@ import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../theme/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,12 +16,12 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _border => AppColors.border;
 
   String _userName = 'User';
   String _userEmail = '';
@@ -394,18 +395,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: _white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           'Delete Account',
           style: TextStyle(color: _textDark, fontWeight: FontWeight.bold),
         ),
-        content: const Text(
+        content: Text(
           'Are you sure you want to delete your account? This action cannot be undone.',
           style: TextStyle(color: _textDark),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: _textLight)),
+            child: Text('Cancel', style: TextStyle(color: _textLight)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -472,7 +473,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         title: Text(
           'Profile',
-          style: const TextStyle(
+          style: TextStyle(
             color: _white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -480,12 +481,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.confirmation_number_outlined, color: _white),
+            icon: Icon(Icons.confirmation_number_outlined, color: _white),
             onPressed: () => Navigator.pushNamed(context, '/tickets'),
             tooltip: 'Support',
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: _white),
+            icon: Icon(Icons.logout, color: _white),
             onPressed: _logout,
             tooltip: 'Logout',
           ),
@@ -507,7 +508,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       decoration: BoxDecoration(
         color: _white,
-        border: const Border(top: BorderSide(color: _border, width: 1)),
+        border: Border(top: BorderSide(color: _border, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -671,7 +672,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           _userName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: _white,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -698,7 +699,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: Text(
                             _userRole.toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _white,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -718,6 +719,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildDarkModeToggle(),
+                  const SizedBox(height: 16),
                   _buildTextField(
                     label: 'Full Name',
                     controller: _nameController,
@@ -753,7 +756,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(
@@ -761,7 +764,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Save Changes',
                               style: TextStyle(
                                 fontSize: 16,
@@ -844,7 +847,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               child: _isSaving
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
@@ -852,7 +855,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Text(
+                  : Text(
                       'Save Changes',
                       style: TextStyle(
                         fontSize: 16,
@@ -938,7 +941,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: _textDark,
@@ -956,7 +959,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: InputDecoration(
             hintText: hint,
             helperText: helperText,
-            helperStyle: const TextStyle(
+            helperStyle: TextStyle(
               fontSize: 12,
               color: _textLight,
             ),
@@ -982,6 +985,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // App-wide light/dark toggle. Reads/writes the global themeController; the app
+  // rebuilds on toggle, so wrapping in an AnimatedBuilder keeps the Switch in sync.
+  Widget _buildDarkModeToggle() {
+    return AnimatedBuilder(
+      animation: themeController,
+      builder: (context, _) {
+        return Container(
+          decoration: BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: SwitchListTile(
+            value: themeController.isDark,
+            onChanged: (v) => themeController.setDark(v),
+            activeColor: _primary,
+            secondary: Icon(Icons.dark_mode, color: _textDark),
+            title: Text(
+              'Dark Mode',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: _textDark,
+              ),
+            ),
+            subtitle: Text(
+              'Switch between light and dark themes',
+              style: TextStyle(fontSize: 12, color: _textLight),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1020,7 +1065,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: _textDark,

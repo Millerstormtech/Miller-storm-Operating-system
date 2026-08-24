@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
 import '../services/api_client.dart';
+import '../theme/app_theme.dart';
 
 // Sales Scoreboard — a faithful port of the web ScoreboardHome (/api/scoreboard).
 // Greeting, rank strip, Week/Month/Year toggle, three metric tiles (value +
@@ -23,17 +24,17 @@ class ScoreboardView extends StatefulWidget {
 }
 
 class _ScoreboardViewState extends State<ScoreboardView> {
-  static const _white = Color(0xFFFFFFFF);
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
-  static const _textPlaceholder = Color(0xFF9CA3AF);
-  static const _border = Color(0xFFE5E7EB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _textPlaceholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
   static const _green = Color(0xFF10B981);
   static const _red = Color(0xFFDC2626);
   static const _neutral = Color(0xFF6B7280);
-  static const _track = Color(0xFFE5E7EB);
-  static const _notch = Color(0xFF111827);
+  Color get _track => AppColors.border;
+  Color get _notch => AppColors.textDark;
   static const _link = Color(0xFF2563EB);
 
   String _window = 'month';
@@ -297,7 +298,7 @@ class _ScoreboardViewState extends State<ScoreboardView> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: _card,
-      child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
+      child: Text(text, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
     );
   }
 
@@ -352,13 +353,13 @@ class _ScoreboardViewState extends State<ScoreboardView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label.toUpperCase(),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.5)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.5)),
           const SizedBox(height: 4),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(formatted, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _textDark)),
+              Text(formatted, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _textDark)),
               if (trendArrow != null && trendText != null) ...[
                 const SizedBox(width: 8),
                 Text('$trendArrow $trendText',
@@ -369,14 +370,14 @@ class _ScoreboardViewState extends State<ScoreboardView> {
           if (subtitle != null)
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text(subtitle, style: const TextStyle(fontSize: 12, color: _textPlaceholder)),
+              child: Text(subtitle, style: TextStyle(fontSize: 12, color: _textPlaceholder)),
             ),
           if (goal != null && fill != null && notch != null) ...[
             const SizedBox(height: 10),
             _goalBar(fill, notch),
             const SizedBox(height: 4),
             Text('${(fill * 100).round()}% of ${format == 'money' ? _fmtMoney(goal) : _fmtCount(goal)} goal',
-                style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
+                style: TextStyle(fontSize: 11, color: _textPlaceholder)),
           ],
         ],
       ),
@@ -387,9 +388,9 @@ class _ScoreboardViewState extends State<ScoreboardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
+        Text(label, style: TextStyle(fontSize: 11, color: _textPlaceholder)),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _textDark)),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _textDark)),
       ],
     );
   }
@@ -403,7 +404,7 @@ class _ScoreboardViewState extends State<ScoreboardView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('YOU (PERSONAL)',
+          Text('YOU (PERSONAL)',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.5)),
           const SizedBox(height: 6),
           Wrap(
@@ -438,8 +439,8 @@ class _ScoreboardViewState extends State<ScoreboardView> {
   Widget build(BuildContext context) {
     // First load, nothing to show yet.
     if (_data == null && _loading) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
+      return Padding(
+        padding: const EdgeInsets.all(24),
         child: Text('Loading your scoreboard…', style: TextStyle(color: _textLight, fontSize: 14)),
       );
     }
@@ -455,9 +456,9 @@ class _ScoreboardViewState extends State<ScoreboardView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hi, $_firstName', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _textDark)),
+            Text('Hi, $_firstName', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _textDark)),
             const SizedBox(height: 12),
-            const Text("This account doesn't have scoreboard metrics of its own to show.",
+            Text("This account doesn't have scoreboard metrics of its own to show.",
                 style: TextStyle(fontSize: 14, color: _textLight)),
           ],
         ),
@@ -484,7 +485,7 @@ class _ScoreboardViewState extends State<ScoreboardView> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Hi, $_firstName', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _textDark)),
+          Text('Hi, $_firstName', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _textDark)),
           const SizedBox(height: 16),
           if (rankWidget != null) rankWidget,
           _windowToggle(),
@@ -494,17 +495,17 @@ class _ScoreboardViewState extends State<ScoreboardView> {
               "We couldn't match your account to a ${scopeLevel == 'team' ? 'team' : 'branch'} on the org chart, "
               "so there's nothing to show yet. Check your profile, or ask an admin to confirm your "
               "${scopeLevel == 'team' ? 'team' : 'branch'}.",
-              style: const TextStyle(fontSize: 14, color: _textLight),
+              style: TextStyle(fontSize: 14, color: _textLight),
             )
           else ...[
             if (scopeText != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(scopeText, style: const TextStyle(fontSize: 13, color: _textLight)),
+                child: Text(scopeText, style: TextStyle(fontSize: 13, color: _textLight)),
               ),
             if (_loading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Text('Updating your numbers…', style: TextStyle(color: _textPlaceholder, fontSize: 13)),
               )
             else if (_error)
@@ -542,7 +543,7 @@ class _ScoreboardViewState extends State<ScoreboardView> {
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 12),
                 child: Text(_formatSyncedAt(data['syncedAt'] as String?),
-                    style: const TextStyle(fontSize: 12, color: _textPlaceholder)),
+                    style: TextStyle(fontSize: 12, color: _textPlaceholder)),
               ),
               if (widget.onOpenLeaderboard != null)
                 GestureDetector(
@@ -634,13 +635,13 @@ class _ScoreboardViewState extends State<ScoreboardView> {
   }) {
     Widget body;
     if (loading) {
-      body = const Text('Loading…', style: TextStyle(fontSize: 13, color: _textLight));
+      body = Text('Loading…', style: TextStyle(fontSize: 13, color: _textLight));
     } else if (error) {
       // Never fall through to an empty podium on a failed request: three blank
       // medals would falsely claim "nobody is winning".
-      body = const Text("Couldn't load this right now.", style: TextStyle(fontSize: 13, color: _textLight));
+      body = Text("Couldn't load this right now.", style: TextStyle(fontSize: 13, color: _textLight));
     } else if (rows.isEmpty) {
-      body = Text(emptyMessage, style: const TextStyle(fontSize: 13, color: _textLight));
+      body = Text(emptyMessage, style: TextStyle(fontSize: 13, color: _textLight));
     } else {
       body = Column(children: rows.map(_podiumRow).toList());
     }
@@ -653,15 +654,15 @@ class _ScoreboardViewState extends State<ScoreboardView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title.toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.5)),
           const SizedBox(height: 2),
-          Text(caption, style: const TextStyle(fontSize: 12, color: _textPlaceholder)),
+          Text(caption, style: TextStyle(fontSize: 12, color: _textPlaceholder)),
           const SizedBox(height: 12),
           body,
           if (note != null) ...[
             const SizedBox(height: 10),
-            Text(note, style: const TextStyle(fontSize: 11.5, color: _textPlaceholder, height: 1.4)),
+            Text(note, style: TextStyle(fontSize: 11.5, color: _textPlaceholder, height: 1.4)),
           ],
           if (linkLabel != null && onLink != null) ...[
             const SizedBox(height: 10),
@@ -688,7 +689,7 @@ class _ScoreboardViewState extends State<ScoreboardView> {
       2: [Color(0xFFE9EDF2), Color(0xFFB9C0C9)],
       3: [Color(0xFFF0B98A), Color(0xFFCD7F45)],
     };
-    final grad = medals[place] ?? const [_border, _border];
+    final grad = medals[place] ?? [_border, _border];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -727,10 +728,10 @@ class _ScoreboardViewState extends State<ScoreboardView> {
             child: Text(name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
           ),
           const SizedBox(width: 8),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _textDark)),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _textDark)),
         ],
       ),
     );
@@ -738,6 +739,6 @@ class _ScoreboardViewState extends State<ScoreboardView> {
 
   Widget _podiumInitial(String name) {
     final letter = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
-    return Text(letter, style: const TextStyle(color: _white, fontSize: 14, fontWeight: FontWeight.w700));
+    return Text(letter, style: TextStyle(color: _white, fontSize: 14, fontWeight: FontWeight.w700));
   }
 }

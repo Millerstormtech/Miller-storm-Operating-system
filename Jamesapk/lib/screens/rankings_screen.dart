@@ -6,6 +6,7 @@ import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../widgets/scoreboard_view.dart';
 import '../widgets/notification_bell.dart';
+import '../theme/app_theme.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
 // live from AccuLynx + RepCard via /api/leaderboard. Self-contained per panel.
@@ -17,13 +18,13 @@ class RankingsScreen extends StatefulWidget {
 }
 
 class _RankingsScreenState extends State<RankingsScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
-  static const _textPlaceholder = Color(0xFF9CA3AF);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _textPlaceholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
   static const _green = Color(0xFF16A34A);
 
   static const List<Map<String, String>> _periods = [
@@ -260,7 +261,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
             children: [
               const SizedBox(height: 10),
               Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(20, 14, 20, 4),
                 child: Align(alignment: Alignment.centerLeft, child: Text('Sort By', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark))),
               ),
@@ -369,7 +370,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
             _filterSummary,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12.5, color: _textLight, fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 12.5, color: _textLight, fontWeight: FontWeight.w500),
           ),
         ),
       ],
@@ -380,12 +381,12 @@ class _RankingsScreenState extends State<RankingsScreen> {
   Widget _filterSheetRow(IconData icon, String label, String value, VoidCallback onTap) {
     return ListTile(
       leading: Icon(icon, color: _textLight, size: 22),
-      title: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
+      title: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Flexible(child: Text(value, style: const TextStyle(fontSize: 13, color: _textLight), overflow: TextOverflow.ellipsis)),
-          const Icon(Icons.chevron_right, color: _textPlaceholder, size: 20),
+          Flexible(child: Text(value, style: TextStyle(fontSize: 13, color: _textLight), overflow: TextOverflow.ellipsis)),
+          Icon(Icons.chevron_right, color: _textPlaceholder, size: 20),
         ],
       ),
       onTap: onTap,
@@ -410,7 +411,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 14, 12, 4),
                     child: Row(
                       children: [
-                        const Text('Filters', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+                        Text('Filters', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
                         const Spacer(),
                         if (_activeFilterCount > 0 || _period != 'month')
                           TextButton(
@@ -430,8 +431,8 @@ class _RankingsScreenState extends State<RankingsScreen> {
                     value: _hideFormer,
                     activeColor: _primary,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    secondary: const Icon(Icons.visibility_off_outlined, color: _textLight, size: 22),
-                    title: const Text('Hide former reps', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
+                    secondary: Icon(Icons.visibility_off_outlined, color: _textLight, size: 22),
+                    title: Text('Hide former reps', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
                     onChanged: (v) { setState(() => _hideFormer = v); setSheet(() {}); },
                   ),
                   const SizedBox(height: 10),
@@ -484,7 +485,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -512,7 +513,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                               shape: BoxShape.circle,
                               border: Border.all(color: _border),
                             ),
-                            child: const Icon(Icons.question_mark, size: 18, color: _textLight),
+                            child: Icon(Icons.question_mark, size: 18, color: _textLight),
                           ),
                         ),
                       ),
@@ -558,7 +559,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                           if (i < headerWidgets.length) return headerWidgets[i];
                           final ri = i - headerWidgets.length;
                           if (visible.isEmpty) {
-                            return const Padding(
+                            return Padding(
                               padding: EdgeInsets.only(top: 60),
                               child: Center(
                                 child: Text('No data for this filter.',
@@ -701,7 +702,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   children: [
                     const SizedBox(height: 10),
                     Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
                       child: Align(
                         alignment: Alignment.centerLeft,
@@ -714,18 +715,18 @@ class _RankingsScreenState extends State<RankingsScreen> {
                         onChanged: (v) => setSheet(() => search = v),
                         decoration: InputDecoration(
                           hintText: 'Search reps…',
-                          hintStyle: const TextStyle(color: _textPlaceholder, fontSize: 14),
-                          prefixIcon: const Icon(Icons.search, size: 20, color: _textLight),
+                          hintStyle: TextStyle(color: _textPlaceholder, fontSize: 14),
+                          prefixIcon: Icon(Icons.search, size: 20, color: _textLight),
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _border)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _border)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: _border)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: _border)),
                           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _primary)),
                         ),
                       ),
                     ),
                     Flexible(
                       child: reps.isEmpty
-                          ? const Padding(padding: EdgeInsets.all(24), child: Text('No reps found', style: TextStyle(color: _textPlaceholder)))
+                          ? Padding(padding: EdgeInsets.all(24), child: Text('No reps found', style: TextStyle(color: _textPlaceholder)))
                           : ListView.builder(
                               shrinkWrap: true,
                               itemCount: reps.length,
@@ -744,7 +745,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                           onChanged: (_) => toggle(rp.key),
                                         ),
-                                        Expanded(child: Text(rp.value, style: const TextStyle(fontSize: 15, color: _textDark))),
+                                        Expanded(child: Text(rp.value, style: TextStyle(fontSize: 15, color: _textDark))),
                                       ],
                                     ),
                                   ),
@@ -752,14 +753,14 @@ class _RankingsScreenState extends State<RankingsScreen> {
                               },
                             ),
                     ),
-                    const Divider(height: 1, color: _border),
+                    Divider(height: 1, color: _border),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                       child: Row(
                         children: [
                           TextButton(
                             onPressed: () => setSheet(() => draft.clear()),
-                            child: const Text('Clear', style: TextStyle(color: _textLight, fontWeight: FontWeight.w600)),
+                            child: Text('Clear', style: TextStyle(color: _textLight, fontWeight: FontWeight.w600)),
                           ),
                           const Spacer(),
                           ElevatedButton(
@@ -809,7 +810,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+                  child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
                 ),
               ),
               Flexible(
@@ -838,7 +839,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                                   // The weekly window resets Monday 12:00 AM Central.
                                   if (o.key == 'week') ...[
                                     const SizedBox(height: 3),
-                                    const Text('Resets Mondays at 12:00 AM CT.',
+                                    Text('Resets Mondays at 12:00 AM CT.',
                                         style: TextStyle(fontSize: 12, color: _textLight)),
                                   ],
                                 ],
@@ -868,13 +869,13 @@ class _RankingsScreenState extends State<RankingsScreen> {
         decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _border)),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined, size: 14, color: _textLight),
+            Icon(Icons.calendar_today_outlined, size: 14, color: _textLight),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 10, color: _textPlaceholder, fontWeight: FontWeight.w600)),
+                  Text(label, style: TextStyle(fontSize: 10, color: _textPlaceholder, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 1),
                   Text(value == null ? 'Select' : _fmtDate(value),
                       style: TextStyle(fontSize: 13, color: value == null ? _textPlaceholder : _textDark, fontWeight: FontWeight.w600)),
@@ -923,7 +924,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                       ? Text(medal, style: const TextStyle(fontSize: 24), textAlign: TextAlign.center)
                       : Text('$rank',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _textLight)),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _textLight)),
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -950,7 +951,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                           Flexible(
                             child: Text(
                               isYou ? '$name (You)' : name,
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark),
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark),
                               maxLines: 2, overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -962,14 +963,14 @@ class _RankingsScreenState extends State<RankingsScreen> {
                                 color: const Color(0xFFF3F4F6),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text('(former)',
+                              child: Text('(former)',
                                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _textLight)),
                             ),
                           ],
                         ],
                       ),
                       if (subtitle.isNotEmpty)
-                        Text(subtitle, style: const TextStyle(fontSize: 12, color: _textPlaceholder),
+                        Text(subtitle, style: TextStyle(fontSize: 12, color: _textPlaceholder),
                             maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
@@ -1004,9 +1005,9 @@ class _RankingsScreenState extends State<RankingsScreen> {
   Widget _stat(String label, String value) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _textDark)),
+        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _textDark)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
+        Text(label, style: TextStyle(fontSize: 11, color: _textPlaceholder)),
       ],
     );
   }
@@ -1074,7 +1075,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('YTD TOP SALES',
+          Text('YTD TOP SALES',
               style: TextStyle(color: _textLight, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
           const SizedBox(height: 12),
           for (int i = 0; i < podium.length; i++) ...[
@@ -1124,13 +1125,13 @@ class _RankingsScreenState extends State<RankingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(name,
-                  style: const TextStyle(color: _textDark, fontSize: 14.5, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: _textDark, fontSize: 14.5, fontWeight: FontWeight.w700),
                   maxLines: 2, overflow: TextOverflow.ellipsis),
               Text(
                 behindBy == null
                     ? 'Leads the company'
                     : 'Behind $behindName by ${_money(behindBy)}',
-                style: const TextStyle(color: _textLight, fontSize: 11.5),
+                style: TextStyle(color: _textLight, fontSize: 11.5),
                 maxLines: 1, overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -1138,7 +1139,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         ),
         const SizedBox(width: 8),
         Text(_money(p['revenue']),
-            style: const TextStyle(color: _textDark, fontSize: 15, fontWeight: FontWeight.w800)),
+            style: TextStyle(color: _textDark, fontSize: 15, fontWeight: FontWeight.w800)),
       ],
     );
   }
@@ -1171,12 +1172,12 @@ class _RankingsScreenState extends State<RankingsScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: const BoxDecoration(color: _white, border: Border(top: BorderSide(color: _border))),
+      decoration: BoxDecoration(color: _white, border: Border(top: BorderSide(color: _border))),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text('${rows.length} rep${rows.length == 1 ? '' : 's'}',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textLight)),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textLight)),
           Text('Total ${_money(_sum('revenue'))}',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _green)),
         ],
@@ -1187,8 +1188,8 @@ class _RankingsScreenState extends State<RankingsScreen> {
   Widget _totalStat(String label, num value) => Expanded(
         child: Column(
           children: [
-            Text('${value.round()}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _textDark)),
-            Text(label, style: const TextStyle(fontSize: 10.5, color: _textLight), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text('${value.round()}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _textDark)),
+            Text(label, style: TextStyle(fontSize: 10.5, color: _textLight), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       );
@@ -1197,7 +1198,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: _white,
-        border: const Border(top: BorderSide(color: _border, width: 1)),
+        border: Border(top: BorderSide(color: _border, width: 1)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2))],
       ),
       child: SafeArea(
