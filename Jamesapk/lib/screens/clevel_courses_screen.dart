@@ -1263,6 +1263,7 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
               '${course['progress']?['progressPercent'] ?? 0}%',
               _getCourseIcon(course['icon']),
               course['coverImageUrl'],
+              description: (course['description'] ?? '').toString(),
             ),
           ),
         );
@@ -1711,7 +1712,7 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
     return Icons.school_outlined;
   }
 
-  Widget _buildCourseCard(String title, String progress, IconData icon, String? coverImageUrl) {
+  Widget _buildCourseCard(String title, String progress, IconData icon, String? coverImageUrl, {String? description}) {
     final progressValue = int.parse(progress.replaceAll('%', ''));
     String statusText = '';
     Color statusColor = _primary;
@@ -1835,13 +1836,27 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: _textDark,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _textDark,
+                  ),
+                ),
+                if (description != null && description.trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    description.trim(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, height: 1.35, color: _textLight),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
