@@ -6,6 +6,7 @@ import 'storm_chat_room_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import '../theme/app_theme.dart';
 
 class MarketingStormChatScreen extends StatefulWidget {
   const MarketingStormChatScreen({Key? key}) : super(key: key);
@@ -15,6 +16,16 @@ class MarketingStormChatScreen extends StatefulWidget {
 }
 
 class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
+  // Theme-aware surface/text/border colours (flip with dark mode). Brand red and
+  // status/badge colours stay hardcoded below.
+  Color get _white => AppColors.surface;
+  Color get _bg => AppColors.bg;
+  Color get _surfaceAlt => AppColors.surfaceAlt;
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _placeholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
+
   List<dynamic> groups = [];
   Map<String, int> unreadCounts = {};
   Map<String, int> mentionCounts = {};
@@ -125,7 +136,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
         return false;
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: _bg,
         body: SafeArea(
           child: Column(
             children: [
@@ -135,12 +146,12 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'StormChat',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
+                        color: _textDark,
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -175,26 +186,26 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.chat_bubble_outline,
             size: 80,
-            color: Colors.grey,
+            color: _placeholder,
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No groups yet',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              color: _textDark,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'You haven\'t been added to any groups',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey,
+              color: _textLight,
             ),
           ),
         ],
@@ -293,7 +304,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
           : <String, dynamic>{};
       if (res.statusCode == 200 || res.statusCode == 201) {
         if (data['alreadyMember'] == true) {
-          await _fetchGroups();
+          await _fetchGroups(); // admin already added them — just refresh
         } else {
           setState(() => group['joinStatus'] = 'pending');
           _snack("Request sent — the group admin will approve it.");
@@ -333,7 +344,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: isSubgroup ? 6 : 10),
       decoration: BoxDecoration(
-        color: isSubgroup ? const Color(0xFFFAFAFA) : Colors.white,
+        color: isSubgroup ? _surfaceAlt : _white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -415,10 +426,10 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                           Expanded(
                             child: Text(
                               name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
+                                color: _textDark,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -437,13 +448,13 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                         children: [
                           Icon(notMember ? Icons.lock_outline : Icons.people_outline,
                               size: 13,
-                              color: notMember ? const Color(0xFFCB0002) : const Color(0xFF9CA3AF)),
+                              color: notMember ? const Color(0xFFCB0002) : _placeholder),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               subtitle,
-                              style: const TextStyle(
-                                  fontSize: 13, color: Color(0xFF6B7280)),
+                              style: TextStyle(
+                                  fontSize: 13, color: _textLight),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -459,7 +470,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: joinStatus == 'pending'
-                          ? const Color(0xFFF3F4F6)
+                          ? _surfaceAlt
                           : const Color(0xFFFFECEC),
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -467,7 +478,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                       joinStatus == 'pending' ? 'Requested' : 'Join',
                       style: TextStyle(
                         color: joinStatus == 'pending'
-                            ? const Color(0xFF6B7280)
+                            ? _textLight
                             : const Color(0xFFCB0002),
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -516,8 +527,8 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                         ),
                       ),
                     if (mentionCount == 0 && unreadCount == 0)
-                      const Icon(Icons.chevron_right,
-                          color: Color(0xFFD1D5DB), size: 22),
+                      Icon(Icons.chevron_right,
+                          color: _border, size: 22),
                   ],
                 ),
               ],
@@ -533,7 +544,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
       padding: const EdgeInsets.only(bottom: 8, top: 2, left: 4),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 0.5),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _placeholder, letterSpacing: 0.5),
       ),
     );
   }
@@ -570,7 +581,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
@@ -606,9 +617,9 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 3),
-                      const Text('Private message', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                      Text('Private message', style: TextStyle(fontSize: 13, color: _textLight)),
                     ],
                   ),
                 ),
@@ -621,7 +632,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                     child: Text(unreadCount > 99 ? '99+' : unreadCount.toString(), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                   )
                 else
-                  const Icon(Icons.chevron_right, color: Color(0xFFD1D5DB), size: 22),
+                  Icon(Icons.chevron_right, color: _border, size: 22),
               ],
             ),
           ),
@@ -702,7 +713,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         return StatefulBuilder(
@@ -726,10 +737,10 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 12),
-                    Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2))),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
-                      child: Align(alignment: Alignment.centerLeft, child: Text('New message', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF111827)))),
+                    Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                      child: Align(alignment: Alignment.centerLeft, child: Text('New message', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _textDark))),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -740,8 +751,8 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                           hintText: 'Search people',
                           prefixIcon: const Icon(Icons.search, size: 20),
                           contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _border)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _border)),
                         ),
                       ),
                     ),
@@ -750,7 +761,7 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                       child: loading
                           ? const Center(child: CircularProgressIndicator(color: Color(0xFFCB0002)))
                           : filtered.isEmpty
-                              ? const Center(child: Text('No people found', style: TextStyle(color: Color(0xFF9CA3AF))))
+                              ? Center(child: Text('No people found', style: TextStyle(color: _placeholder)))
                               : ListView.builder(
                                   itemCount: filtered.length,
                                   itemBuilder: (c, i) {
@@ -765,8 +776,8 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                                         backgroundImage: img.isNotEmpty ? CachedNetworkImageProvider('https://millerstorm.tech$img') : null,
                                         child: img.isEmpty ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white)) : null,
                                       ),
-                                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                      subtitle: Text(role, style: const TextStyle(color: Color(0xFF9CA3AF))),
+                                      title: Text(name, style: TextStyle(fontWeight: FontWeight.w600, color: _textDark)),
+                                      subtitle: Text(role, style: TextStyle(color: _placeholder)),
                                       onTap: () => _startDmWith((u['_id'] ?? u['id']).toString()),
                                     );
                                   },
@@ -803,8 +814,8 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
   Widget _buildBottomNav(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(top: BorderSide(color: Color(0xFFD1D5DB), width: 1)),
+        color: _white,
+        border: Border(top: BorderSide(color: _border, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -851,15 +862,15 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
             children: [
               Icon(
                 icon,
-                color: const Color(0xFF9CA3AF),
+                color: _placeholder,
                 size: 24,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
-                  color: Color(0xFF9CA3AF),
+                  color: _placeholder,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

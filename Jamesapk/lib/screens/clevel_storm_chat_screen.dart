@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import '../theme/app_theme.dart';
 
 class CLevelStormChatScreen extends StatefulWidget {
   const CLevelStormChatScreen({Key? key}) : super(key: key);
@@ -17,6 +18,16 @@ class CLevelStormChatScreen extends StatefulWidget {
 }
 
 class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
+  // Theme-aware surface/text/border colours (flip with dark mode). Brand red and
+  // status/badge colours stay hardcoded below.
+  Color get _white => AppColors.surface;
+  Color get _bg => AppColors.bg;
+  Color get _surfaceAlt => AppColors.surfaceAlt;
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _placeholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
+
   List<dynamic> groups = [];
   Map<String, int> unreadCounts = {};
   Map<String, int> mentionCounts = {};
@@ -126,7 +137,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
         return false;
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: _bg,
         body: SafeArea(
         child: Column(
           children: [
@@ -135,12 +146,12 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'StormChat',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
+                      color: _textDark,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -172,12 +183,12 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('No groups yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87)),
-          SizedBox(height: 8),
-          Text('You haven\'t been added to any groups', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        children: [
+          Icon(Icons.chat_bubble_outline, size: 80, color: _placeholder),
+          const SizedBox(height: 16),
+          Text('No groups yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _textDark)),
+          const SizedBox(height: 8),
+          Text('You haven\'t been added to any groups', style: TextStyle(fontSize: 14, color: _textLight)),
         ],
       ),
     );
@@ -314,7 +325,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: isSubgroup ? 6 : 10),
       decoration: BoxDecoration(
-        color: isSubgroup ? const Color(0xFFFAFAFA) : Colors.white,
+        color: isSubgroup ? _surfaceAlt : _white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -396,10 +407,10 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                           Expanded(
                             child: Text(
                               name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
+                                color: _textDark,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -418,13 +429,13 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                         children: [
                           Icon(notMember ? Icons.lock_outline : Icons.people_outline,
                               size: 13,
-                              color: notMember ? const Color(0xFFCB0002) : const Color(0xFF9CA3AF)),
+                              color: notMember ? const Color(0xFFCB0002) : _placeholder),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               subtitle,
-                              style: const TextStyle(
-                                  fontSize: 13, color: Color(0xFF6B7280)),
+                              style: TextStyle(
+                                  fontSize: 13, color: _textLight),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -440,7 +451,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: joinStatus == 'pending'
-                          ? const Color(0xFFF3F4F6)
+                          ? _surfaceAlt
                           : const Color(0xFFFFECEC),
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -448,7 +459,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                       joinStatus == 'pending' ? 'Requested' : 'Join',
                       style: TextStyle(
                         color: joinStatus == 'pending'
-                            ? const Color(0xFF6B7280)
+                            ? _textLight
                             : const Color(0xFFCB0002),
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -497,8 +508,8 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                         ),
                       ),
                     if (mentionCount == 0 && unreadCount == 0)
-                      const Icon(Icons.chevron_right,
-                          color: Color(0xFFD1D5DB), size: 22),
+                      Icon(Icons.chevron_right,
+                          color: _border, size: 22),
                   ],
                 ),
               ],
@@ -514,7 +525,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
       padding: const EdgeInsets.only(bottom: 8, top: 2, left: 4),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 0.5),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _placeholder, letterSpacing: 0.5),
       ),
     );
   }
@@ -551,7 +562,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
@@ -587,9 +598,9 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 3),
-                      const Text('Private message', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                      Text('Private message', style: TextStyle(fontSize: 13, color: _textLight)),
                     ],
                   ),
                 ),
@@ -602,7 +613,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                     child: Text(unreadCount > 99 ? '99+' : unreadCount.toString(), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                   )
                 else
-                  const Icon(Icons.chevron_right, color: Color(0xFFD1D5DB), size: 22),
+                  Icon(Icons.chevron_right, color: _border, size: 22),
               ],
             ),
           ),
@@ -680,7 +691,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         return StatefulBuilder(
@@ -704,10 +715,10 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 12),
-                    Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2))),
-                    const Padding(
+                    Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
+                    Padding(
                       padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
-                      child: Align(alignment: Alignment.centerLeft, child: Text('New message', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF111827)))),
+                      child: Align(alignment: Alignment.centerLeft, child: Text('New message', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _textDark))),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -718,8 +729,8 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                           hintText: 'Search people',
                           prefixIcon: const Icon(Icons.search, size: 20),
                           contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _border)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _border)),
                         ),
                       ),
                     ),
@@ -728,7 +739,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                       child: loading
                           ? const Center(child: CircularProgressIndicator(color: Color(0xFFCB0002)))
                           : filtered.isEmpty
-                              ? const Center(child: Text('No people found', style: TextStyle(color: Color(0xFF9CA3AF))))
+                              ? Center(child: Text('No people found', style: TextStyle(color: _placeholder)))
                               : ListView.builder(
                                   itemCount: filtered.length,
                                   itemBuilder: (c, i) {
@@ -744,7 +755,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                                         child: img.isEmpty ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white)) : null,
                                       ),
                                       title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                      subtitle: Text(role, style: const TextStyle(color: Color(0xFF9CA3AF))),
+                                      subtitle: Text(role, style: TextStyle(color: _placeholder)),
                                       onTap: () => _startDmWith((u['_id'] ?? u['id']).toString()),
                                     );
                                   },

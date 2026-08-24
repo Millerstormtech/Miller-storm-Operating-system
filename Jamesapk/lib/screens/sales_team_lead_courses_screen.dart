@@ -9,6 +9,7 @@ import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
 import 'ai_clone_chat_screen.dart';
+import '../theme/app_theme.dart';
 
 class SalesTeamLeadCoursesScreen extends StatefulWidget {
   const SalesTeamLeadCoursesScreen({super.key});
@@ -18,11 +19,11 @@ class SalesTeamLeadCoursesScreen extends StatefulWidget {
 }
 
 class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen> with SingleTickerProviderStateMixin {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
   static const _blue = Color(0xFF2563EB);
   static const _link = Color(0xFFCB0002); // Miller Storm Red (AI Assistants)
 
@@ -609,7 +610,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
             // Sticky action bar
             Container(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: _white,
                 border: Border(top: BorderSide(color: Color(0xFFEEF0F3))),
               ),
@@ -628,7 +629,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                         lastDate: today.add(const Duration(days: 365 * 2)),
                         builder: (context, child) => Theme(
                           data: Theme.of(context).copyWith(
-                            colorScheme: const ColorScheme.light(
+                            colorScheme: ColorScheme.light(
                               primary: _primary,
                               onPrimary: _white,
                               onSurface: _textDark,
@@ -1031,7 +1032,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                 title: 'Replay anytime',
                 description: 'Tap here to replay this quick tour whenever you want a refresher.',
                 child: IconButton(
-                  icon: const Icon(Icons.help_outline, color: _textLight, size: 22),
+                  icon: Icon(Icons.help_outline, color: _textLight, size: 22),
                   tooltip: 'Guided tour',
                   onPressed: () => _startTour(context),
                 ),
@@ -1329,7 +1330,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
           Expanded(
             child: Text(
               name.toUpperCase(),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: _textDark),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: _textDark),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1377,7 +1378,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
             children: [
               Icon(Icons.playlist_add, size: 64, color: _textLight.withOpacity(0.3)),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'No Playlists Yet',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _textDark),
               ),
@@ -1434,7 +1435,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                   children: [
                     Text(
                       playlistName ?? 'Untitled Playlist',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: _textDark,
@@ -1443,12 +1444,12 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                     const SizedBox(height: 4),
                     Text(
                       'Course: $courseName',
-                      style: const TextStyle(fontSize: 13, color: _textLight),
+                      style: TextStyle(fontSize: 13, color: _textLight),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '$moduleCount module${moduleCount != 1 ? 's' : ''}',
-                      style: const TextStyle(fontSize: 13, color: _textLight),
+                      style: TextStyle(fontSize: 13, color: _textLight),
                     ),
                   ],
                 ),
@@ -1559,7 +1560,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
           children: [
             const Icon(Icons.smart_toy_outlined, color: _link, size: 22),
             const SizedBox(width: 8),
-            const Text('AI Assistants', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+            Text('AI Assistants', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
           ],
         ),
         const SizedBox(height: 12),
@@ -1585,7 +1586,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                           children: [
                             Icon(Icons.smart_toy_outlined, size: 48, color: _textLight.withOpacity(0.5)),
                             const SizedBox(height: 12),
-                            const Text(
+                            Text(
                               'No AI assistants available',
                               style: TextStyle(fontSize: 14, color: _textLight),
                             ),
@@ -1665,7 +1666,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: _textDark,
@@ -1675,7 +1676,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                 if (description.isNotEmpty)
                   Text(
                     description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       color: _textLight,
                     ),
@@ -1692,7 +1693,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
               color: const Color(0xFFF3F4F6),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
+            child: Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
           ),
         ],
       ),
@@ -1816,7 +1817,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                   ),
                   child: Text(
                     statusText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _white,
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
@@ -1834,7 +1835,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: _textDark,
@@ -1846,7 +1847,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                     description.trim(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13, height: 1.35, color: _textLight),
+                    style: TextStyle(fontSize: 13, height: 1.35, color: _textLight),
                   ),
                 ],
                 const SizedBox(height: 12),

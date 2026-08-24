@@ -12,6 +12,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 
 /// Order pages to match the folder-grouped module list, exactly like the web:
 /// non-folder pages first, then each folder's pages (in folder order, keeping
@@ -55,13 +56,13 @@ class LessonPlayerScreen extends StatefulWidget {
 }
 
 class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textMedium = Color(0xFF374151);
-  static const _textLight = Color(0xFF6B7280);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textMedium => AppColors.textLight;
+  Color get _textLight => AppColors.textLight;
+  Color get _border => AppColors.border;
 
   Map<String, dynamic>? _lesson;
   Map<String, dynamic>? _course;
@@ -751,7 +752,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             Text(
               relearn ? "Let's revisit the lesson" : 'Top up your score!',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark),
             ),
           ],
         ),
@@ -760,7 +761,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
               ? "You scored $percent% again. Your performance isn't there yet, so please go through the lesson once more, then retake the quiz."
               : "You scored $percent%. You need 80% to move on. Give it another try — score above 80% and you'll advance to the next step.",
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, color: _textLight, height: 1.5),
+          style: TextStyle(fontSize: 14, color: _textLight, height: 1.5),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
@@ -769,7 +770,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primary,
-                foregroundColor: _white,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               onPressed: () {
@@ -787,7 +788,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           // relearn action then stays available on the review screen.
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
+            child: Text(
               'See which answers I got wrong',
               style: TextStyle(color: _textLight, fontWeight: FontWeight.w600),
             ),
@@ -1142,7 +1143,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                 children: [
                   Text(
                     'Score: ${_quizScore!['correct']}/${_quizScore!['total']}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: _textDark,
@@ -1176,7 +1177,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                 children: [
                   Text(
                     'Question ${qIdx + 1}: ${q['prompt']}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: _textDark,
@@ -1253,7 +1254,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                       child: Icon(
                                         Icons.circle,
                                         size: 8,
-                                        color: _white,
+                                        color: Colors.white,
                                       ),
                                     )
                                   : null,
@@ -1262,7 +1263,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                             Expanded(
                               child: Text(
                                 option.toString(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   color: _textDark,
                                 ),
@@ -1485,9 +1486,9 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.image_not_supported, color: _textLight, size: 48),
+                            Icon(Icons.image_not_supported, color: _textLight, size: 48),
                             const SizedBox(height: 8),
-                            const Text(
+                            Text(
                               'Image not available',
                               style: TextStyle(color: _textLight, fontSize: 14),
                             ),
@@ -1530,7 +1531,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Resources',
             style: TextStyle(
               fontSize: 18,
@@ -1558,7 +1559,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                   Expanded(
                     child: Text(
                       link['label'] ?? 'Resource Link',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: _textDark,
@@ -1594,7 +1595,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                     Expanded(
                       child: Text(
                         label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: _textDark,
@@ -1655,7 +1656,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
         backgroundColor: _white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _textDark),
+          icon: Icon(Icons.arrow_back, color: _textDark),
           onPressed: () {
             _stopVideo();
             Navigator.pop(context);
@@ -1666,7 +1667,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           children: [
             Text(
               widget.lessonTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _textDark,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -1674,7 +1675,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             ),
             Text(
               widget.courseTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _textLight,
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -1688,7 +1689,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             title: 'Replay anytime',
             description: 'Tap here to replay this quick tour whenever you want a refresher.',
             child: IconButton(
-              icon: const Icon(Icons.help_outline, color: _textDark, size: 24),
+              icon: Icon(Icons.help_outline, color: _textDark, size: 24),
               tooltip: 'Guided tour',
               onPressed: () => _startTour(context),
             ),
@@ -1763,7 +1764,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                       child: Text(
                                         'Training Progress',
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           color: _textLight,
                                           fontWeight: FontWeight.w600,
@@ -1793,7 +1794,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                 const SizedBox(height: 4),
                                 Text(
                                   '$_completedCount / $_totalCount Lessons Completed',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     color: _textLight,
                                     fontWeight: FontWeight.w500,
@@ -1825,7 +1826,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                 child: const Text(
                                   'Submit Quiz',
                                   style: TextStyle(
-                                    color: _white,
+                                    color: Colors.white,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -1845,7 +1846,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                 ),
                                 child: Text(
                                   _quizFailRelearn ? 'Review Lesson' : 'Try Again',
-                                  style: const TextStyle(color: _white, fontSize: 14, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             )
@@ -1866,7 +1867,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                       Text(
                                         _currentLessonIndex < _allLessons.length - 1 ? 'Next' : 'Complete',
                                         style: const TextStyle(
-                                          color: _white,
+                                          color: Colors.white,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -1876,7 +1877,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                         _currentLessonIndex < _allLessons.length - 1 
                                             ? Icons.arrow_forward 
                                             : Icons.check,
-                                        color: _white,
+                                        color: Colors.white,
                                         size: 16,
                                       ),
                                     ],
@@ -1951,13 +1952,11 @@ class _AIChat extends StatefulWidget {
 }
 
 class _AIChatState extends State<_AIChat> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textMedium = Color(0xFF374151);
-  static const _textLight = Color(0xFF6B7280);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _border => AppColors.border;
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -2157,9 +2156,9 @@ class _AIChatState extends State<_AIChat> {
       builder: (context, scrollController) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: _white,
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
@@ -2170,12 +2169,12 @@ class _AIChatState extends State<_AIChat> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: AppColors.surfaceAlt,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20),
                     topRight: Radius.circular(20),
                   ),
-                  border: const Border(
+                  border: Border(
                     bottom: BorderSide(color: _border, width: 1),
                   ),
                 ),
@@ -2183,7 +2182,7 @@ class _AIChatState extends State<_AIChat> {
                   children: [
                     if (!_showHistory)
                       IconButton(
-                        icon: const Icon(Icons.history, color: _textDark),
+                        icon: Icon(Icons.history, color: _textDark),
                         onPressed: () {
                           setState(() {
                             _showHistory = true;
@@ -2194,7 +2193,7 @@ class _AIChatState extends State<_AIChat> {
                       ),
                     if (_showHistory)
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: _textDark),
+                        icon: Icon(Icons.arrow_back, color: _textDark),
                         onPressed: () {
                           setState(() {
                             _showHistory = false;
@@ -2210,7 +2209,7 @@ class _AIChatState extends State<_AIChat> {
                         children: [
                           Text(
                             _showHistory ? 'Chat History' : 'Lesson AI Coach',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: _textDark,
@@ -2221,7 +2220,7 @@ class _AIChatState extends State<_AIChat> {
                           if (!_showHistory)
                             Text(
                               'Ask questions about ${widget.lessonTitle}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 color: _textLight,
                               ),
@@ -2233,14 +2232,14 @@ class _AIChatState extends State<_AIChat> {
                     ),
                     if (!_showHistory && _messages.isNotEmpty)
                       IconButton(
-                        icon: const Icon(Icons.add, color: _textDark),
+                        icon: Icon(Icons.add, color: _textDark),
                         onPressed: _startNewChat,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.close, color: _textLight),
+                      icon: Icon(Icons.close, color: _textLight),
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -2253,9 +2252,9 @@ class _AIChatState extends State<_AIChat> {
               Expanded(
                 child: _showHistory
                     ? _chatHistory.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Padding(
-                              padding: EdgeInsets.all(24),
+                              padding: const EdgeInsets.all(24),
                               child: Text(
                                 'No chat history yet',
                                 style: TextStyle(
@@ -2280,7 +2279,7 @@ class _AIChatState extends State<_AIChat> {
                                 child: ListTile(
                                   title: Text(
                                     chat['title'] ?? 'Chat',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       color: _textDark,
@@ -2290,13 +2289,13 @@ class _AIChatState extends State<_AIChat> {
                                   ),
                                   subtitle: Text(
                                     '${(chat['messages'] as List?)?.length ?? 0} messages',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
                                       color: _textLight,
                                     ),
                                   ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.delete, color: _textLight, size: 20),
+                                    icon: Icon(Icons.delete, color: _textLight, size: 20),
                                     onPressed: () => _deleteChat(chat['chatId']),
                                   ),
                                   onTap: () => _loadChat(chat),
@@ -2326,7 +2325,7 @@ class _AIChatState extends State<_AIChat> {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              const Text(
+                              Text(
                                 'Ask me anything!',
                                 style: TextStyle(
                                   fontSize: 18,
@@ -2360,7 +2359,7 @@ class _AIChatState extends State<_AIChat> {
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Thinking...',
                                 style: TextStyle(
                                   fontSize: 13,
@@ -2384,7 +2383,7 @@ class _AIChatState extends State<_AIChat> {
                               message['content'] ?? '',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: isUser ? _white : _textDark,
+                                color: isUser ? Colors.white : _textDark,
                               ),
                             ),
                           );
@@ -2396,7 +2395,7 @@ class _AIChatState extends State<_AIChat> {
               if (!_showHistory)
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: _white,
                     border: Border(
                       top: BorderSide(color: _border, width: 1),
@@ -2416,13 +2415,13 @@ class _AIChatState extends State<_AIChat> {
                           maxLines: null,
                           keyboardType: TextInputType.multiline,
                           textInputAction: TextInputAction.newline,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             hintText: 'Ask the coach a question...',
                             hintStyle: TextStyle(fontSize: 13, color: _textLight),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.all(12),
+                            contentPadding: const EdgeInsets.all(12),
                           ),
-                          style: const TextStyle(fontSize: 13, color: _textDark),
+                          style: TextStyle(fontSize: 13, color: _textDark),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -2443,7 +2442,7 @@ class _AIChatState extends State<_AIChat> {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: _white,
+                              color: Colors.white,
                             ),
                           ),
                         ),

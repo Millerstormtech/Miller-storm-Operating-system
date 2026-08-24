@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import '../theme/app_theme.dart';
 
 class AiCloneChatScreen extends StatefulWidget {
   final dynamic bot;
@@ -20,6 +21,17 @@ class AiCloneChatScreen extends StatefulWidget {
 }
 
 class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
+  // Theme-aware surface/text colours (flip in dark mode). Brand red and status
+  // colours stay constant.
+  static const _primary = Color(0xFFCB0002);
+  Color get _bg => AppColors.bg;
+  Color get _surface => AppColors.surface;
+  Color get _surfaceAlt => AppColors.surfaceAlt;
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _textPlaceholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
+
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<Map<String, dynamic>> messages = [];
@@ -456,9 +468,9 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
         : (rawAvatar.startsWith('http') ? rawAvatar : 'https://millerstorm.tech$rawAvatar');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCB0002),
+        backgroundColor: _primary,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -555,7 +567,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF3F4F6),
+                                color: _surfaceAlt,
                                 borderRadius: BorderRadius.circular(16),
                                 image: botImageUrl.isNotEmpty
                                     ? DecorationImage(
@@ -575,18 +587,18 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                             const SizedBox(height: 16),
                             Text(
                               'Chat with $botName',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF111827),
+                                color: _textDark,
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
+                            Text(
                               'Start a conversation!',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Color(0xFF6B7280),
+                                color: _textLight,
                               ),
                             ),
                           ],
@@ -610,8 +622,8 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                    color: _surface,
+                    border: Border(top: BorderSide(color: _border)),
                   ),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -623,16 +635,16 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF3F4F6),
+                            color: _surfaceAlt,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.attach_file, size: 16, color: Color(0xFF6B7280)),
+                              Icon(Icons.attach_file, size: 16, color: _textLight),
                               const SizedBox(width: 4),
                               Text(
                                 att['name']!,
-                                style: const TextStyle(fontSize: 12, color: Color(0xFF374151)),
+                                style: TextStyle(fontSize: 12, color: _textDark),
                               ),
                               const SizedBox(width: 4),
                               GestureDetector(
@@ -657,10 +669,10 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                 child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _surface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: AppColors.shadow,
                   blurRadius: 8,
                   offset: const Offset(0, -2),
                 ),
@@ -669,36 +681,36 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.attach_file, color: Color(0xFF6B7280)),
+                  icon: Icon(Icons.attach_file, color: _textLight),
                   onPressed: _pickFile,
                 ),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
+                      color: _surfaceAlt,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: TextField(
                       controller: _messageController,
-                      style: const TextStyle(
-                        color: Color(0xFF111827),
+                      style: TextStyle(
+                        color: _textDark,
                         fontSize: 16,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Type a message...',
                         hintStyle: TextStyle(
-                          color: Color(0xFF9CA3AF),
+                          color: _textPlaceholder,
                         ),
-                        border: OutlineInputBorder(
+                        border: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(24)),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: EdgeInsets.symmetric(
+                        contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 10,
                         ),
                         filled: true,
-                        fillColor: Color(0xFFF3F4F6),
+                        fillColor: _surfaceAlt,
                       ),
                       maxLines: null,
                       textInputAction: TextInputAction.send,
@@ -710,7 +722,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                 // While the bot is speaking (TTS), offer a quick way to stop it.
                 if (_isSpeaking)
                   IconButton(
-                    icon: const Icon(Icons.volume_off, color: Color(0xFF6B7280)),
+                    icon: Icon(Icons.volume_off, color: _textLight),
                     tooltip: 'Stop voice',
                     onPressed: _stopSpeaking,
                   ),
@@ -722,8 +734,8 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                         ? Icons.hourglass_empty
                         : (_isRecording ? Icons.stop : Icons.mic),
                     color: _isRecording
-                        ? const Color(0xFFCB0002)
-                        : const Color(0xFF6B7280),
+                        ? _primary
+                        : _textLight,
                   ),
                   tooltip: _isRecording
                       ? 'Listening… tap to stop'
@@ -912,7 +924,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
+          color: _surfaceAlt,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(16),
             topRight: Radius.circular(16),
@@ -947,8 +959,8 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
           child: Container(
             width: 8,
             height: 8,
-            decoration: const BoxDecoration(
-              color: Color(0xFF9CA3AF),
+            decoration: BoxDecoration(
+              color: _textPlaceholder,
               shape: BoxShape.circle,
             ),
           ),
@@ -1025,21 +1037,21 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
+                        color: _surfaceAlt,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        border: Border.all(color: _border),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.attach_file, size: 14, color: Color(0xFF6B7280)),
+                          Icon(Icons.attach_file, size: 14, color: _textLight),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
                               name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF374151),
+                                color: _textDark,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1056,7 +1068,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isUser ? const Color(0xFFCB0002) : const Color(0xFFF3F4F6),
+                  color: isUser ? _primary : _surfaceAlt,
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
@@ -1068,7 +1080,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                   content,
                   style: TextStyle(
                     fontSize: 15,
-                    color: isUser ? Colors.white : const Color(0xFF111827),
+                    color: isUser ? Colors.white : _textDark,
                   ),
                 ),
               ),
@@ -1081,9 +1093,9 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                 ),
                 child: Text(
                   _formatTime(timestamp),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: Color(0xFF9CA3AF),
+                    color: _textPlaceholder,
                   ),
                 ),
               ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import 'ai_clone_chat_screen.dart';
 
 /// Jay's AI Clone — lists the available AI assistants (bots) and opens a chat
@@ -14,11 +15,12 @@ class JaysAiCloneScreen extends StatefulWidget {
 }
 
 class _JaysAiCloneScreenState extends State<JaysAiCloneScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _surfaceAlt => AppColors.surfaceAlt;
 
   List<dynamic> _bots = [];
   bool _loading = true;
@@ -65,7 +67,7 @@ class _JaysAiCloneScreenState extends State<JaysAiCloneScreen> {
         backgroundColor: _white,
         elevation: 0,
         foregroundColor: _textDark,
-        title: const Text("Jay's AI Clone",
+        title: Text("Jay's AI Clone",
             style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700)),
       ),
       body: _loading
@@ -77,7 +79,7 @@ class _JaysAiCloneScreenState extends State<JaysAiCloneScreen> {
                     children: [
                       Icon(Icons.smart_toy_outlined, size: 48, color: _textLight.withOpacity(0.5)),
                       const SizedBox(height: 12),
-                      const Text('No AI assistants available', style: TextStyle(fontSize: 14, color: _textLight)),
+                      Text('No AI assistants available', style: TextStyle(fontSize: 14, color: _textLight)),
                     ],
                   ),
                 )
@@ -114,7 +116,7 @@ class _JaysAiCloneScreenState extends State<JaysAiCloneScreen> {
         decoration: BoxDecoration(
           color: _white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8)],
         ),
         child: Row(
           children: [
@@ -136,11 +138,11 @@ class _JaysAiCloneScreenState extends State<JaysAiCloneScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(name,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(description,
-                        style: const TextStyle(fontSize: 13, color: _textLight),
+                        style: TextStyle(fontSize: 13, color: _textLight),
                         maxLines: 2, overflow: TextOverflow.ellipsis),
                   ],
                 ],
@@ -149,8 +151,8 @@ class _JaysAiCloneScreenState extends State<JaysAiCloneScreen> {
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
+              decoration: BoxDecoration(color: _surfaceAlt, borderRadius: BorderRadius.circular(8)),
+              child: Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
             ),
           ],
         ),
