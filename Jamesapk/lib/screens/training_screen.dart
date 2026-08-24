@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -15,14 +16,14 @@ class TrainingScreen extends StatefulWidget {
 
 class _TrainingScreenState extends State<TrainingScreen> {
   // Miller Storm Red Theme
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002); // Miller Storm Red
-  static const _textDark = Color(0xFF111827);
+  Color get _textDark => AppColors.textDark;
   static const _textMedium = Color(0xFF374151);
-  static const _textLight = Color(0xFF6B7280);
-  static const _textPlaceholder = Color(0xFF9CA3AF);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textLight => AppColors.textLight;
+  Color get _textPlaceholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
   static const _link = Color(0xFFCB0002); // Miller Storm Red
 
   String _greeting = 'Good Morning';
@@ -186,7 +187,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                         ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
                         : null,
                     child: _userHeadshotUrl.isEmpty
-                        ? const Icon(Icons.person, size: 28, color: _textLight)
+                        ? Icon(Icons.person, size: 28, color: _textLight)
                         : null,
                   ),
                   Positioned(
@@ -209,8 +210,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$_greeting,', style: const TextStyle(fontSize: 13, color: _textLight)),
-                Text(_userName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
+                Text('$_greeting,', style: TextStyle(fontSize: 13, color: _textLight)),
+                Text(_userName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
               ],
             ),
           ],
@@ -266,13 +267,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   color: _white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
+                child: Text(
                   'COMING SOON',
                   style: TextStyle(color: _white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                 ),
               ),
               const SizedBox(height: 8),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('7-Day Bootcamp', style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w800)),
@@ -288,7 +289,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   color: _white.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
                     'Coming Soon',
                     style: TextStyle(color: _white, fontSize: 15, fontWeight: FontWeight.w700),
@@ -310,7 +311,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           children: [
             const Icon(Icons.school_outlined, color: _link, size: 22),
             const SizedBox(width: 8),
-            const Text('Courses', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+            Text('Courses', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
           ],
         ),
         const SizedBox(height: 12),
@@ -327,7 +328,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           children: [
             const Icon(Icons.apps_outlined, color: _link, size: 22),
             const SizedBox(width: 8),
-            const Text('Apps & Tools', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+            Text('Apps & Tools', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
           ],
         ),
         const SizedBox(height: 12),
@@ -351,7 +352,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           children: [
             const Icon(Icons.smart_toy_outlined, color: _link, size: 22),
             const SizedBox(width: 8),
-            const Text('AI Assistants', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+            Text('AI Assistants', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
           ],
         ),
         const SizedBox(height: 12),
@@ -377,7 +378,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                           children: [
                             Icon(Icons.smart_toy_outlined, size: 48, color: _textLight.withOpacity(0.5)),
                             const SizedBox(height: 12),
-                            const Text(
+                            Text(
                               'No AI assistants available',
                               style: TextStyle(fontSize: 14, color: _textLight),
                             ),
@@ -457,7 +458,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: _textDark,
@@ -467,7 +468,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 if (description.isNotEmpty)
                   Text(
                     description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       color: _textLight,
                     ),
@@ -484,7 +485,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               color: const Color(0xFFF3F4F6),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
+            child: Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
           ),
         ],
       ),
@@ -522,13 +523,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(fontSize: 14, color: _textLight)),
+                  Text(subtitle, style: TextStyle(fontSize: 14, color: _textLight)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: _textPlaceholder, size: 24),
+            Icon(Icons.chevron_right, color: _textPlaceholder, size: 24),
           ],
         ),
       ),
@@ -550,9 +551,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.menu_book_outlined, color: _textDark, size: 22),
+                Icon(Icons.menu_book_outlined, color: _textDark, size: 22),
                 const SizedBox(width: 8),
-                const Text('Standard Playbooks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
+                Text('Standard Playbooks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
               ],
             ),
             const Text('View All', style: TextStyle(fontSize: 13, color: _link, fontWeight: FontWeight.w600)),
@@ -589,17 +590,17 @@ class _TrainingScreenState extends State<TrainingScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(p['title'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark)),
-                              Text(p['subtitle'] as String, style: const TextStyle(fontSize: 12, color: _textLight)),
+                              Text(p['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark)),
+                              Text(p['subtitle'] as String, style: TextStyle(fontSize: 12, color: _textLight)),
                             ],
                           ),
                         ),
-                        const Icon(Icons.chevron_right, color: _textPlaceholder, size: 20),
+                        Icon(Icons.chevron_right, color: _textPlaceholder, size: 20),
                       ],
                     ),
                   ),
                   if (i < playbooks.length - 1)
-                    const Divider(height: 1, indent: 68, color: _bg),
+                    Divider(height: 1, indent: 68, color: _bg),
                 ],
               );
             }).toList(),
@@ -676,7 +677,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               const SizedBox(height: 4),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   color: _textPlaceholder,
                 ),
