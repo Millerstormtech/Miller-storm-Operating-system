@@ -1450,7 +1450,7 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
               ElevatedButton(
                 onPressed: () => _showEditPlaylistDialog(data),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade100,
+                  backgroundColor: AppColors.surfaceAlt,
                   foregroundColor: _textDark,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1463,7 +1463,7 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
               ElevatedButton(
                 onPressed: () => _showAssignPlaylistDialog(data),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade100,
+                  backgroundColor: AppColors.surfaceAlt,
                   foregroundColor: _textDark,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1497,7 +1497,7 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade50,
+                  backgroundColor: Colors.red.withOpacity(0.12),
                   foregroundColor: Colors.red,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
