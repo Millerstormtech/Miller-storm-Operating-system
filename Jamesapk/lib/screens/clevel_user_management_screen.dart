@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import 'dart:convert';
 import '../services/api_client.dart';
 import '../widgets/clevel_bottom_nav.dart';
@@ -14,12 +15,12 @@ class CLevelUserManagementScreen extends StatefulWidget {
 }
 
 class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _border => AppColors.border;
 
   // role key -> display label (order = display order)
   static const List<List<String>> _roles = [
@@ -273,14 +274,14 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text('User Management',
                 style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700)),
           ),
           TextButton.icon(
             onPressed: () => _openEditor(null),
-            icon: const Icon(Icons.add, size: 18, color: _white),
-            label: const Text('Add', style: TextStyle(color: _white, fontWeight: FontWeight.w600)),
+            icon: const Icon(Icons.add, size: 18, color: Colors.white),
+            label: const Text('Add', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
             style: TextButton.styleFrom(
               backgroundColor: _primary,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -300,18 +301,18 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
         onChanged: (v) => setState(() => _search = v),
         decoration: InputDecoration(
           hintText: 'Search by name or email',
-          prefixIcon: const Icon(Icons.search, color: _textLight, size: 20),
+          prefixIcon: Icon(Icons.search, color: _textLight, size: 20),
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
           filled: true,
-          fillColor: _bg,
+          fillColor: AppColors.surfaceAlt,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _border),
+            borderSide: BorderSide(color: _border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _border),
+            borderSide: BorderSide(color: _border),
           ),
         ),
       ),
@@ -367,7 +368,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
           const SizedBox(height: 80),
           Center(
             child: Text(_showDeleted ? 'No deleted users' : 'No users found',
-                style: const TextStyle(color: _textLight, fontSize: 15)),
+                style: TextStyle(color: _textLight, fontSize: 15)),
           ),
         ],
       );
@@ -422,7 +423,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                       child: Text(name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
                     ),
                     if (suspended)
                       Container(
@@ -439,13 +440,13 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                 Text(email,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: _textLight)),
+                    style: TextStyle(fontSize: 12, color: _textLight)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(6)),
+                  decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(6)),
                   child: Text(_roleLabel(user['role']?.toString()),
-                      style: const TextStyle(fontSize: 11, color: _textDark, fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: 11, color: _textDark, fontWeight: FontWeight.w500)),
                 ),
               ],
             ),
@@ -468,7 +469,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                   ],
                 )
               : IconButton(
-                  icon: const Icon(Icons.chevron_right, color: _textLight),
+                  icon: Icon(Icons.chevron_right, color: _textLight),
                   onPressed: () => _openEditor(user),
                 ),
         ],
@@ -528,9 +529,9 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                     children: [
                       Expanded(
                         child: Text(isNew ? 'Add User' : 'Edit User',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
                       ),
-                      IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, color: _textLight)),
+                      IconButton(onPressed: () => Navigator.pop(ctx), icon: Icon(Icons.close, color: _textLight)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -538,12 +539,12 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                   _field('Email', emailC, keyboard: TextInputType.emailAddress),
                   _field('Phone', phoneC, keyboard: TextInputType.phone),
                   const SizedBox(height: 6),
-                  const Text('Branch', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                  Text('Branch', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                        color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+                        color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: territory,
@@ -567,12 +568,12 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                   _field(isNew ? 'Password' : 'Reset Password', passC,
                       obscure: true, hint: isNew ? 'Set a login password' : 'Leave blank to keep current'),
                   const SizedBox(height: 6),
-                  const Text('Role', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                  Text('Role', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                        color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+                        color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: role,
@@ -587,7 +588,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                   if (role == 'sales') ...[
                     const SizedBox(height: 12),
                     Row(children: [
-                      const Text('Sales Team Lead ', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                      Text('Sales Team Lead ', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
                       if (territory.trim().isNotEmpty)
                         const Text('*', style: TextStyle(fontSize: 13, color: _primary, fontWeight: FontWeight.w700)),
                     ]),
@@ -607,7 +608,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                            color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+                            color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: validId ? managerId : '',
@@ -629,7 +630,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                   // branch-manager account whose Branch matches). Read-only.
                   if ((role == 'sales' || role == 'sales-team-lead') && territory.trim().isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    const Text('Branch Manager', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+                    Text('Branch Manager', style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     Builder(builder: (_) {
                       final bm = _active.firstWhere(
@@ -641,9 +642,9 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                       return Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                        decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+                        decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
                         child: Text(name,
-                            style: TextStyle(fontSize: 14, color: bm != null ? _textDark : const Color(0xFF9CA3AF))),
+                            style: TextStyle(fontSize: 14, color: bm != null ? _textDark : AppColors.textPlaceholder)),
                       );
                     }),
                   ],
@@ -682,7 +683,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                         }
                       },
                       child: Text(isNew ? 'Create User' : 'Save Changes',
-                          style: const TextStyle(color: _white, fontSize: 15, fontWeight: FontWeight.w600)),
+                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                     ),
                   ),
                   if (!isNew) ...[
@@ -692,7 +693,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: _border),
+                              side: BorderSide(color: _border),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                             onPressed: () async {
@@ -700,7 +701,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
                               await _toggleSuspend(user);
                             },
                             child: Text(suspended ? 'Unsuspend' : 'Suspend',
-                                style: const TextStyle(color: _textDark)),
+                                style: TextStyle(color: _textDark)),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -737,7 +738,7 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(fontSize: 13, color: _textLight, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           TextField(
             controller: c,
@@ -748,14 +749,14 @@ class _CLevelUserManagementScreenState extends State<CLevelUserManagementScreen>
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               filled: true,
-              fillColor: _bg,
+              fillColor: AppColors.surfaceAlt,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _border),
+                borderSide: BorderSide(color: _border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _border),
+                borderSide: BorderSide(color: _border),
               ),
             ),
           ),
