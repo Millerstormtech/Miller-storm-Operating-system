@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'dart:typed_data';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
@@ -9,7 +7,6 @@ import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import 'course_detail_screen.dart';
-import 'ai_clone_chat_screen.dart';
 
 class CLevelCoursesScreen extends StatefulWidget {
   const CLevelCoursesScreen({super.key});
@@ -28,8 +25,6 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
 
   List<dynamic> _courses = [];
   List<dynamic> _myPlaylists = [];
-  List<dynamic> _bots = [];
-  bool _loadingBots = false;
   bool _isLoading = true;
   // "Continue where you left off" — true while resolving the next lesson to open.
   bool _continuingResume = false;
@@ -53,40 +48,8 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
     _tabController = TabController(length: 2, vsync: this);
     _loadCachedCourses();
     _loadData();
-    _fetchBots();
   }
 
-  Future<void> _fetchBots() async {
-    setState(() {
-      _loadingBots = true;
-    });
-
-    try {
-      final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/ai-bots'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body) as List;
-        if (!mounted) return;
-        setState(() {
-          _bots = data;
-          _loadingBots = false;
-        });
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _loadingBots = false;
-        });
-      }
-    } catch (e) {
-      print('Error fetching bots: $e');
-      if (!mounted) return;
-      setState(() {
-        _loadingBots = false;
-      });
-    }
-  }
 
   // Stale-while-revalidate: show the last-known courses instantly (any age) so
   // the manager never waits on a blank screen; _fetchCourses refreshes after.
@@ -1230,16 +1193,8 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
         Expanded(
           child: ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: items.length + 1,
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        // AI Assistants ("Jay's AI Clone") section rendered after the courses,
-        // matching the Sales training screen.
-        if (index == items.length) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 20),
-            child: _buildJaysAIClone(),
-          );
-        }
         final item = items[index];
         if (item is Map && item.containsKey('__header__')) {
           return _categoryHeader(item['__header__'] as String);
@@ -1559,153 +1514,7 @@ class _CLevelCoursesScreenState extends State<CLevelCoursesScreen> with SingleTi
     );
   }
 
-  Widget _buildJaysAIClone() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.smart_toy_outlined, color: _primary, size: 22),
-            const SizedBox(width: 8),
-            Text('AI Assistants', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
-          ),
-          child: _loadingBots
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator(color: _primary),
-                  ),
-                )
-              : _bots.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            Icon(Icons.smart_toy_outlined, size: 48, color: _textLight.withOpacity(0.5)),
-                            const SizedBox(height: 12),
-                            Text(
-                              'No AI assistants available',
-                              style: TextStyle(fontSize: 14, color: _textLight),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : Column(
-                      children: _bots.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final bot = entry.value;
-                        return Column(
-                          children: [
-                            if (index > 0)
-                              Container(
-                                height: 1,
-                                margin: const EdgeInsets.symmetric(vertical: 12),
-                                color: const Color(0xFFF3F4F6),
-                              ),
-                            _buildBotListItem(bot),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildBotListItem(dynamic bot) {
-    final name = bot['name'] ?? 'Unknown Bot';
-    final description = bot['description'] ?? '';
-    // Prefer the admin-set bot avatar (botAvatarUrl); fall back to the legacy
-    // imageUrl. Handles both full URLs and relative paths so the bot's own
-    // profile photo shows instead of the generic robot icon.
-    final rawAvatar = (bot['botAvatarUrl'] ?? bot['imageUrl'] ?? '').toString();
-    final imageUrl = rawAvatar.isEmpty
-        ? ''
-        : (rawAvatar.startsWith('http') ? rawAvatar : 'https://millerstorm.tech$rawAvatar');
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AiCloneChatScreen(bot: bot),
-          ),
-        );
-      },
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(12),
-              image: imageUrl.isNotEmpty
-                  ? DecorationImage(
-                      image: NetworkImage(imageUrl),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: imageUrl.isEmpty
-                ? const Icon(
-                    Icons.smart_toy,
-                    size: 24,
-                    color: _primary,
-                  )
-                : null,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: _textDark,
-                  ),
-                ),
-                if (description.isNotEmpty) const SizedBox(height: 3),
-                if (description.isNotEmpty)
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _textLight,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
-          ),
-        ],
-      ),
-    );
-  }
 
   IconData _getCourseIcon(String? iconText) {
     if (iconText == '🚪') return Icons.door_front_door;
