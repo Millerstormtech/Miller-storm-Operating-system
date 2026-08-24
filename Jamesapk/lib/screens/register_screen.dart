@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -98,7 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -111,7 +112,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     constraints: const BoxConstraints(maxWidth: 400),
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -126,11 +127,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
               child: Text(
                 '© 2026-2027 Miller Storm. All Rights Reserved.',
-                style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                style: TextStyle(fontSize: 11, color: AppColors.textPlaceholder),
               ),
             ),
           ],
@@ -151,10 +152,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF16a34a)),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Your registration request has been sent to administration. You will receive access within 24 hours.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          style: TextStyle(fontSize: 13, color: AppColors.textLight),
         ),
         const SizedBox(height: 24),
         SizedBox(
@@ -182,13 +183,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         children: [
           Image.asset('assets/images/logo.jpeg', width: 180, height: 96, fit: BoxFit.contain),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'The Miller Storm Operating System',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark),
           ),
           const SizedBox(height: 4),
-          const Text('Register for Access', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+          Text('Register for Access', style: TextStyle(fontSize: 13, color: AppColors.textLight)),
           const SizedBox(height: 24),
           if (_error.isNotEmpty) ...[
             Container(
@@ -280,7 +281,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             obscureText: !_showPassword,
             decoration: _inputDecoration('Enter your password').copyWith(
               suffixIcon: IconButton(
-                icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 18, color: const Color(0xFF9CA3AF)),
+                icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 18, color: AppColors.textPlaceholder),
                 onPressed: () => setState(() => _showPassword = !_showPassword),
               ),
             ),
@@ -298,7 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             obscureText: !_showConfirmPassword,
             decoration: _inputDecoration('Confirm your password').copyWith(
               suffixIcon: IconButton(
-                icon: Icon(_showConfirmPassword ? Icons.visibility_off : Icons.visibility, size: 18, color: const Color(0xFF9CA3AF)),
+                icon: Icon(_showConfirmPassword ? Icons.visibility_off : Icons.visibility, size: 18, color: AppColors.textPlaceholder),
                 onPressed: () => setState(() => _showConfirmPassword = !_showConfirmPassword),
               ),
             ),
@@ -333,17 +334,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _fieldLabel(String label) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF374151))),
+      child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textLight)),
     );
   }
 
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+      hintStyle: TextStyle(color: AppColors.textPlaceholder, fontSize: 14),
+      filled: true,
+      fillColor: AppColors.surfaceAlt,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCB0002), width: 1.5)),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String token;
@@ -79,7 +80,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -92,7 +93,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     constraints: const BoxConstraints(maxWidth: 400),
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -109,9 +110,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: const Text(
+              child: Text(
                 '© 2026-2027 Miller Storm. All Rights Reserved.',
-                style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                style: TextStyle(fontSize: 11, color: AppColors.textPlaceholder),
               ),
             ),
           ],
@@ -127,9 +128,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const SizedBox(height: 8),
           const CircularProgressIndicator(color: Color(0xFFCB0002)),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Verifying reset link…',
-            style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
+            style: TextStyle(fontSize: 15, color: AppColors.textLight),
           ),
         ]);
       case _Stage.invalid:
@@ -147,7 +148,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ? 'This password reset link is invalid or has expired. Please request a new one.'
                 : '$_invalidMessage Please request a new reset link.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.6),
+            style: TextStyle(fontSize: 14, color: AppColors.textLight, height: 1.6),
           ),
           const SizedBox(height: 24),
           _primaryButton('Back to Login', _goToLogin),
@@ -162,10 +163,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Your password has been reset successfully. You can now login with your new password.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.6),
+            style: TextStyle(fontSize: 14, color: AppColors.textLight, height: 1.6),
           ),
           const SizedBox(height: 24),
           _primaryButton('Go to Login', _goToLogin),
@@ -188,17 +189,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             fit: BoxFit.contain,
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Set a New Password',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark),
           ),
           if (_email.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
               _email,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+              style: TextStyle(fontSize: 14, color: AppColors.textLight),
             ),
           ],
           const SizedBox(height: 24),
@@ -220,9 +221,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           // New password
           Align(
             alignment: Alignment.centerLeft,
-            child: const Text(
+            child: Text(
               'New Password',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textLight),
             ),
           ),
           const SizedBox(height: 6),
@@ -234,7 +235,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 icon: Icon(
                   _showPassword ? Icons.visibility_off : Icons.visibility,
                   size: 18,
-                  color: const Color(0xFF9CA3AF),
+                  color: AppColors.textPlaceholder,
                 ),
                 onPressed: () => setState(() => _showPassword = !_showPassword),
               ),
@@ -249,9 +250,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           // Confirm password
           Align(
             alignment: Alignment.centerLeft,
-            child: const Text(
+            child: Text(
               'Confirm Password',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textLight),
             ),
           ),
           const SizedBox(height: 6),
@@ -329,15 +330,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+      hintStyle: TextStyle(color: AppColors.textPlaceholder, fontSize: 14),
+      filled: true,
+      fillColor: AppColors.surfaceAlt,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
