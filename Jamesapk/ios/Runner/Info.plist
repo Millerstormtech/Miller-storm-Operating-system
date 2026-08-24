@@ -48,6 +48,8 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Miller Storm uses the microphone so you can talk to Jay's AI Clone.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>MillerStorm uses the camera to capture roofing inspection photos and videos for project communication and insurance documentation.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

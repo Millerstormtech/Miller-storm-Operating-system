@@ -5,6 +5,10 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
 
 class AiCloneChatScreen extends StatefulWidget {
   final dynamic bot;
@@ -40,6 +44,14 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
   String _userHeadshot = '';
   List<Map<String, String>> attachments = [];
 
+  // Voice: record the user's utterance, transcribe it via Whisper, and speak
+  // the bot's reply back with TTS — matching the web experience.
+  final AudioRecorder _recorder = AudioRecorder();
+  final AudioPlayer _player = AudioPlayer();
+  bool _isRecording = false;
+  bool _isTranscribing = false;
+  bool _isSpeaking = false;
+
   @override
   void initState() {
     super.initState();
@@ -60,6 +72,8 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _recorder.dispose();
+    _player.dispose();
     super.dispose();
   }
 
@@ -154,6 +168,124 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
     }
   }
 
+  // --- Voice: recording -> Whisper transcription -> normal send path ---
+
+  Future<void> _startRecording() async {
+    try {
+      if (await _recorder.hasPermission()) {
+        final dir = await getTemporaryDirectory();
+        final path = '${dir.path}/jay_utt.m4a';
+        await _recorder.start(
+          const RecordConfig(encoder: AudioEncoder.aacLc),
+          path: path,
+        );
+        if (!mounted) return;
+        setState(() => _isRecording = true);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microphone permission needed')),
+        );
+      }
+    } catch (e) {
+      print('Error starting recording: $e');
+      if (!mounted) return;
+      setState(() => _isRecording = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not start recording')),
+      );
+    }
+  }
+
+  Future<void> _stopAndTranscribe() async {
+    String? path;
+    try {
+      path = await _recorder.stop();
+    } catch (e) {
+      print('Error stopping recording: $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _isRecording = false;
+      _isTranscribing = true;
+    });
+
+    try {
+      if (path != null) {
+        final bytes = await File(path).readAsBytes();
+        final b64 = base64Encode(bytes);
+        final response = await api.post(
+          Uri.parse('https://millerstorm.tech/api/transcribe'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'audio': b64, 'mime': 'audio/m4a'}),
+        );
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final text = (data['text'] ?? '').toString().trim();
+          if (text.isNotEmpty) {
+            _messageController.text = text;
+            if (mounted) {
+              setState(() => _isTranscribing = false);
+            }
+            await _sendMessage();
+            return;
+          }
+        } else {
+          print('Transcribe error: ${response.statusCode} ${response.body}');
+        }
+      }
+    } catch (e) {
+      print('Error transcribing: $e');
+    } finally {
+      if (mounted && _isTranscribing) {
+        setState(() => _isTranscribing = false);
+      }
+    }
+  }
+
+  // --- Voice: speak the bot's reply with TTS ---
+
+  Future<void> _speak(String text) async {
+    if (text.trim().isEmpty) return;
+    try {
+      final response = await api.post(
+        Uri.parse('https://millerstorm.tech/api/tts'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': text}),
+      );
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+        final Uint8List mp3 = response.bodyBytes;
+        if (mounted) {
+          setState(() => _isSpeaking = true);
+        }
+        _player.onPlayerComplete.listen((_) {
+          if (mounted) {
+            setState(() => _isSpeaking = false);
+          }
+        });
+        await _player.play(BytesSource(mp3));
+      } else {
+        print('TTS error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error speaking reply: $e');
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+      }
+    }
+  }
+
+  Future<void> _stopSpeaking() async {
+    try {
+      await _player.stop();
+    } catch (e) {
+      print('Error stopping playback: $e');
+    }
+    if (mounted) {
+      setState(() => _isSpeaking = false);
+    }
+  }
+
   Future<void> _sendMessage() async {
     if ((_messageController.text.trim().isEmpty && attachments.isEmpty) || isSending || userId == null) return;
 
@@ -216,6 +348,9 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
           });
           isSending = false;
         });
+
+        // Voice-first: speak the bot's reply back to the user (TTS).
+        _speak(botReply.toString());
 
         // Wait a bit before reloading chat sessions to ensure DB is updated
         await Future.delayed(const Duration(milliseconds: 500));
@@ -569,7 +704,33 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
+                // While the bot is speaking (TTS), offer a quick way to stop it.
+                if (_isSpeaking)
+                  IconButton(
+                    icon: const Icon(Icons.volume_off, color: Color(0xFF6B7280)),
+                    tooltip: 'Stop voice',
+                    onPressed: _stopSpeaking,
+                  ),
+                // Voice: tap to record, tap again to stop + transcribe. Turns
+                // red while listening; disabled while transcribing or sending.
+                IconButton(
+                  icon: Icon(
+                    _isTranscribing
+                        ? Icons.hourglass_empty
+                        : (_isRecording ? Icons.stop : Icons.mic),
+                    color: _isRecording
+                        ? const Color(0xFFCB0002)
+                        : const Color(0xFF6B7280),
+                  ),
+                  tooltip: _isRecording
+                      ? 'Listening… tap to stop'
+                      : (_isTranscribing ? 'Transcribing…' : 'Speak'),
+                  onPressed: (_isTranscribing || isSending)
+                      ? null
+                      : (_isRecording ? _stopAndTranscribe : _startRecording),
+                ),
+                const SizedBox(width: 4),
                 Container(
                   decoration: const BoxDecoration(
                     color: Color(0xFFCB0002),
