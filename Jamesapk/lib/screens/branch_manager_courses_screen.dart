@@ -8,6 +8,7 @@ import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
+import 'ai_clone_chat_screen.dart';
 
 class BranchManagerCoursesScreen extends StatefulWidget {
   const BranchManagerCoursesScreen({super.key});
@@ -26,7 +27,11 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
 
   List<dynamic> _courses = [];
   List<dynamic> _myPlaylists = [];
+  List<dynamic> _bots = [];
+  bool _loadingBots = false;
   bool _isLoading = true;
+  // "Continue where you left off" — true while resolving the next lesson to open.
+  bool _continuingResume = false;
   // True when the last course fetch failed (network/API) — lets the UI show a
   // "couldn't load, retry" state instead of a misleading "No courses available".
   bool _loadError = false;
@@ -47,6 +52,39 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
     _tabController = TabController(length: 2, vsync: this);
     _loadCachedCourses();
     _loadData();
+    _fetchBots();
+  }
+
+  Future<void> _fetchBots() async {
+    setState(() {
+      _loadingBots = true;
+    });
+
+    try {
+      final response = await api.get(
+        Uri.parse('https://millerstorm.tech/api/ai-bots'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List;
+        if (!mounted) return;
+        setState(() {
+          _bots = data;
+          _loadingBots = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _loadingBots = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching bots: $e');
+      if (!mounted) return;
+      setState(() {
+        _loadingBots = false;
+      });
+    }
   }
 
   // Stale-while-revalidate: show the last-known courses instantly (any age) so
@@ -1020,6 +1058,125 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
     );
   }
 
+  // The course to resume: the first started-but-unfinished course
+  // (0 < progress < 100). Matches the web's "Continue where you left off".
+  Map<String, dynamic>? get _resumeCourse {
+    for (final c in _courses) {
+      if (c is! Map) continue;
+      final pctRaw = (c['progress']?['progressPercent'] ?? 0);
+      final pct = pctRaw is num ? pctRaw.toInt() : 0;
+      if (pct > 0 && pct < 100) return Map<String, dynamic>.from(c);
+    }
+    return null;
+  }
+
+  // Load the course's per-lesson progress, find the next unwatched lesson, and
+  // open the course straight into that lesson's player (via initialPageId).
+  Future<void> _continueWhereLeftOff(Map<String, dynamic> course) async {
+    if (_continuingResume) return;
+    setState(() => _continuingResume = true);
+    try {
+      final courseId = (course['id'] ?? '').toString();
+      Set<String> done = {};
+      List<dynamic> quizResults = [];
+      try {
+        final res = await api.get(Uri.parse(
+            'https://millerstorm.tech/api/progress?userId=$_userId&courseId=$courseId'));
+        if (res.statusCode == 200) {
+          final data = json.decode(res.body);
+          done = ((data['completedPages'] as List?) ?? []).map((e) => e.toString()).toSet();
+          quizResults = (data['quizResults'] as List?) ?? [];
+        }
+      } catch (_) {}
+
+      final pages = ((course['pages'] as List?) ?? [])
+          .where((p) => p is Map && p['status'] == 'published')
+          .toList();
+      bool isDone(dynamic p) {
+        final id = (p['id'] ?? '').toString();
+        if (p['isQuiz'] == true) {
+          return quizResults.any((r) => (r['pageId'] ?? '').toString() == id && r['passed'] != false);
+        }
+        return done.contains(id);
+      }
+
+      // First not-yet-watched video; else the next incomplete item; else page one.
+      dynamic next;
+      for (final p in pages) {
+        if (p['isQuiz'] != true && !isDone(p)) { next = p; break; }
+      }
+      if (next == null) {
+        for (final p in pages) { if (!isDone(p)) { next = p; break; } }
+      }
+      next ??= pages.isNotEmpty ? pages.first : null;
+
+      if (!mounted) return;
+      final nextId = next != null ? (next['id'] ?? '').toString() : '';
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CourseDetailScreen(
+            courseId: courseId,
+            courseTitle: (course['title'] ?? '').toString(),
+            initialPageId: nextId.isNotEmpty ? nextId : null,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _continuingResume = false);
+    }
+  }
+
+  // The exciting red "Continue where you left off!" banner.
+  Widget _buildResumeBanner() {
+    final course = _resumeCourse;
+    if (course == null) return const SizedBox.shrink();
+    final title = (course['title'] ?? '').toString();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: GestureDetector(
+        onTap: _continuingResume ? null : () => _continueWhereLeftOff(course),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFFB30002), Color(0xFFE01418)]),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: _primary.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                child: _continuingResume
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Continue where you left off!',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCoursesTab() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _primary));
@@ -1066,10 +1223,22 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
     final items = _groupCoursesByCategory(_courses);
     final firstCourseIdx =
         items.indexWhere((it) => !(it is Map && it.containsKey('__header__')));
-    return ListView.builder(
+    return Column(
+      children: [
+        _buildResumeBanner(),
+        Expanded(
+          child: ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: items.length,
+      itemCount: items.length + 1,
       itemBuilder: (context, index) {
+        // AI Assistants ("Jay's AI Clone") section rendered after the courses,
+        // matching the Sales training screen.
+        if (index == items.length) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: _buildJaysAIClone(),
+          );
+        }
         final item = items[index];
         if (item is Map && item.containsKey('__header__')) {
           return _categoryHeader(item['__header__'] as String);
@@ -1107,7 +1276,10 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
           );
         }
         return card;
-      },
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1379,6 +1551,154 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
                 child: const Text('Delete'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJaysAIClone() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.smart_toy_outlined, color: _primary, size: 22),
+            const SizedBox(width: 8),
+            const Text('AI Assistants', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+          ),
+          child: _loadingBots
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(color: _primary),
+                  ),
+                )
+              : _bots.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Icon(Icons.smart_toy_outlined, size: 48, color: _textLight.withOpacity(0.5)),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No AI assistants available',
+                              style: TextStyle(fontSize: 14, color: _textLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: _bots.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final bot = entry.value;
+                        return Column(
+                          children: [
+                            if (index > 0)
+                              Container(
+                                height: 1,
+                                margin: const EdgeInsets.symmetric(vertical: 12),
+                                color: const Color(0xFFF3F4F6),
+                              ),
+                            _buildBotListItem(bot),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBotListItem(dynamic bot) {
+    final name = bot['name'] ?? 'Unknown Bot';
+    final description = bot['description'] ?? '';
+    // Prefer the admin-set bot avatar (botAvatarUrl); fall back to the legacy
+    // imageUrl. Handles both full URLs and relative paths so the bot's own
+    // profile photo shows instead of the generic robot icon.
+    final rawAvatar = (bot['botAvatarUrl'] ?? bot['imageUrl'] ?? '').toString();
+    final imageUrl = rawAvatar.isEmpty
+        ? ''
+        : (rawAvatar.startsWith('http') ? rawAvatar : 'https://millerstorm.tech$rawAvatar');
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AiCloneChatScreen(bot: bot),
+          ),
+        );
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(12),
+              image: imageUrl.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(imageUrl),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: imageUrl.isEmpty
+                ? const Icon(
+                    Icons.smart_toy,
+                    size: 24,
+                    color: _primary,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _textDark,
+                  ),
+                ),
+                if (description.isNotEmpty) const SizedBox(height: 3),
+                if (description.isNotEmpty)
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: _textLight,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
           ),
         ],
       ),

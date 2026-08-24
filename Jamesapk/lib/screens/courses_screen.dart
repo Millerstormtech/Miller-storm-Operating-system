@@ -43,6 +43,8 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   String? _jayAvatarUrl;
   bool _isLoading = true;
   bool _hasCachedData = false;
+  // "Continue where you left off" — true while resolving the next lesson to open.
+  bool _continuingResume = false;
   // True when the last course fetch failed (network/API) — lets the UI show a
   // "couldn't load, retry" state instead of a misleading "No courses available".
   bool _loadError = false;
@@ -505,6 +507,125 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
     } catch (_) {}
   }
 
+  // The course to resume: the first started-but-unfinished course
+  // (0 < progress < 100). Matches the web's "Continue where you left off".
+  Map<String, dynamic>? get _resumeCourse {
+    for (final c in _courses) {
+      if (c is! Map) continue;
+      final pctRaw = (c['progress']?['progressPercent'] ?? 0);
+      final pct = pctRaw is num ? pctRaw.toInt() : 0;
+      if (pct > 0 && pct < 100) return Map<String, dynamic>.from(c);
+    }
+    return null;
+  }
+
+  // Load the course's per-lesson progress, find the next unwatched lesson, and
+  // open the course straight into that lesson's player (via initialPageId).
+  Future<void> _continueWhereLeftOff(Map<String, dynamic> course) async {
+    if (_continuingResume) return;
+    setState(() => _continuingResume = true);
+    try {
+      final courseId = (course['id'] ?? '').toString();
+      Set<String> done = {};
+      List<dynamic> quizResults = [];
+      try {
+        final res = await api.get(Uri.parse(
+            'https://millerstorm.tech/api/progress?userId=$_userId&courseId=$courseId'));
+        if (res.statusCode == 200) {
+          final data = json.decode(res.body);
+          done = ((data['completedPages'] as List?) ?? []).map((e) => e.toString()).toSet();
+          quizResults = (data['quizResults'] as List?) ?? [];
+        }
+      } catch (_) {}
+
+      final pages = ((course['pages'] as List?) ?? [])
+          .where((p) => p is Map && p['status'] == 'published')
+          .toList();
+      bool isDone(dynamic p) {
+        final id = (p['id'] ?? '').toString();
+        if (p['isQuiz'] == true) {
+          return quizResults.any((r) => (r['pageId'] ?? '').toString() == id && r['passed'] != false);
+        }
+        return done.contains(id);
+      }
+
+      // First not-yet-watched video; else the next incomplete item; else page one.
+      dynamic next;
+      for (final p in pages) {
+        if (p['isQuiz'] != true && !isDone(p)) { next = p; break; }
+      }
+      if (next == null) {
+        for (final p in pages) { if (!isDone(p)) { next = p; break; } }
+      }
+      next ??= pages.isNotEmpty ? pages.first : null;
+
+      if (!mounted) return;
+      final nextId = next != null ? (next['id'] ?? '').toString() : '';
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CourseDetailScreen(
+            courseId: courseId,
+            courseTitle: (course['title'] ?? '').toString(),
+            initialPageId: nextId.isNotEmpty ? nextId : null,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _continuingResume = false);
+    }
+  }
+
+  // The exciting red "Continue where you left off!" banner.
+  Widget _buildResumeBanner() {
+    final course = _resumeCourse;
+    if (course == null) return const SizedBox.shrink();
+    final title = (course['title'] ?? '').toString();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: GestureDetector(
+        onTap: _continuingResume ? null : () => _continueWhereLeftOff(course),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFFB30002), Color(0xFFE01418)]),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: _primary.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                child: _continuingResume
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Continue where you left off!',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCoursesTab() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _primary));
@@ -545,6 +666,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           ),
         ),
         ),
+        _buildResumeBanner(),
         Expanded(
           child: _filteredCourses.isEmpty
               ? (_loadError && _searchQuery.isEmpty
