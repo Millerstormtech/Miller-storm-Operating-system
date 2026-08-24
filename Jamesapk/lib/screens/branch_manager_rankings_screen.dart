@@ -504,7 +504,7 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
             Container(
               width: double.infinity,
               color: _white,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -542,10 +542,10 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 2),
                   _tabBar(),
                   if (_tab == 'leaderboard') ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     Showcase(
                       key: _kFilters,
                       title: 'Filter the board',
@@ -577,7 +577,7 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
                       child: ListView.builder(
                         padding: const EdgeInsets.only(bottom: 14),
                         itemCount: headerWidgets.length +
-                            (visible.isEmpty ? 1 : visible.length),
+                            (visible.isEmpty ? 1 : visible.length + 1),
                         itemBuilder: (context, i) {
                           if (i < headerWidgets.length) return headerWidgets[i];
                           final ri = i - headerWidgets.length;
@@ -590,6 +590,8 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
                               ),
                             );
                           }
+                          // Totals summary as the LAST row, after all reps.
+                          if (ri == visible.length) return _buildTotalsSummary();
                           final row = Padding(
                             padding: EdgeInsets.fromLTRB(14, ri == 0 ? 12 : 0, 14, 0),
                             child: _row(visible[ri], ri),
@@ -608,7 +610,6 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
                       ),
                     ),
             ),
-            if (_tab == 'leaderboard') _buildTotalsSummary(),
             const BranchManagerBottomNav(active: 'leaderboard'),
           ],
         ),
