@@ -6,9 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import '../services/auth_service.dart';
 import 'branch_manager_courses_screen.dart';
 import 'branch_manager_unlock_lesson_screen.dart';
 import 'jays_ai_clone_screen.dart';
+import 'ai_clone_chat_screen.dart';
 
 class BranchManagerTrainingScreen extends StatefulWidget {
   const BranchManagerTrainingScreen({super.key});
@@ -32,12 +34,14 @@ class _BranchManagerTrainingScreenState extends State<BranchManagerTrainingScree
   String? _userName;
   // Jay's AI Clone avatar (cached by the courses screen), shown on the header icon.
   String? _jayAvatarUrl;
+  List<dynamic> _jayBots = [];
 
   @override
   void initState() {
     super.initState();
     _loadUserAndFetchGroups();
     _loadCachedJayAvatar();
+    _fetchJayBots();
   }
 
   // Show the last-known Jay avatar from cache so the header icon isn't a generic
@@ -92,6 +96,52 @@ class _BranchManagerTrainingScreenState extends State<BranchManagerTrainingScree
       }
     } catch (e) {
       print('Error fetching StormChat groups: $e');
+    }
+  }
+
+  // Fetch the AI bots assigned to this user's role (light payload), so Jay's
+  // Clone can open straight into chat when there's a single bot — same as Sales.
+  Future<void> _fetchJayBots() async {
+    try {
+      final user = await AuthService.getStoredUser();
+      final role = user?['role']?.toString();
+      final res = await api.get(Uri.parse('https://millerstorm.tech/api/ai-bots?light=1'));
+      if (res.statusCode != 200) return;
+      final data = json.decode(res.body) as List;
+      final assigned = data.where((b) {
+        final ar = b['assignedRoles'];
+        return ar is List && role != null && ar.contains(role);
+      }).toList();
+      if (!mounted) return;
+      String? avatar;
+      if (assigned.isNotEmpty) {
+        final raw = (assigned.first['botAvatarUrl'] ?? assigned.first['imageUrl'] ?? '').toString();
+        if (raw.isNotEmpty) avatar = raw.startsWith('http') ? raw : 'https://millerstorm.tech$raw';
+      }
+      setState(() {
+        _jayBots = assigned;
+        if (avatar != null && avatar.isNotEmpty) _jayAvatarUrl = avatar;
+      });
+      if (avatar != null && avatar.isNotEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('jay_avatar_url', avatar);
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  // Open Jay's AI Clone: a single bot goes straight into chat (no list screen);
+  // multiple bots show the picker; none shows a toast. Matches the Sales panel.
+  void _openJaysAi() {
+    if (_jayBots.length == 1) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => AiCloneChatScreen(bot: _jayBots.first)));
+    } else if (_jayBots.length > 1) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const JaysAiCloneScreen()));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No AI assistant available yet')),
+      );
     }
   }
 
@@ -158,10 +208,7 @@ class _BranchManagerTrainingScreenState extends State<BranchManagerTrainingScree
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const JaysAiCloneScreen()),
-                        );
+                        _openJaysAi();
                       },
                     ),
                     const SizedBox(width: 8),
