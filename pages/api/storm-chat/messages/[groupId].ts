@@ -346,9 +346,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const isMember = (grp.members || []).some((m: string) => myIds.includes(m));
         const isGroupAdmin = (grp.admins || []).some((m: string) => myIds.includes(m));
         const dm = isDmGroup(grp);
-        const canPin = dm ? isMember : (isGroupAdmin || auth.role === 'admin' || auth.role === 'c-level');
+        const isModerator = isGroupAdmin || auth.role === 'admin' || auth.role === 'c-level';
+        // Anyone who can SEND a message here can pin one: any member, unless the
+        // group is admin-only chat (then only moderators). DMs: either member.
+        const canPin = dm ? isMember : (isMember && (!grp.onlyAdminCanChat || isModerator));
         if (!canPin) {
-          return res.status(403).json({ error: 'Only group admins can pin messages' });
+          return res.status(403).json({ error: "You can't pin messages here" });
         }
 
         const pin = req.body.action === 'pin';

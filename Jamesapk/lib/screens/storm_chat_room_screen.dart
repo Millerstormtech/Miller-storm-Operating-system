@@ -92,16 +92,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     return isAdmin || isGroupMember;
   }
 
-  // Pin/unpin: a moderator in a group (group admin or system admin); in a DM
-  // either member. Mirrors the server rule and canSendMessage's id comparison.
+  // Anyone who can SEND a message here can also pin one (reuses canSendMessage);
+  // in a DM either member can.
   bool get _canPin {
     final isDirect = widget.group['isDirect'] == true;
-    final admins = List<String>.from(widget.group['admins'] ?? []);
     final members = List<String>.from(widget.group['members'] ?? []);
-    final isAdmin = widget.userRole == 'admin';
-    final isGroupAdmin = admins.contains(widget.userId);
     final isGroupMember = members.contains(widget.userId);
-    return isDirect ? isGroupMember : (isGroupAdmin || isAdmin);
+    return isDirect ? isGroupMember : canSendMessage;
   }
 
   // Every pinned message, newest pin first (drives the banner).

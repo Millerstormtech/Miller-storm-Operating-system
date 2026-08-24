@@ -183,9 +183,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const isGroupAdmin = group.admins.includes(user?._id || user?.id || '');
 
   const canSendMessage = isAdmin || isGroupAdmin || (group.onlyAdminCanChat ? false : isGroupMember);
-  // Pin/unpin: a moderator in a group (group admin or system admin); in a DM
-  // either member. Matches the server rule.
-  const canPin = isDirect ? isGroupMember : (isGroupAdmin || isAdmin);
+  // Anyone who can SEND a message here can also pin one (DMs: either member).
+  const canPin = isDirect ? isGroupMember : canSendMessage;
   // The banner lists every pinned message, newest pin first.
   const pinnedMessages = messages
     .filter((m) => m.pinned)
