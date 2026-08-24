@@ -827,11 +827,22 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(o.value,
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      color: selected ? _primary : _textDark,
-                                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(o.value,
+                                      style: TextStyle(
+                                          fontSize: 15,
+                                          color: selected ? _primary : _textDark,
+                                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+                                  // The weekly window resets Monday 12:00 AM Central.
+                                  if (o.key == 'week') ...[
+                                    const SizedBox(height: 3),
+                                    const Text('Resets Mondays at 12:00 AM CT.',
+                                        style: TextStyle(fontSize: 12, color: _textLight)),
+                                  ],
+                                ],
+                              ),
                             ),
                             if (selected) const Icon(Icons.check, color: _primary, size: 20),
                           ],
