@@ -266,6 +266,12 @@ export default async function handler(
       return;
     }
     if (action === 'permanent-delete') {
+      // Irreversible purge — admins only. C-Level/Branch Manager share the User
+      // Management screen but may restore, not permanently delete.
+      if (auth.role !== "admin") {
+        res.status(403).json({ error: "Only admins can permanently delete users" });
+        return;
+      }
       const user = await UserModel.findOne({ id }).lean() as any;
       await UserModel.deleteOne({ id });
       // Also delete the approved user request for this email

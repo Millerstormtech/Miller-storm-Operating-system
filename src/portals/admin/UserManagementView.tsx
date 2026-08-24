@@ -3,11 +3,16 @@ import { useEffect, useState } from "react";
 import { UserManagement } from "./UserManagement";
 import { UserRequests } from "./UserRequests";
 import { UserProfile } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
 
 // The full User Management experience (users / requests / deleted tabs).
 // Rendered inside any panel's layout — Admin, C-Level and Branch Manager all
 // share this so those roles get the exact same management screen.
 export function UserManagementView() {
+  const { user: currentUser } = useAuth();
+  // Permanently deleting a user is irreversible, so it's admin-only. C-Level and
+  // Branch Manager share this screen but can only restore, not purge.
+  const isAdmin = currentUser?.role === "admin";
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [deletedUsers, setDeletedUsers] = useState<UserProfile[]>([]);
   const [activeTab, setActiveTab] = useState<"users" | "requests" | "deleted">("users");
@@ -190,23 +195,25 @@ export function UserManagementView() {
                       >
                         Restore User
                       </button>
-                      <button
-                        type="button"
-                        style={{ background: "#ef4444", color: "var(--text-inverse)", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-                        onClick={async () => {
-                          if (await appConfirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
-                            try {
-                              await fetch(`/api/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "permanent-delete" }) });
-                              await reloadUsers();
-                            } catch (error) {
-                              console.error("Failed to permanently delete user:", error);
-                              alert("Failed to permanently delete user");
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          style={{ background: "#ef4444", color: "var(--text-inverse)", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                          onClick={async () => {
+                            if (await appConfirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
+                              try {
+                                await fetch(`/api/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "permanent-delete" }) });
+                                await reloadUsers();
+                              } catch (error) {
+                                console.error("Failed to permanently delete user:", error);
+                                alert("Failed to permanently delete user");
+                              }
                             }
-                          }
-                        }}
-                      >
-                        Delete Permanently
-                      </button>
+                          }}
+                        >
+                          Delete Permanently
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
