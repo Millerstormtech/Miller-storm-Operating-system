@@ -69,6 +69,9 @@ export function CourseManagement(props: CourseEditorProps) {
   // "+ Add new category" inline input state for the course details form.
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  // Custom category dropdown (native <select> can't hold a per-row delete button).
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   // 3-step delete modal
   type DeleteStep = 'choose' | 'select' | 'confirm';
@@ -657,6 +660,59 @@ export function CourseManagement(props: CourseEditorProps) {
     } else {
       const next = props.courses.map((course) => (course.id === updated.id ? updated : course));
       props.onCoursesChange(next);
+    }
+  }
+
+  // Close the category dropdown when clicking outside it.
+  useEffect(() => {
+    if (!categoryMenuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(e.target as Node)) {
+        setCategoryMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [categoryMenuOpen]);
+
+  // Delete a category: every course in it becomes Uncategorized, saved
+  // immediately, so the category then drops out of the (usage-derived) list.
+  // Deleting a credential-linked built-in also drops those courses from that
+  // Course Leaderboard track, so it gets a stronger confirmation.
+  async function deleteCategory(name: string) {
+    const cat = name.trim();
+    if (!cat) return;
+    const isCredential = TRAINING_CATEGORIES.includes(cat);
+    const msg = isCredential
+      ? `"${cat}" is a credential category. Deleting it makes its courses Uncategorized and removes them from that Course Leaderboard track. Delete anyway?`
+      : `Delete the category "${cat}"? Courses in it become Uncategorized.`;
+    if (!window.confirm(msg)) return;
+    setCategoryMenuOpen(false);
+
+    const affected = props.courses.filter((c) => (c.category || "").trim() === cat);
+    // Clear it everywhere in local state (covers the selected course too).
+    const next = props.courses.map((c) =>
+      (c.category || "").trim() === cat ? { ...c, category: "" } : c
+    );
+    props.onCoursesChange(next);
+
+    if (affected.length === 0) {
+      showToast(`Deleted category "${cat}"`, "success");
+      return;
+    }
+    try {
+      const cleared = affected.map((c) => ({ ...c, category: "" }));
+      const payload = props.cleanCourses ? props.cleanCourses(cleared) : cleared;
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("save failed");
+      showToast(`Deleted category "${cat}"`, "success");
+    } catch (err) {
+      console.error("Failed to delete category:", err);
+      showToast("Couldn't delete the category. Please try again.", "error");
     }
   }
 
@@ -2571,24 +2627,72 @@ export function CourseManagement(props: CourseEditorProps) {
                           <button type="button" className="btn-secondary btn-small" onClick={() => { setAddingCategory(false); setNewCategoryName(""); }}>✕</button>
                         </div>
                       ) : (
-                        <select
-                          className="field-input"
-                          value={selectedCourse.category ?? ""}
-                          onChange={(e) => {
-                            if (e.target.value === "__add_new__") { setAddingCategory(true); setNewCategoryName(""); return; }
-                            updateCourse({ ...selectedCourse, category: e.target.value });
-                          }}
-                        >
-                          <option value="">Uncategorized</option>
-                          {Array.from(new Set([
-                            ...TRAINING_CATEGORIES,
-                            ...props.courses.map((c) => (c.category || "").trim()),
-                            (selectedCourse.category || "").trim(),
-                          ].filter(Boolean))).sort((a, b) => a.localeCompare(b)).map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                          <option value="__add_new__">+ Add new category…</option>
-                        </select>
+                        <div style={{ position: "relative" }} ref={categoryMenuRef}>
+                          <button
+                            type="button"
+                            className="field-input"
+                            onClick={() => setCategoryMenuOpen((o) => !o)}
+                            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left", width: "100%" }}
+                          >
+                            <span style={{ color: (selectedCourse.category || "").trim() ? "var(--text-primary)" : "var(--text-muted)" }}>
+                              {(selectedCourse.category || "").trim() || "Uncategorized"}
+                            </span>
+                            <span style={{ opacity: 0.55, fontSize: 12, marginLeft: 8 }}>▾</span>
+                          </button>
+                          {categoryMenuOpen && (
+                            <div
+                              style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", zIndex: 60, maxHeight: 280, overflowY: "auto", padding: 4 }}
+                            >
+                              <div
+                                onClick={() => { updateCourse({ ...selectedCourse, category: "" }); setCategoryMenuOpen(false); }}
+                                style={{ padding: "9px 10px", borderRadius: 6, cursor: "pointer", color: "var(--text-muted)" }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-muted)")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                              >
+                                Uncategorized
+                              </div>
+                              {Array.from(new Set([
+                                ...props.courses.map((c) => (c.category || "").trim()),
+                                (selectedCourse.category || "").trim(),
+                              ].filter(Boolean))).sort((a, b) => a.localeCompare(b)).map((c) => {
+                                const active = (selectedCourse.category || "").trim() === c;
+                                return (
+                                  <div
+                                    key={c}
+                                    style={{ display: "flex", alignItems: "center", gap: 4, borderRadius: 6, background: active ? "var(--surface-muted)" : "transparent" }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-muted)")}
+                                    onMouseLeave={(e) => (e.currentTarget.style.background = active ? "var(--surface-muted)" : "transparent")}
+                                  >
+                                    <span
+                                      onClick={() => { updateCourse({ ...selectedCourse, category: c }); setCategoryMenuOpen(false); }}
+                                      style={{ flex: 1, padding: "9px 10px", cursor: "pointer", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                    >
+                                      {c}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      title={`Delete category "${c}"`}
+                                      onClick={(e) => { e.stopPropagation(); deleteCategory(c); }}
+                                      style={{ flexShrink: 0, marginRight: 6, width: 24, height: 24, borderRadius: 6, border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(224,20,24,0.12)"; e.currentTarget.style.color = "#e01418"; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
+                                    >
+                                      🗑
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                              <div
+                                onClick={() => { setAddingCategory(true); setNewCategoryName(""); setCategoryMenuOpen(false); }}
+                                style={{ padding: "9px 10px", borderRadius: 6, cursor: "pointer", color: "#e01418", fontWeight: 600, marginTop: 2 }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-muted)")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                              >
+                                + Add new category…
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </label>
                   </div>
