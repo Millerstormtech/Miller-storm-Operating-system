@@ -66,6 +66,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
 
+# `record` pins record_linux to <1.0.0 (0.7.2), which is too old for the
+# record_platform_interface the iOS/Android impls need — and Flutter compiles
+# EVERY platform impl, so the stale Linux one breaks the build on iOS too. We
+# don't target Linux, so force a current record_linux that matches the interface.
+dependency_overrides:
+  record_linux: ^1.0.0
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
