@@ -419,6 +419,14 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
               onPressed: () => Navigator.pushNamed(context, '/tickets'),
               tooltip: 'Support',
             ),
+            AnimatedBuilder(
+              animation: themeController,
+              builder: (context, _) => IconButton(
+                icon: Icon(themeController.isDark ? Icons.light_mode : Icons.dark_mode, color: _white),
+                onPressed: () => themeController.toggle(),
+                tooltip: themeController.isDark ? 'Light Mode' : 'Dark Mode',
+              ),
+            ),
             IconButton(
               icon: Icon(Icons.logout, color: _white),
               onPressed: _logout,
@@ -551,8 +559,6 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDarkModeToggle(),
-                  const SizedBox(height: 16),
                   _buildTextField(
                     label: 'Full Name',
                     controller: _nameController,
@@ -779,48 +785,6 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
           ),
         ),
       ],
-    );
-  }
-
-  // App-wide light/dark toggle. Reads/writes the global themeController; the app
-  // rebuilds on toggle, so wrapping in an AnimatedBuilder keeps the Switch in sync.
-  Widget _buildDarkModeToggle() {
-    return AnimatedBuilder(
-      animation: themeController,
-      builder: (context, _) {
-        return Container(
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: SwitchListTile(
-            value: themeController.isDark,
-            onChanged: (v) => themeController.setDark(v),
-            activeColor: _primary,
-            secondary: Icon(Icons.dark_mode, color: _textDark),
-            title: Text(
-              'Dark Mode',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: _textDark,
-              ),
-            ),
-            subtitle: Text(
-              'Switch between light and dark themes',
-              style: TextStyle(fontSize: 12, color: _textLight),
-            ),
-          ),
-        );
-      },
     );
   }
 
