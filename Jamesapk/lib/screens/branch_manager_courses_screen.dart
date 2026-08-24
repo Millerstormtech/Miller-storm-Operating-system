@@ -1857,16 +1857,31 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
                   ),
                 ],
                 const SizedBox(height: 12),
-                // Completion progress bar (matches the web card).
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: (progressValue / 100).clamp(0.0, 1.0),
-                    minHeight: 6,
-                    backgroundColor: _bg,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                        progressValue == 100 ? const Color(0xFF16A34A) : _primary),
-                  ),
+                // Completion progress bar + percentage (matches the web card).
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: (progressValue / 100).clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: _bg,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              progressValue == 100 ? const Color(0xFF16A34A) : _primary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '$progressValue%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: progressValue == 100 ? const Color(0xFF16A34A) : _primary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

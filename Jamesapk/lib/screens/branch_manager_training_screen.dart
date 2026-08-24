@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import 'branch_manager_courses_screen.dart';
 import 'branch_manager_unlock_lesson_screen.dart';
+import 'jays_ai_clone_screen.dart';
 
 class BranchManagerTrainingScreen extends StatefulWidget {
   const BranchManagerTrainingScreen({super.key});
@@ -28,11 +29,26 @@ class _BranchManagerTrainingScreenState extends State<BranchManagerTrainingScree
   String? _userId;
   String? _headshotUrl;
   String? _userName;
+  // Jay's AI Clone avatar (cached by the courses screen), shown on the header icon.
+  String? _jayAvatarUrl;
 
   @override
   void initState() {
     super.initState();
     _loadUserAndFetchGroups();
+    _loadCachedJayAvatar();
+  }
+
+  // Show the last-known Jay avatar from cache so the header icon isn't a generic
+  // robot before the user has opened Jay's Clone once.
+  Future<void> _loadCachedJayAvatar() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString('jay_avatar_url');
+      if (cached != null && cached.isNotEmpty && mounted) {
+        setState(() => _jayAvatarUrl = cached);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadUserAndFetchGroups() async {
@@ -98,7 +114,7 @@ class _BranchManagerTrainingScreenState extends State<BranchManagerTrainingScree
                   children: [
                     const Expanded(
                       child: Text(
-                        'Miller Storm Training Center',
+                        'Training Center',
                         style: TextStyle(
                           color: _textDark,
                           fontSize: 18,
@@ -117,6 +133,33 @@ class _BranchManagerTrainingScreenState extends State<BranchManagerTrainingScree
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const BranchManagerUnlockLessonScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    // Jay's AI Clone — same as the Sales panel: avatar when known,
+                    // otherwise a bot icon; opens Jay's Clone.
+                    IconButton(
+                      icon: (_jayAvatarUrl != null && _jayAvatarUrl!.isNotEmpty)
+                          ? Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                image: DecorationImage(
+                                  image: NetworkImage(_jayAvatarUrl!),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.smart_toy_outlined, color: _primary, size: 30),
+                      tooltip: "Jay's AI Clone",
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const JaysAiCloneScreen()),
                         );
                       },
                     ),

@@ -250,8 +250,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (widget.playlistModules == null) _buildProgressSection(),
-                  if (widget.playlistModules == null) const SizedBox(height: 24),
                   if (widget.playlistModules == null) _buildContinueButton(),
                   if (widget.playlistModules == null) const SizedBox(height: 32),
                   if (widget.playlistModules != null) const SizedBox(height: 16),
@@ -264,44 +262,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _buildProgressSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Course Progress',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _textMedium),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Completed $_completedLessons of $_totalLessons items',
-          style: const TextStyle(fontSize: 14, color: _textLight),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: _totalLessons > 0 ? _completedLessons / _totalLessons : 0,
-                  minHeight: 8,
-                  backgroundColor: _border,
-                  valueColor: AlwaysStoppedAnimation<Color>(_primary),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              '$_progressPercent%',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark),
-            ),
-          ],
-        ),
-      ],
     );
   }
 

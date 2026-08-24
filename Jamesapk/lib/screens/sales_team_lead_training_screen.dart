@@ -96,7 +96,7 @@ class _SalesTeamLeadTrainingScreenState extends State<SalesTeamLeadTrainingScree
                   children: [
                     const Expanded(
                       child: Text(
-                        'Miller Storm Training Center',
+                        'Training Center',
                         style: TextStyle(
                           color: _textDark,
                           fontSize: 18,

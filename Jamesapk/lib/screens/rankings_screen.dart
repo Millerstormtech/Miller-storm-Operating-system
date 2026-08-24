@@ -1035,19 +1035,24 @@ class _RankingsScreenState extends State<RankingsScreen> {
       child: Row(
         children: [
           Expanded(
-            child: Text.rich(
-              TextSpan(children: [
-                TextSpan(
-                  text: '👑 $monthLabel CONTRACT KING   ',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '👑 $monthLabel CONTRACT KING',
                   style: const TextStyle(color: Color(0xFFFF8A85), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                TextSpan(
-                  text: name,
-                  style: const TextStyle(color: Color(0xFFF0F2F5), fontSize: 15, fontWeight: FontWeight.w700),
+                const SizedBox(height: 3),
+                Text(
+                  name,
+                  style: const TextStyle(color: Color(0xFFF0F2F5), fontSize: 16, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ]),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              ],
             ),
           ),
           const SizedBox(width: 12),
