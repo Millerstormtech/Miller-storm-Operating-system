@@ -156,11 +156,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 7, 14, 3),
-            child: Text('📌 ${pinned.length} Pinned message${pinned.length == 1 ? '' : 's'}',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
-          ),
           ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 168),
             child: ListView.builder(
@@ -184,7 +179,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             : type == 'poll'
                 ? '📊 ${pinned['poll']?['question'] ?? 'Poll'}'
                 : (pinned['message'] ?? '').toString();
-    final by = (pinned['pinnedByName'] ?? '').toString();
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 6, 10, 6),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: line))),
@@ -197,8 +191,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Pinned${by.isNotEmpty ? ' · $by' : ''}',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
                 Text('${pinned['senderName'] ?? ''}: $preview',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
