@@ -45,7 +45,10 @@ class FirebaseMessagingService {
       );
 
       // Initialize local notifications
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      // Status-bar (small) icon must be a white silhouette on transparent — a
+      // full-color launcher icon renders as a solid white square. ic_stat_notification
+      // is the Miller Storm roof mark as a monochrome drawable.
+      const androidSettings = AndroidInitializationSettings('@drawable/ic_stat_notification');
       const iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
@@ -172,7 +175,11 @@ class FirebaseMessagingService {
             channelDescription: 'Notifications for StormChat messages',
             importance: Importance.high,
             priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
+            // Status-bar icon must be a monochrome silhouette (Android tints it);
+            // the full-color logo shows as the large icon in the expanded body.
+            icon: '@drawable/ic_stat_notification',
+            color: Color(0xFFCB0002),
+            largeIcon: const DrawableResourceAndroidBitmap('ic_notification_large'),
             playSound: true,
           ),
           iOS: const DarwinNotificationDetails(

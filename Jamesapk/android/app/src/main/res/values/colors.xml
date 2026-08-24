@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tint for the status-bar notification icon (Miller Storm red). -->
+    <color name="notification_color">#CB0002</color>
+</resources>
