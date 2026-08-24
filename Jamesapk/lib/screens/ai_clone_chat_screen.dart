@@ -651,8 +651,10 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                   ),
                 ),
 
-              // Input
-              Container(
+              // Input — SafeArea keeps it above the system navigation bar.
+              SafeArea(
+                top: false,
+                child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -747,6 +749,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                 ),
               ],
             ),
+              ),
               ),
             ],
           ),
