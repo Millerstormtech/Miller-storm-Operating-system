@@ -693,13 +693,6 @@ export function UserManagement(props: UserEditorProps) {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="btn-secondary btn-small" onClick={handleExportCSV}>
-              Export CSV
-            </button>
-            <button type="button" className="btn-secondary btn-small" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-              {importing ? "Importing..." : "Import CSV"}
-            </button>
-            <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportCSV} />
             <button type="button" className="btn-secondary btn-small" onClick={() => setShowUpdateConfirm(true)} disabled={notifyingUpdate}>
               {notifyingUpdate ? "Sending..." : "Notify App Update"}
             </button>
@@ -1088,17 +1081,6 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-tertiary)", cursor: "pointer", userSelect: "none" }}>
-                      <input
-                        type="checkbox"
-                        checked={!!notifyUsers[selectedUserId]}
-                        onChange={e => setNotifyUsers(prev => ({ ...prev, [selectedUserId]: e.target.checked }))}
-                        style={{ width: 15, height: 15, cursor: "pointer" }}
-                      />
-                      Notify user by email
-                    </label>
-                  </div>
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || !!roleError || isSaving} onClick={async () => {
                     if (emailError) {
                       emailInputRef.current?.focus();
@@ -1249,12 +1231,6 @@ export function UserManagement(props: UserEditorProps) {
                       });
                     }}>👁 View As</button>
                   )}
-                  <button type="button" className="btn-secondary btn-warning btn-small" onClick={async () => {
-                    const action = selectedUser.suspended ? "Unsuspend" : "Suspend";
-                    if (await appConfirm(`${action} ${selectedUser.name}?`)) {
-                      updateUser({ ...selectedUser, suspended: !selectedUser.suspended });
-                    }
-                  }}>{selectedUser.suspended ? "Unsuspend User" : "Suspend User"}</button>
                   <button type="button" className="btn-ghost btn-danger" onClick={async () => {
                     if (await appConfirm(`Delete ${selectedUser.name}?`)) deleteUser(selectedUser.id);
                   }}>Delete User</button>
