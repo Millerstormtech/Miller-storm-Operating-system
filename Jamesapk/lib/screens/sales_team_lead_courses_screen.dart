@@ -1244,6 +1244,7 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
     // section ORDER only, so a stale entry misplaces a heading rather than
     // hiding a course, but it should still be kept in step.
     const predefined = [
+      'Miller Storm Certification',
       'Miller Storm Certificate',
       'Millionaire Knockers',
       'Roof Hustlers',
