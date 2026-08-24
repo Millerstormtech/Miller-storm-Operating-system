@@ -373,9 +373,9 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: allSelected ? const Color(0xFFE0E7FF) : const Color(0xFFEFF6FF),
+                  color: allSelected ? _blue.withOpacity(0.20) : _blue.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                  border: Border.all(color: _blue.withOpacity(0.4)),
                 ),
                 child: Text(allSelected ? 'Clear all' : 'Select all',
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _blue)),
@@ -459,7 +459,7 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
                   onPressed: _ffBusy ? null : () => _setFastForward(true),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _blue,
-                    side: const BorderSide(color: Color(0xFFBFDBFE)),
+                    side: BorderSide(color: _blue.withOpacity(0.4)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: const Text('⏩ Enable Fast-Forward',
@@ -540,8 +540,8 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
@@ -557,9 +557,9 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: allSelected ? const Color(0xFFE0E7FF) : const Color(0xFFEFF6FF),
+                        color: allSelected ? _blue.withOpacity(0.20) : _blue.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                        border: Border.all(color: _blue.withOpacity(0.4)),
                       ),
                       child: Text(
                         allSelected ? 'Deselect all' : '🔓 Unlock whole course',
@@ -576,7 +576,7 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
             final key = '$cid::$pid';
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFF1F5F9)))),
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
               child: Row(
                 children: [
                   SizedBox(
