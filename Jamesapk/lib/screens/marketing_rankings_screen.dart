@@ -951,7 +951,7 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
                             child: Text(
                               isYou ? '$name (You)' : name,
                               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              maxLines: 2, overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (isFormer) ...[
@@ -1012,67 +1012,46 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
   }
 
   // Contract King: this calendar month's top rep by Contract Amount. Mirrors
-  // the web banner — brown gradient, avatar, month label + name, and amount.
+  // Contract King banner - single-line, matching the web: dark-maroon pill,
+  // salmon eyebrow + name inline on the left, amount pushed to the right.
   Widget _contractKingBanner() {
     final k = _contractKing!;
     final name = (k['name'] ?? '').toString();
-    final img = (k['headshotUrl'] ?? '').toString();
     final monthLabel = (k['monthLabel'] ?? '').toString().toUpperCase();
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF78350F), Color(0xFFB45309)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0xFF3A0E0E), Color(0xFF230808)],
         ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: const Color(0xFFB45309).withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFCA0002).withOpacity(0.45)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF374151)),
-            clipBehavior: Clip.antiAlias,
-            alignment: Alignment.center,
-            child: img.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: 'https://millerstorm.tech$img',
-                    fit: BoxFit.cover, width: 48, height: 48,
-                    errorWidget: (_, __, ___) => _initial(name),
-                  )
-                : _initial(name),
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('👑 $monthLabel CONTRACT KING',
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.4),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(name,
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(
+                  text: '👑 $monthLabel CONTRACT KING   ',
+                  style: const TextStyle(color: Color(0xFFFF8A85), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                ),
+                TextSpan(
+                  text: name,
+                  style: const TextStyle(color: Color(0xFFF0F2F5), fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(_money(k['revenue']),
-                  style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 1),
-              const Text('Contract Amount this month',
-                  style: TextStyle(color: Colors.white70, fontSize: 10.5)),
-            ],
-          ),
+          const SizedBox(width: 12),
+          Text(_money(k['revenue']),
+              style: const TextStyle(color: Color(0xFFF0F2F5), fontSize: 16, fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -1146,7 +1125,7 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
             children: [
               Text(name,
                   style: const TextStyle(color: _textDark, fontSize: 14.5, fontWeight: FontWeight.w700),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
               Text(
                 behindBy == null
                     ? 'Leads the company'
