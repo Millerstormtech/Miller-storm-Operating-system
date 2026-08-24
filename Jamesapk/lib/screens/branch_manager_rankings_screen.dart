@@ -370,10 +370,35 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
             _filterSummary,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12.5, color: _textLight, fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 12.5, color: _textLight, fontWeight: FontWeight.w500),
           ),
         ),
+        const SizedBox(width: 10),
+        _totalRevenueBox(),
       ],
+    );
+  }
+
+  // Total revenue of the currently-filtered reps - mirrors the web board's box.
+  Widget _totalRevenueBox() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text('TOTAL REVENUE',
+              style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, letterSpacing: 0.6, color: _textLight)),
+          const SizedBox(height: 1),
+          Text(_money(_sum('revenue')),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF3EA56A))),
+        ],
+      ),
     );
   }
 
@@ -491,9 +516,6 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
                           children: [
                             Text('Sales Leaderboard',
                                 style: TextStyle(color: _textDark, fontSize: 22, fontWeight: FontWeight.w800)),
-                            SizedBox(height: 3),
-                            Text('Live from AccuLynx + RepCard · refreshed hourly',
-                                style: TextStyle(color: _textLight, fontSize: 12.5)),
                           ],
                         ),
                       ),
