@@ -12,6 +12,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:video_compress/video_compress.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import 'storm_chat_group_info_screen.dart';
 import 'image_viewer_screen.dart';
@@ -53,7 +54,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   dynamic replyingTo; // Store the message being replied to
   String? _blinkingMessageId; // Track which message is blinking
   Timer? _blinkTimer;
-  bool _isDarkTheme = false; // Theme toggle state
+  // Follow the app-wide dark/light theme (no per-screen toggle any more).
+  bool get _isDarkTheme => themeController.isDark;
   bool _showScrollToBottomButton = false;
   bool _hasNewMessages = false;
   dynamic _longPressedMessage;
@@ -1313,19 +1315,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ],
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isDarkTheme ? Icons.light_mode : Icons.dark_mode,
-              color: Colors.white,
-            ),
-            onPressed: () {
-              setState(() {
-                _isDarkTheme = !_isDarkTheme;
-              });
-            },
-          ),
-        ],
       ),
       body: Stack(
         children: [
