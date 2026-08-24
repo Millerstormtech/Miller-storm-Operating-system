@@ -187,6 +187,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const newMessage = await ChatMessage.create(messageData);
       await logToDb('info', 'STORM-CHAT', `✅ Message created in DB: ${newMessage._id}`);
 
+      // A new message revives the thread for anyone who "deleted" (hid) this DM,
+      // so a hidden 1-on-1 chat comes back on fresh activity.
+      if (Array.isArray((group as any).hiddenFor) && (group as any).hiddenFor.length) {
+        await ChatGroup.updateOne({ _id: groupId }, { $set: { hiddenFor: [] } });
+      }
+
       // Create notifications for group members
       const notificationPromises: Promise<any>[] = [];
 

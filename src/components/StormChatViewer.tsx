@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { StormChatRoom } from "../portals/admin/StormChatRoom";
 
@@ -227,7 +227,30 @@ export function StormChatViewer() {
     .filter(u => u.id !== user?.id)
     .filter(u => !uq || (u.name || '').toLowerCase().includes(uq) || (u.email || '').toLowerCase().includes(uq));
 
+  // Long-press (touch) / right-click (desktop) a DM row to delete it FROM YOUR
+  // LIST — the other person keeps the thread, and a new message brings it back.
+  async function deleteDm(g: ChatGroup) {
+    if (!g.isDirect) return;
+    if (!window.confirm(`Delete this chat with ${titleFor(g)}?\n\nIt's removed from your list only; a new message will bring it back.`)) return;
+    try {
+      const res = await fetch(`/api/storm-chat/groups/${g._id}/hide`, { method: "POST" });
+      if (!res.ok) throw new Error("failed");
+      setGroups(prev => prev.filter(x => x._id !== g._id));
+      if (selected?._id === g._id) setSelected(null);
+    } catch {
+      alert("Couldn't delete the chat. Please try again.");
+    }
+  }
+
   function GroupRow({ g }: { g: ChatGroup }) {
+    const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const longPressed = useRef(false);
+    const startPress = () => {
+      if (!g.isDirect) return;
+      longPressed.current = false;
+      pressTimer.current = setTimeout(() => { longPressed.current = true; deleteDm(g); }, 550);
+    };
+    const cancelPress = () => { if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; } };
     const count = unread[g._id] || 0;
     const img = imageFor(g);
     const notMember = g.isMember === false && !g.isDirect;
@@ -238,10 +261,14 @@ export function StormChatViewer() {
     return (
       <button
         key={g._id}
-        onClick={() => openGroup(g)}
+        onClick={() => { if (longPressed.current) { longPressed.current = false; return; } openGroup(g); }}
+        onContextMenu={g.isDirect ? (e) => { e.preventDefault(); deleteDm(g); } : undefined}
+        onTouchStart={startPress}
+        onTouchEnd={cancelPress}
+        onTouchMove={cancelPress}
         style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%", transition: "background 0.15s, border-color 0.15s" }}
         onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-muted)"; e.currentTarget.style.borderColor = "var(--border-strong)"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "var(--surface-default)"; e.currentTarget.style.borderColor = "var(--border-default)"; }}
+        onMouseLeave={e => { cancelPress(); e.currentTarget.style.background = "var(--surface-default)"; e.currentTarget.style.borderColor = "var(--border-default)"; }}
       >
         <div style={{ width: 48, height: 48, borderRadius: "50%", background: img ? "transparent" : (g.isDirect ? "linear-gradient(135deg, #e01418, #b30002)" : "var(--surface-muted)"), color: g.isDirect ? "var(--text-inverse)" : "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16, fontWeight: 700, letterSpacing: "0.02em" }}>
           {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(titleFor(g))}

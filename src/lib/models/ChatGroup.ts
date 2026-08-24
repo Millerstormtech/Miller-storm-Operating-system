@@ -22,6 +22,9 @@ export interface IChatGroup extends Document {
   // Uniquely identifies the pair so a second DM between them is never created.
   // Left UNSET on normal groups so the sparse unique index ignores them.
   dmKey?: string;
+  // "Delete chat for me" on a DM: member ids who hid this thread from their own
+  // list. A new message clears this list, so the DM reappears on fresh activity.
+  hiddenFor?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -80,7 +83,12 @@ const ChatGroupSchema = new Schema<IChatGroup>(
       // No default → unset on normal groups so the sparse unique index skips
       // them (only DMs carry a dmKey, and each pair's key is unique).
       index: { unique: true, sparse: true }
-    }
+    },
+    // Member ids who "deleted" (hid) this DM from their own list. Cleared when a
+    // new message arrives so the thread comes back on fresh activity.
+    hiddenFor: [{
+      type: String
+    }]
   },
   {
     timestamps: true

@@ -559,6 +559,7 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () => _openDmRoom(dm),
+          onLongPress: () => _confirmDeleteDm(dm, name),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
@@ -607,6 +608,41 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
         ),
       ),
     );
+  }
+
+  // Long-press a DM to "delete chat for me" (WhatsApp-style): it leaves this
+  // user's list only, and a new message from the other person brings it back.
+  Future<void> _confirmDeleteDm(dynamic dm, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete chat?'),
+        content: Text(
+            "Delete this chat with $name?\n\nIt's removed from your list only; a new message will bring it back."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFCB0002)),
+            child: const Text('Yes, delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final res = await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/groups/${dm['_id']}/hide'),
+      );
+      if (!mounted) return;
+      if (res.statusCode == 200) {
+        await _fetchGroups();
+      } else {
+        _snack("Couldn't delete the chat. Please try again.");
+      }
+    } catch (_) {
+      if (mounted) _snack("Couldn't delete the chat. Please try again.");
+    }
   }
 
   Future<void> _openDmRoom(dynamic dm) async {
