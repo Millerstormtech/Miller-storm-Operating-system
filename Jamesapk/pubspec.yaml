@@ -88,6 +88,8 @@ flutter:
     - assets/images/logo.jpeg
     - assets/images/logo-1.png
     - assets/images/logo-dark.png
+    - assets/videos/millerstorm_dark.mp4
+    - assets/videos/millerstorm_light.mp4
 
 flutter_launcher_icons:
   android: true

@@ -3,9 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import '../services/firebase_messaging_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../theme/app_theme.dart';
+import 'preloader_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -131,18 +130,22 @@ class _LoginScreenState extends State<LoginScreen> {
   void _navigateByRole(Map<String, dynamic> user) {
     final role = user['role'] as String?;
     FirebaseMessagingService.saveTokenAfterLogin();
-    if (role == 'sales') {
-      Navigator.pushReplacementNamed(context, '/rankings');
-    } else if (role == 'marketing') {
-      // Marketing has its own screen set (same design as Sales), so its data
-      // can be tailored independently later.
-      Navigator.pushReplacementNamed(context, '/marketing-rankings');
-    } else if (role == 'sales-team-lead') {
-      Navigator.pushReplacementNamed(context, '/manager-rankings');
-    } else if (role == 'c-level') {
-      Navigator.pushReplacementNamed(context, '/clevel-rankings');
-    } else if (role == 'branch-manager') {
-      Navigator.pushReplacementNamed(context, '/bm-rankings');
+    // Marketing has its own screen set (same design as Sales), so its data can be
+    // tailored independently later.
+    const routeByRole = {
+      'sales': '/rankings',
+      'marketing': '/marketing-rankings',
+      'sales-team-lead': '/manager-rankings',
+      'c-level': '/clevel-rankings',
+      'branch-manager': '/bm-rankings',
+    };
+    final route = routeByRole[role];
+    if (route != null) {
+      // Play the branded animation preloader, then open the dashboard.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => PreloaderScreen(nextRoute: route)),
+      );
     } else {
       setState(() {
         _error = 'Access denied. This app is only available for Sales, Marketing, Sales Team Lead, C-Level and Branch Manager roles.';
