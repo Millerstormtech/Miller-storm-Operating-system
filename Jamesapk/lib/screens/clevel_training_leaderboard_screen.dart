@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import '../services/api_client.dart';
@@ -16,15 +17,15 @@ class CLevelTrainingLeaderboardScreen extends StatefulWidget {
 }
 
 class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderboardScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
-  static const _textPlaceholder = Color(0xFF9CA3AF);
-  static const _border = Color(0xFFE5E7EB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _textPlaceholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
   static const _green = Color(0xFF10B981); // ring fill (same as lesson ticks)
-  static const _ringTrack = Color(0xFFE5E7EB);
+  Color get _ringTrack => AppColors.border;
   static const _indigo = Color(0xFF4F46E5); // YOU pill
 
   static const _medalEmoji = ['🥇', '🥈', '🥉'];
@@ -234,10 +235,10 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
         backgroundColor: _white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _textDark),
+          icon: Icon(Icons.arrow_back, color: _textDark),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('🏆 Course Leaderboard',
+        title: Text('🏆 Course Leaderboard',
             style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700)),
       ),
       body: _loading
@@ -264,7 +265,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
             _view == 'overall'
                 ? 'Ranked across all $_totalCourses courses · $_totalItems lessons & quizzes'
                 : (_selectedCourse?['title'] ?? 'Select a course'),
-            style: const TextStyle(color: _textLight, fontSize: 12.5),
+            style: TextStyle(color: _textLight, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
           _segmentedToggle(),
@@ -333,8 +334,8 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
       onChanged: (v) => setState(() => _search = v),
       decoration: InputDecoration(
         hintText: 'Search reps…',
-        hintStyle: const TextStyle(color: _textPlaceholder, fontSize: 14),
-        prefixIcon: const Icon(Icons.search, size: 20, color: _textLight),
+        hintStyle: TextStyle(color: _textPlaceholder, fontSize: 14),
+        prefixIcon: Icon(Icons.search, size: 20, color: _textLight),
         isDense: true,
         filled: true,
         fillColor: _bg,
@@ -417,10 +418,10 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
         decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
         child: Row(
           children: [
-            const Icon(Icons.menu_book_outlined, size: 18, color: _textLight),
+            Icon(Icons.menu_book_outlined, size: 18, color: _textLight),
             const SizedBox(width: 8),
-            Expanded(child: Text(_selectedCourse?['title'] ?? 'Select a course', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark))),
-            const Icon(Icons.keyboard_arrow_down, size: 20, color: _textLight),
+            Expanded(child: Text(_selectedCourse?['title'] ?? 'Select a course', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark))),
+            Icon(Icons.keyboard_arrow_down, size: 20, color: _textLight),
           ],
         ),
       ),
@@ -515,9 +516,9 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
-                  const Icon(Icons.groups_outlined, size: 16, color: _textMedium),
+                  Icon(Icons.groups_outlined, size: 16, color: _textMedium),
                   const SizedBox(width: 8),
-                  const Expanded(child: Text('Team Standings', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _textDark))),
+                  Expanded(child: Text('Team Standings', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _textDark))),
                   Icon(_teamStandingsOpen ? Icons.expand_less : Icons.expand_more, size: 20, color: _textLight),
                 ],
               ),
@@ -547,7 +548,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
                           child: Center(
                             child: rank <= 3
                                 ? Text(_medalEmoji[rank - 1], style: const TextStyle(fontSize: 14))
-                                : Text('$rank', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textPlaceholder)),
+                                : Text('$rank', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textPlaceholder)),
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -555,7 +556,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Team ${s['team']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textDark)),
+                              Text('Team ${s['team']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textDark)),
                               const SizedBox(height: 3),
                               Row(
                                 children: [
@@ -571,12 +572,12 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  Text('$avg%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _textDark)),
+                                  Text('$avg%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _textDark)),
                                 ],
                               ),
                               Padding(
                                 padding: const EdgeInsets.only(top: 2),
-                                child: Text('$size rep${size == 1 ? '' : 's'}', style: const TextStyle(fontSize: 10, color: _textPlaceholder)),
+                                child: Text('$size rep${size == 1 ? '' : 's'}', style: TextStyle(fontSize: 10, color: _textPlaceholder)),
                               ),
                             ],
                           ),
@@ -628,16 +629,16 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(spacing: 14, runSpacing: 6, children: [
-            if (videos != null) Text('🎬 $videos videos', style: const TextStyle(fontSize: 12, color: _textMedium)),
-            if (quizzes != null) Text('✅ $quizzes quizzes', style: const TextStyle(fontSize: 12, color: _textMedium)),
-            Text('Started: $started of $total reps', style: const TextStyle(fontSize: 12, color: _textMedium)),
-            Text('Average: $avg% (all reps)', style: const TextStyle(fontSize: 12, color: _textMedium)),
+            if (videos != null) Text('🎬 $videos videos', style: TextStyle(fontSize: 12, color: _textMedium)),
+            if (quizzes != null) Text('✅ $quizzes quizzes', style: TextStyle(fontSize: 12, color: _textMedium)),
+            Text('Started: $started of $total reps', style: TextStyle(fontSize: 12, color: _textMedium)),
+            Text('Average: $avg% (all reps)', style: TextStyle(fontSize: 12, color: _textMedium)),
           ]),
           const SizedBox(height: 10),
-          const Text('FINISHERS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.5)),
+          Text('FINISHERS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.5)),
           const SizedBox(height: 5),
           if (finishers.isEmpty)
-            const Text('No finishers yet.', style: TextStyle(fontSize: 12, color: _textPlaceholder, fontStyle: FontStyle.italic))
+            Text('No finishers yet.', style: TextStyle(fontSize: 12, color: _textPlaceholder, fontStyle: FontStyle.italic))
           else
             Wrap(
               spacing: 6,
@@ -665,7 +666,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
 
   Widget _sectionLabel(String t) => Padding(
         padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
-        child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.3)),
+        child: Text(t, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.3)),
       );
 
   Widget _empty(String msg) => Center(
@@ -676,7 +677,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
             children: [
               const Text('🏆', style: TextStyle(fontSize: 48)),
               const SizedBox(height: 12),
-              Text(msg, style: const TextStyle(color: _textPlaceholder, fontSize: 14)),
+              Text(msg, style: TextStyle(color: _textPlaceholder, fontSize: 14)),
             ],
           ),
         ),
@@ -742,7 +743,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
               children: [
                 medal
                     ? Text(_medalEmoji[rank! - 1], style: const TextStyle(fontSize: 22))
-                    : Text(rank?.toString() ?? '·', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textLight)),
+                    : Text(rank?.toString() ?? '·', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textLight)),
                 _rankDeltaWidget(r),
               ],
             ),
@@ -757,14 +758,14 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
               children: [
                 Row(
                   children: [
-                    Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
+                    Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
                     if (r['isPodium'] == true) const Padding(padding: EdgeInsets.only(left: 4), child: Text('🏆', style: TextStyle(fontSize: 13))),
                     if (isMe) ...[
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(color: _indigo, borderRadius: BorderRadius.circular(6)),
-                        child: const Text('YOU', style: TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w800)),
+                        child: Text('YOU', style: TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w800)),
                       ),
                     ],
                   ],
@@ -779,7 +780,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
                         [if (branch.isNotEmpty) branch, if (team.isNotEmpty) 'Team $team'].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11.5, color: _textLight),
+                        style: TextStyle(fontSize: 11.5, color: _textLight),
                       ),
                     ),
                   ],
@@ -841,7 +842,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
             Flexible(
               child: Text(label,
                   maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: _textLight)),
+                  style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: _textLight)),
             ),
             if (earned)
               const Padding(
@@ -885,7 +886,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
             child: Center(
               child: medal
                   ? Text(_medalEmoji[rank - 1], style: const TextStyle(fontSize: 22))
-                  : Text('$rank', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textLight)),
+                  : Text('$rank', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textLight)),
             ),
           ),
           const SizedBox(width: 8),
@@ -897,19 +898,19 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(children: [
-                  Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
+                  Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
                   if (isMe) ...[
                     const SizedBox(width: 6),
-                    Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: _indigo, borderRadius: BorderRadius.circular(6)), child: const Text('YOU', style: TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w800))),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: _indigo, borderRadius: BorderRadius.circular(6)), child: Text('YOU', style: TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w800))),
                   ],
                 ]),
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    Text('${r['done'] ?? 0}/${r['total'] ?? 0} lessons', style: const TextStyle(fontSize: 11.5, color: _textLight)),
+                    Text('${r['done'] ?? 0}/${r['total'] ?? 0} lessons', style: TextStyle(fontSize: 11.5, color: _textLight)),
                     if (coRank != null) ...[
                       const SizedBox(width: 8),
-                      Text('co.#$coRank', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _textLight)),
+                      Text('co.#$coRank', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _textLight)),
                     ],
                   ],
                 ),
@@ -956,7 +957,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
       child: CustomPaint(
         painter: _RingPainter(pct.clamp(0, 100) / 100.0),
         child: Center(
-          child: Text('${pct.round()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _textDark)),
+          child: Text('${pct.round()}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _textDark)),
         ),
       ),
     );
@@ -992,7 +993,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Badges', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight)),
+                  Text('Badges', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight)),
                   const SizedBox(height: 4),
                   _legendLine('🚀 Halfway: 50% of the library'),
                   _legendLine('🏁 Finisher: a course fully done'),
@@ -1000,7 +1001,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
                   _legendLine('🎯 Test Ace: 100% on a Final Test'),
                   _legendLine('🏆 Podium: currently top 3 (live)'),
                   const SizedBox(height: 10),
-                  const Text('Ranks', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight)),
+                  Text('Ranks', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight)),
                   const SizedBox(height: 6),
                   Wrap(spacing: 6, runSpacing: 6, children: _tierColors.keys.map(_tierPill).toList()),
                 ],
@@ -1013,10 +1014,10 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
 
   Widget _legendLine(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 2),
-        child: Text(t, style: const TextStyle(fontSize: 12, color: _textMedium)),
+        child: Text(t, style: TextStyle(fontSize: 12, color: _textMedium)),
       );
 
-  static const _textMedium = Color(0xFF374151);
+  Color get _textMedium => AppColors.textLight;
 
   Widget _notStartedGroup(List<Map<String, dynamic>> rows) {
     return Padding(
@@ -1034,7 +1035,7 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 child: Row(
                   children: [
-                    Expanded(child: Text('Not started: ${rows.length} reps', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textLight))),
+                    Expanded(child: Text('Not started: ${rows.length} reps', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textLight))),
                     Icon(_notStartedOpen ? Icons.expand_less : Icons.expand_more, size: 20, color: _textLight),
                   ],
                 ),
@@ -1047,8 +1048,8 @@ class _CLevelTrainingLeaderboardScreenState extends State<CLevelTrainingLeaderbo
                       children: [
                         _avatar((r['name'] ?? '').toString(), (r['headshotUrl'] ?? '').toString(), 14),
                         const SizedBox(width: 10),
-                        Expanded(child: Text((r['name'] ?? 'Unknown').toString(), style: const TextStyle(fontSize: 13.5, color: _textDark))),
-                        Text([if ((r['branch'] ?? '').toString().isNotEmpty) r['branch']].join(), style: const TextStyle(fontSize: 11.5, color: _textPlaceholder)),
+                        Expanded(child: Text((r['name'] ?? 'Unknown').toString(), style: TextStyle(fontSize: 13.5, color: _textDark))),
+                        Text([if ((r['branch'] ?? '').toString().isNotEmpty) r['branch']].join(), style: TextStyle(fontSize: 11.5, color: _textPlaceholder)),
                       ],
                     ),
                   )),
@@ -1101,13 +1102,13 @@ class _RepDetailSheet extends StatefulWidget {
 }
 
 class _RepDetailSheetState extends State<_RepDetailSheet> {
-  static const _white = Color(0xFFFFFFFF);
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
-  static const _textPlaceholder = Color(0xFF9CA3AF);
-  static const _border = Color(0xFFE5E7EB);
-  static const _bg = Color(0xFFF3F4F6);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _textPlaceholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
+  Color get _bg => AppColors.bg;
   static const _green = Color(0xFF10B981);
   static const _avatarPalette = [
     Color(0xFF4F46E5), Color(0xFFDB2777), Color(0xFF0891B2), Color(0xFF16A34A),
@@ -1177,11 +1178,11 @@ class _RepDetailSheetState extends State<_RepDetailSheet> {
       maxChildSize: 0.95,
       expand: false,
       builder: (ctx, scroll) => Container(
-        decoration: const BoxDecoration(color: _white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        decoration: BoxDecoration(color: _white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
         child: _loading
             ? const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator(color: _primary)))
             : (_error || _data == null)
-                ? const Center(child: Padding(padding: EdgeInsets.all(48), child: Text("Couldn't load this rep.", style: TextStyle(color: _textPlaceholder, fontSize: 14))))
+                ? Center(child: Padding(padding: EdgeInsets.all(48), child: Text("Couldn't load this rep.", style: TextStyle(color: _textPlaceholder, fontSize: 14))))
                 : _content(scroll),
       ),
     );
@@ -1210,14 +1211,14 @@ class _RepDetailSheetState extends State<_RepDetailSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _textDark)),
+                  Text(name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _textDark)),
                   const SizedBox(height: 5),
                   Row(children: [
                     if (tier.isNotEmpty && widget.tierColors.containsKey(tier)) ...[
                       _tierPill(tier),
                       const SizedBox(width: 6),
                     ],
-                    Flexible(child: Text([if (branch.isNotEmpty) branch, if (team.isNotEmpty) 'Team $team'].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: _textLight))),
+                    Flexible(child: Text([if (branch.isNotEmpty) branch, if (team.isNotEmpty) 'Team $team'].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: _textLight))),
                   ]),
                 ],
               ),
@@ -1225,7 +1226,7 @@ class _RepDetailSheetState extends State<_RepDetailSheet> {
             if (rank is num)
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text('#$rank', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _primary)),
-                const Text('company', style: TextStyle(fontSize: 10, color: _textPlaceholder)),
+                Text('company', style: TextStyle(fontSize: 10, color: _textPlaceholder)),
               ]),
           ],
         ),
@@ -1238,7 +1239,7 @@ class _RepDetailSheetState extends State<_RepDetailSheet> {
           _statBox('$pct%', 'Overall'),
         ]),
         const SizedBox(height: 18),
-        const Text('COURSE-BY-COURSE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.5)),
+        Text('COURSE-BY-COURSE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.5)),
         const SizedBox(height: 8),
         ...courses.map((c) => _courseRow(Map<String, dynamic>.from(c))),
       ],
@@ -1260,9 +1261,9 @@ class _RepDetailSheetState extends State<_RepDetailSheet> {
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
         child: Column(children: [
-          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _textDark)),
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _textDark)),
           const SizedBox(height: 3),
-          Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, color: _textLight)),
+          Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 10.5, color: _textLight)),
         ]),
       ),
     );
@@ -1284,14 +1285,14 @@ class _RepDetailSheetState extends State<_RepDetailSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _textDark))),
+            Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _textDark))),
             if (complete) const Padding(padding: EdgeInsets.only(left: 6), child: Text('🏁', style: TextStyle(fontSize: 14))),
           ]),
           const SizedBox(height: 6),
           Row(children: [
-            Text('🎬 $vW/$vT', style: const TextStyle(fontSize: 12, color: _textLight)),
+            Text('🎬 $vW/$vT', style: TextStyle(fontSize: 12, color: _textLight)),
             const SizedBox(width: 14),
-            Text('✅ $qP/$qT', style: const TextStyle(fontSize: 12, color: _textLight)),
+            Text('✅ $qP/$qT', style: TextStyle(fontSize: 12, color: _textLight)),
             const Spacer(),
             Text('$pct%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: complete ? _green : _textDark)),
           ]),
