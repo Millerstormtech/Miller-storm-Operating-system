@@ -54,8 +54,10 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
   String _period = 'month';
   DateTime? _from;
   DateTime? _to;
-  String _branch = '';
-  String _team = '';
+  // Branch and Team are multi-select: tick any number, empty = no filter (show
+  // all). Mirrors the web sales leaderboard (PR #66).
+  final Set<String> _branchSel = {};
+  final Set<String> _teamSel = {};
   bool _hideFormer = false;
 
   // Column sort (the mobile equivalent of the web's click-to-sort columns).
@@ -140,16 +142,6 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
     }
   }
 
-  List<String> get _teamOptions {
-    final set = <String>{};
-    for (final r in _rows) {
-      final t = (r['team'] ?? '').toString();
-      if (t.isNotEmpty) set.add(t);
-    }
-    final l = set.toList()..sort();
-    return l;
-  }
-
   // Every rep on the board (id -> name), de-duped and sorted by name, for the
   // rep multi-select. Stable across filters since it reads the raw rows.
   List<MapEntry<String, String>> get _repList {
@@ -165,23 +157,16 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
   }
 
   List<Map<String, dynamic>> get _visibleRows {
-    final branchActive = _branch.isNotEmpty;
     final list = <Map<String, dynamic>>[];
     for (final raw in _rows) {
       final r = Map<String, dynamic>.from(raw as Map);
       if (_hideFormer && r['former'] == true) continue;
       if (_appliedReps.isNotEmpty && !_appliedReps.contains((r['id'] ?? '').toString())) continue;
-      if (branchActive) {
-        final bb = r['byBranch'];
-        final b = (bb is Map) ? bb[_branch] : null;
-        if (b == null) continue;
-        r['verifiedKnocks'] = b['verifiedKnocks'] ?? 0;
-        r['leadsCreated'] = b['leadsCreated'] ?? 0; // scope Leads Created to the branch too (was showing all-branch)
-        r['filed'] = b['filed'] ?? 0;
-        r['won'] = b['won'] ?? 0;
-        r['revenue'] = b['revenue'] ?? 0;
-      }
-      if (_team.isNotEmpty && (r['team'] ?? '').toString() != _team) continue;
+      // Team-based reporting: a Branch/Team filter is pure row matching — it only
+      // narrows WHO is listed, each rep keeps their full numbers (no metric
+      // rewrite). Multi-select: empty = all, otherwise the value must be ticked.
+      if (!_matchesSelection((r['branch'] ?? '').toString(), _branchSel)) continue;
+      if (!_matchesSelection((r['team'] ?? '').toString(), _teamSel)) continue;
       list.add(r);
     }
     // Sort by the chosen column, then fall back to overall standing.
@@ -298,30 +283,40 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
   // counted here — it's shown in the summary text instead).
   int get _activeFilterCount {
     var n = 0;
-    if (_branch.isNotEmpty) n++;
-    if (_team.isNotEmpty) n++;
+    if (_branchSel.isNotEmpty) n++;
+    if (_teamSel.isNotEmpty) n++;
     if (_appliedReps.isNotEmpty) n++;
     if (_hideFormer) n++;
     return n;
   }
 
+  // Filter-button label: one selection is named, several are counted.
+  String get _branchChipLabel =>
+      _branchSel.length == 1 ? _branchSel.first : '${_branchSel.length} branches';
+  String get _teamChipLabel =>
+      _teamSel.length == 1 ? _teamLabel(_teamSel.first) : '${_teamSel.length} teams';
+
   // A short, human summary of what's applied, shown next to the Filters button.
   String get _filterSummary {
     final parts = <String>[_periodLabel];
-    if (_branch.isNotEmpty) parts.add(_branch);
-    if (_team.isNotEmpty) parts.add(_teamLabel(_team));
+    if (_branchSel.isNotEmpty) parts.add(_branchChipLabel);
+    if (_teamSel.isNotEmpty) parts.add(_teamChipLabel);
     if (_appliedReps.isNotEmpty) parts.add('${_appliedReps.length} reps');
     if (_hideFormer) parts.add('Active only');
     return parts.join(' · ');
   }
+
+  // Empty selection = show all; otherwise the value must be one of the ticked ones.
+  bool _matchesSelection(String value, Set<String> selected) =>
+      selected.isEmpty || selected.contains(value);
 
   void _resetFilters() {
     setState(() {
       _period = 'month';
       _from = null;
       _to = null;
-      _branch = '';
-      _team = '';
+      _branchSel.clear();
+      _teamSel.clear();
       _appliedReps = {};
       _hideFormer = false;
     });
@@ -449,8 +444,8 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
                   ),
                   // Tapping a value row closes this sheet and opens its own picker.
                   _filterSheetRow(Icons.date_range, 'Period', _periodLabel, () { Navigator.pop(ctx); _openPeriodSelector(); }),
-                  _filterSheetRow(Icons.apartment_outlined, 'Branch', _branch.isEmpty ? 'All Branches' : _branch, () { Navigator.pop(ctx); _openBranchSelector(); }),
-                  _filterSheetRow(Icons.groups_outlined, 'Team', _team.isEmpty ? 'All Teams' : _teamLabel(_team), () { Navigator.pop(ctx); _openTeamSelector(); }),
+                  _filterSheetRow(Icons.apartment_outlined, 'Branch', _branchSel.isEmpty ? 'All Branches' : _branchChipLabel, () { Navigator.pop(ctx); _openBranchSelector(); }),
+                  _filterSheetRow(Icons.groups_outlined, 'Team', _teamSel.isEmpty ? 'All Teams' : _teamChipLabel, () { Navigator.pop(ctx); _openTeamSelector(); }),
                   _filterSheetRow(Icons.person_outline, 'Reps', _appliedReps.isEmpty ? 'All Reps' : '${_appliedReps.length} selected', () { Navigator.pop(ctx); _openRepSelector(); }),
                   _filterSheetRow(Icons.sort, 'Sort By', '$_sortLabel ${_sortDesc ? "↓" : "↑"}', () { Navigator.pop(ctx); _openSortSelector(); }),
                   SwitchListTile(
@@ -681,19 +676,101 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
         },
       );
 
-  void _openBranchSelector() => _openSelector(
+  void _openBranchSelector() => _openMultiSelect(
         title: 'Branch',
-        current: _branch,
-        options: [const MapEntry('', 'All Branches'), for (final b in _branches) MapEntry(b, b)],
-        onSelect: (v) => setState(() => _branch = v),
+        selected: _branchSel,
+        options: [for (final b in _branches) MapEntry(b, b)],
       );
 
-  void _openTeamSelector() => _openSelector(
+  void _openTeamSelector() => _openMultiSelect(
         title: 'Team',
-        current: _team,
-        options: [const MapEntry('', 'All Teams'), for (final t in _teamNames) MapEntry(t, _teamLabel(t))],
-        onSelect: (v) => setState(() => _team = v),
+        selected: _teamSel,
+        options: [for (final t in _teamNames) MapEntry(t, _teamLabel(t))],
       );
+
+  // Multi-select bottom sheet (Branch / Team): tick any number, applies on tick
+  // (the board re-filters live), empty = show all. Mirrors the web filters.
+  void _openMultiSelect({
+    required String title,
+    required Set<String> selected,
+    required List<MapEntry<String, String>> options,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: StatefulBuilder(
+            builder: (ctx, setSheet) {
+              void toggle(String v) {
+                setState(() {
+                  if (selected.contains(v)) {
+                    selected.remove(v);
+                  } else {
+                    selected.add(v);
+                  }
+                });
+                setSheet(() {});
+              }
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2))),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 12, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+                        if (selected.isNotEmpty)
+                          TextButton(
+                            onPressed: () { setState(selected.clear); setSheet(() {}); },
+                            child: Text('Clear', style: TextStyle(color: _primary)),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: options
+                          .map((o) => CheckboxListTile(
+                                value: selected.contains(o.key),
+                                activeColor: _primary,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                title: Text(o.value, style: TextStyle(color: _textDark)),
+                                onChanged: (_) => toggle(o.key),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 
   // Rep multi-select sheet (mirrors the web panel): search + checkboxes with a
   // deferred apply — the table only changes on "Show Selected".
