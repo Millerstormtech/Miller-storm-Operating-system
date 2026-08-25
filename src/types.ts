@@ -147,6 +147,12 @@ export type CoursePage = {
   resourceLinks: LessonLink[];
   fileUrls: LessonLink[];
   isQuiz?: boolean;
+  // Marks the course's cumulative Final Test (exactly one per course). MUST stay
+  // on this type: the Course Builder saves whole course documents through
+  // /api/courses/bulk, which $sets the entire `pages` array, so any field missing
+  // from this shape is silently stripped from every page on save. Leaving it off
+  // is what made the Test Ace badge unearnable across the whole library.
+  isFinalTest?: boolean;
   quizQuestions?: QuizQuestion[];
   // For quizzes: how many questions (randomly chosen from quizQuestions) to
   // actually show the user. Undefined / 0 / >= total means show them all.
