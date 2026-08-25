@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../theme/app_theme.dart';
 
 class AiCloneChatScreen extends StatefulWidget {
@@ -63,6 +64,17 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
   bool _isRecording = false;
   bool _isTranscribing = false;
   bool _isSpeaking = false;
+
+  // Guided tour (AI Chat) — mirrors the web "ai-chat" tour: new chat, past
+  // chats, the message input, the voice button, and a "?" replay button.
+  // Auto-starts once per user/device.
+  final GlobalKey _kNew = GlobalKey();
+  final GlobalKey _kHistory = GlobalKey();
+  final GlobalKey _kInput = GlobalKey();
+  final GlobalKey _kVoice = GlobalKey();
+  final GlobalKey _kReplay = GlobalKey();
+  bool _tourChecked = false;
+  static const _tourSeenKey = 'tour_seen_ai_chat_v1';
 
   @override
   void initState() {
@@ -458,6 +470,19 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap in ShowCaseWidget so the AI Chat tour can spotlight elements.
+    return ShowCaseWidget(
+      blurValue: 0.4,
+      builder: (context) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
+    // Auto-start the tour once per user/device.
+    if (!_tourChecked) {
+      _tourChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
+    }
     final botName = widget.bot['name'] ?? 'AI Bot';
     // Admin-set avatar lives in botAvatarUrl (an image URL). Fall back to the
     // legacy imageUrl. botAvatarUrl is usually a full URL; older/relative paths
@@ -532,17 +557,37 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.history, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                showHistory = !showHistory;
-              });
-            },
+          Showcase(
+            key: _kHistory,
+            title: 'Your past chats',
+            description: 'Everything you have asked is saved here, so you can pick a conversation back up later.',
+            child: IconButton(
+              icon: const Icon(Icons.history, color: Colors.white),
+              onPressed: () {
+                setState(() {
+                  showHistory = !showHistory;
+                });
+              },
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: _startNewChat,
+          Showcase(
+            key: _kNew,
+            title: 'Start a new chat',
+            description: 'Each chat is its own conversation. A new one gives the bot a clean slate with no memory of the last thread.',
+            child: IconButton(
+              icon: const Icon(Icons.add, color: Colors.white),
+              onPressed: _startNewChat,
+            ),
+          ),
+          Showcase(
+            key: _kReplay,
+            title: 'Replay anytime',
+            description: 'This button restarts the tour whenever you want a refresher.',
+            child: IconButton(
+              icon: const Icon(Icons.help_outline, color: Colors.white),
+              tooltip: 'Guided tour',
+              onPressed: () => _startTour(context),
+            ),
           ),
         ],
       ),
@@ -685,7 +730,11 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                   onPressed: _pickFile,
                 ),
                 Expanded(
-                  child: Container(
+                  child: Showcase(
+                    key: _kInput,
+                    title: 'Ask anything',
+                    description: 'Type your question here. The plus button attaches a file to the message.',
+                    child: Container(
                     decoration: BoxDecoration(
                       color: _surfaceAlt,
                       borderRadius: BorderRadius.circular(24),
@@ -717,6 +766,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                       onSubmitted: (_) => _sendMessage(),
                     ),
                   ),
+                  ),
                 ),
                 const SizedBox(width: 4),
                 // While the bot is speaking (TTS), offer a quick way to stop it.
@@ -728,21 +778,26 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                   ),
                 // Voice: tap to record, tap again to stop + transcribe. Turns
                 // red while listening; disabled while transcribing or sending.
-                IconButton(
-                  icon: Icon(
-                    _isTranscribing
-                        ? Icons.hourglass_empty
-                        : (_isRecording ? Icons.stop : Icons.mic),
-                    color: _isRecording
-                        ? _primary
-                        : _textLight,
+                Showcase(
+                  key: _kVoice,
+                  title: 'Talk instead of typing',
+                  description: 'The microphone starts a hands-free conversation. It listens, answers out loud, then listens again, so you can use it while driving.',
+                  child: IconButton(
+                    icon: Icon(
+                      _isTranscribing
+                          ? Icons.hourglass_empty
+                          : (_isRecording ? Icons.stop : Icons.mic),
+                      color: _isRecording
+                          ? _primary
+                          : _textLight,
+                    ),
+                    tooltip: _isRecording
+                        ? 'Listening… tap to stop'
+                        : (_isTranscribing ? 'Transcribing…' : 'Speak'),
+                    onPressed: (_isTranscribing || isSending)
+                        ? null
+                        : (_isRecording ? _stopAndTranscribe : _startRecording),
                   ),
-                  tooltip: _isRecording
-                      ? 'Listening… tap to stop'
-                      : (_isTranscribing ? 'Transcribing…' : 'Speak'),
-                  onPressed: (_isTranscribing || isSending)
-                      ? null
-                      : (_isRecording ? _stopAndTranscribe : _startRecording),
                 ),
                 const SizedBox(width: 4),
                 Container(
@@ -915,6 +970,29 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
         ],
       ),
     );
+  }
+
+  // Walk the tour: past chats -> new chat -> the message input -> the voice
+  // button -> the replay button. All targets are always mounted.
+  void _startTour(BuildContext context) {
+    ShowCaseWidget.of(context).startShowCase([
+      _kNew,
+      _kHistory,
+      _kInput,
+      _kVoice,
+      _kReplay,
+    ]);
+  }
+
+  // First visit only: run the tour once, then remember it per user/device.
+  Future<void> _maybeAutoStartTour(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_tourSeenKey) == true) return;
+      await prefs.setBool(_tourSeenKey, true);
+      if (!mounted) return;
+      _startTour(context);
+    } catch (_) {}
   }
 
   Widget _buildThinkingIndicator() {

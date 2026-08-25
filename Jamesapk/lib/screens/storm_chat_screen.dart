@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
 import '../widgets/notification_bell.dart';
 import 'storm_chat_room_screen.dart';
@@ -32,6 +34,17 @@ class _StormChatScreenState extends State<StormChatScreen> {
   bool isLoading = true;
   String? userId;
   String? userRole;
+
+  // Guided tour (StormChat, rep view) — mirrors the web "storm-chat" tour:
+  // compose a DM, your groups, your direct messages, and a "?" replay button.
+  // There's no persistent search box on this list, so that step is skipped.
+  // Auto-starts once per user/device.
+  final GlobalKey _kNewDm = GlobalKey();
+  final GlobalKey _kGroups = GlobalKey();
+  final GlobalKey _kDms = GlobalKey();
+  final GlobalKey _kReplay = GlobalKey();
+  bool _tourChecked = false;
+  static const _tourSeenKey = 'tour_seen_storm_chat_v1';
 
   @override
   void initState() {
@@ -128,8 +141,42 @@ class _StormChatScreenState extends State<StormChatScreen> {
     }
   }
 
+  // Walk the tour: compose a DM -> groups -> direct messages -> replay. Only
+  // include a step whose widget is currently on screen.
+  void _startTour(BuildContext context) {
+    final keys = <GlobalKey>[_kNewDm];
+    if (_topLevelGroups().isNotEmpty) keys.add(_kGroups);
+    if (_directMessages().isNotEmpty) keys.add(_kDms);
+    keys.add(_kReplay);
+    ShowCaseWidget.of(context).startShowCase(keys);
+  }
+
+  // First visit only: run the tour once, then remember it per user/device.
+  Future<void> _maybeAutoStartTour(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_tourSeenKey) == true) return;
+      await prefs.setBool(_tourSeenKey, true);
+      if (!mounted) return;
+      _startTour(context);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Wrap in ShowCaseWidget so the StormChat tour can spotlight elements.
+    return ShowCaseWidget(
+      blurValue: 0.4,
+      builder: (context) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
+    // Auto-start the tour once per user, after groups have loaded.
+    if (!isLoading && !_tourChecked) {
+      _tourChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
+    }
     return WillPopScope(
       onWillPop: () async {
         Navigator.pushReplacementNamed(context, '/courses');
@@ -157,7 +204,23 @@ class _StormChatScreenState extends State<StormChatScreen> {
                     const SizedBox(height: 14),
                     Row(
                       children: [
-                        _newMessageButton(),
+                        Showcase(
+                          key: _kNewDm,
+                          title: 'Message someone directly',
+                          description: 'Pick anyone in the company and start a private conversation with them.',
+                          child: _newMessageButton(),
+                        ),
+                        const Spacer(),
+                        Showcase(
+                          key: _kReplay,
+                          title: 'Replay anytime',
+                          description: 'This button restarts the tour whenever you want a refresher.',
+                          child: IconButton(
+                            icon: Icon(Icons.help_outline, color: _textLight, size: 24),
+                            tooltip: 'Guided tour',
+                            onPressed: () => _startTour(context),
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -257,16 +320,40 @@ class _StormChatScreenState extends State<StormChatScreen> {
             children: [
               if (dms.isNotEmpty) ...[
                 _sectionLabel('Direct Messages'),
-                ...dms.map((d) => _buildDmCard(d)),
+                ...dms.asMap().entries.map((e) {
+                  final card = _buildDmCard(e.value);
+                  // Spotlight the first DM card for the tour.
+                  return e.key == 0
+                      ? Showcase(
+                          key: _kDms,
+                          title: 'Direct messages',
+                          description: 'Your one to one conversations. The red number is how many messages you have not read yet.',
+                          child: card,
+                        )
+                      : card;
+                }),
                 const SizedBox(height: 8),
               ],
               if (topLevel.isNotEmpty) ...[
                 if (dms.isNotEmpty) _sectionLabel('Groups'),
-                ...topLevel.expand((g) => [
-                      _buildGroupCard(g),
-                      ..._subgroupsOf(g['_id'])
-                          .map((sg) => _buildGroupCard(sg, isSubgroup: true)),
-                    ]),
+                ...topLevel.asMap().entries.expand((entry) {
+                  final g = entry.value;
+                  final card = _buildGroupCard(g);
+                  // Spotlight the first group card for the tour.
+                  final wrapped = entry.key == 0
+                      ? Showcase(
+                          key: _kGroups,
+                          title: 'Groups',
+                          description: 'Your group chats. Tap one to open it.',
+                          child: card,
+                        )
+                      : card;
+                  return [
+                    wrapped,
+                    ..._subgroupsOf(g['_id'])
+                        .map((sg) => _buildGroupCard(sg, isSubgroup: true)),
+                  ];
+                }),
               ],
             ],
           );

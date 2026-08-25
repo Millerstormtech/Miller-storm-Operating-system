@@ -5,6 +5,8 @@ import '../services/api_client.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 class BranchManagerAppsToolsItemsScreen extends StatefulWidget {
   const BranchManagerAppsToolsItemsScreen({super.key});
@@ -29,6 +31,15 @@ class _BranchManagerAppsToolsItemsScreenState extends State<BranchManagerAppsToo
   bool _loading = true;
   late TabController _tabController;
   int _selectedCategoryIndex = 0;
+
+  // Guided tour (Apps & Tools) — mirrors the web "apps-tools" tour. This screen
+  // has no search box, so step 1 is dropped: grouped sections (category tabs),
+  // one tool card, then a "?" replay button. Auto-starts once per user/device.
+  final GlobalKey _kSections = GlobalKey();
+  final GlobalKey _kCard = GlobalKey();
+  final GlobalKey _kReplay = GlobalKey();
+  bool _tourChecked = false;
+  static const _tourSeenKey = 'tour_seen_apps_tools_v1';
 
   // Items for the currently selected category — computed from the cache.
   List<dynamic> get _items {
@@ -116,8 +127,42 @@ class _BranchManagerAppsToolsItemsScreenState extends State<BranchManagerAppsToo
     }
   }
 
+  // Walk the tour: grouped sections (tabs) -> a tool card -> the replay button.
+  // Only include a step whose target widget is actually built right now.
+  void _startTour(BuildContext context) {
+    final keys = <GlobalKey>[];
+    if (_categories.isNotEmpty) keys.add(_kSections);
+    if (_items.isNotEmpty) keys.add(_kCard);
+    keys.add(_kReplay);
+    ShowCaseWidget.of(context).startShowCase(keys);
+  }
+
+  // First visit only: run the tour once, then remember it per user/device.
+  Future<void> _maybeAutoStartTour(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_tourSeenKey) == true) return;
+      await prefs.setBool(_tourSeenKey, true);
+      if (!mounted) return;
+      _startTour(context);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Wrap in ShowCaseWidget so the Apps & Tools tour can spotlight elements.
+    return ShowCaseWidget(
+      blurValue: 0.4,
+      builder: (context) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
+    // Auto-start the tour once per user, after items have loaded.
+    if (!_loading && !_tourChecked) {
+      _tourChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
+    }
     return WillPopScope(
       onWillPop: () async {
         Navigator.pushReplacementNamed(context, '/bm-training');
@@ -132,11 +177,28 @@ class _BranchManagerAppsToolsItemsScreenState extends State<BranchManagerAppsToo
           'Apps & Tools',
           style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
+        actions: [
+          Showcase(
+            key: _kReplay,
+            title: 'Replay anytime',
+            description: 'This button restarts the tour whenever you want a refresher.',
+            child: IconButton(
+              icon: Icon(Icons.help_outline, color: _textLight, size: 24),
+              tooltip: 'Guided tour',
+              onPressed: () => _startTour(context),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
         bottom: _categories.isEmpty
             ? null
             : PreferredSize(
                 preferredSize: const Size.fromHeight(48),
-                child: Align(
+                child: Showcase(
+                  key: _kSections,
+                  title: 'Grouped by job',
+                  description: 'Tools are grouped into sections, so the ones you reach for together sit together.',
+                  child: Align(
                   alignment: Alignment.centerLeft,
                   child: TabBar(
                     controller: _tabController,
@@ -153,6 +215,7 @@ class _BranchManagerAppsToolsItemsScreenState extends State<BranchManagerAppsToo
                       return Tab(text: category['name']);
                     }).toList(),
                   ),
+                ),
                 ),
               ),
       ),
@@ -180,10 +243,20 @@ class _BranchManagerAppsToolsItemsScreenState extends State<BranchManagerAppsToo
                             itemCount: _items.length,
                             itemBuilder: (context, index) {
                               final item = _items[index];
-                              return Padding(
+                              final Widget card = Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
                                 child: _buildItemCard(item),
                               );
+                              // Spotlight the first tool card for the tour.
+                              if (index == 0) {
+                                return Showcase(
+                                  key: _kCard,
+                                  title: 'One card per tool',
+                                  description: 'Each card carries a short description and the links that get you there: the web version, plus the apps for iPhone and Android.',
+                                  child: card,
+                                );
+                              }
+                              return card;
                             },
                           ),
           ),
