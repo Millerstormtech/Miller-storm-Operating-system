@@ -129,7 +129,7 @@ function LeaderList(props: { metric: Metric; items: Leader[] }): JSX.Element | n
         <div key={`${l.repUserId ?? l.name}-${i}`}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 11, color: i === 0 ? "var(--brand-on-surface)" : "var(--text-subtle)", width: 10, flex: "none" }}>{i + 1}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flex: 1, minWidth: 0, whiteSpace: "normal", overflowWrap: "anywhere" }}>{l.name}</span>
             <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none" }}>{fmt(props.metric, l.value)}</span>
           </div>
           <Bar pct={Math.round((l.value / top) * 100)} />
@@ -189,7 +189,7 @@ function GroupCards(props: { kind: "branch" | "team"; groups: GroupPayload[] }):
   return (
     // Capped at three across so a fourth branch or team wraps underneath
     // instead of squeezing every card thinner.
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 11, marginBottom: 11 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 11, marginBottom: 11 }}>
       {props.groups.map((g) => (
         <div key={g.key} style={CARD}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 9, marginBottom: 12, paddingBottom: 9, borderBottom: "1px solid var(--border-default)" }}>
@@ -202,12 +202,12 @@ function GroupCards(props: { kind: "branch" | "team"; groups: GroupPayload[] }):
               <div key={m}>
                 <span style={{ ...CAP, fontSize: 10, fontWeight: 400 }}>{title}</span>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>Year to date</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>{fmt(m, g.yearTotals[m])}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-subtle)", whiteSpace: "nowrap" }}>Year</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmt(m, g.yearTotals[m])}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 3 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>Month to date</span>
-                  <span style={{ fontSize: 13, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>{fmt(m, g.totals[m])}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-subtle)", whiteSpace: "nowrap" }}>Month</span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmt(m, g.totals[m])}</span>
                 </div>
               </div>
             ))}
@@ -218,7 +218,7 @@ function GroupCards(props: { kind: "branch" | "team"; groups: GroupPayload[] }):
               {(["revenue", "claims", "knocks"] as Metric[]).map((m) => (
                 <div key={m} style={{ minWidth: 0 }}>
                   <span style={{ ...CAP, fontSize: 10, fontWeight: 400 }}>#1 {METRIC_TITLE[m]}</span>
-                  <b style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>
+                  <b style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "normal", overflowWrap: "anywhere", marginTop: 3 }}>
                     {g.leaders[m]?.name ?? "Nobody yet"}
                   </b>
                   <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
