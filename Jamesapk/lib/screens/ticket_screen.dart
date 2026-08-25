@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../services/api_client.dart';
+import 'ticket_detail_screen.dart';
 
 class TicketScreen extends StatefulWidget {
   const TicketScreen({super.key});
@@ -73,6 +74,9 @@ class _TicketScreenState extends State<TicketScreen> {
   bool _submitting = false;
   bool _loadingList = true;
   List<dynamic> _tickets = [];
+  // Per-ticket count of messages already seen, persisted, so an unopened support
+  // reply shows a red "pending" badge on the ticket.
+  Map<String, int> _readCounts = {};
 
   static const _statusLabel = {
     'open': 'Open',
@@ -100,7 +104,52 @@ class _TicketScreenState extends State<TicketScreen> {
   void initState() {
     super.initState();
     _loadUser();
+    _loadReadCounts();
     _loadTickets();
+  }
+
+  Future<void> _loadReadCounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('ticket_read_counts');
+      if (raw != null && mounted) {
+        final m = jsonDecode(raw) as Map;
+        setState(() => _readCounts =
+            m.map((k, v) => MapEntry(k.toString(), (v as num).toInt())));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveReadCounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('ticket_read_counts', jsonEncode(_readCounts));
+    } catch (_) {}
+  }
+
+  void _markRead(dynamic t) {
+    final id = (t['id'] ?? '').toString();
+    final count = (t['messages'] as List?)?.length ?? 0;
+    if (_readCounts[id] == count) return;
+    setState(() => _readCounts[id] = count);
+    _saveReadCounts();
+  }
+
+  // New support replies since the user last opened this ticket.
+  int _pendingCount(dynamic t) {
+    final id = (t['id'] ?? '').toString();
+    final seen = _readCounts[id] ?? 0;
+    final msgs = (t['messages'] as List?) ?? const [];
+    final raiserId = (t['userId'] ?? '').toString();
+    int n = 0;
+    for (int i = seen; i < msgs.length; i++) {
+      final m = msgs[i] as Map;
+      final senderId = (m['senderId'] ?? '').toString();
+      final fromStaff = m['fromStaff'] == true ||
+          (senderId.isNotEmpty && senderId != raiserId);
+      if (fromStaff) n++;
+    }
+    return n;
   }
 
   @override
@@ -352,49 +401,102 @@ class _TicketScreenState extends State<TicketScreen> {
     return lines;
   }
 
+  Future<void> _openTicket(dynamic t) async {
+    _markRead(t); // clear the badge immediately on tap
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TicketDetailScreen(ticket: Map<String, dynamic>.from(t as Map)),
+      ),
+    );
+    // Refresh the list on return, then mark the just-viewed ticket fully read
+    // (in case support replied while it was open).
+    await _loadTickets();
+    final id = (t['id'] ?? '').toString();
+    final fresh = _tickets.firstWhere(
+      (x) => (x['id'] ?? '').toString() == id,
+      orElse: () => t,
+    );
+    _markRead(fresh);
+  }
+
   Widget _ticketCard(dynamic t) {
     final status = t['status']?.toString() ?? 'open';
     final type = t['type']?.toString() ?? 'other';
     final lines = _fieldLines(t);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(_typeLabelFor(type),
-                    style: TextStyle(fontWeight: FontWeight.w600, color: _textDark)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _statusBg[status] ?? _statusBg['open'],
-                  borderRadius: BorderRadius.circular(999),
+    final msgCount = (t['messages'] as List?)?.length ?? 0;
+    final pending = _pendingCount(t);
+    return GestureDetector(
+      onTap: () => _openTicket(t),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: pending > 0 ? _primary : AppColors.border, width: pending > 0 ? 1.5 : 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(_typeLabelFor(type),
+                      style: TextStyle(fontWeight: FontWeight.w600, color: _textDark)),
                 ),
-                child: Text(_statusLabel[status] ?? status,
-                    style: TextStyle(
-                        color: _statusFg[status] ?? _statusFg['open'],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          for (final line in lines)
-            Text(line, style: TextStyle(color: AppColors.textLight, fontSize: 12, fontWeight: FontWeight.w600)),
-          if (lines.isNotEmpty) const SizedBox(height: 4),
-          Text(t['note']?.toString() ?? '',
-              style: TextStyle(color: AppColors.textLight, fontSize: 13)),
-        ],
+                if (pending > 0) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _primary,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text('$pending new',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _statusBg[status] ?? _statusBg['open'],
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(_statusLabel[status] ?? status,
+                      style: TextStyle(
+                          color: _statusFg[status] ?? _statusFg['open'],
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            for (final line in lines)
+              Text(line, style: TextStyle(color: AppColors.textLight, fontSize: 12, fontWeight: FontWeight.w600)),
+            if (lines.isNotEmpty) const SizedBox(height: 4),
+            Text(t['note']?.toString() ?? '',
+                style: TextStyle(color: AppColors.textLight, fontSize: 13)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.chat_bubble_outline, size: 14, color: _primary),
+                const SizedBox(width: 5),
+                Text(
+                  pending > 0
+                      ? '$pending new ${pending == 1 ? 'reply' : 'replies'} · Tap to open'
+                      : msgCount > 0
+                          ? '$msgCount ${msgCount == 1 ? 'reply' : 'replies'} · Tap to open'
+                          : 'Tap to open conversation',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _primary),
+                ),
+                const Spacer(),
+                Icon(Icons.chevron_right, size: 18, color: AppColors.textPlaceholder),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
