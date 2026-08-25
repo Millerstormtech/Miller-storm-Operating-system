@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Marketing has its own screen set (same design as Sales), so its data can be
     // tailored independently later.
     const routeByRole = {
-      'sales': '/rankings',
+      'sales': '/sales-dashboard',
       'marketing': '/marketing-rankings',
       'sales-team-lead': '/manager-dashboard',
       'c-level': '/clevel-dashboard',

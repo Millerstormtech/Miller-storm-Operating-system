@@ -532,6 +532,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              _navItem(Icons.dashboard_outlined, 'Dashboard', false, '/sales-dashboard', context),
+              const SizedBox(width: 2),
               _navItem(Icons.leaderboard_outlined, 'Sales', false, '/rankings', context),
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/stormchat', context),

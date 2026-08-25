@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import '../theme/app_theme.dart';
 import 'sales_team_lead_unlock_lesson_screen.dart';
 
 class SalesTeamLeadViewTeamScreen extends StatefulWidget {
@@ -13,13 +14,13 @@ class SalesTeamLeadViewTeamScreen extends StatefulWidget {
 }
 
 class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
-  static const _textPlaceholder = Color(0xFF9CA3AF);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _textPlaceholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
 
   String? _userId;
   bool _isLoading = true;
@@ -115,7 +116,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'My Team',
           style: TextStyle(
             color: _textDark,
@@ -125,7 +126,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: _textDark),
+            icon: Icon(Icons.refresh, color: _textDark),
             onPressed: _fetchTeamData,
           ),
         ],
@@ -281,7 +282,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
                 children: [
                   Text(
                     member['name'] ?? 'Unknown User',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: _textDark,
@@ -333,7 +334,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
     return Container(
       decoration: BoxDecoration(
         color: _white,
-        border: const Border(top: BorderSide(color: _border, width: 1)),
+        border: Border(top: BorderSide(color: _border, width: 1)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2))],
       ),
       child: SafeArea(
@@ -369,7 +370,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
             children: [
               Icon(icon, color: _textPlaceholder, size: 24),
               const SizedBox(height: 4),
-              Text(label, style: const TextStyle(fontSize: 10, color: _textPlaceholder), maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+              Text(label, style: TextStyle(fontSize: 10, color: _textPlaceholder), maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
             ],
           ),
         ),

@@ -123,7 +123,18 @@ class _DashboardViewState extends State<DashboardView> {
 
     final scopeLevel = (scope['level'] ?? '').toString();
     final scopeLabel = (scope['label'] ?? '').toString();
+    final scopeTeam = (scope['team'] ?? '').toString();
     final kind = (breakdown['kind'] ?? '').toString();
+    // The chip on the right of the greeting. A rep's scope label is empty by
+    // design (the server never names a rep's own scope), so a rep shows their
+    // team — "TEAM GUNNER" — instead of the "COMPANY" fallback the top level uses.
+    final chipText = scopeLevel == 'self'
+        ? (scopeTeam.isNotEmpty ? 'TEAM ${scopeTeam.toUpperCase()}' : 'MY TEAM')
+        : (scopeLabel.trim().isNotEmpty ? scopeLabel.toUpperCase() : 'COMPANY');
+    // A rep (self scope) has nobody below them, so each card carries their own
+    // best finished month instead of a top-3 podium — same as the web.
+    final isSelf = scopeLevel == 'self';
+    final best = (breakdown['best'] as Map?);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -139,24 +150,26 @@ class _DashboardViewState extends State<DashboardView> {
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textDark)),
               ),
               const SizedBox(width: 8),
-              _kicker(scopeLabel.toUpperCase().isEmpty ? 'COMPANY' : scopeLabel.toUpperCase()),
+              _kicker(chipText),
             ],
           ),
         ),
         _heroCard(hero, rank, scopeLabel, scopeLevel),
         const SizedBox(height: 14),
-        _metricCard(title: 'REVENUE', card: cards['revenue'] as Map?, isMoney: true),
+        _metricCard(title: 'REVENUE', card: cards['revenue'] as Map?, isMoney: true, isSelf: isSelf, best: best?['revenue'] as Map?),
         const SizedBox(height: 14),
         _metricCard(
           title: 'CONTRACTS',
           card: cards['contracts'] as Map?,
           isMoney: false,
+          isSelf: isSelf,
+          best: best?['contracts'] as Map?,
           footer: (avg is num) ? 'Average contract ${_money(avg)}' : null,
         ),
         const SizedBox(height: 14),
-        _metricCard(title: 'CLAIMS', card: cards['claims'] as Map?, isMoney: false),
+        _metricCard(title: 'CLAIMS', card: cards['claims'] as Map?, isMoney: false, isSelf: isSelf, best: best?['claims'] as Map?),
         const SizedBox(height: 14),
-        _metricCard(title: 'VERIFIED KNOCKS', card: cards['knocks'] as Map?, isMoney: false),
+        _metricCard(title: 'VERIFIED KNOCKS', card: cards['knocks'] as Map?, isMoney: false, isSelf: isSelf, best: best?['knocks'] as Map?),
         const SizedBox(height: 14),
         // Breakdown row — identity depends on kind.
         ..._breakdown(breakdown, kind),
@@ -220,6 +233,7 @@ class _DashboardViewState extends State<DashboardView> {
 
   Widget _heroCard(Map hero, Map? rank, String scopeLabel, String scopeLevel) {
     final year = hero['year']?.toString() ?? '';
+    final isSelf = scopeLevel == 'self';
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,7 +245,7 @@ class _DashboardViewState extends State<DashboardView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _kicker('TOTAL REVENUE'),
+                    _kicker(isSelf ? 'MY REVENUE' : 'TOTAL REVENUE'),
                     const SizedBox(height: 3),
                     Text('Year to date $year', style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
                     const SizedBox(height: 8),
@@ -247,7 +261,7 @@ class _DashboardViewState extends State<DashboardView> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _kicker('TOTAL CONTRACTS'),
+                  _kicker(isSelf ? 'MY CONTRACTS' : 'TOTAL CONTRACTS'),
                   const SizedBox(height: 3),
                   Text('Year to date $year', style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
                   const SizedBox(height: 8),
@@ -284,6 +298,8 @@ class _DashboardViewState extends State<DashboardView> {
     String? subtitle,
     String? footer,
     bool showTrend = true,
+    bool isSelf = false,
+    Map? best,
   }) {
     final value = card?['value'];
     final top = (card?['top'] as List?) ?? const [];
@@ -306,7 +322,9 @@ class _DashboardViewState extends State<DashboardView> {
           const SizedBox(height: 12),
           Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
           const SizedBox(height: 10),
-          if (top.isEmpty)
+          if (isSelf)
+            _bestSlot(best, fmt)
+          else if (top.isEmpty)
             Text('Nobody yet', style: TextStyle(fontSize: 13, color: AppColors.textPlaceholder, fontStyle: FontStyle.italic))
           else
             ...top.asMap().entries.map((e) => _leaderRow(
@@ -373,6 +391,44 @@ class _DashboardViewState extends State<DashboardView> {
           ),
         ],
       ),
+    );
+  }
+
+  // A slim bar (no name row) used by the rep's "Best month" slot and by the
+  // training credentials.
+  Widget _miniBar(double fraction) => ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: LinearProgressIndicator(
+          value: fraction.clamp(0.0, 1.0),
+          minHeight: 4,
+          backgroundColor: AppColors.border.withOpacity(0.5),
+          valueColor: const AlwaysStoppedAnimation<Color>(_primary),
+        ),
+      );
+
+  // The rep's own best finished month, shown where a manager's card shows the
+  // top-3 podium — matches the web MetricCard's showBest branch.
+  Widget _bestSlot(Map? best, String Function(dynamic) fmt) {
+    if (best == null) {
+      return Text('No finished month to compare yet',
+          style: TextStyle(fontSize: 13, color: AppColors.textPlaceholder));
+    }
+    final pct = (best['pct'] is num) ? (best['pct'] as num).toDouble() : 0.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(child: Text('Best month, ${best['label'] ?? ''}', style: TextStyle(fontSize: 13, color: AppColors.textLight))),
+            const SizedBox(width: 8),
+            Text(fmt(best['value']),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textDark, fontFeatures: const [FontFeature.tabularFigures()])),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _miniBar(pct / 100),
+      ],
     );
   }
 
@@ -512,6 +568,7 @@ class _DashboardViewState extends State<DashboardView> {
               index: e.key,
               name: (m['label'] ?? '').toString(),
               former: false,
+              thisMonth: e.key == 0, // newest row = the month in progress
               cells: [_dash(m['revenue'], money: true), _dash(m['contracts'], money: false), _dash(m['claims'], money: false), _dash(m['knocks'], money: false)],
             );
           }),
@@ -533,7 +590,7 @@ class _DashboardViewState extends State<DashboardView> {
         ),
       );
 
-  Widget _tableRow({required int index, required String name, required bool former, required List<String> cells}) => Container(
+  Widget _tableRow({required int index, required String name, required bool former, required List<String> cells, bool thisMonth = false}) => Container(
         color: index.isOdd ? AppColors.surfaceAlt.withOpacity(0.5) : null,
         padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
         child: Row(
@@ -546,6 +603,14 @@ class _DashboardViewState extends State<DashboardView> {
                     child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark)),
                   ),
+                  if (thisMonth) ...[
+                    const SizedBox(width: 7),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(color: _primary, borderRadius: BorderRadius.circular(6)),
+                      child: const Text('THIS MONTH', style: TextStyle(fontSize: 8.5, letterSpacing: 0.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                    ),
+                  ],
                   if (former) ...[
                     const SizedBox(width: 6),
                     Container(
@@ -571,6 +636,7 @@ class _DashboardViewState extends State<DashboardView> {
     final pct = training['pct'];
     final headcount = training['headcount'];
     final top = (training['top'] as List?) ?? const [];
+    final credentials = (training['credentials'] as List?);
     final isSelf = scopeLevel == 'self';
     // Matches the web: subtitle is "{scope}, all time" (or "My progress, all
     // time" for a rep), and the line under the % is "average course completion
@@ -594,7 +660,11 @@ class _DashboardViewState extends State<DashboardView> {
           const SizedBox(height: 12),
           Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
           const SizedBox(height: 10),
-          if (top.isEmpty)
+          // A rep sees their own credentials (Certification / Knockers /
+          // Hustlers); a manager sees the training top-3 — matches the web.
+          if (isSelf && credentials != null && credentials.isNotEmpty)
+            ...credentials.map((c) => _credentialRow(c as Map))
+          else if (top.isEmpty)
             Text('Nobody yet', style: TextStyle(fontSize: 13, color: AppColors.textPlaceholder, fontStyle: FontStyle.italic))
           else
             ...top.asMap().entries.map((e) {
@@ -602,6 +672,36 @@ class _DashboardViewState extends State<DashboardView> {
               final p = (m['pct'] is num) ? (m['pct'] as num).toDouble() : 0.0;
               return _leaderRow(rank: e.key + 1, name: (m['name'] ?? '').toString(), valueText: '${p.round()}%', fraction: p / 100);
             }),
+        ],
+      ),
+    );
+  }
+
+  static const Map<String, String> _credentialLabel = {
+    'certificate': 'Miller Storm Certification',
+    'knockers': 'Millionaire Knockers',
+    'hustlers': 'Roof Hustlers',
+  };
+
+  Widget _credentialRow(Map c) {
+    final key = (c['key'] ?? '').toString();
+    final earned = c['earned'] == true;
+    final p = (c['pct'] is num) ? (c['pct'] as num).toDouble() : 0.0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(_credentialLabel[key] ?? key, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textDark))),
+              const SizedBox(width: 8),
+              Text(earned ? 'Earned' : '${p.round()}%',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: earned ? _up : AppColors.textLight, fontFeatures: const [FontFeature.tabularFigures()])),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _miniBar(earned ? 1.0 : p / 100),
         ],
       ),
     );

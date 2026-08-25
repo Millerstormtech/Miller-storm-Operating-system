@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import '../theme/app_theme.dart';
 
 class SalesTeamLeadTeamMemberDetailScreen extends StatefulWidget {
   final Map<String, dynamic> member;
@@ -14,13 +15,13 @@ class SalesTeamLeadTeamMemberDetailScreen extends StatefulWidget {
 }
 
 class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamMemberDetailScreen> {
-  static const _bg = Color(0xFFF3F4F6);
-  static const _white = Color(0xFFFFFFFF);
+  Color get _bg => AppColors.bg;
+  Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
-  static const _textDark = Color(0xFF111827);
-  static const _textLight = Color(0xFF6B7280);
-  static const _textPlaceholder = Color(0xFF9CA3AF);
-  static const _border = Color(0xFFD1D5DB);
+  Color get _textDark => AppColors.textDark;
+  Color get _textLight => AppColors.textLight;
+  Color get _textPlaceholder => AppColors.textPlaceholder;
+  Color get _border => AppColors.border;
 
   bool _isLoading = true;
   bool _showPlan = false;
@@ -181,7 +182,7 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textLight)),
+        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textLight)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -204,12 +205,12 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
         backgroundColor: _white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _textDark),
+          icon: Icon(Icons.arrow_back, color: _textDark),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           widget.member['name'] ?? 'User Details',
-          style: const TextStyle(color: _textDark, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: _textDark, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
@@ -260,7 +261,7 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
             children: [
               Text(
                 widget.member['name'] ?? 'Unknown User',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textDark),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textDark),
               ),
               const SizedBox(height: 4),
               Container(
@@ -311,7 +312,7 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
           children: [
             Text(label, style: TextStyle(fontSize: 12, color: _textLight)),
             const SizedBox(height: 2),
-            Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
+            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textDark)),
           ],
         ),
       ],
@@ -371,7 +372,7 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'BUSINESS PLAN',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _textDark, letterSpacing: 1.0),
                 ),
@@ -417,22 +418,22 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Annual Income Goal', style: TextStyle(fontSize: 14, color: _textLight)),
+                      Text('Annual Income Goal', style: TextStyle(fontSize: 14, color: _textLight)),
                       const SizedBox(height: 8),
                       Text(
                         '\$${(_businessPlan!['revenueGoal'] ?? 0).toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")}',
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: _textDark),
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: _textDark),
                       ),
                     ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('Avg Deal Size', style: TextStyle(fontSize: 14, color: _textLight)),
+                      Text('Avg Deal Size', style: TextStyle(fontSize: 14, color: _textLight)),
                       const SizedBox(height: 8),
                       Text(
                         '\$${(_businessPlan!['averageDealSize'] ?? 12000).toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textDark),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textDark),
                       ),
                     ],
                   ),
@@ -461,7 +462,7 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textLight)),
+        Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textLight)),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -471,10 +472,10 @@ class _SalesTeamLeadTeamMemberDetailScreenState extends State<SalesTeamLeadTeamM
               children: [
                 Text(
                   val >= 1000 ? '${(val / 1000).toStringAsFixed(1)}k' : val.toStringAsFixed(0),
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textDark),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textDark),
                 ),
                 const SizedBox(height: 4),
-                Text(item['label'], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _textLight)),
+                Text(item['label'], style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _textLight)),
               ],
             );
           }).toList(),

@@ -10,6 +10,7 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
 import 'screens/sales_team_lead_dashboard_screen.dart';
+import 'screens/sales_dashboard_screen.dart';
 import 'screens/storm_chat_screen.dart';
 import 'screens/storm_chat_room_screen.dart';
 import 'screens/rankings_screen.dart';
@@ -206,6 +207,8 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const TrainingScreen());
           case '/manager-dashboard':
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadDashboardScreen());
+          case '/sales-dashboard':
+            return MaterialPageRoute(builder: (_) => const SalesDashboardScreen());
           case '/stormchat':
             return MaterialPageRoute(builder: (_) => const StormChatScreen());
           case '/rankings':

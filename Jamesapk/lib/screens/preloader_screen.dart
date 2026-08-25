@@ -89,7 +89,7 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
         FirebaseMessagingService.saveTokenAfterLogin();
         switch (role) {
           case 'sales':
-            route = '/rankings';
+            route = '/sales-dashboard';
             break;
           case 'marketing':
             route = '/marketing-rankings';

@@ -287,6 +287,27 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
             children: [
               Expanded(
                 child: GestureDetector(
+                  onTap: () => Navigator.pushReplacementNamed(context, '/sales-dashboard'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.dashboard_outlined, color: AppColors.textPlaceholder, size: 24),
+                        const SizedBox(height: 4),
+                        Text('Dashboard', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: GestureDetector(
                   onTap: () => Navigator.pushReplacementNamed(context, '/rankings'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
