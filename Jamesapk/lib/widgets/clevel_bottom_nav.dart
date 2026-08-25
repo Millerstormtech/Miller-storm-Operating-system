@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// Bottom navigation for the C-Level panel. Visually identical to the Sales Team
 /// Lead bar, but its slots and routes are C-Level's:
 ///
-///   Training · StormChat · Tools & Products · Users · Sales
+///   Dashboard · Sales · StormChat · Tools & Products · Training · Users
 ///
 /// (Course Leaderboard is reached from the 🏆 button in the Training header and
 /// Profile from the avatar, exactly like the Sales Team Lead panel.)
 class CLevelBottomNav extends StatelessWidget {
-  /// One of: 'training', 'stormchat', 'apps', 'users', 'leaderboard'.
+  /// One of: 'dashboard', 'leaderboard', 'stormchat', 'apps', 'training', 'profile'.
   final String active;
   const CLevelBottomNav({super.key, required this.active});
 
-  static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFCB0002);
-  static const _textPlaceholder = Color(0xFF9CA3AF);
-  static const _border = Color(0xFFD1D5DB);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _white,
-        border: const Border(top: BorderSide(color: _border, width: 1)),
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2)),
         ],
@@ -30,19 +28,16 @@ class CLevelBottomNav extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              _item(context, Icons.dashboard_outlined, 'Dashboard', 'dashboard', '/clevel-dashboard'),
               _item(context, Icons.leaderboard_outlined, 'Sales', 'leaderboard', '/clevel-rankings'),
-              const SizedBox(width: 2),
               _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/clevel-stormchat'),
-              const SizedBox(width: 2),
               _item(context, Icons.apps_outlined, 'Tools', 'apps', '/clevel-apps-tools-items'),
-              const SizedBox(width: 2),
               _item(context, Icons.school_outlined, 'Training', 'training', '/clevel-training'),
-              const SizedBox(width: 2),
-              _item(context, Icons.manage_accounts_outlined, 'Users', 'users', '/clevel-user-management'),
+              _item(context, Icons.person_outline, 'Profile', 'profile', '/clevel-profile'),
             ],
           ),
         ),
@@ -64,13 +59,13 @@ class CLevelBottomNav extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: active ? _primary : _textPlaceholder, size: 24),
+              Icon(icon, color: active ? _primary : AppColors.textPlaceholder, size: 22),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 10,
-                  color: active ? _primary : _textPlaceholder,
+                  fontSize: 9.5,
+                  color: active ? _primary : AppColors.textPlaceholder,
                   fontWeight: active ? FontWeight.w600 : FontWeight.normal,
                 ),
                 maxLines: 1,

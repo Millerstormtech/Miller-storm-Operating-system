@@ -439,7 +439,7 @@ class _CLevelProfileScreenState extends State<CLevelProfileScreen> {
             Expanded(
               child: _buildViewMode(),
             ),
-            CLevelBottomNav(active: 'none'),
+            CLevelBottomNav(active: 'profile'),
           ],
         ),
       ),

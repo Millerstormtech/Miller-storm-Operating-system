@@ -49,9 +49,9 @@ import 'screens/clevel_storm_chat_screen.dart';
 import 'screens/clevel_apps_tools_items_screen.dart';
 import 'screens/clevel_apps_tools_detail_screen.dart';
 import 'screens/clevel_rankings_screen.dart';
+import 'screens/clevel_dashboard_screen.dart';
 import 'screens/clevel_training_leaderboard_screen.dart';
 import 'screens/clevel_profile_screen.dart';
-import 'screens/clevel_user_management_screen.dart';
 import 'screens/branch_manager_training_screen.dart';
 import 'screens/branch_manager_storm_chat_screen.dart';
 import 'screens/branch_manager_apps_tools_items_screen.dart';
@@ -255,6 +255,8 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadTrainingLeaderboardScreen());
           case '/manager-profile':
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadProfileScreen());
+          case '/clevel-dashboard':
+            return MaterialPageRoute(builder: (_) => const CLevelDashboardScreen());
           case '/clevel-training':
             return MaterialPageRoute(builder: (_) => const CLevelTrainingScreen());
           case '/clevel-stormchat':
@@ -269,8 +271,6 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const CLevelTrainingLeaderboardScreen());
           case '/clevel-profile':
             return MaterialPageRoute(builder: (_) => const CLevelProfileScreen());
-          case '/clevel-user-management':
-            return MaterialPageRoute(builder: (_) => const CLevelUserManagementScreen());
           case '/bm-training':
             return MaterialPageRoute(builder: (_) => const BranchManagerTrainingScreen());
           case '/bm-stormchat':

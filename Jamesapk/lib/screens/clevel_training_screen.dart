@@ -30,8 +30,6 @@ class _CLevelTrainingScreenState extends State<CLevelTrainingScreen> {
 
   int _stormChatGroupCount = 0;
   String? _userId;
-  String? _headshotUrl;
-  String? _userName;
   // Jay's AI Clone avatar (cached by the courses screen), shown on the header icon.
   String? _jayAvatarUrl;
   List<dynamic> _jayBots = [];
@@ -64,8 +62,6 @@ class _CLevelTrainingScreenState extends State<CLevelTrainingScreen> {
         final user = jsonDecode(userStr);
         setState(() {
           _userId = user['_id'] ?? user['id'];
-          _headshotUrl = user['headshotUrl'];
-          _userName = user['name'];
         });
         await _fetchStormChatGroups();
       }
@@ -220,8 +216,6 @@ class _CLevelTrainingScreenState extends State<CLevelTrainingScreen> {
                         Navigator.pushNamed(context, '/clevel-training-leaderboard');
                       },
                     ),
-                    const SizedBox(width: 8),
-                    _buildProfileAvatar(),
                   ],
                 ),
               ),
@@ -230,31 +224,6 @@ class _CLevelTrainingScreenState extends State<CLevelTrainingScreen> {
           ),
         ),
         bottomNavigationBar: CLevelBottomNav(active: 'training'),
-      ),
-    );
-  }
-
-  // Circular user photo → tap opens the Profile page.
-  Widget _buildProfileAvatar() {
-    final img = (_headshotUrl ?? '').toString();
-    final initial = (_userName ?? '').isNotEmpty ? _userName!.trim()[0].toUpperCase() : '?';
-    return GestureDetector(
-      onTap: () => Navigator.pushReplacementNamed(context, '/clevel-profile'),
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFF374151),
-          border: Border.all(color: _primary, width: 2),
-          image: img.isNotEmpty
-              ? DecorationImage(image: NetworkImage('https://millerstorm.tech$img'), fit: BoxFit.cover)
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: img.isEmpty
-            ? Text(initial, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))
-            : null,
       ),
     );
   }
