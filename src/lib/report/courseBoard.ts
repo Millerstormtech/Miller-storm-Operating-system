@@ -6,8 +6,9 @@ import { CREDENTIALS, type CredentialProgress } from "../training/credentials";
 // table. Two fidelity rules carried over:
 //   1. Filtered lists show BOTH the position here and the true company rank,
 //      because filtering hides people but never changes anyone's numbers.
-//      (Contrast the sales board, where a branch filter rewrites the numbers,
-//      which is why it gets no company rank column.)
+//      (The sales board's branch filter no longer rewrites the numbers either,
+//      since branch reporting became team-based, but it still carries no company
+//      rank column.)
 //   2. Medals mean the company-wide top 3, so a filtered export has none.
 // Medals are the WORDS Gold/Silver/Bronze: jsPDF's built-in fonts cannot draw
 // emoji, and embedding a font that can would cost ~1MB for decoration.

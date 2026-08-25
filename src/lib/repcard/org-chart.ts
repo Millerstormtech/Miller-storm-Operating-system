@@ -69,7 +69,8 @@ export function resolveNameBranch(name?: string | null): string {
 
 // Reps who should show NO branch — cross-branch execs (e.g. the CRO who storm-chases
 // across regions). Pinning them to one branch would mislead; their office fallback is
-// suppressed. Their sales still split by region under a branch filter like anyone else.
+// suppressed. Under team-based reporting that means they sit under no branch at
+// all, so a branch filter never claims their numbers for a branch they do not run.
 const BRANCHLESS_NAMES = new Set<string>([norm("Naaman Taylor")]);
 export function isBranchless(name?: string | null): boolean {
   return BRANCHLESS_NAMES.has(norm(name));

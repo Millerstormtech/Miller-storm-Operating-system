@@ -9,7 +9,7 @@ import { mergeLeaderboard } from "./merge";
 import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
 import { isDeletedFromRepCard } from "./roster";
-import { officeToBranch, saleRegion } from "../repcard/branches";
+import { officeToBranch, attributeToBranch } from "../repcard/branches";
 import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch, isBranchless } from "../repcard/org-chart";
 
 export interface SalesLeaderRow {
@@ -31,6 +31,11 @@ export interface SalesLeaderRow {
   // `former` off this endpoint. Unknown/blank status counts as CURRENT, so a rep
   // is never hidden on a missing field.
   former: boolean;
+  // Team-based reporting: a rep's numbers count toward the branch their TEAM
+  // belongs to, not the branch each job was filed in. So this holds exactly one
+  // entry -- the rep's home branch, carrying their FULL totals -- or none at all
+  // when no branch resolves. The branch filter is therefore a roster filter.
+  // The rule and its history live in repcard/branches.ts (attributeToBranch).
   byBranch: Record<string, { verifiedKnocks: number; leadsCreated: number; filed: number; won: number; revenue: number }>;
 }
 
@@ -136,21 +141,6 @@ export async function computeSalesRows(
     } },
   ]);
 
-  // Per (rep, sub-account) sales for the range -> split a rep's sales by the branch each
-  // sale was filed in (build 2). Grouped by location; bucketed into regions via saleRegion.
-  const acxLocRaw = await ScoringFactModel.aggregate([
-    { $match: { occurredAt: { $gte: start, $lte: end }, repExternalId: { $ne: null } } },
-    { $sort: { occurredAt: 1, _id: 1 } },
-    { $group: {
-        _id: { rep: "$repExternalId", loc: "$location" },
-        email: { $last: "$repEmail" }, phone: { $last: "$repPhone" }, name: { $last: "$repNameSnapshot" },
-        lead: { $sum: { $cond: [{ $eq: ["$metric", "lead"] }, "$value", 0] } },
-        filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
-        won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
-        revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
-    } },
-  ]);
-
   // RepCard verified knocks aggregated per rep for the selected range.
   const rcRaw = await RepCardKnockFactModel.aggregate([
     { $match: { occurredAt: { $gte: start, $lte: end } } },
@@ -223,27 +213,6 @@ export async function computeSalesRows(
     rc.map((r) => [r.repcardUserId, { email: r.email, phone: r.phone, nameKey: r.nameKey }])
   );
 
-  // Per-branch split: bucket each rep's sales into raw regions (West Texas / Commercial /
-  // DFW), then merge each region onto the roster so a branch filter can show that branch's
-  // numbers only. Sums across the three regions equal each rep's combined total.
-  const regionAcc: Record<string, Map<string, any>> = { "West Texas": new Map(), Commercial: new Map(), DFW: new Map() };
-  for (const r of acxLocRaw as any[]) {
-    const region = saleRegion(r._id.loc);
-    const repId = String(r._id.rep);
-    const cur = regionAcc[region].get(repId) || { email: r.email, phone: r.phone, name: r.name, lead: 0, filed: 0, won: 0, revenue: 0 };
-    cur.lead += r.lead; cur.filed += r.filed; cur.won += r.won; cur.revenue += r.revenue;
-    regionAcc[region].set(repId, cur);
-  }
-  const acxForRegion = (region: string) => [...regionAcc[region].entries()].map(([repId, v]: [string, any]) => ({
-    repExternalId: repId, email: normEmail(v.email), phone: normPhone(v.phone),
-    nameKey: normName(v.name), name: v.name || "Unknown Rep", branch: "",
-    lead: v.lead, filed: v.filed, won: v.won, revenue: v.revenue,
-  }));
-  const sumsById = (rows: any[]) => new Map<string, any>(rows.map((r) => [r.id, { lead: r.lead, filed: r.filed, won: r.won, revenue: r.revenue }]));
-  const wtById = sumsById(mergeLeaderboard(acxForRegion("West Texas"), rc));
-  const dfwById = sumsById(mergeLeaderboard(acxForRegion("DFW"), rc));
-  const commById = sumsById(mergeLeaderboard(acxForRegion("Commercial"), rc));
-
   const byEmail = roster.byEmail;
 
   // Rank order: Contract Amount, then break ties by Contracts -> Claims Filed ->
@@ -265,20 +234,17 @@ export async function computeSalesRows(
     // fall back to the RepCard office only for reps with no team.
     const branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(rcu?.name || m.name)
       || (isBranchless(rcu?.name || m.name) ? "" : officeToBranch(rcu?.office));
-    // Per-branch split: DFW-filed sales -> the rep's home branch; West Texas / Commercial
-    // sales -> their own branch. Knocks live only under the home branch.
-    const zero = { lead: 0, filed: 0, won: 0, revenue: 0 };
-    const byBranch: Record<string, any> = {};
-    const addBranch = (br: string, s: any, knocks: number) => {
-      if (!br) return;
-      const b = byBranch[br] || { verifiedKnocks: 0, leadsCreated: 0, filed: 0, won: 0, revenue: 0 };
-      b.leadsCreated += s.lead; b.filed += s.filed; b.won += s.won; b.revenue += s.revenue; b.verifiedKnocks += knocks;
-      byBranch[br] = b;
-    };
-    addBranch(branch, zero, m.verifiedKnocks);            // home branch carries the knocks
-    addBranch(branch, dfwById.get(m.id) || zero, 0);      // DFW-filed sales -> home branch
-    addBranch("West Texas", wtById.get(m.id) || zero, 0);
-    addBranch("Commercial", commById.get(m.id) || zero, 0);
+    // Team-based reporting (decided 2026-08-12, confirmed 2026-08-21): every one
+    // of this rep's numbers counts toward their home branch -- the branch their
+    // TEAM belongs to -- including sales filed out of another branch's AccuLynx
+    // sub-account while storm-chasing. The rule itself lives in branches.ts.
+    const byBranch = attributeToBranch(branch, {
+      verifiedKnocks: m.verifiedKnocks,
+      leadsCreated: m.lead,
+      filed: m.filed,
+      won: m.won,
+      revenue: m.revenue,
+    });
     return {
       id: m.id, name: m.name, branch,
       verifiedKnocks: m.verifiedKnocks, leadsCreated: m.lead, filed: m.filed, won: m.won, revenue: m.revenue,
@@ -294,7 +260,8 @@ export async function computeSalesRows(
       // the Scoreboard. Case-insensitive, and a blank/absent status counts as CURRENT,
       // so an unknown status never silently un-ranks a real rep.
       former: !!(rcu?.status && String(rcu.status).toUpperCase() !== "ACTIVE"),
-      // Per-branch breakdown so the UI can show a rep's numbers for a single branch.
+      // The rep's numbers under their home branch, so a branch filter shows that
+      // branch's roster with their full totals. One entry, or none if no branch.
       byBranch,
     };
   });
