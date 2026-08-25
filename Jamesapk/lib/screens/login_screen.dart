@@ -137,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
       'marketing': '/marketing-rankings',
       'sales-team-lead': '/manager-rankings',
       'c-level': '/clevel-dashboard',
-      'branch-manager': '/bm-rankings',
+      'branch-manager': '/bm-dashboard',
     };
     final route = routeByRole[role];
     if (route != null) {

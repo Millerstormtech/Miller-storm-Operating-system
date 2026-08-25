@@ -57,9 +57,9 @@ import 'screens/branch_manager_storm_chat_screen.dart';
 import 'screens/branch_manager_apps_tools_items_screen.dart';
 import 'screens/branch_manager_apps_tools_detail_screen.dart';
 import 'screens/branch_manager_rankings_screen.dart';
+import 'screens/branch_manager_dashboard_screen.dart';
 import 'screens/branch_manager_training_leaderboard_screen.dart';
 import 'screens/branch_manager_profile_screen.dart';
-import 'screens/branch_manager_user_management_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -271,6 +271,8 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const CLevelTrainingLeaderboardScreen());
           case '/clevel-profile':
             return MaterialPageRoute(builder: (_) => const CLevelProfileScreen());
+          case '/bm-dashboard':
+            return MaterialPageRoute(builder: (_) => const BranchManagerDashboardScreen());
           case '/bm-training':
             return MaterialPageRoute(builder: (_) => const BranchManagerTrainingScreen());
           case '/bm-stormchat':
@@ -285,8 +287,6 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const BranchManagerTrainingLeaderboardScreen());
           case '/bm-profile':
             return MaterialPageRoute(builder: (_) => const BranchManagerProfileScreen());
-          case '/bm-user-management':
-            return MaterialPageRoute(builder: (_) => const BranchManagerUserManagementScreen());
           case '/marketing-rankings':
             return MaterialPageRoute(builder: (_) => const MarketingRankingsScreen());
           case '/marketing-courses':

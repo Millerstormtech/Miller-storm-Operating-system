@@ -101,7 +101,7 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
             route = '/clevel-dashboard';
             break;
           case 'branch-manager':
-            route = '/bm-rankings';
+            route = '/bm-dashboard';
             break;
         }
       }

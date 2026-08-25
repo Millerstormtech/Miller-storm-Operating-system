@@ -439,7 +439,7 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
             Expanded(
               child: _buildViewMode(),
             ),
-            BranchManagerBottomNav(active: 'none'),
+            BranchManagerBottomNav(active: 'profile'),
           ],
         ),
       ),
