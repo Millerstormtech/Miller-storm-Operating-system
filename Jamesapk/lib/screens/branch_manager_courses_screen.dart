@@ -1249,14 +1249,13 @@ class _BranchManagerCoursesScreenState extends State<BranchManagerCoursesScreen>
     // hiding a course, but it should still be kept in step.
     const predefined = [
       'Miller Storm Certification',
-      'Miller Storm Certificate',
       'Millionaire Knockers',
       'Roof Hustlers',
     ];
     // Retired spellings still stored on some courses, folded onto the name in
     // use so a library mid-rename shows ONE section, not an old and a new one.
     // Mirrors canonicalCategory() in src/lib/training/credentials.ts.
-    const aliases = {'Miller Storm Diploma': 'Miller Storm Certificate'};
+    const aliases = {'Miller Storm Certificate': 'Miller Storm Certification', 'Miller Storm Diploma': 'Miller Storm Certification'};
     final byCat = <String, List<dynamic>>{};
     for (final c in courses) {
       final raw = (c['category'] ?? '').toString().trim();
