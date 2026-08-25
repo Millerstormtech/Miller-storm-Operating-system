@@ -89,6 +89,22 @@
   --border-default: var(--gray-200);  /* the standard hairline (352 uses) */
   --border-subtle:  var(--gray-100);  /* (26) */
   --border-strong:  var(--gray-800);  /* (18) */
+
+  /* Brand and trend — added 2026-08-25 for the role dashboards.
+     Until now brand red and the up/down pair lived as raw literals in
+     styles.css and as local consts in MetricTile.tsx, which is why the guard's
+     ratchet still counts ~1400 of them. These are the semantic names to migrate
+     onto; nothing was rewritten in this pass, so the count is unchanged.
+
+     --brand-fill is theme-INVARIANT on purpose: it paints bars, dots and pills
+     that sit on their own coloured ground, where the mark should be the same
+     red in both themes. --brand-on-surface is the one to use for TEXT and thin
+     marks drawn directly on a card, because brand red on a dark surface only
+     reaches about 2:1 and fails to read. */
+  --brand-fill:       #e01418;
+  --brand-on-surface: #cb0002;
+  --trend-up:         #10b981;
+  --trend-down:       #d6323b;
 }
 
 /* =============================================================================
@@ -118,6 +134,14 @@
   --border-default: rgba(255, 255, 255, 0.10);
   --border-subtle:  rgba(255, 255, 255, 0.06);
   --border-strong:  rgba(255, 255, 255, 0.24);
+
+  /* Brand and trend. --brand-fill deliberately does NOT flip: a bar or a pill
+     is the brand mark and stays brand red on either ground. The two that sit
+     as text on a card do flip, because brand red measures about 2:1 against
+     #17181b and the darker trend red is no better. */
+  --brand-on-surface: #ff8a85;
+  --trend-up:         #34d399;
+  --trend-down:       #ff7b7e;
 
   /* Channel forms of the two surfaces above -- re-pointed so translucent fills
      that sit on a flipping card/panel/veil still read correctly on a dark

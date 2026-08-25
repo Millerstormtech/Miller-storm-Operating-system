@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { BranchManagerLayout } from "../../src/portals/branch-manager/BranchManagerLayout";
-import { ScoreboardHome } from "../../src/portals/shared/scoreboard/ScoreboardHome";
+import { RoleDashboard } from "../../src/portals/shared/dashboard/RoleDashboard";
 import { ProtectedRoute } from "../../src/components/ProtectedRoute";
 import { useAuth } from "../../src/contexts/AuthContext";
 
@@ -26,7 +26,7 @@ const BranchManagerDashboardPage: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["branch-manager"]}>
       <BranchManagerLayout currentView="dashboard">
-        <ScoreboardHome />
+        <RoleDashboard />
       </BranchManagerLayout>
     </ProtectedRoute>
   );
