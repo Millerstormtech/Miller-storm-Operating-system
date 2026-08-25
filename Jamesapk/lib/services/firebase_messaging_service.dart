@@ -17,8 +17,26 @@ class FirebaseMessagingService {
   static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   static GlobalKey<NavigatorState>? _navigatorKey;
 
+  /// The notification that cold-launched the app (terminated state). Stashed by
+  /// initialize() and replayed by the preloader AFTER it navigates to the
+  /// dashboard, so the deep-linked screen sits on top instead of being clobbered.
+  static RemoteMessage? pendingInitialMessage;
+
   static void setNavigatorKey(GlobalKey<NavigatorState> key) {
     _navigatorKey = key;
+  }
+
+  /// Called by the startup preloader once it has landed on the dashboard. Opens
+  /// the deep-linked screen (the message that launched the app) on top of it, so
+  /// pressing back returns to the dashboard.
+  static void handlePendingInitialMessage() {
+    final message = pendingInitialMessage;
+    pendingInitialMessage = null;
+    if (message == null) return;
+    // Small beat so the dashboard route is fully mounted before we push onto it.
+    Future.delayed(const Duration(milliseconds: 350), () {
+      _handleNotificationTap(message);
+    });
   }
 
   static Future<void> initialize() async {
@@ -85,12 +103,14 @@ class FirebaseMessagingService {
 
       // App opened from a TERMINATED (fully closed) state by tapping a
       // notification — getInitialMessage returns the message that launched it.
-      // Delay so the Navigator is ready before we push a screen.
+      // DON'T navigate here: the app is still booting into the preloader, which
+      // then does pushReplacementNamed() to the dashboard and would clobber any
+      // screen we push now (the "opens the chat for 1s, then jumps to the
+      // dashboard" bug). Instead we stash it and let the preloader replay it
+      // AFTER it has landed on the dashboard, so the target sits on top.
       final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
       if (initialMessage != null) {
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          _handleNotificationTap(initialMessage);
-        });
+        pendingInitialMessage = initialMessage;
       }
     } else {
       print('NOTIFICATION PERMISSION DENIED => ${settings.authorizationStatus}');

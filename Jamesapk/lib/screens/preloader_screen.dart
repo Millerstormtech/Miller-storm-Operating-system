@@ -98,7 +98,7 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
             route = '/manager-rankings';
             break;
           case 'c-level':
-            route = '/clevel-rankings';
+            route = '/clevel-dashboard';
             break;
           case 'branch-manager':
             route = '/bm-rankings';
@@ -108,6 +108,10 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
     } catch (_) {}
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, route);
+    // If a notification cold-launched the app, open its target now — ON TOP of
+    // the dashboard we just landed on, so it isn't clobbered and Back returns
+    // here. No-op when nothing is pending (normal launch).
+    FirebaseMessagingService.handlePendingInitialMessage();
   }
 
   @override
