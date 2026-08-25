@@ -64,11 +64,22 @@ export const CREDENTIALS: ReadonlyArray<{
 }> = [
   {
     key: "certificate",
-    category: "Miller Storm Certificate",
-    // Tier 1 was stored as "Miller Storm Diploma" until Jay dropped the word on
-    // 2026-08-19. scripts/rename-diploma-category.js migrates it; until that has
-    // run everywhere, courses still carrying the old value count here.
-    aliases: ["Miller Storm Diploma"],
+    // The heading the four tier 1 courses are actually filed under. Renamed in
+    // the Course Builder on 2026-08-24 from "Certificate" to "Certification",
+    // which unhooked the credential outright: it matched zero courses, so every
+    // rep's Miller Storm bar read 0% and nobody could earn it. Found 2026-08-25.
+    // Pointed at the string the courses carry, and the previous spellings kept
+    // as aliases below, so the heading can be edited without breaking the join.
+    category: "Miller Storm Certification",
+    // Every spelling tier 1 has ever been stored under. "Diploma" was Jay's
+    // original name, dropped 2026-08-19; "Certificate" was the name between
+    // then and the 2026-08-24 rename, and is still the name PRINTED on the
+    // sheet (see `label`). Both still count towards the bar.
+    aliases: ["Miller Storm Certificate", "Miller Storm Diploma"],
+    // Deliberately NOT the same as `category`. Jay named the credential "Miller
+    // Storm Certificate" and that is what the certificate PDF and the
+    // leaderboard say; "Certification" is only the Training Center heading.
+    // These are separate fields precisely so the two can differ.
     label: "Miller Storm Certificate",
     short: "Miller Storm",
   },
