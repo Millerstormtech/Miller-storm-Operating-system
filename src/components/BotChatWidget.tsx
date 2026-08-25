@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
+import { AI_CHAT_TOUR } from "../portals/shared/guided-tour/definitions/aiChat";
 
 type AiBot = {
   id: string;
@@ -720,12 +722,12 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
         style={{ width: "260px", minWidth: "260px", background: sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", transition: "transform 0.25s ease, width 0.2s, min-width 0.2s", flexShrink: 0 }}>
 
         <div style={{ padding: "16px", borderBottom: "1px solid rgb(var(--white-rgb) / 0.1)" }}>
-          <button onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+          <button data-tour="ac-new" onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "16px" }}>✏️</span> New Chat
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
+        <div data-tour="ac-history" style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
           {chatSessions.length === 0
             ? <div style={{ padding: "20px 12px", color: "rgb(var(--white-rgb) / 0.4)", fontSize: "12px", textAlign: "center" }}>No chats yet</div>
             : chatSessions.map(session => (
@@ -770,7 +772,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
             </button>
           )}
           {messages.length > 0 && (
-            <button onClick={downloadConversation} title="Download the transcript (text)"
+            <button data-tour="ac-download" onClick={downloadConversation} title="Download the transcript (text)"
               style={{ background: "rgb(var(--white-rgb) / 0.15)", border: "none", color: "var(--text-inverse)", cursor: "pointer", fontSize: "13px", fontWeight: 600, padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
               ⬇ Text
             </button>
@@ -787,7 +789,7 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
               <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "8px" }}>{welcome}</div>
               {displayMsg && <div style={{ fontSize: "14px", color: "var(--text-muted)", marginBottom: "8px" }}>{displayMsg}</div>}
               {suggestions.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", marginTop: "16px", maxWidth: "500px" }}>
+                <div data-tour="ac-suggestions" style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", marginTop: "16px", maxWidth: "500px" }}>
                   {suggestions.map((s, i) => (
                     <button key={i} onClick={() => send(s)}
                       style={{ padding: "8px 16px", border: `1.5px solid ${theme}`, borderRadius: "20px", fontSize: "13px", color: theme, background: "var(--surface-default)", cursor: "pointer", fontWeight: 500 }}>
@@ -866,12 +868,12 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
             <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "var(--surface-subtle)", borderRadius: "14px", border: "1px solid var(--border-default)", padding: "8px 12px" }}>
               <button onClick={() => setShowAttachMenu(p => !p)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: showAttachMenu ? "var(--surface-inverse-raised)" : "var(--surface-muted)", color: showAttachMenu ? "var(--text-inverse)" : "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 300, flexShrink: 0, lineHeight: 1, transition: "background 0.15s" }} title="Attach">+</button>
               <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFileAttach} />
-              <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
+              <textarea data-tour="ac-input" ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
                 style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "var(--text-secondary)", alignSelf: "center" }} />
               {/* Hands-free voice: tap to start a spoken conversation — the mic
                   stays open (listen → answer with a voice reply → listen). Tap
                   again to stop. Pulses while listening; shows 🔊 while the bot speaks. */}
-              <button
+              <button data-tour="ac-voice"
                 onClick={toggleVoice}
                 title={conversing ? "Stop voice conversation" : "Talk to the bot (hands-free voice)"}
                 aria-label={conversing ? "Stop voice conversation" : "Start voice conversation"}
@@ -891,6 +893,8 @@ export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoad
           </div>
         </div>
       </div>
+
+      <GuidedTour tour={AI_CHAT_TOUR} ready={!!selectedBot} />
 
       <style>{`
         @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }

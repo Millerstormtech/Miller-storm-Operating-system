@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
+import { STORM_CHAT_TOUR } from "../portals/shared/guided-tour/definitions/stormChat";
+import { TourButton } from "../portals/shared/guided-tour/TourButton";
+import { useActiveTourId } from "../portals/shared/guided-tour/tourRegistry";
 import { StormChatRoom } from "../portals/admin/StormChatRoom";
 
 // User-facing StormChat for sales/manager web panels: lists the groups the
@@ -36,6 +40,7 @@ export function StormChatViewer() {
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<ChatGroup | null>(null);
   const [loading, setLoading] = useState(true);
+  const activeTourId = useActiveTourId();
   const [search, setSearch] = useState("");
   // New-message picker
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -314,14 +319,21 @@ export function StormChatViewer() {
       <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "url(/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png)", backgroundRepeat: "no-repeat", backgroundPosition: "center 30%", backgroundSize: "min(720px, 88%)", opacity: 0.05, pointerEvents: "none", zIndex: 0 }} />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        <div style={{ fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: "clamp(28px, 3vw, 34px)", fontWeight: 900, letterSpacing: "0.01em", lineHeight: 1.05, color: "var(--text-primary)" }}>StormChat</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: "clamp(28px, 3vw, 34px)", fontWeight: 900, letterSpacing: "0.01em", lineHeight: 1.05, color: "var(--text-primary)" }}>StormChat</div>
+          {/* Every storm-chat page passes pageTitle="" so its layout skips
+              PageHeader entirely, and PageHeader is what normally renders the
+              tour's "?" control. Without this the replay button never appears
+              here and the tour's last step silently vanishes. */}
+          {activeTourId ? <TourButton /> : null}
+        </div>
         <div style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 4, marginBottom: 20 }}>Your groups and direct messages</div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22, flexWrap: "wrap" }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
+          <input data-tour="sc-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
             style={{ flex: 1, minWidth: 160, padding: "13px 18px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 15, outline: "none" }} />
           {!impersonating && (
-            <button onClick={openPicker}
+            <button data-tour="sc-new" onClick={openPicker}
               style={{ padding: "13px 24px", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", border: "none", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(202,0,2,0.32)" }}>
               New message
             </button>
@@ -339,13 +351,13 @@ export function StormChatViewer() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
             {dms.length > 0 && (
-              <div>
+              <div data-tour="sc-dms">
                 <div style={sectionLabel}>Direct Messages</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{dms.map(g => <GroupRow key={g._id} g={g} />)}</div>
               </div>
             )}
             {normalGroups.length > 0 && (
-              <div>
+              <div data-tour="sc-groups">
                 <div style={sectionLabel}>Groups</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{normalGroups.map(g => <GroupRow key={g._id} g={g} />)}</div>
               </div>
@@ -353,6 +365,7 @@ export function StormChatViewer() {
           </div>
         )}
       </div>
+      <GuidedTour tour={STORM_CHAT_TOUR} ready={!loading} />
 
       {/* New-message user picker */}
       {pickerOpen && (
