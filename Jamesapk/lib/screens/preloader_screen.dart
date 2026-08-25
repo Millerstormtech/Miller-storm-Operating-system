@@ -95,7 +95,7 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
             route = '/marketing-rankings';
             break;
           case 'sales-team-lead':
-            route = '/manager-rankings';
+            route = '/manager-dashboard';
             break;
           case 'c-level':
             route = '/clevel-dashboard';

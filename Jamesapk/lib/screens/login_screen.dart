@@ -135,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
     const routeByRole = {
       'sales': '/rankings',
       'marketing': '/marketing-rankings',
-      'sales-team-lead': '/manager-rankings',
+      'sales-team-lead': '/manager-dashboard',
       'c-level': '/clevel-dashboard',
       'branch-manager': '/bm-dashboard',
     };

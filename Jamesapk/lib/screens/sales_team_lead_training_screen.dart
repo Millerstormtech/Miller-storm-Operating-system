@@ -259,6 +259,7 @@ class _SalesTeamLeadTrainingScreenState extends State<SalesTeamLeadTrainingScree
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              _navItem(context, Icons.dashboard_outlined, 'Dashboard', false, '/manager-dashboard'),
               _navItem(context, Icons.leaderboard_outlined, 'Sales', false, '/manager-rankings'),
               const SizedBox(width: 2),
               _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),

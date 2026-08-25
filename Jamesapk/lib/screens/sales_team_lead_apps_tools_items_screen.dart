@@ -286,6 +286,8 @@ class _SalesTeamLeadAppsToolsItemsScreenState extends State<SalesTeamLeadAppsToo
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              _navItem(Icons.dashboard_outlined, 'Dashboard', false, '/manager-dashboard', context),
+              const SizedBox(width: 2),
               _navItem(Icons.leaderboard_outlined, 'Sales', false, '/manager-rankings', context),
               const SizedBox(width: 2),
               _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat', context),

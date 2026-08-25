@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
-import '../widgets/scoreboard_view.dart';
 import '../widgets/notification_bell.dart';
 import '../theme/app_theme.dart';
 
@@ -78,8 +77,6 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
   // YTD Top Sales: the year's gold/silver/bronze (from /api/leaderboard).
   List<dynamic> _ytdPodium = [];
   bool _loading = true;
-  // 'leaderboard' (the live board) or 'dashboard' (the web-style Scoreboard).
-  String _tab = 'dashboard'; // default landing = My Dashboard
   String? _userId;
 
   // Rep multi-select filter (deferred apply, like web): the committed set that
@@ -536,34 +533,28 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  _tabBar(),
-                  if (_tab == 'leaderboard') ...[
-                    const SizedBox(height: 8),
-                    Showcase(
-                      key: _kFilters,
-                      title: 'Filter the board',
-                      description: 'Pick a time period or a custom date range, or narrow the board to one branch, one team, or hide former reps.',
-                      child: _filtersBar(),
+                  const SizedBox(height: 8),
+                  Showcase(
+                    key: _kFilters,
+                    title: 'Filter the board',
+                    description: 'Pick a time period or a custom date range, or narrow the board to one branch, one team, or hide former reps.',
+                    child: _filtersBar(),
+                  ),
+                  if (_period == 'custom') ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: _dateChip('From', _from, () => _pickDate(true))),
+                        const SizedBox(width: 8),
+                        Expanded(child: _dateChip('To', _to, () => _pickDate(false))),
+                      ],
                     ),
-                    if (_period == 'custom') ...[
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(child: _dateChip('From', _from, () => _pickDate(true))),
-                          const SizedBox(width: 8),
-                          Expanded(child: _dateChip('To', _to, () => _pickDate(false))),
-                        ],
-                      ),
-                    ],
                   ],
                 ],
               ),
             ),
             Expanded(
-              child: _tab == 'dashboard'
-                  ? ScoreboardView(onOpenLeaderboard: () => setState(() => _tab = 'leaderboard'))
-                  : _loading
+              child: _loading
                   ? const Center(child: CircularProgressIndicator(color: _primary))
                   : RefreshIndicator(
                       color: _primary,
@@ -608,37 +599,6 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
           ],
         ),
       ),
-    );
-  }
-
-  // Segmented tab: the live Leaderboard vs the web-style "My Dashboard" scoreboard.
-  Widget _tabBar() {
-    Widget seg(String key, String label) {
-      final active = _tab == key;
-      return Expanded(
-        child: GestureDetector(
-          onTap: () { if (_tab != key) setState(() => _tab = key); },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 9),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: active ? _primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: active ? Colors.white : _textLight)),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10)),
-      child: Row(children: [seg('leaderboard', 'Leaderboard'), seg('dashboard', 'My Dashboard')]),
     );
   }
 
@@ -1313,6 +1273,7 @@ class _SalesTeamLeadRankingsScreenState extends State<SalesTeamLeadRankingsScree
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              _navItem(context, Icons.dashboard_outlined, 'Dashboard', false, '/manager-dashboard'),
               _navItemActive(Icons.leaderboard_outlined, 'Sales'),
               _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
               _navItem(context, Icons.apps_outlined, 'Tools', false, '/manager-apps-tools-items'),

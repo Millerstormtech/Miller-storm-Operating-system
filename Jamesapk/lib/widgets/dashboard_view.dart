@@ -120,7 +120,6 @@ class _DashboardViewState extends State<DashboardView> {
     final news = (d['news'] as List?);
     final rank = (d['rank'] as Map?);
     final avg = d['averageContract'];
-    final monthRevenue = (cards['revenue'] as Map?)?['value'];
 
     final scopeLevel = (scope['level'] ?? '').toString();
     final scopeLabel = (scope['label'] ?? '').toString();
@@ -144,7 +143,7 @@ class _DashboardViewState extends State<DashboardView> {
             ],
           ),
         ),
-        _heroCard(hero, rank, scopeLabel),
+        _heroCard(hero, rank, scopeLabel, scopeLevel),
         const SizedBox(height: 14),
         _metricCard(title: 'REVENUE', card: cards['revenue'] as Map?, isMoney: true),
         const SizedBox(height: 14),
@@ -152,9 +151,7 @@ class _DashboardViewState extends State<DashboardView> {
           title: 'CONTRACTS',
           card: cards['contracts'] as Map?,
           isMoney: false,
-          subtitle: monthRevenue != null ? 'to reach ${_money(monthRevenue)}' : null,
           footer: (avg is num) ? 'Average contract ${_money(avg)}' : null,
-          showTrend: false,
         ),
         const SizedBox(height: 14),
         _metricCard(title: 'CLAIMS', card: cards['claims'] as Map?, isMoney: false),
@@ -175,20 +172,30 @@ class _DashboardViewState extends State<DashboardView> {
   List<Widget> _breakdown(Map breakdown, String kind) {
     if (kind == 'branch' || kind == 'team') {
       final groups = (breakdown['groups'] as List?) ?? const [];
+      if (groups.isEmpty) {
+        return [_emptyCard('No ${kind == 'branch' ? 'branches' : 'teams'} have numbers this month yet.')];
+      }
       return groups
           .map<Widget>((g) => Padding(padding: const EdgeInsets.only(bottom: 14), child: _groupCard(g as Map, kind)))
           .toList();
     }
     if (kind == 'rep') {
       final reps = (breakdown['reps'] as List?) ?? const [];
-      return [if (reps.isNotEmpty) _repsCard(reps)];
+      if (reps.isEmpty) return [_emptyCard('Nobody on this team has numbers this month yet.')];
+      return [_repsCard(reps)];
     }
     if (kind == 'month') {
       final months = (breakdown['months'] as List?) ?? const [];
-      return [if (months.isNotEmpty) _monthsCard(months)];
+      if (months.isEmpty) return [_emptyCard('No months to show yet — this is your first.')];
+      return [_monthsCard(months)];
     }
     return const [];
   }
+
+  Widget _emptyCard(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: _card(child: Text(text, style: TextStyle(fontSize: 14, color: AppColors.textLight))),
+      );
 
   // ---- shared bits ----------------------------------------------------------
   Text _kicker(String s, {Color? color, double size = 12}) => Text(
@@ -211,7 +218,7 @@ class _DashboardViewState extends State<DashboardView> {
         fontFeatures: const [FontFeature.tabularFigures()],
       );
 
-  Widget _heroCard(Map hero, Map? rank, String scopeLabel) {
+  Widget _heroCard(Map hero, Map? rank, String scopeLabel, String scopeLevel) {
     final year = hero['year']?.toString() ?? '';
     return _card(
       child: Column(
@@ -242,7 +249,7 @@ class _DashboardViewState extends State<DashboardView> {
                 children: [
                   _kicker('TOTAL CONTRACTS'),
                   const SizedBox(height: 3),
-                  Text('Year to date', style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
+                  Text('Year to date $year', style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
                   const SizedBox(height: 8),
                   Text(_int(hero['contracts']), maxLines: 1, softWrap: false, style: _bigNum.copyWith(fontSize: 26)),
                 ],
@@ -258,7 +265,7 @@ class _DashboardViewState extends State<DashboardView> {
               text: TextSpan(
                 style: TextStyle(fontSize: 14, color: AppColors.textLight),
                 children: [
-                  TextSpan(text: '${scopeLabel.isEmpty ? 'You' : scopeLabel} is '),
+                  TextSpan(text: scopeLevel == 'self' ? 'You are ' : '${scopeLabel.isEmpty ? 'You' : scopeLabel} is '),
                   TextSpan(text: '#${rank['rank']}', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textDark)),
                   TextSpan(text: ' of ${rank['of']} by revenue this month'),
                 ],
@@ -294,7 +301,7 @@ class _DashboardViewState extends State<DashboardView> {
           const SizedBox(height: 8),
           Text(fmt(value), style: _bigNum),
           const SizedBox(height: 4),
-          if (showTrend && trend != null) _trendLine(trend),
+          if (showTrend) _trendLine(trend),
           if (subtitle != null) Text(subtitle, style: TextStyle(fontSize: 13, color: AppColors.textLight)),
           const SizedBox(height: 12),
           Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
@@ -317,22 +324,24 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _trendLine(Map trend) {
-    final pct = trend['pct'];
-    final dir = trend['dir']?.toString();
-    if (pct == null || dir == null) return const SizedBox.shrink();
-    if (dir == 'flat') {
+  // Matches the web exactly: "N% vs last month", with the direction shown by
+  // colour (green up / red down / muted flat); when there's no prior month to
+  // compare against, the web shows "No comparison yet" — see display.ts.
+  Widget _trendLine(Map? trend) {
+    final pct = trend?['pct'];
+    final dir = trend?['dir']?.toString();
+    if (pct == null || dir == null) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 2),
-        child: Text('same as last month', style: TextStyle(fontSize: 13, color: AppColors.textPlaceholder)),
+        child: Text('No comparison yet', style: TextStyle(fontSize: 13, color: AppColors.textPlaceholder)),
       );
     }
-    final up = dir == 'up';
     final n = (pct is num ? pct.abs() : 0).round();
+    final color = dir == 'up' ? _up : dir == 'down' ? _down : AppColors.textPlaceholder;
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: Text('$n% ${up ? 'above' : 'below'} last month',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: up ? _up : _down)),
+      child: Text('$n% vs last month',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
     );
   }
 
@@ -451,22 +460,33 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
+  // A zero renders as "–", never "0" — the table is about who did something.
+  String _dash(dynamic v, {required bool money}) {
+    final n = (v is num ? v : num.tryParse('$v') ?? 0);
+    if (n == 0) return '–';
+    return money ? _money(n) : _int(n);
+  }
+
   // Reps as a table (team-lead view). Former reps are marked, never hidden.
   Widget _repsCard(List reps) {
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _kicker('REPS'),
+          _kicker('MY REPS'),
+          const SizedBox(height: 3),
+          Text('${reps.length} ${reps.length == 1 ? 'person' : 'people'}, month to date, highest revenue first',
+              style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
           const SizedBox(height: 12),
           _tableHeader(),
-          const SizedBox(height: 6),
-          ...reps.map((r) {
-            final m = r as Map;
+          const SizedBox(height: 2),
+          ...reps.asMap().entries.map((e) {
+            final m = e.value as Map;
             return _tableRow(
+              index: e.key,
               name: (m['name'] ?? '').toString(),
               former: m['former'] == true,
-              cells: [_money(m['revenue']), _int(m['contracts']), _int(m['claims']), _int(m['knocks'])],
+              cells: [_dash(m['revenue'], money: true), _dash(m['contracts'], money: false), _dash(m['claims'], money: false), _dash(m['knocks'], money: false)],
             );
           }),
         ],
@@ -480,16 +500,19 @@ class _DashboardViewState extends State<DashboardView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _kicker('YOUR MONTHS'),
+          _kicker('MY MONTHS'),
+          const SizedBox(height: 3),
+          Text('This year, newest first', style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
           const SizedBox(height: 12),
           _tableHeader(firstCol: 'MONTH'),
-          const SizedBox(height: 6),
-          ...months.map((mo) {
-            final m = mo as Map;
+          const SizedBox(height: 2),
+          ...months.asMap().entries.map((e) {
+            final m = e.value as Map;
             return _tableRow(
+              index: e.key,
               name: (m['label'] ?? '').toString(),
               former: false,
-              cells: [_money(m['revenue']), _int(m['contracts']), _int(m['claims']), _int(m['knocks'])],
+              cells: [_dash(m['revenue'], money: true), _dash(m['contracts'], money: false), _dash(m['claims'], money: false), _dash(m['knocks'], money: false)],
             );
           }),
         ],
@@ -497,22 +520,26 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _tableHeader({String firstCol = 'REP'}) => Row(
-        children: [
-          Expanded(flex: 4, child: _kicker(firstCol, size: 10)),
-          Expanded(flex: 3, child: Align(alignment: Alignment.centerRight, child: _kicker('REV', size: 10))),
-          Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: _kicker('CON', size: 10))),
-          Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: _kicker('CLM', size: 10))),
-          Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: _kicker('KNK', size: 10))),
-        ],
+  Widget _tableHeader({String firstCol = 'REP'}) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            Expanded(flex: 5, child: _kicker(firstCol, size: 10)),
+            Expanded(flex: 4, child: Align(alignment: Alignment.centerRight, child: _kicker('REV', size: 10))),
+            Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: _kicker('CON', size: 10))),
+            Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: _kicker('CLM', size: 10))),
+            Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: _kicker('KNK', size: 10))),
+          ],
+        ),
       );
 
-  Widget _tableRow({required String name, required bool former, required List<String> cells}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+  Widget _tableRow({required int index, required String name, required bool former, required List<String> cells}) => Container(
+        color: index.isOdd ? AppColors.surfaceAlt.withOpacity(0.5) : null,
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
         child: Row(
           children: [
             Expanded(
-              flex: 4,
+              flex: 5,
               child: Row(
                 children: [
                   Flexible(
@@ -523,15 +550,15 @@ class _DashboardViewState extends State<DashboardView> {
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(4)),
-                      child: Text('former', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+                      decoration: BoxDecoration(color: AppColors.border.withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
+                      child: Text('FORMER', style: TextStyle(fontSize: 8.5, letterSpacing: 0.5, fontWeight: FontWeight.w700, color: AppColors.textLight)),
                     ),
                   ],
                 ],
               ),
             ),
             ...cells.asMap().entries.map((e) => Expanded(
-                  flex: e.key == 0 ? 3 : 2,
+                  flex: e.key == 0 ? 4 : 2,
                   child: Text(e.value,
                       textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 13, color: AppColors.textDark, fontFeatures: const [FontFeature.tabularFigures()])),
@@ -544,16 +571,26 @@ class _DashboardViewState extends State<DashboardView> {
     final pct = training['pct'];
     final headcount = training['headcount'];
     final top = (training['top'] as List?) ?? const [];
-    final where = scopeLevel != 'company' && scopeLabel.isNotEmpty ? ' in $scopeLabel' : '';
+    final isSelf = scopeLevel == 'self';
+    // Matches the web: subtitle is "{scope}, all time" (or "My progress, all
+    // time" for a rep), and the line under the % is "average course completion
+    // across N reps" (or "of the whole library finished" for a rep).
+    final sub = isSelf ? 'My progress, all time' : '${scopeLabel.isEmpty ? 'Company' : scopeLabel}, all time';
+    final n = _int(headcount);
+    final below = isSelf
+        ? 'of the whole library finished'
+        : 'average course completion across $n ${n == '1' ? 'rep' : 'reps'}';
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _kicker('TRAINING CENTER'),
           const SizedBox(height: 3),
-          Text('average across ${_int(headcount)} reps$where', style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
+          Text(sub, style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
           const SizedBox(height: 8),
           Text('${(pct is num ? pct.round() : 0)}%', style: _bigNum),
+          const SizedBox(height: 4),
+          Text(below, style: TextStyle(fontSize: 12, color: AppColors.textPlaceholder)),
           const SizedBox(height: 12),
           Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
           const SizedBox(height: 10),
