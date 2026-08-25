@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import { GuidedTour } from "../shared/guided-tour/GuidedTour";
+import { STORM_CHAT_MANAGE_TOUR } from "../shared/guided-tour/definitions/stormChatManage";
+import { TourButton } from "../shared/guided-tour/TourButton";
+import { useActiveTourId } from "../shared/guided-tour/tourRegistry";
 import { roleDisplayName } from "../../lib/roleLabels";
 import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
@@ -31,6 +35,7 @@ type ChatGroup = {
 };
 
 export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' }: { joinRequestsPath?: string } = {}) {
+  const activeTourId = useActiveTourId();
   const { user } = useAuth();
   const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -915,9 +920,14 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
             <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text-inverse)', letterSpacing: 0.2 }}>StormChat</div>
             <div style={{ fontSize: 12.5, color: 'rgb(var(--white-rgb) / 0.82)' }}>Direct messages &amp; group channels</div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="sc-btn sc-btn-ghost" onClick={openDmPicker}>✏️ New message</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* This page passes pageTitle="" so its layout skips PageHeader,
+                which is what normally renders the tour's "?" control. Without
+                this the replay button never appears here. */}
+            {activeTourId ? <TourButton /> : null}
+            <button type="button" data-tour="scm-new-message" className="sc-btn sc-btn-ghost" onClick={openDmPicker}>✏️ New message</button>
             <button
+              data-tour="scm-requests"
               type="button"
               className="sc-btn sc-btn-ghost"
               onClick={() => router.push(joinRequestsPath)}
@@ -930,7 +940,7 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
                 </span>
               )}
             </button>
-            <button type="button" className="sc-btn sc-btn-solid" onClick={() => { resetForm(); setIsCreating(true); }}>+ Create group</button>
+            <button type="button" data-tour="scm-create-group" className="sc-btn sc-btn-solid" onClick={() => { resetForm(); setIsCreating(true); }}>+ Create group</button>
           </div>
         </div>
         <div style={{ padding: '18px 20px' }}>
@@ -966,7 +976,7 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
           )}
 
           {/* Groups — single click opens the chat, double click opens the info/manage panel */}
-          <div className="sc-label" style={{ margin: '20px 0 10px' }}>
+          <div data-tour="scm-groups" className="sc-label" style={{ margin: '20px 0 10px' }}>
             Groups ({groups.filter(g => !g.parentGroupId).length}){groups.filter(g => g.parentGroupId).length > 0 ? ` · ${groups.filter(g => g.parentGroupId).length} Subgroup${groups.filter(g => g.parentGroupId).length === 1 ? '' : 's'}` : ''}
           </div>
           {groups.filter(g => !g.parentGroupId).length === 0 ? (
@@ -1119,6 +1129,11 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
           </div>
         );
       })()}
+
+      {/* Only the list view carries the tour. While the create/edit form is
+          open it replaces the list, so every step target is gone and the
+          engine simply shows nothing. */}
+      <GuidedTour tour={STORM_CHAT_MANAGE_TOUR} ready={!(isCreating || isEditing)} />
     </div>
   );
 }

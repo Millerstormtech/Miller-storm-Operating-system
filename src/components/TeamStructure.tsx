@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
+import { TEAM_STRUCTURE_TOUR } from "../portals/shared/guided-tour/definitions/teamStructure";
 
 type OrgUser = {
   id: string;
@@ -298,7 +300,7 @@ export function TeamStructure() {
 
       <div style={{ position: "relative", zIndex: 1 }}>
       {/* Summary */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+      <div data-tour="ts-counts" style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
         {stat("C-Level", counts.cLevel, ROLE["c-level"].dot)}
         {stat("Branch Managers", counts.branchManagers, ROLE["branch-manager"].dot)}
         {stat("Sales Team Leads", counts.managers, ROLE["sales-team-lead"].dot)}
@@ -308,6 +310,7 @@ export function TeamStructure() {
       </div>
 
       <input
+        data-tour="ts-search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search by name or email…"
@@ -319,6 +322,7 @@ export function TeamStructure() {
       ) : (
         <div
           className="chart-scroll"
+          data-tour="ts-chart"
           ref={setScrollEl}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => { setHovered(false); onDragEnd(); }}
@@ -399,7 +403,7 @@ export function TeamStructure() {
 
       {/* Marketing + unassigned shown as rows below the chart */}
       {(marketing.length > 0 || unassigned.length > 0) && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 32, marginTop: 28 }}>
+        <div data-tour="ts-others" style={{ display: "flex", flexWrap: "wrap", gap: 32, marginTop: 28 }}>
           {marketing.length > 0 && (
             <div>
               <div className="side-title">Marketing, {marketing.length}</div>
@@ -428,6 +432,10 @@ export function TeamStructure() {
           </div>
         </div>
       )}
+
+      {/* The component early-returns while loading and on error, so by the time
+          this renders the roster is on screen and the tour can measure it. */}
+      <GuidedTour tour={TEAM_STRUCTURE_TOUR} ready />
 
       <style jsx>{`
         .chart-scroll { overflow: auto; padding: 8px 0 12px; cursor: grab; user-select: none; }

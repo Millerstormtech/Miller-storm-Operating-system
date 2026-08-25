@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
+import { APPS_TOOLS_TOUR } from "../portals/shared/guided-tour/definitions/appsTools";
 
 type AppToolCategory = {
   _id: string;
@@ -83,14 +85,14 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
     if (items.length === 0) return null;
 
     return (
-      <div key={category._id} style={{ marginBottom: 30 }}>
+      <div key={category._id} data-tour="at-sections" style={{ marginBottom: 30 }}>
         <div className="at-section-title">{category.name}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 18 }}>
           {items.map((item, i) => {
             const hasImg = item.imageUrl && !item.imageUrl.startsWith('blob:');
             return (
               <Link key={item._id} href={`/${portal}/apps-tools/${item._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div className="at-card">
+                <div className="at-card" data-tour="at-card">
                   <div
                     className="at-thumb"
                     style={{
@@ -131,6 +133,7 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
           <div style={{ fontSize: 14.5, color: "var(--text-muted)" }}>Everything you need in the field</div>
           <input
+            data-tour="at-search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tools"
@@ -139,6 +142,8 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
         </div>
 
         {categories.map(category => renderSection(category))}
+
+        <GuidedTour tour={APPS_TOOLS_TOUR} ready={!loading} />
       </div>
 
       <style jsx>{`

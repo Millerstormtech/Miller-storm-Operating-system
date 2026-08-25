@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { appConfirm } from "../../lib/appDialogs";
+import { GuidedTour } from "../shared/guided-tour/GuidedTour";
+import { APPS_TOOLS_TOUR } from "../shared/guided-tour/definitions/appsTools";
 
 type AppToolCategory = {
   _id: string;
@@ -401,7 +403,7 @@ export function AppsToolManagement() {
     const items = itemsByCategory[category.slug] || [];
     
     return (
-      <div key={category._id} className="panel" style={{ marginBottom: 16 }}>
+      <div key={category._id} data-tour="at-sections" className="panel" style={{ marginBottom: 16 }}>
         <div className="panel-header">
           <div className="panel-header-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -675,7 +677,7 @@ export function AppsToolManagement() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 20 }}>
               {items.map((item) => (
-                <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden", height: "100%", position: 'relative' }}>
+                <div key={item._id} data-tour="at-card" className="card" style={{ padding: 0, overflow: "hidden", height: "100%", position: 'relative' }}>
                   <div style={{ 
                     width: "100%", 
                     height: item.imageHeight || 280, 
@@ -813,6 +815,10 @@ export function AppsToolManagement() {
       ) : (
         categories.map(category => renderSection(category))
       )}
+
+      {/* Same tour as the rep-facing grid. The search step drops out here,
+          because this screen has no search box. */}
+      <GuidedTour tour={APPS_TOOLS_TOUR} ready={!loading} />
     </div>
   );
 }
