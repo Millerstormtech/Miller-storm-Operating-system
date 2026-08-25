@@ -66,6 +66,9 @@ const CourseManagementPage: NextPage = () => {
         resourceLinks: Array.isArray(page.resourceLinks) ? page.resourceLinks : [],
         fileUrls: Array.isArray(page.fileUrls) ? page.fileUrls : [],
         isQuiz: Boolean(page.isQuiz),
+        // Whether this quiz is the course's Final Test (feeds the Test Ace badge).
+        // Reconstructed explicitly here, so it must be listed or it gets stripped.
+        isFinalTest: Boolean(page.isFinalTest),
         questionsToShow: page.questionsToShow,
         quizQuestions: Array.isArray(page.quizQuestions) ? page.quizQuestions.map((q: any) => ({
           id: q.id, prompt: q.prompt,

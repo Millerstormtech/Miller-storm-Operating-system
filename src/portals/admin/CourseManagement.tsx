@@ -3613,6 +3613,26 @@ export function CourseManagement(props: CourseEditorProps) {
                                           </div>
                                         )}
                                         <div className="course-page-editor-body" key="quiz-editor-body">
+                                          <label
+                                            style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "12px 14px", border: "1px solid var(--border-default)", borderRadius: 8, cursor: "pointer" }}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={Boolean(activePage.isFinalTest)}
+                                              onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, isFinalTest: checked } : page));
+                                                updateCourse({ ...selectedCourse, pages: nextPages });
+                                              }}
+                                              style={{ width: 18, height: 18, cursor: "pointer" }}
+                                            />
+                                            <span>
+                                              <span style={{ fontWeight: 600 }}>Final Test?</span>
+                                              <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                                                Mark this quiz as the course&apos;s final test. Scoring 100% on it earns the Test Ace 🎯 badge.
+                                              </span>
+                                            </span>
+                                          </label>
                                           <div className="field" style={{ marginBottom: 24, padding: 16, border: "1px solid var(--border-default)", borderRadius: 8, display: "block" }}>
                                             <span className="field-label">Questions to show the user</span>
                                             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
