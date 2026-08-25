@@ -16,6 +16,7 @@ export function UserManagementView() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [deletedUsers, setDeletedUsers] = useState<UserProfile[]>([]);
   const [activeTab, setActiveTab] = useState<"users" | "requests" | "deleted">("users");
+  const [deletedSearch, setDeletedSearch] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
@@ -161,9 +162,36 @@ export function UserManagementView() {
                 <div style={{ fontSize: 48, marginBottom: 16 }}>🗑️</div>
                 <div style={{ fontSize: 16, fontWeight: 500 }}>No deleted users</div>
               </div>
-            ) : (
+            ) : (() => {
+              const q = deletedSearch.trim().toLowerCase();
+              const shown = deletedUsers.filter((user) =>
+                q === "" ||
+                (user.name ?? "").toLowerCase().includes(q) ||
+                (user.email ?? "").toLowerCase().includes(q) ||
+                (user.roles || [user.role]).some((r) => (r ?? "").toLowerCase().includes(q))
+              );
+              return (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {deletedUsers.map((user) => (
+                <input
+                  type="text"
+                  placeholder="Search deleted users..."
+                  value={deletedSearch}
+                  onChange={(e) => setDeletedSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    fontSize: 14,
+                    border: "1px solid var(--border-default)",
+                    borderRadius: 8,
+                    boxSizing: "border-box",
+                    outline: "none",
+                  }}
+                />
+                {shown.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 24, color: "var(--text-muted)", fontSize: 14 }}>
+                    No deleted users match &ldquo;{deletedSearch}&rdquo;.
+                  </div>
+                ) : shown.map((user) => (
                   <div key={user.id} style={{ padding: 16, backgroundColor: "var(--surface-subtle)", borderLeft: "3px solid #e01418", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{user.name}</div>
@@ -218,7 +246,8 @@ export function UserManagementView() {
                   </div>
                 ))}
               </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       ) : (
