@@ -194,8 +194,11 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     const branchActive = !!branchFilter && branchFilter !== NONE;
     const filtered = rows
       .map((r) => {
-        // A real branch filter scopes a rep's numbers to just that branch's sales
-        // (from byBranch). Rows with no data in that branch drop out. No filter -> totals.
+        // Team-based reporting: a branch filter narrows the board to the reps who
+        // BELONG to that branch, and each of them keeps their full numbers -- the
+        // storm-chase sales they ran in another branch included, because their own
+        // branch trains and manages them. byBranch holds exactly the rep's home
+        // branch (see leaderboard/compute.ts), so a miss means "not this branch".
         if (branchActive) {
           const b = r.byBranch?.[branchFilter];
           if (!b) return null;
@@ -255,11 +258,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   const arrow = (key: SortKey) => (key === sortKey ? (sortDir === "asc" ? " ▲" : " ▼") : "");
 
-  // While a real branch filter is active, the numbers are that ONE branch's sales, so a
-  // rep's home Branch/Team would only contradict the filter (a Fort Worth rep in the West
-  // Texas list). Hide those two columns to remove the confusion; the banner explains why.
-  const branchActive = !!branchFilter && branchFilter !== NONE;
-  const visibleColumns = branchActive ? COLUMNS.filter((c) => c.key !== "branch" && c.key !== "team") : COLUMNS;
+  // Under team-based reporting every listed rep really does belong to the filtered
+  // branch, so Branch and Team no longer contradict the filter and both columns stay.
+  // Team in particular is the useful one here: it splits a branch into its team leads.
+  // (They used to be hidden, back when a filter could list an out-of-branch rep for
+  // the sales they happened to file in this branch.)
+  const visibleColumns = COLUMNS;
 
   // Footer "Sum" row totals. Reduced over `visible` (the on-screen rows), so it reflects
   // the current view automatically — filters, branch scoping, and date range all included.
@@ -544,18 +548,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
       {branchFilter && branchFilter !== NONE ? (
         <div className="sl__note">
-          Showing <strong>{branchFilter}</strong> sales. Numbers are for this branch only. Branch and Team columns are hidden while a branch filter is on, because a rep based in another branch can appear here for their {branchFilter} sales.
+          Showing the <strong>{branchFilter}</strong> team. Every rep on {branchFilter}&apos;s teams is listed with their full numbers, including any jobs they ran in another branch while storm-chasing.
         </div>
       ) : null}
-
-      <details className="sl__guide" data-tour="board-guide">
-        <summary>ℹ️ How to read this board</summary>
-        <ul>
-          <li><strong>Who&apos;s listed here:</strong> every active sales rep.</li>
-          <li>A rep can sell in more than one branch (for example, when storm-chasing away from home). Filtering by branch shows only the sales made in that branch. In this case each row shows only that rep&apos;s sales data for the filtered branch. Remove the branch filter to see their full total across every branch.</li>
-          <li>However, <strong>Verified Door Knocks</strong> is the only data point that always counts under a rep&apos;s home branch. So if you filter to another branch where the rep made sales, you&apos;ll see those sales (as mentioned in the previous point) but their knocks show as 0 there.</li>
-        </ul>
-      </details>
 
       <div className="sl__legend">
         <span><span className="sl__dot" /> No AccuLynx account (rep not set up in AccuLynx)</span>
@@ -631,12 +626,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                         ) : null}
                       </span>
                     </td>
-                    {!branchActive ? (
-                      <>
-                        <td className="sl__muted">{r.branch || "—"}</td>
-                        <td className="sl__muted">{TEAM_LEADS[r.team] || r.team || "—"}</td>
-                      </>
-                    ) : null}
+                    <td className="sl__muted">{r.branch || "—"}</td>
+                    <td className="sl__muted">{TEAM_LEADS[r.team] || r.team || "—"}</td>
                     <td className="sl__num">{r.verifiedKnocks ?? 0}</td>
                     <td className="sl__num">{r.leadsCreated ?? 0}</td>
                     <td className="sl__num">{r.filed}</td>
@@ -649,7 +640,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             {visible.length > 0 ? (
               <tfoot>
                 <tr className="sl__foot">
-                  <td colSpan={branchActive ? 2 : 4} className="sl__foot-label">
+                  <td colSpan={4} className="sl__foot-label">
                     Sum ({visible.length} rep{visible.length === 1 ? "" : "s"})
                   </td>
                   <td className="sl__num">{totals.verifiedKnocks}</td>
@@ -757,7 +748,6 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --note-bg: rgba(37, 99, 235, 0.12);
           --note-border: rgba(37, 99, 235, 0.35);
           --note-text: #bcd0ff;
-          --guide-bg: rgba(255, 255, 255, 0.03);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
           --rep-panel-bg: #1e2024;
           --rep-field-bg: rgba(255, 255, 255, 0.07);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
           --rep-hover: rgba(255, 255, 255, 0.07);  /* tokens-guard-ignore: bespoke-dark, widget's own dark palette */
@@ -803,7 +793,6 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           --note-bg: #eff6ff;
           --note-border: #bfdbfe;
           --note-text: #1e40af;
-          --guide-bg: #f8fafc;
           --rep-panel-bg: var(--surface-default);
           --rep-field-bg: var(--surface-subtle);
           --rep-hover: var(--surface-subtle);
@@ -928,9 +917,6 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__count { font-size: 13px; color: var(--subtle); margin-left: auto; }
 
         .sl__note { margin-bottom: 12px; background: var(--note-bg); border: 1px solid var(--note-border); border-radius: 10px; padding: 9px 14px; font-size: 12.5px; color: var(--note-text); }
-        .sl__guide { margin-bottom: 12px; background: var(--guide-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
-        .sl__guide summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--pill-text); }
-        .sl__guide ul { margin: 10px 0 2px; padding-left: 18px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
         .sl__legend { display: flex; gap: 16px; margin-bottom: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
         .sl__legend span { display: inline-flex; align-items: center; gap: 6px; }
         .sl__dot { width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; display: inline-block; flex-shrink: 0; }

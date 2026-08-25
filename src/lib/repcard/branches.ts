@@ -44,3 +44,41 @@ export function saleRegion(location?: string | null): "West Texas" | "Commercial
   if (s.includes("commercial")) return "Commercial";
   return "DFW";
 }
+
+// ---------------------------------------------------------------------------
+// Which branch a rep's numbers count toward on the sales leaderboard.
+//
+// TEAM-BASED reporting. Decided with Jay and Nadine on 2026-08-12 and confirmed
+// on 2026-08-21 ("when we talked about the reporting approach, it will become
+// team-based -- when I filter Fort Worth, the results reflect Gunner and the
+// teams"). Every number a rep produces counts toward the branch their TEAM
+// belongs to, whichever branch's AccuLynx sub-account the job was actually filed
+// in. A Fort Worth rep who storm-chases West Texas carries those sales home to
+// Fort Worth, because Fort Worth trains and manages that rep.
+//
+// This replaced LOCATION-based reporting, where a sale was re-attributed to the
+// region it was filed in (West Texas / Commercial split out, only DFW sales
+// followed the rep home). saleRegion() above is the surviving piece of that rule
+// and is kept for the separate location-based override report.
+//
+// Consequences the callers rely on:
+//   - a rep appears under exactly ONE branch, so a branch filter is a roster
+//     filter, and Branch/Team stay meaningful next to a filtered row;
+//   - the filtered numbers are the rep's FULL numbers, not a slice, so no metric
+//     can disagree with another (knocks used to be the only metric pinned home);
+//   - a rep with no resolvable branch appears under no branch at all.
+export interface BranchTotals {
+  verifiedKnocks: number;
+  leadsCreated: number;
+  filed: number;
+  won: number;
+  revenue: number;
+}
+
+export function attributeToBranch(
+  homeBranch: string | null | undefined,
+  totals: BranchTotals
+): Record<string, BranchTotals> {
+  if (!homeBranch) return {};
+  return { [homeBranch]: { ...totals } };
+}

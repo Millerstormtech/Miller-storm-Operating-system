@@ -1,7 +1,10 @@
 import type { TourDefinition } from "../types";
 
-/** Step order follows the on-screen order (rank, filters, guide, legend, table)
- *  so the tour walks down the page instead of jumping back up. */
+/** Step order follows the on-screen order (rank, filters, table, replay button)
+ *  so the tour walks down the page instead of jumping back up. The "How to read
+ *  this board" guide it used to stop at was removed once branch reporting became
+ *  team-based: the rules it explained (a rep's numbers splitting across branches)
+ *  no longer exist, and what remained fits in the filters step above. */
 export const SALES_LEADERBOARD_TOUR: TourDefinition = {
   id: "sales-leaderboard",
   version: 1,
@@ -14,12 +17,7 @@ export const SALES_LEADERBOARD_TOUR: TourDefinition = {
     {
       target: "filters",
       title: "Filter the board",
-      body: "Pick a time period or a custom date range, or narrow the board to one branch, one team, or specific reps.",
-    },
-    {
-      target: "board-guide",
-      title: "The full rules",
-      body: "Open this guide anytime for the details, like how branch filtering changes the numbers.",
+      body: "Pick a time period or a custom date range, or narrow the board to one branch, one team, or specific reps. Filtering by branch lists that branch's own reps with their full numbers.",
     },
     {
       target: "columns",
