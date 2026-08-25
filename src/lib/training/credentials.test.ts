@@ -331,3 +331,47 @@ describe("legacy category aliases", () => {
     expect(sections.map((s) => s.category)).not.toContain(LEGACY);
   });
 });
+
+describe("the 2026-08-24 Certification rename", () => {
+  // A live regression, not a hypothetical. On 2026-08-24 the four tier 1
+  // courses were renamed in the Course Builder from "Miller Storm Certificate"
+  // to "Miller Storm Certification". `category` is both the visible heading AND
+  // the only join to the credential, so the credential matched zero courses:
+  // every rep's Miller Storm bar read 0%, two reps who had already earned it
+  // stopped showing as earned, and nothing raised an error anywhere, because a
+  // category mismatch cannot fail loudly. It can only count to zero.
+  const STORED = "Miller Storm Certification";
+  const PRINTED = "Miller Storm Certificate";
+
+  it("joins on the string the courses are actually filed under", () => {
+    expect(CREDENTIALS[0].category).toBe(STORED);
+  });
+
+  it("still counts a course left under the pre-rename spelling", () => {
+    // Both spellings exist in the wild: 9 published courses were migrated, but
+    // a draft published later could still carry the old one.
+    expect(canonicalCategory(PRINTED)).toBe(STORED);
+    expect(canonicalCategory("Miller Storm Diploma")).toBe(STORED);
+  });
+
+  it("keeps printing the name Jay chose, which is NOT the stored heading", () => {
+    // The two deliberately differ. If someone ever "tidies" label to match
+    // category, the certificate PDF starts saying Certification.
+    expect(CREDENTIALS[0].label).toBe(PRINTED);
+    expect(CREDENTIALS[0].label).not.toBe(CREDENTIALS[0].category);
+  });
+
+  it("counts all four tier 1 courses however they are spelled", () => {
+    const courses = [
+      { id: "p1", category: STORED },
+      { id: "p2", category: PRINTED },
+      { id: "p3", category: "Miller Storm Diploma" },
+      { id: "p4", category: `  ${STORED}  ` },
+    ];
+    const done = stats({ itemsCompleted: 10, itemsTotal: 10, complete: true });
+    const byId = new Map(courses.map((c) => [c.id, done]));
+    const cert = credentialProgress(courses, byId).find((c) => c.key === "certificate")!;
+    expect(cert.coursesTotal).toBe(4);
+    expect(cert.earned).toBe(true);
+  });
+});

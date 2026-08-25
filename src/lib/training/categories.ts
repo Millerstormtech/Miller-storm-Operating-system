@@ -11,7 +11,11 @@
 import { canonicalCategory } from "./credentials";
 
 export const TRAINING_CATEGORIES = [
-  "Miller Storm Certificate",
+  // Must match CREDENTIALS[].category in credentials.ts exactly, not the
+  // credential's printed label: this is the stored join key. Renamed to
+  // "Certification" on 2026-08-24 in the Course Builder; the code caught up
+  // 2026-08-25.
+  "Miller Storm Certification",
   "Millionaire Knockers",
   "Roof Hustlers",
 ];

@@ -13,7 +13,7 @@ import { UserProgressModel } from "../models/UserProgress";
 import { CertificateAwardModel } from "../models/CertificateAward";
 import { logToDb } from "../models/SystemLog";
 import { courseStats, type CourseStats, type ProgressLike } from "./scoring";
-import { credentialProgress, CREDENTIALS } from "./credentials";
+import { credentialProgress, CREDENTIALS, canonicalCategory } from "./credentials";
 import { renderCertificatePdf, certificateFilename } from "../certificate/render";
 import { credentialNumber } from "../certificate/template";
 import { certificateDate } from "../certificate/date";
@@ -112,8 +112,13 @@ export async function awardCertificatesIfEarned(params: {
         throw e;
       }
 
+      // canonicalCategory, NOT a raw compare: a course still stored under a
+      // retired spelling counts towards the credential in credentialProgress(),
+      // so it must appear on the sheet too. A raw compare here printed a
+      // certificate whose "Program completed" list silently omitted exactly the
+      // courses that earned it, or was empty outright.
       const titles = courses
-        .filter((c: any) => (c.category || "").trim() === meta.category)
+        .filter((c: any) => canonicalCategory(c.category) === meta.category)
         .map((c: any) => String(c.title || ""))
         .filter(Boolean);
 
