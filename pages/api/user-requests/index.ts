@@ -24,10 +24,16 @@ export default async function handler(
     }
   } else if (req.method === "POST") {
     try {
-      const { name, email, password, role, branch, managerId } = req.body;
+      const { name, email, password, role, branch, managerId, phone } = req.body;
 
       if (!name || !email || !password || !role) {
         res.status(400).json({ error: "All fields are required" });
+        return;
+      }
+
+      // Phone is required at registration.
+      if (!String(phone || "").trim()) {
+        res.status(400).json({ error: "Phone number is required" });
         return;
       }
 
@@ -76,6 +82,7 @@ export default async function handler(
         role,
         branch: role === "sales" ? String(branch || "").trim() : "",
         managerId: role === "sales" ? String(managerId || "").trim() : "",
+        phone: String(phone || "").trim(),
         status: "pending"
       });
 

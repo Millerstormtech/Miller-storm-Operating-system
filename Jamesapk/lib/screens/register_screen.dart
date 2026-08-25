@@ -16,6 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   String _role = 'sales';
@@ -51,6 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -77,6 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         body: jsonEncode({
           'name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
+          'phone': _phoneController.text.trim(),
           'password': _passwordController.text.trim(),
           'role': _role,
           'branch': _role == 'sales' ? _branch : '',
@@ -218,6 +221,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             keyboardType: TextInputType.emailAddress,
             decoration: _inputDecoration('you@company.com'),
             validator: (v) => (v == null || v.isEmpty) ? 'Email required' : null,
+          ),
+          const SizedBox(height: 16),
+          _fieldLabel('Phone Number'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: _inputDecoration('(555) 123-4567'),
+            validator: (v) => (v == null || v.trim().isEmpty) ? 'Phone number required' : null,
           ),
           const SizedBox(height: 16),
           _fieldLabel('Role'),

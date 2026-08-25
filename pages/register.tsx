@@ -9,6 +9,7 @@ const RegisterPage: NextPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
     role: "sales",
@@ -62,6 +63,7 @@ const RegisterPage: NextPage = () => {
     setError("");
 
     if (emailError) { setError(emailError); return; }
+    if (!formData.phone.trim()) { setError("Please enter your phone number."); return; }
     if (formData.password !== formData.confirmPassword) { setError("Passwords do not match"); return; }
     if (formData.password.length < 6) { setError("Password must be at least 6 characters"); return; }
     if (formData.role === "sales") {
@@ -77,6 +79,7 @@ const RegisterPage: NextPage = () => {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
+          phone: formData.phone,
           password: formData.password,
           role: formData.role,
           branch: formData.role === "sales" ? formData.branch : "",
@@ -135,6 +138,12 @@ const RegisterPage: NextPage = () => {
             onChange={handleChange} onBlur={(e) => checkEmailAvailability(e.target.value)}
             placeholder="you@company.com" autoComplete="email" required />
           {emailError && <div className="ms-auth__hint">{emailError}</div>}
+        </label>
+
+        <label className="ms-auth__field">
+          <span className="ms-auth__label">Phone Number</span>
+          <input className="ms-auth__input" type="tel" name="phone" value={formData.phone}
+            onChange={handleChange} placeholder="(555) 123-4567" autoComplete="tel" required />
         </label>
 
         <label className="ms-auth__field">

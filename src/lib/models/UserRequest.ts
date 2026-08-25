@@ -11,7 +11,9 @@ const userRequestSchema = new Schema(
     // the approved account lands with them already set. Empty for other roles.
     branch: { type: String, default: "" },
     managerId: { type: String, default: "" },
-    status: { 
+    // Contact phone, required at registration.
+    phone: { type: String, default: "" },
+    status: {
       type: String, 
       enum: ["pending", "approved", "rejected"], 
       default: "pending" 
