@@ -1,10 +1,15 @@
 // src/lib/report/salesBoard.ts
 // Sales Leaderboard -> ReportDocument. Pure.
 //
-// The rule that matters: a real branch filter rewrites every row's numbers to
-// that branch's sales only, and hides Branch/Team (see LeaderboardBoard.tsx).
-// A PDF outlives the screen it came from, so the export mirrors the hidden
-// columns AND states the caveat in words.
+// Branch reporting is TEAM-BASED (see repcard/branches.ts): a branch filter
+// selects reps, it does not rewrite anyone's numbers. So an export carries every
+// column and needs no caveat. The earlier location-based version hid Branch/Team
+// and printed "Numbers are <branch> sales only"; a PDF outlives the screen it
+// came from, so that line was deleted rather than reworded once it became false.
+//
+// Branch and Team are MULTI-SELECT. The match and label rules live in
+// leaderboard/filters.ts and are shared with the board, so a PDF can never
+// describe a scope the screen was not actually showing.
 
 import {
   buildDocument,
@@ -16,9 +21,8 @@ import {
   type TotalsSpec,
 } from "./document";
 import { TEAM_LEADS } from "../repcard/org-chart";
-
-/** The "(No branch)" / "(No team)" sentinel used by the board's dropdowns. */
-const NONE = "__none__";
+import { BRANCH_ORDER } from "../repcard/branches";
+import { selectedNames, selectionChipLabel } from "../leaderboard/filters";
 
 export type SalesExportRow = {
   id: string;
@@ -38,31 +42,49 @@ export type SalesExportContext = {
   periodLabel: string;
   from: string;
   to: string;
-  branch: string;
-  team: string;
+  /** Selected branch values; empty means no branch filter. */
+  branches: string[];
+  /** Selected team values; empty means no team filter. */
+  teams: string[];
   selectedRepCount: number;
   hideFormer: boolean;
   rowCount: number;
 };
 
-/** True only for a real branch filter that is actually in force for this export. */
-function branchScoped(ctx: SalesExportContext): boolean {
-  return ctx.scope === "view" && !!ctx.branch && ctx.branch !== NONE;
+const teamLabel = (team: string) => (team ? TEAM_LEADS[team] || team : "");
+
+/** Selected branches as display names. Empty on a full board export, which
+ *  ignores the on-screen filters by definition. */
+function branchNames(ctx: SalesExportContext): string[] {
+  if (ctx.scope === "board") return [];
+  return selectedNames(new Set(ctx.branches), BRANCH_ORDER, "(No branch)");
 }
 
-const teamLabel = (team: string) => (team ? TEAM_LEADS[team] || team : "");
+/** Selected teams as display names, alphabetical: teams have no canonical
+ *  running order the way branches do. */
+function teamNames(ctx: SalesExportContext): string[] {
+  if (ctx.scope === "board") return [];
+  return selectedNames(new Set(ctx.teams), {}, "(No team)").map(teamLabel);
+}
+
+/** "Branch: Fort Worth" for one, "Branches: Fort Worth, Dallas" for several.
+ *  Both forms are passed in; "Team" does not pluralize the way "Branch" does. */
+function namedList(one: string, many: string, names: string[]): string[] {
+  if (names.length === 0) return [];
+  return [`${names.length === 1 ? one : many}: ${names.join(", ")}`];
+}
 
 export function salesFields(ctx: SalesExportContext): FieldSpec<SalesExportRow>[] {
   const fields: FieldSpec<SalesExportRow>[] = [
     { key: "pos", label: "#", align: "left", always: true, value: (_r, i) => String(i + 1) },
     { key: "name", label: "Rep", align: "left", always: true, value: (r) => r.name },
   ];
-  if (!branchScoped(ctx)) {
-    fields.push(
-      { key: "branch", label: "Branch", align: "left", value: (r) => r.branch || "" },
-      { key: "team", label: "Team", align: "left", value: (r) => teamLabel(r.team) }
-    );
-  }
+  // Always present. Under team-based reporting a filtered row's Branch and Team
+  // agree with the filter instead of contradicting it, so there is nothing to hide.
+  fields.push(
+    { key: "branch", label: "Branch", align: "left", value: (r) => r.branch || "" },
+    { key: "team", label: "Team", align: "left", value: (r) => teamLabel(r.team) }
+  );
   fields.push(
     { key: "verifiedKnocks", label: "Verified Door Knocks", align: "right", value: (r) => fmtInt(r.verifiedKnocks) },
     { key: "leadsCreated", label: "Leads Created", align: "right", value: (r) => fmtInt(r.leadsCreated) },
@@ -81,10 +103,8 @@ export function salesContextLines(ctx: SalesExportContext): string[] {
   if (ctx.scope === "board") {
     parts.push("All branches, combined totals");
   } else {
-    if (ctx.branch === NONE) parts.push("Branch: none set");
-    else if (ctx.branch) parts.push(`Branch: ${ctx.branch}`);
-    if (ctx.team === NONE) parts.push("Team: none set");
-    else if (ctx.team) parts.push(`Team: ${teamLabel(ctx.team)}`);
+    parts.push(...namedList("Branch", "Branches", branchNames(ctx)));
+    parts.push(...namedList("Team", "Teams", teamNames(ctx)));
     if (ctx.selectedRepCount > 0) parts.push(`${ctx.selectedRepCount} reps selected`);
     if (ctx.hideFormer) parts.push("Former reps hidden");
   }
@@ -93,14 +113,10 @@ export function salesContextLines(ctx: SalesExportContext): string[] {
   return lines;
 }
 
-export function salesWarning(ctx: SalesExportContext): string {
-  if (!branchScoped(ctx)) return "";
-  return `Numbers are ${ctx.branch} sales only. Verified Door Knocks always count under a rep's home branch.`;
-}
-
 export function salesDefaultTitle(ctx: SalesExportContext): string {
-  const scopeLabel = branchScoped(ctx) ? `${ctx.branch}, ` : "";
-  return `Sales Leaderboard: ${scopeLabel}${ctx.periodLabel}`;
+  // One branch is named; several are counted, so the title stays a title.
+  const label = selectionChipLabel(branchNames(ctx), "", "branches");
+  return `Sales Leaderboard: ${label ? `${label}, ` : ""}${ctx.periodLabel}`;
 }
 
 export function salesTotals(rows: SalesExportRow[]): TotalsSpec {
@@ -130,7 +146,6 @@ export function buildSalesReport(input: {
     title: input.title,
     note: input.note,
     contextLines: salesContextLines(input.context),
-    warning: salesWarning(input.context),
     fields: salesFields(input.context),
     selectedKeys: input.selectedKeys,
     rows: input.rows,

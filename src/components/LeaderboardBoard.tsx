@@ -1,6 +1,7 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { BRANCHES } from "../lib/repcard/branches";
+import { BRANCHES, BRANCH_ORDER } from "../lib/repcard/branches";
+import { NO_VALUE, matchesSelection, selectedNames, selectionChipLabel } from "../lib/leaderboard/filters";
 import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { SALES_LEADERBOARD_TOUR } from "../portals/shared/guided-tour/definitions/salesLeaderboard";
@@ -32,9 +33,9 @@ const WINDOWS: { key: Window; label: string }[] = [
 const fmtMoney = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
 
-// Sentinel filter values. "" = show all; "__none__" = only rows missing that field.
-const ALL = "";
-const NONE = "__none__";
+// Branch and Team are multi-select: an EMPTY selection means "show all", and
+// NO_VALUE is the checkbox for rows missing that field. Both the matching and the
+// labelling live in lib/leaderboard/filters.ts, shared with the PDF export.
 
 // Column definitions drive both the header row and the click-to-sort behavior.
 type SortKey = "name" | "branch" | "team" | "verifiedKnocks" | "leadsCreated" | "filed" | "won" | "revenue";
@@ -87,8 +88,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   );
 
   // Filters + sort (all applied client-side over the fetched rows).
-  const [branchFilter, setBranchFilter] = useState<string>(ALL);
-  const [teamFilter, setTeamFilter] = useState<string>(ALL);
+  // Branch and Team multi-select. Empty set = no filter. Unlike the Rep filter
+  // these apply as you tick: the lists are short enough that a draft/apply step
+  // would be friction rather than protection.
+  const [branchSel, setBranchSel] = useState<Set<string>>(new Set());
+  const [teamSel, setTeamSel] = useState<Set<string>>(new Set());
+  const [branchOpen, setBranchOpen] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   // "Hide former reps" — off by default so everyone shows. Filters out reps flagged
@@ -170,6 +176,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const toggleDraftRep = (id: string) => setDraftReps((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const applyReps = () => { setAppliedReps(new Set(draftReps)); setRepOpen(false); };
 
+  // Tick / untick one value in a multi-select. Always builds a new Set so React
+  // sees the change; mutating in place would leave the table stale.
+  const toggleIn = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (v: string) =>
+    setter((prev) => { const n = new Set(prev); if (n.has(v)) n.delete(v); else n.add(v); return n; });
+  const toggleBranch = toggleIn(setBranchSel);
+  const toggleTeam = toggleIn(setTeamSel);
+
   // Fixed, never-culled filter options: the full branch/team lists always show,
   // regardless of which reps have data in the current range. The "(No ...)" bucket
   // appears only when some row genuinely lacks that field.
@@ -182,6 +195,14 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     [rows]
   );
 
+  // Selected values as display names, in canonical order. Shared with the PDF via
+  // the same helpers, so an export can never name a scope the screen was not showing.
+  const branchNames = useMemo(() => selectedNames(branchSel, BRANCH_ORDER, "(No branch)"), [branchSel]);
+  const teamNames = useMemo(
+    () => selectedNames(teamSel, {}, "(No team)").map((t) => TEAM_LEADS[t] || t),
+    [teamSel]
+  );
+
   // Every rep on the board (stable across windows -> roster = all active reps), for the
   // Rep multi-select. De-duplicated by id; current reps first (A-Z), then former reps
   // (A-Z), and former reps dropped entirely while "Hide former reps" is on so the filter
@@ -191,35 +212,20 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const repList = useMemo(() => buildRepOptions(rows, { hideFormer }), [rows, hideFormer]);
 
   const visible = useMemo(() => {
-    const branchActive = !!branchFilter && branchFilter !== NONE;
-    const filtered = rows
-      .map((r) => {
-        // Team-based reporting: a branch filter narrows the board to the reps who
-        // BELONG to that branch, and each of them keeps their full numbers -- the
-        // storm-chase sales they ran in another branch included, because their own
-        // branch trains and manages them. byBranch holds exactly the rep's home
-        // branch (see leaderboard/compute.ts), so a miss means "not this branch".
-        if (branchActive) {
-          const b = r.byBranch?.[branchFilter];
-          if (!b) return null;
-          return { ...r, verifiedKnocks: b.verifiedKnocks, leadsCreated: b.leadsCreated, filed: b.filed, won: b.won, revenue: b.revenue };
-        }
-        return r;
-      })
-      .filter((r: any) => r !== null)
-      .filter((r: any) => {
-        // "Hide former reps" toggle. isFormerRep() reads BOTH signals (RepCard's
-        // status flag and a cross mark in the synced name), the same call the Rep
-        // dropdown makes, so the table and the dropdown can never disagree about
-        // who has left. Rank is unaffected: this only hides rows.
-        if (hideFormer && isFormerRep(r)) return false;
-        if (appliedReps.size > 0 && !appliedReps.has(r.id)) return false; // Rep multi-select
-        if (branchFilter === NONE && r.branch) return false; // "(No branch)" bucket only
-        // Team filter
-        if (teamFilter === NONE) { if (r.team) return false; }
-        else if (teamFilter && r.team !== teamFilter) return false;
-        return true;
-      });
+    // Row filtering only. Since branch reporting became team-based, a branch
+    // filter selects reps and never rewrites a number, so a rep's row reads the
+    // same whichever filters are on. The old code rewrote every metric here.
+    const filtered = rows.filter((r: any) => {
+      // "Hide former reps" toggle. isFormerRep() reads BOTH signals (RepCard's
+      // status flag and a cross mark in the synced name), the same call the Rep
+      // dropdown makes, so the table and the dropdown can never disagree about
+      // who has left. Rank is unaffected: this only hides rows.
+      if (hideFormer && isFormerRep(r)) return false;
+      if (appliedReps.size > 0 && !appliedReps.has(r.id)) return false; // Rep multi-select
+      if (!matchesSelection(r.branch, branchSel)) return false;
+      if (!matchesSelection(r.team, teamSel)) return false;
+      return true;
+    });
 
     const col = COLUMNS.find((c) => c.key === sortKey);
     const dir = sortDir === "asc" ? 1 : -1;
@@ -237,7 +243,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       return primary || compareStanding(a, b);
     });
     return sorted;
-  }, [rows, branchFilter, teamFilter, appliedReps, sortKey, sortDir, hideFormer]);
+  }, [rows, branchSel, teamSel, appliedReps, sortKey, sortDir, hideFormer]);
 
   // The logged-in user's own row — drives the "your rank" pop-out banner.
   // `rank` is the overall revenue rank for the selected window (from the API).
@@ -293,13 +299,13 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       periodLabel,
       from,
       to,
-      branch: branchFilter,
-      team: teamFilter,
+      branches: [...branchSel],
+      teams: [...teamSel],
       selectedRepCount: appliedReps.size,
       hideFormer,
       rowCount: scope === "view" ? visible.length : boardRows.length,
     }),
-    [periodLabel, from, to, branchFilter, teamFilter, appliedReps, hideFormer, visible.length, boardRows.length]
+    [periodLabel, from, to, branchSel, teamSel, appliedReps, hideFormer, visible.length, boardRows.length]
   );
 
   const toExportRow = (r: any): SalesExportRow => ({
@@ -463,22 +469,69 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             Custom
           </button>
         </div>
-        <label className="sl__field">
-          <span>Branch</span>
-          <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="sl__select">
-            <option value={ALL}>All</option>
-            {branchOptions.list.map((b) => <option key={b} value={b}>{b}</option>)}
-            {branchOptions.hasBlank ? <option value={NONE}>(No branch)</option> : null}
-          </select>
-        </label>
-        <label className="sl__field">
-          <span>Team</span>
-          <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} className="sl__select">
-            <option value={ALL}>All</option>
-            {teamOptions.list.map((t) => <option key={t} value={t}>{TEAM_LEADS[t] || t}</option>)}
-            {teamOptions.hasNone ? <option value={NONE}>(No team)</option> : null}
-          </select>
-        </label>
+        {/* Branch and Team: tick any number. Applies on tick, no Apply button,
+            because both lists are short. Clicking away closes the panel. */}
+        <div className="sl__rep-wrap">
+          <button type="button" className="sl__chip" onClick={() => { setBranchOpen((o) => !o); setTeamOpen(false); }}>
+            {selectionChipLabel(branchNames, "All branches", "branches")} ▾
+          </button>
+          {branchOpen ? (
+            <>
+              <div onClick={() => setBranchOpen(false)} className="sl__overlay" />
+              <div className="sl__rep-panel sl__rep-panel--short">
+                <div className="sl__rep-list">
+                  {branchOptions.list.map((b) => (
+                    <label key={b} className="sl__rep-item">
+                      <input type="checkbox" checked={branchSel.has(b)} onChange={() => toggleBranch(b)} />
+                      {b}
+                    </label>
+                  ))}
+                  {branchOptions.hasBlank ? (
+                    <label className="sl__rep-item">
+                      <input type="checkbox" checked={branchSel.has(NO_VALUE)} onChange={() => toggleBranch(NO_VALUE)} />
+                      (No branch)
+                    </label>
+                  ) : null}
+                </div>
+                <div className="sl__rep-actions">
+                  <button onClick={() => setBranchSel(new Set())} className="sl__link">Clear</button>
+                  <button onClick={() => setBranchOpen(false)} className="sl__apply">Done</button>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        <div className="sl__rep-wrap">
+          <button type="button" className="sl__chip" onClick={() => { setTeamOpen((o) => !o); setBranchOpen(false); }}>
+            {selectionChipLabel(teamNames, "All teams", "teams")} ▾
+          </button>
+          {teamOpen ? (
+            <>
+              <div onClick={() => setTeamOpen(false)} className="sl__overlay" />
+              <div className="sl__rep-panel sl__rep-panel--short">
+                <div className="sl__rep-list">
+                  {teamOptions.list.map((t) => (
+                    <label key={t} className="sl__rep-item">
+                      <input type="checkbox" checked={teamSel.has(t)} onChange={() => toggleTeam(t)} />
+                      {TEAM_LEADS[t] || t}
+                    </label>
+                  ))}
+                  {teamOptions.hasNone ? (
+                    <label className="sl__rep-item">
+                      <input type="checkbox" checked={teamSel.has(NO_VALUE)} onChange={() => toggleTeam(NO_VALUE)} />
+                      (No team)
+                    </label>
+                  ) : null}
+                </div>
+                <div className="sl__rep-actions">
+                  <button onClick={() => setTeamSel(new Set())} className="sl__link">Clear</button>
+                  <button onClick={() => setTeamOpen(false)} className="sl__apply">Done</button>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
 
         <div className="sl__rep-wrap">
           <button type="button" className="sl__chip" onClick={() => (repOpen ? setRepOpen(false) : openRepPanel())}>
@@ -514,8 +567,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           Hide former reps
         </label>
 
-        {(branchFilter || teamFilter || appliedReps.size || hideFormer) ? (
-          <button className="sl__chip" onClick={() => { setBranchFilter(ALL); setTeamFilter(ALL); setAppliedReps(new Set()); setHideFormer(false); }}>
+        {(branchSel.size || teamSel.size || appliedReps.size || hideFormer) ? (
+          <button className="sl__chip" onClick={() => { setBranchSel(new Set()); setTeamSel(new Set()); setAppliedReps(new Set()); setHideFormer(false); }}>
             Clear filters
           </button>
         ) : null}
@@ -546,9 +599,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         </div>
       )}
 
-      {branchFilter && branchFilter !== NONE ? (
+      {branchNames.length > 0 ? (
         <div className="sl__note">
-          Showing the <strong>{branchFilter}</strong> team. Every rep on {branchFilter}&apos;s teams is listed with their full numbers, including any jobs they ran in another branch while storm-chasing.
+          Showing <strong>{branchNames.join(", ")}</strong>. Every rep on these teams is listed with their full numbers, including any jobs they ran in another branch while storm-chasing.
         </div>
       ) : null}
 
@@ -898,8 +951,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
            loses and the dropdown drops back to z-index 1. */
         .sl > .sl__filters { display: flex; gap: 9px; margin-bottom: 16px; flex-wrap: nowrap; align-items: center; position: relative; z-index: 50; }
         @media (max-width: 1100px) { .sl > .sl__filters { flex-wrap: wrap; } }
-        .sl__field { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
-        .sl__select, .sl__chip { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--chip-text); font-weight: 600; font-size: 13px; cursor: pointer; }
+        .sl__chip { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); color: var(--chip-text); font-weight: 600; font-size: 13px; cursor: pointer; }
         .sl__toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--pill-text); font-weight: 600; cursor: pointer; }
         .sl__rep-wrap { position: relative; display: inline-block; }
         .sl__overlay { position: fixed; inset: 0; z-index: 90; }
@@ -908,6 +960,10 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__rep-search { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chip-border); background: var(--rep-field-bg); color: var(--text); margin-bottom: 8px; box-sizing: border-box; font-size: 13px; outline: none; }
         .sl__rep-search::placeholder { color: var(--subtle); }
         .sl__rep-list { max-height: 220px; overflow-y: auto; margin-bottom: 8px; }
+        /* Branch/Team hold 4-7 short rows: narrower than the rep panel, and no
+           inner scroll. Declared after the base rules so it wins on source order. */
+        .sl__rep-panel--short { width: 200px; }
+        .sl__rep-panel--short .sl__rep-list { max-height: none; overflow-y: visible; }
         .sl__rep-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; color: var(--text); }
         .sl__rep-item:hover { background: var(--rep-hover); }
         .sl__rep-actions { display: flex; justify-content: space-between; align-items: center; }

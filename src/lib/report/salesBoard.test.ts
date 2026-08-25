@@ -4,7 +4,6 @@ import {
   salesContextLines,
   salesDefaultTitle,
   salesFields,
-  salesWarning,
   type SalesExportContext,
   type SalesExportRow,
 } from "./salesBoard";
@@ -19,32 +18,37 @@ const CTX: SalesExportContext = {
   periodLabel: "Month to Date",
   from: "2026-07-01",
   to: "2026-07-30",
-  branch: "",
-  team: "",
+  branches: [],
+  teams: [],
   selectedRepCount: 0,
   hideFormer: false,
   rowCount: 2,
 };
 
 describe("salesFields", () => {
-  it("offers Branch and Team when no branch filter is active", () => {
+  it("offers every column when nothing is filtered", () => {
     expect(salesFields(CTX).map((f) => f.key)).toEqual([
       "pos", "name", "branch", "team", "verifiedKnocks", "leadsCreated", "filed", "won", "revenue",
     ]);
   });
 
-  it("drops Branch and Team while a real branch filter is active", () => {
-    const keys = salesFields({ ...CTX, branch: "Fort Worth" }).map((f) => f.key);
-    expect(keys).not.toContain("branch");
-    expect(keys).not.toContain("team");
+  // Branch reporting is team-based, so every rep listed under a branch filter
+  // really belongs to that branch. The columns agree with the filter now, so
+  // hiding them (which the location-based export did) would lose real information.
+  it("KEEPS Branch and Team while a branch filter is active", () => {
+    const keys = salesFields({ ...CTX, branches: ["Fort Worth"] }).map((f) => f.key);
+    expect(keys).toContain("branch");
+    expect(keys).toContain("team");
   });
 
-  it("keeps Branch and Team for the (No branch) bucket, which is not a real branch", () => {
-    expect(salesFields({ ...CTX, branch: "__none__" }).map((f) => f.key)).toContain("branch");
+  it("keeps Branch and Team across several selected branches", () => {
+    const keys = salesFields({ ...CTX, branches: ["Fort Worth", "Dallas"] }).map((f) => f.key);
+    expect(keys).toContain("branch");
+    expect(keys).toContain("team");
   });
 
-  it("restores Branch and Team on a full board export even if the screen is filtered", () => {
-    const keys = salesFields({ ...CTX, scope: "board", branch: "Fort Worth" }).map((f) => f.key);
+  it("keeps Branch and Team on a full board export", () => {
+    const keys = salesFields({ ...CTX, scope: "board", branches: ["Fort Worth"] }).map((f) => f.key);
     expect(keys).toContain("branch");
     expect(keys).toContain("team");
   });
@@ -56,50 +60,50 @@ describe("salesContextLines", () => {
   });
 
   it("names every active filter", () => {
-    const lines = salesContextLines({
-      ...CTX, branch: "Fort Worth", team: "team-a", hideFormer: true, selectedRepCount: 3, rowCount: 3,
-    });
-    const joined = lines.join(" | ");
+    const joined = salesContextLines({
+      ...CTX, branches: ["Fort Worth"], teams: ["team-a"], hideFormer: true, selectedRepCount: 3, rowCount: 3,
+    }).join(" | ");
     expect(joined).toContain("Branch: Fort Worth");
     expect(joined).toContain("Team:");
     expect(joined).toContain("Former reps hidden");
     expect(joined).toContain("3 reps selected");
-    expect(joined).toContain("3 reps");
+  });
+
+  it("lists every selected branch, in canonical order rather than tick order", () => {
+    const joined = salesContextLines({ ...CTX, branches: ["West Texas", "Fort Worth"] }).join(" | ");
+    expect(joined).toContain("Branches: Fort Worth, West Texas");
+  });
+
+  it("lists every selected team", () => {
+    const joined = salesContextLines({ ...CTX, teams: ["Luke", "Gunner"] }).join(" | ");
+    expect(joined).toContain("Teams:");
   });
 
   it("says all branches and combined totals on a full board export", () => {
-    const joined = salesContextLines({ ...CTX, scope: "board", branch: "Fort Worth" }).join(" | ");
+    const joined = salesContextLines({ ...CTX, scope: "board", branches: ["Fort Worth"] }).join(" | ");
     expect(joined).toContain("All branches, combined totals");
     expect(joined).not.toContain("Branch: Fort Worth");
   });
 
   it("labels the no-branch bucket rather than naming a branch", () => {
-    expect(salesContextLines({ ...CTX, branch: "__none__" }).join(" | ")).toContain("Branch: none set");
+    expect(salesContextLines({ ...CTX, branches: ["__none__"] }).join(" | ")).toContain("(No branch)");
   });
 
   it("uses no em dashes", () => {
-    expect(salesContextLines({ ...CTX, branch: "Fort Worth", hideFormer: true }).join(" ")).not.toContain("—");
-  });
-});
-
-describe("salesWarning", () => {
-  it("warns that the numbers are one branch only", () => {
-    expect(salesWarning({ ...CTX, branch: "Fort Worth" })).toBe(
-      "Numbers are Fort Worth sales only. Verified Door Knocks always count under a rep's home branch."
-    );
-  });
-
-  it("is empty with no branch filter, on the no-branch bucket, and on a full board export", () => {
-    expect(salesWarning(CTX)).toBe("");
-    expect(salesWarning({ ...CTX, branch: "__none__" })).toBe("");
-    expect(salesWarning({ ...CTX, scope: "board", branch: "Fort Worth" })).toBe("");
+    expect(salesContextLines({ ...CTX, branches: ["Fort Worth"], hideFormer: true }).join(" ")).not.toContain("—");
   });
 });
 
 describe("salesDefaultTitle", () => {
-  it("names the branch when one is filtered", () => {
-    expect(salesDefaultTitle({ ...CTX, branch: "Fort Worth" })).toBe(
+  it("names the branch when exactly one is selected", () => {
+    expect(salesDefaultTitle({ ...CTX, branches: ["Fort Worth"] })).toBe(
       "Sales Leaderboard: Fort Worth, Month to Date"
+    );
+  });
+
+  it("counts them once more than one is selected", () => {
+    expect(salesDefaultTitle({ ...CTX, branches: ["Fort Worth", "Dallas"] })).toBe(
+      "Sales Leaderboard: 2 branches, Month to Date"
     );
   });
 
@@ -138,8 +142,11 @@ describe("buildSalesReport", () => {
     expect(doc.totals).toEqual(["Sum (2 reps)", "", "$340,000"]);
   });
 
-  it("carries the branch warning onto the document", () => {
-    expect(build({ context: { ...CTX, branch: "Fort Worth" } }).warning).toContain("Fort Worth sales only");
+  // The location-based export printed "Numbers are <branch> sales only", which
+  // is false under team-based reporting: the numbers are each rep's full totals.
+  // A PDF outlives the screen, so the wrong caveat is deleted, not reworded.
+  it("carries NO branch caveat, because there is nothing left to caveat", () => {
+    expect(build({ context: { ...CTX, branches: ["Fort Worth"] } }).warning).toBe("");
   });
 
   it("produces an empty document rather than throwing on no rows", () => {
