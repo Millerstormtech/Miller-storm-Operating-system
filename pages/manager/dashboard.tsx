@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
-import { ScoreboardHome } from "../../src/portals/shared/scoreboard/ScoreboardHome";
+import { RoleDashboard } from "../../src/portals/shared/dashboard/RoleDashboard";
 import { ProtectedRoute } from "../../src/components/ProtectedRoute";
 import { useAuth } from "../../src/contexts/AuthContext";
 
@@ -26,7 +26,7 @@ const DashboardPage: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["sales-team-lead"]}>
       <SalesTeamLeadLayout currentView="dashboard">
-        <ScoreboardHome />
+        <RoleDashboard />
       </SalesTeamLeadLayout>
     </ProtectedRoute>
   );
