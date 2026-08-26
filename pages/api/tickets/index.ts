@@ -5,7 +5,7 @@ import { NotificationModel } from "../../../src/lib/models/Notification";
 import { UserModel } from "../../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { sendSupportTicketCreatedEmail } from "../../../src/lib/email";
-import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES } from "../../../src/lib/support/categories";
+import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES, ownedTicketTypes } from "../../../src/lib/support/categories";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -21,15 +21,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const isAdmin = auth.role === "admin";
 
   if (req.method === "GET") {
-    // Lightweight badge poll for the admin "Tickets" button shake.
-    if (isAdmin && req.query.summary) {
-      const openCount = await TicketModel.countDocuments({ status: "open" });
+    // A type "owner" (their account email is in a category's emails list) handles
+    // that type's tickets like an admin, but scoped. Resolve their owned types so
+    // both the list and the badge count can be scoped to them.
+    const me = await UserModel.findOne({ id: auth.sub }, { email: 1 }).lean() as any;
+    const ownedTypes = ownedTicketTypes(me?.email);
+    const isOwner = ownedTypes.length > 0;
+
+    // What this viewer is allowed to see:
+    //  - admin  → every ticket
+    //  - owner  → their own tickets PLUS every ticket of the type(s) they own
+    //  - anyone → only their own tickets
+    const scope = isAdmin
+      ? {}
+      : isOwner
+      ? { $or: [{ userId: auth.sub }, { type: { $in: ownedTypes } }] }
+      : { userId: auth.sub };
+
+    // Lightweight badge poll for the "Tickets" button shake — same scope, only
+    // open tickets. Admin counts all open; an owner counts open in their types.
+    if (req.query.summary) {
+      const openCount = await TicketModel.countDocuments({ ...scope, status: "open" });
       res.status(200).json({ openCount });
       return;
     }
-    // Admins see every ticket; everyone else sees only their own.
-    const filter = isAdmin ? {} : { userId: auth.sub };
-    const tickets = await TicketModel.find(filter).sort({ createdAt: -1 }).lean();
+    const tickets = await TicketModel.find(scope).sort({ createdAt: -1 }).lean();
     res.status(200).json(tickets);
     return;
   }

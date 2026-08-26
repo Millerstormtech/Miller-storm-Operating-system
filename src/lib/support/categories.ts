@@ -82,6 +82,23 @@ export function supportTypeLabel(key: string): string {
   return SUPPORT_CATEGORY_BY_KEY[key]?.label ?? LEGACY_LABELS[key] ?? key;
 }
 
+// The ticket-type keys a login email "owns" — i.e. is a notified recipient for.
+// An owner handles those tickets like an admin, but scoped to just these types:
+// they see them in a Tickets inbox, chat with the raiser, and change the status.
+// Matched case-insensitively against each category's `emails`. Admins are not
+// resolved here — they always see everything, handled separately in the API.
+export function ownedTicketTypes(email?: string | null): string[] {
+  const e = (email ?? "").trim().toLowerCase();
+  if (!e) return [];
+  return SUPPORT_CATEGORIES.filter((c) => c.emails.some((x) => x.toLowerCase() === e)).map((c) => c.key);
+}
+
+// True when this email owns at least one ticket type (used to show the handler
+// "Tickets" button and to gate the owner inbox page).
+export function isTicketOwner(email?: string | null): boolean {
+  return ownedTicketTypes(email).length > 0;
+}
+
 // Readable "Label: value" lines for a ticket's stored field values (email body
 // + admin table). Only non-empty values for the ticket's own category.
 export function supportFieldLines(type: string, fields?: Record<string, string> | null): string[] {

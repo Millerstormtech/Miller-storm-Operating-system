@@ -1,18 +1,35 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../contexts/AuthContext";
-import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel } from "../lib/support/categories";
+import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, isTicketOwner } from "../lib/support/categories";
+
+type TicketMessage = {
+  _id?: string;
+  senderId: string;
+  senderName: string;
+  senderRole?: string;
+  fromStaff?: boolean;
+  text: string;
+  mediaUrl?: string;
+  mediaType?: string;
+  createdAt?: string;
+};
 
 type Ticket = {
   id: string;
+  userId?: string;
   name: string;
   email: string;
   type: string;
+  fields?: Record<string, string>;
   note: string;
   status: "open" | "approved" | "in_progress" | "completed" | "rejected";
   adminNote?: string;
+  messages?: TicketMessage[];
   createdAt?: string;
 };
+
+const STATUS_FLOW = ["open", "approved", "in_progress", "completed"];
 
 
 export const STATUS_LABEL: Record<string, string> = {
@@ -35,11 +52,16 @@ export function TicketButton() {
   const { user } = useAuth();
   const router = useRouter();
   const isAdmin = user?.role === "admin";
+  // A ticket-type "owner" (their account email is in a category's emails list)
+  // handles that type's tickets like an admin, but scoped. Owners and admins are
+  // both "handlers": they get the red Tickets button and a scoped inbox.
+  const isOwner = isTicketOwner(user?.email);
+  const isHandler = isAdmin || isOwner;
 
-  // ── Admin: red "Tickets" button that shakes when open tickets exist ─────────
+  // ── Handler: red "Tickets" button that shakes when open tickets exist ───────
   const [openCount, setOpenCount] = useState(0);
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isHandler) return;
     let active = true;
     const poll = async () => {
       try {
@@ -53,7 +75,7 @@ export function TicketButton() {
     poll();
     const t = setInterval(poll, 20000);
     return () => { active = false; clearInterval(t); };
-  }, [isAdmin]);
+  }, [isHandler]);
 
   // ── User: modal with form + own ticket list ─────────────────────────────────
   const [open, setOpen] = useState(false);
@@ -64,6 +86,36 @@ export function TicketButton() {
   const [submitting, setSubmitting] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [toast, setToast] = useState("");
+  // Which ticket's conversation is open, the reply draft, and whether it's sending.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  // Per-ticket "how many messages I've already seen", persisted so a support
+  // reply the user hasn't opened shows a red pending badge on the ticket.
+  const [readMap, setReadMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ticketReadCounts");
+      if (raw) setReadMap(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const markRead = useCallback((t: Ticket) => {
+    const count = t.messages?.length ?? 0;
+    setReadMap((prev) => {
+      if (prev[t.id] === count) return prev;
+      const next = { ...prev, [t.id]: count };
+      try { localStorage.setItem("ticketReadCounts", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  // New support replies since the user last opened this ticket = pending count.
+  const pendingCount = (t: Ticket) => {
+    const seen = readMap[t.id] ?? 0;
+    return (t.messages ?? []).slice(seen).filter((m) => m.fromStaff).length;
+  };
 
   const loadTickets = useCallback(async () => {
     try {
@@ -75,6 +127,68 @@ export function TicketButton() {
   useEffect(() => {
     if (open) loadTickets();
   }, [open, loadTickets]);
+
+  // While the modal is open, poll so an admin's reply / status change shows up
+  // without reopening — the person can follow the ticket live.
+  useEffect(() => {
+    if (!open) return;
+    const t = setInterval(loadTickets, 8000);
+    return () => clearInterval(t);
+  }, [open, loadTickets]);
+
+  // While a ticket is open, keep it marked read — so a reply that arrives via the
+  // poll clears its pending badge instead of piling up while the user is reading.
+  useEffect(() => {
+    if (!selectedId) return;
+    const t = tickets.find((x) => x.id === selectedId);
+    if (t) markRead(t);
+  }, [selectedId, tickets, markRead]);
+
+  const [uploading, setUploading] = useState(false);
+
+  // Post a message (text and/or a photo/video attachment) to a ticket.
+  const sendMessage = async (id: string, payload: { text?: string; mediaUrl?: string; mediaType?: string }) => {
+    const res = await fetch(`/api/tickets/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTickets((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      return true;
+    }
+    if (res.status === 409) {
+      setToast("Support just replied — please read the latest message.");
+      loadTickets();
+    }
+    return false;
+  };
+
+  const sendReply = async (id: string) => {
+    const text = draft.trim();
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      if (await sendMessage(id, { text })) setDraft("");
+    } catch {} finally { setSending(false); }
+  };
+
+  // Upload a picked photo/video to /api/upload-image, then post it as a message.
+  const attachAndSend = async (id: string, file: File) => {
+    if (uploading || sending) return;
+    const kind = file.type.startsWith("video") ? "video" : "image";
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const up = await fetch("/api/upload-image", { method: "POST", body: fd });
+      if (!up.ok) { setToast("Upload failed. Try again."); return; }
+      const { url } = await up.json();
+      await sendMessage(id, { mediaUrl: url, mediaType: kind });
+    } catch { setToast("Upload failed. Try again."); }
+    finally { setUploading(false); }
+  };
 
   const category = SUPPORT_CATEGORY_BY_KEY[type];
 
@@ -126,14 +240,14 @@ export function TicketButton() {
 
   if (!user) return null;
 
-  if (isAdmin) {
+  if (isHandler) {
     return (
       <>
         <style>{`@keyframes ticketShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}`}</style>
         <button
           type="button"
           className="ticket-btn"
-          onClick={() => router.push("/admin/tickets")}
+          onClick={() => router.push(isAdmin ? "/admin/tickets" : "/tickets")}
           title="View tickets"
           style={{
             position: "relative",
@@ -195,10 +309,26 @@ export function TicketButton() {
             style={{ background: "var(--surface-default)", borderRadius: 14, maxWidth: 520, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
           >
             <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>🎫 Support</h2>
-              <button type="button" onClick={() => setOpen(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-muted)" }}>×</button>
+              {selectedId ? (
+                <button type="button" onClick={() => { setSelectedId(null); setDraft(""); }} style={{ background: "none", border: "none", fontSize: 15, fontWeight: 700, cursor: "pointer", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
+              ) : (
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>🎫 Support</h2>
+              )}
+              <button type="button" onClick={() => { setOpen(false); setSelectedId(null); }} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-muted)" }}>×</button>
             </div>
 
+            {selectedId ? (
+              <TicketConversation
+                ticket={tickets.find((t) => t.id === selectedId) || null}
+                draft={draft}
+                setDraft={setDraft}
+                sending={sending}
+                uploading={uploading}
+                onSend={() => selectedId && sendReply(selectedId)}
+                onAttach={(file) => selectedId && attachAndSend(selectedId, file)}
+              />
+            ) : (
+            <>
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
               <label style={lbl}>Reason *
                 <select value={type} onChange={(e) => { setType(e.target.value); setFields({}); }} style={inp}>
@@ -257,23 +387,131 @@ export function TicketButton() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, overflowY: "auto" }}>
                   {tickets.map((t) => {
                     const c = STATUS_COLOR[t.status] || STATUS_COLOR.open;
+                    const count = t.messages?.length ?? 0;
+                    const pending = pendingCount(t);
                     return (
-                      <div key={t.id} style={{ border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 12px" }}>
+                      <div
+                        key={t.id}
+                        onClick={() => { setSelectedId(t.id); setDraft(""); markRead(t); }}
+                        style={{ border: `1px solid ${pending > 0 ? "#CB0002" : "var(--border-default)"}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer" }}
+                      >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                           <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>{supportTypeLabel(t.type)}</span>
-                          <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{STATUS_LABEL[t.status]}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {pending > 0 && (
+                              <span style={{ background: "#CB0002", color: "#fff", borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+                                {pending} new
+                              </span>
+                            )}
+                            <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{STATUS_LABEL[t.status]}</span>
+                          </div>
                         </div>
-                        <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{t.note}</p>
+                        <p style={{ margin: "6px 0 4px", fontSize: 12, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{t.note}</p>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#CB0002" }}>
+                          💬 {pending > 0
+                            ? `${pending} new ${pending === 1 ? "reply" : "replies"} · Tap to open`
+                            : count > 0 ? `${count} ${count === 1 ? "reply" : "replies"} · Tap to open` : "Tap to open conversation"}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
+            </>
+            )}
           </div>
         </div>
       )}
     </>
+  );
+}
+
+function TicketConversation(props: {
+  ticket: Ticket | null;
+  draft: string;
+  setDraft: (v: string) => void;
+  sending: boolean;
+  uploading: boolean;
+  onSend: () => void;
+  onAttach: (file: File) => void;
+}) {
+  const { ticket, draft, setDraft, sending, uploading, onSend, onAttach } = props;
+  if (!ticket) return null;
+  const messages = ticket.messages ?? [];
+  const status = ticket.status;
+  // The raiser replies only when support spoke last. With no replies yet, they
+  // wait for support to ask the first question.
+  const myTurn = messages.length === 0 ? false : !!messages[messages.length - 1].fromStaff;
+  const current = STATUS_FLOW.indexOf(status);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {/* Status header + stepper */}
+      <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border-default)" }}>
+        <span style={{ background: (STATUS_COLOR[status] || STATUS_COLOR.open).bg, color: (STATUS_COLOR[status] || STATUS_COLOR.open).fg, borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{STATUS_LABEL[status]}</span>
+        {status !== "rejected" && (
+          <div style={{ display: "flex", alignItems: "center", marginTop: 14 }}>
+            {STATUS_FLOW.map((s, i) => (
+              <div key={s} style={{ display: "flex", alignItems: "center", flex: i < STATUS_FLOW.length - 1 ? 1 : "0 0 auto" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: i <= current ? "#CB0002" : "var(--surface-subtle)", border: `2px solid ${i <= current ? "#CB0002" : "var(--border-default)"}`, color: "#fff", fontSize: 11 }}>{i <= current ? "✓" : ""}</div>
+                  <span style={{ fontSize: 9, fontWeight: i === current ? 700 : 500, color: i <= current ? "var(--text-primary)" : "var(--text-subtle)" }}>{STATUS_LABEL[s]}</span>
+                </div>
+                {i < STATUS_FLOW.length - 1 && <div style={{ flex: 1, height: 2, margin: "0 4px 16px", background: i < current ? "#CB0002" : "var(--border-default)" }} />}
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ marginTop: 12, fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)" }}>Your request</div>
+        <div style={{ fontSize: 14, color: "var(--text-primary)", marginTop: 2, whiteSpace: "pre-wrap" }}>{ticket.note}</div>
+      </div>
+
+      {/* Conversation */}
+      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" }}>
+        {messages.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--text-subtle)", fontStyle: "italic", textAlign: "center", padding: "16px 0" }}>No replies yet. Support will reach out here if they need anything.</div>
+        ) : (
+          messages.map((m, i) => {
+            const mine = !m.fromStaff;
+            return (
+              <div key={m._id || i} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
+                <div style={{ maxWidth: "80%", background: mine ? "#CB0002" : "var(--surface-subtle)", color: mine ? "#fff" : "var(--text-primary)", border: mine ? "none" : "1px solid var(--border-default)", borderRadius: 12, padding: "8px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85, marginBottom: 2 }}>{m.fromStaff ? `${m.senderName} · Support` : m.senderName}</div>
+                  {m.mediaUrl && (m.mediaType === "video" ? (
+                    <video src={m.mediaUrl} controls style={{ maxWidth: "100%", maxHeight: 240, borderRadius: 8, marginBottom: m.text ? 6 : 0, display: "block" }} />
+                  ) : (
+                    <a href={m.mediaUrl} target="_blank" rel="noreferrer">
+                      <img src={m.mediaUrl} alt="attachment" style={{ maxWidth: "100%", maxHeight: 240, borderRadius: 8, marginBottom: m.text ? 6 : 0, display: "block" }} />
+                    </a>
+                  ))}
+                  {m.text && <div style={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.text}</div>}
+                  {m.createdAt && <div style={{ fontSize: 10, opacity: 0.7, marginTop: 3, textAlign: "right" }}>{new Date(m.createdAt).toLocaleString()}</div>}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Reply box — only on the raiser's turn; hides after they send. */}
+      <div style={{ padding: 16, borderTop: "1px solid var(--border-default)" }}>
+        {myTurn ? (
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSend(); }} placeholder="Write a reply…" rows={2} style={{ flex: 1, resize: "vertical", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-default)", color: "var(--text-primary)", fontFamily: "inherit" }} />
+            <label title="Attach photo or video" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 42, height: 42, borderRadius: 999, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", cursor: uploading ? "default" : "pointer", fontSize: 18, flex: "0 0 auto" }}>
+              {uploading ? "⏳" : "📎"}
+              <input type="file" accept="image/*,video/*" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onAttach(f); e.target.value = ""; }} style={{ display: "none" }} />
+            </label>
+            <button onClick={onSend} disabled={sending || !draft.trim()} style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "#fff", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}>{sending ? "Sending…" : "Send"}</button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "var(--surface-subtle)", border: "1px dashed var(--border-default)", color: "var(--text-muted)", fontSize: 13 }}>
+            ⏳ {messages.length === 0 ? "Support will message you here if needed." : "Waiting for support to reply…"}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
