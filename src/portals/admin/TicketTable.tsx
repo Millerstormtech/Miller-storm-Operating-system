@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { STATUS_LABEL, STATUS_COLOR } from "../../components/TicketButton";
 import { supportTypeLabel, supportFieldLines } from "../../lib/support/categories";
+import { useAuth } from "../../contexts/AuthContext";
 
 type TicketMessage = {
   _id?: string;
@@ -32,6 +33,12 @@ type Ticket = {
 const STATUS_OPTIONS = ["open", "approved", "in_progress", "completed", "rejected"];
 
 export function TicketTable() {
+  // Chat bubbles are coloured relative to whoever is looking: only *your own*
+  // messages are red/right; everyone else's — the raiser AND other staff — are
+  // white/left. So an admin viewing (or an admin viewing-as another handler)
+  // never sees someone else's reply as if it were their own.
+  const { user } = useAuth();
+  const myId = user?.id ?? "";
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -186,6 +193,7 @@ export function TicketTable() {
                         <td colSpan={7} style={{ padding: 0, background: "var(--surface-subtle)" }}>
                           <Conversation
                             ticket={t}
+                            myId={myId}
                             draft={draft}
                             setDraft={setDraft}
                             sending={sending}
@@ -209,6 +217,7 @@ export function TicketTable() {
 
 function Conversation(props: {
   ticket: Ticket;
+  myId: string;
   draft: string;
   setDraft: (v: string) => void;
   sending: boolean;
@@ -216,7 +225,7 @@ function Conversation(props: {
   onSend: () => void;
   onAttach: (file: File) => void;
 }) {
-  const { ticket, draft, setDraft, sending, uploading, onSend, onAttach } = props;
+  const { ticket, myId, draft, setDraft, sending, uploading, onSend, onAttach } = props;
   const messages = ticket.messages ?? [];
   // Turn-based: staff can reply only when the user spoke last (or nobody has yet,
   // so staff asks the first question). After staff sends, the box hides until the
@@ -228,10 +237,11 @@ function Conversation(props: {
         Conversation with {ticket.name}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto", marginBottom: 12 }}>
-        {/* The original request always leads the thread. */}
-        <Bubble fromStaff={false} name={ticket.name} text={ticket.note} when={ticket.createdAt} />
+        {/* The original request always leads the thread. It's the raiser's, so
+            it's "mine" only when the viewer is the raiser. */}
+        <Bubble mine={!!myId && ticket.userId === myId} fromStaff={false} name={ticket.name} text={ticket.note} when={ticket.createdAt} />
         {messages.map((m, i) => (
-          <Bubble key={m._id || i} fromStaff={!!m.fromStaff} name={m.senderName} text={m.text} when={m.createdAt} mediaUrl={m.mediaUrl} mediaType={m.mediaType} />
+          <Bubble key={m._id || i} mine={!!myId && m.senderId === myId} fromStaff={!!m.fromStaff} name={m.senderName} text={m.text} when={m.createdAt} mediaUrl={m.mediaUrl} mediaType={m.mediaType} />
         ))}
         {messages.length === 0 && (
           <div style={{ fontSize: 13, color: "var(--text-subtle)", fontStyle: "italic" }}>No replies yet. Start the conversation below.</div>
@@ -268,11 +278,14 @@ function Conversation(props: {
   );
 }
 
-function Bubble(props: { fromStaff: boolean; name: string; text: string; when?: string; mediaUrl?: string; mediaType?: string }) {
-  const { fromStaff, name, text, when, mediaUrl, mediaType } = props;
+function Bubble(props: { mine: boolean; fromStaff: boolean; name: string; text: string; when?: string; mediaUrl?: string; mediaType?: string }) {
+  const { mine, fromStaff, name, text, when, mediaUrl, mediaType } = props;
+  // Side + colour follow the VIEWER (mine → right/red). The "· Support" label
+  // still marks any staff message, so a left-side reply from another handler is
+  // recognisable as support rather than the raiser.
   return (
-    <div style={{ display: "flex", justifyContent: fromStaff ? "flex-end" : "flex-start" }}>
-      <div style={{ maxWidth: "78%", background: fromStaff ? "#CB0002" : "var(--surface-default)", color: fromStaff ? "#fff" : "var(--text-primary)", border: fromStaff ? "none" : "1px solid var(--border-default)", borderRadius: 12, padding: "8px 12px" }}>
+    <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
+      <div style={{ maxWidth: "78%", background: mine ? "#CB0002" : "var(--surface-default)", color: mine ? "#fff" : "var(--text-primary)", border: mine ? "none" : "1px solid var(--border-default)", borderRadius: 12, padding: "8px 12px" }}>
         <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85, marginBottom: 2 }}>
           {fromStaff ? `${name} · Support` : name}
         </div>

@@ -54,7 +54,9 @@ export function TicketButton() {
   const isAdmin = user?.role === "admin";
   // A ticket-type "owner" (their account email is in a category's emails list)
   // handles that type's tickets like an admin, but scoped. Owners and admins are
-  // both "handlers": they get the red Tickets button and a scoped inbox.
+  // both "handlers": they get the red Tickets button and a scoped inbox. During
+  // "View As" this correctly reflects the impersonated account (so you can check
+  // a handler's ticket panel), since it keys off the impersonated `user`.
   const isOwner = isTicketOwner(user?.email);
   const isHandler = isAdmin || isOwner;
 

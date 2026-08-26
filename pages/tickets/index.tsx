@@ -2,23 +2,21 @@ import type { NextPage } from "next";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../../src/contexts/AuthContext";
-import { Header } from "../../src/components/Header";
 import { TicketTable } from "../../src/portals/admin/TicketTable";
 import { isTicketOwner } from "../../src/lib/support/categories";
+import { CLevelLayout } from "../../src/portals/c-level/CLevelLayout";
+import { SalesLayout } from "../../src/portals/sales/SalesLayout";
+import { SalesTeamLeadLayout } from "../../src/portals/manager/SalesTeamLeadLayout";
+import { BranchManagerLayout } from "../../src/portals/branch-manager/BranchManagerLayout";
+import { MarketingLayout } from "../../src/portals/marketing/MarketingLayout";
 
 // The "owner" ticket inbox. A ticket-type owner (their account email is listed
 // on a support category) handles that type's tickets here — the same TicketTable
 // the admin uses, but the API scopes the list, chat, and status changes to only
 // the type(s) they own. Admins keep their fuller /admin/tickets page.
-
-const ROLE_LABEL: Record<string, string> = {
-  admin: "Admin",
-  "c-level": "C-Level",
-  "branch-manager": "Branch Manager",
-  "sales-team-lead": "Team Lead",
-  sales: "Sales",
-  marketing: "Marketing",
-};
+//
+// The inbox is wrapped in the viewer's OWN role layout so it keeps that panel's
+// sidebar + header chrome instead of rendering as a bare page.
 
 const DASHBOARD_FOR: Record<string, string> = {
   admin: "/admin/leaderboard",
@@ -29,8 +27,30 @@ const DASHBOARD_FOR: Record<string, string> = {
   marketing: "/marketing/dashboard",
 };
 
+const TITLE = "Support Tickets";
+const SUBTITLE = "Tickets for the categories you handle. Chat with the person who raised each one and update its status.";
+
+// Render the inbox inside whichever portal layout matches the viewer's role, so
+// the sidebar and top bar are the same as the rest of their panel.
+function RoleShell({ role, children }: { role: string; children: React.ReactNode }) {
+  switch (role) {
+    case "c-level":
+      return <CLevelLayout currentView="dashboard" pageTitle={TITLE} pageSubtitle={SUBTITLE}>{children}</CLevelLayout>;
+    case "branch-manager":
+      return <BranchManagerLayout currentView="dashboard" pageTitle={TITLE} pageSubtitle={SUBTITLE}>{children}</BranchManagerLayout>;
+    case "sales-team-lead":
+      return <SalesTeamLeadLayout currentView="dashboard" pageTitle={TITLE} pageSubtitle={SUBTITLE}>{children}</SalesTeamLeadLayout>;
+    case "sales":
+      return <SalesLayout currentView="dashboard" pageTitle={TITLE} pageSubtitle={SUBTITLE}>{children}</SalesLayout>;
+    case "marketing":
+      return <MarketingLayout currentView="dashboard" pageTitle={TITLE} pageSubtitle={SUBTITLE}>{children}</MarketingLayout>;
+    default:
+      return <>{children}</>;
+  }
+}
+
 const OwnerTicketsPage: NextPage = () => {
-  const { user, logout, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   const isOwner = isTicketOwner(user?.email);
@@ -48,24 +68,9 @@ const OwnerTicketsPage: NextPage = () => {
   if (isLoading || !user || user.role === "admin" || !isOwner) return null;
 
   return (
-    <div>
-      <Header
-        title="Miller Storm Operating System"
-        subtitle="Support Tickets"
-        userName={user.name}
-        userId={user.id}
-        roleLabel={ROLE_LABEL[user.role] ?? user.role}
-        panelName="Support Tickets"
-        onLogout={logout}
-      />
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 16px 40px" }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 4px", color: "var(--text-primary)" }}>Support Tickets</h1>
-        <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 18px" }}>
-          Tickets for the categories you handle. Chat with the person who raised each one and update its status.
-        </p>
-        <TicketTable />
-      </div>
-    </div>
+    <RoleShell role={user.role}>
+      <TicketTable />
+    </RoleShell>
   );
 };
 
