@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import '../services/course_category_order.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
@@ -802,11 +803,10 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
     // MUST match TRAINING_CATEGORIES in src/lib/training/categories.ts. Used for
     // section ORDER only, so a stale entry misplaces a heading rather than
     // hiding a course, but it should still be kept in step.
-    const predefined = [
-      'Miller Storm Certification',
-      'Millionaire Knockers',
-      'Roof Hustlers',
-    ];
+    // Section order comes from the web (/api/training/category-order) so the
+    // app matches the web automatically; CourseCategoryOrder falls back to a
+    // bundled copy when offline.
+    final predefined = CourseCategoryOrder.current;
     // Retired spellings still stored on some courses, folded onto the name in
     // use so a library mid-rename shows ONE section, not an old and a new one.
     // Mirrors canonicalCategory() in src/lib/training/credentials.ts.

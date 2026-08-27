@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/firebase_messaging_service.dart';
 import 'theme/app_theme.dart';
+import 'services/course_category_order.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
@@ -67,6 +68,12 @@ void main() async {
 
   // Load the saved light/dark preference before the first frame.
   await themeController.load();
+
+  // Pull the Training Center category order from the web (single source of
+  // truth) so course sections match the web automatically. Fire-and-forget:
+  // the courses screens read the cached value and fall back to a bundled copy
+  // until this resolves.
+  CourseCategoryOrder.ensure();
 
   // Android 15 (target SDK 35) enforces edge-to-edge display. Opt in globally
   // so the app draws behind the system bars for ALL users (fixes Play Console's
