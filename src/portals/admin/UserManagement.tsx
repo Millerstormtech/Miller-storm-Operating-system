@@ -1124,7 +1124,17 @@ export function UserManagement(props: UserEditorProps) {
             <div className="panel-header">
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
-                <div className="panel-header-actions">
+                <div className="panel-header-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {/* Beside Save: email this user their login details (name, email,
+                      the password if set, role, login link) when you save. */}
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "var(--text-primary)", whiteSpace: "nowrap" }} title="Emails this user their login details (and password, if set) when you save.">
+                    <input
+                      type="checkbox"
+                      checked={!!notifyUsers[selectedUserId]}
+                      onChange={(e) => setNotifyUsers((prev) => ({ ...prev, [selectedUserId]: e.target.checked }))}
+                    />
+                    Notify user by email
+                  </label>
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || !!roleError || isSaving} onClick={async () => {
                     if (emailError) {
                       emailInputRef.current?.focus();

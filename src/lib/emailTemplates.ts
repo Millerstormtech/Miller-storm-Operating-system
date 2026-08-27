@@ -165,15 +165,16 @@ Your account has been updated by an administrator. Here are your current login d
 - Name: {{name}}
 - Email: {{email}}
 - Password: {{password}}
+- Branch: {{branch}}
 - Role: {{role}}
-- Sales Team Lead: {{managerName}}
+- Sales Team Lead / Branch Manager: {{managerName}}
 
 Login here: {{loginUrl}}
 
 If you have any questions, please contact your administrator.
 
 © 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{email}}", "{{password}}", "{{role}}", "{{managerName}}", "{{loginUrl}}"],
+    variables: ["{{name}}", "{{email}}", "{{password}}", "{{branch}}", "{{role}}", "{{managerName}}", "{{loginUrl}}"],
   },
   weeklyTeamDigest: {
     subject: "Weekly Team Training Digest - Miller Storm OS",

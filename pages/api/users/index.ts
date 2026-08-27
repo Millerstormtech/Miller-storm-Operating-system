@@ -125,6 +125,7 @@ async function handler(
           email: safeUser.email as string,
           password: typeof password === "string" && password.trim().length > 0 ? password.trim() : null,
           roles,
+          branch: (safeUser.territory as string) || (Array.isArray(safeUser.branches) ? (safeUser.branches as string[])[0] : "") || null,
           managerName: managerName || null,
           loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://yourdomain.com/login"
         });

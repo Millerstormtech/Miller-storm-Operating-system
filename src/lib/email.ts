@@ -132,6 +132,7 @@ export async function sendUserAccountUpdatedEmail(params: {
   email: string;
   password: string | null;
   roles: string[];
+  branch: string | null;
   managerName: string | null;
   loginUrl: string;
 }) {
@@ -141,6 +142,7 @@ export async function sendUserAccountUpdatedEmail(params: {
     "{{name}}": params.name,
     "{{email}}": params.email,
     "{{password}}": params.password || "Unchanged (use your existing password)",
+    "{{branch}}": params.branch || "No Branch",
     "{{role}}": params.roles.map(r => roleDisplayName(r)).join(", "),
     "{{managerName}}": params.managerName || "N/A",
     "{{loginUrl}}": params.loginUrl,
