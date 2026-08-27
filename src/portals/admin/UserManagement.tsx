@@ -5,8 +5,22 @@ import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
 import { roleDisplayName } from "../../lib/roleLabels";
 import { useAuth } from "../../contexts/AuthContext";
+import type { Drift } from "../../lib/repcard/appDrift";
 
 type UserRole = "admin" | "sales-team-lead" | "sales" | "marketing" | "c-level" | "branch-manager";
+
+// Advisory note shown under Branch / Sales Team Lead when the field disagrees with
+// RepCard. Read-only on purpose: RepCard is the source of truth for the sales
+// leaderboard, but it is sometimes the one that is out of date, so a human decides.
+// See src/lib/repcard/appDrift.ts for which differences are worth showing at all.
+function RepCardNote({ says }: { says: string }) {
+  return (
+    <div style={{ fontSize: 12, color: "var(--warning-on-surface)", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
+      <span aria-hidden="true">⚠</span>
+      <span>RepCard says {says}</span>
+    </div>
+  );
+}
 
 type UserEditorProps = {
   users: UserProfile[];
@@ -92,6 +106,24 @@ export function UserManagement(props: UserEditorProps) {
   const [showActiveUsers, setShowActiveUsers] = useState(true);
   const [showSuspendedUsers, setShowSuspendedUsers] = useState(true);
   const [showDeletedUsers, setShowDeletedUsers] = useState(true);
+  // Users whose Branch / Team disagree with RepCard, keyed by user id. Advisory
+  // only: a failed fetch just leaves the map empty and no warnings appear, which
+  // is the right failure mode for a hint that never gates anything.
+  const [repcardDrift, setRepcardDrift] = useState<Record<string, Drift>>({});
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/users/repcard-drift");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setRepcardDrift(data.drift || {});
+      } catch {
+        /* advisory only — leave the map empty */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [sortBy, setSortBy] = useState<"nameAsc" | "nameDesc" | "newest" | "oldest" | "lastModified">("nameAsc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "sales-team-lead" | "sales" | "marketing" | "c-level" | "branch-manager">("all");
@@ -940,6 +972,18 @@ export function UserManagement(props: UserEditorProps) {
                             {user.testAccount && (
                               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.3, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "1px 5px" }}>TEST</span>
                             )}
+                            {/* Branch or Team disagrees with RepCard. Here so the
+                                handful that need attention can be spotted without
+                                opening all ~50 accounts one by one. */}
+                            {repcardDrift[user.id] && (
+                              <span
+                                aria-label="Branch or Team differs from RepCard"
+                                title="Branch or Team differs from RepCard"
+                                style={{ color: "var(--warning-on-surface)", fontSize: 12, lineHeight: 1 }}
+                              >
+                                ⚠
+                              </span>
+                            )}
                           </div>
                           <div className="list-item-subtitle">
                             {user.role.toUpperCase()} • {user.email}
@@ -1394,6 +1438,9 @@ export function UserManagement(props: UserEditorProps) {
                     </div>
                   )}
                 </div>
+                {repcardDrift[selectedUser.id]?.branch && (
+                  <RepCardNote says={repcardDrift[selectedUser.id]!.branch!.repcard} />
+                )}
               </label>
               <label className="field">
                 <span className="field-label">Role</span>
@@ -1535,6 +1582,9 @@ export function UserManagement(props: UserEditorProps) {
                       <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>
                         {managerError || "Sales Team Lead is required for sales users"}
                       </div>
+                    )}
+                    {repcardDrift[selectedUser.id]?.team && (
+                      <RepCardNote says={repcardDrift[selectedUser.id]!.team!.repcard} />
                     )}
                   </label>
                 );
