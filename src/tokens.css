@@ -105,6 +105,13 @@
   --brand-on-surface: #cb0002;
   --trend-up:         #10b981;
   --trend-down:       #d6323b;
+
+  /* Advisory, not an error. For a hint that something needs a human's attention
+     but nothing is broken and nothing is blocked -- e.g. User Management noting
+     that a rep's Branch disagrees with RepCard. Distinct from --trend-down,
+     which means a number went the wrong way, and from the hard red used for
+     validation errors that stop a save. */
+  --warning-on-surface: #92400e;
 }
 
 /* =============================================================================
@@ -142,6 +149,10 @@
   --brand-on-surface: #ff8a85;
   --trend-up:         #34d399;
   --trend-down:       #ff7b7e;
+
+  /* Amber flips for the same reason the two above do: #92400e is a dark brown
+     on a dark ground and does not read. */
+  --warning-on-surface: #fbbf24;
 
   /* Channel forms of the two surfaces above -- re-pointed so translucent fills
      that sit on a flipping card/panel/veil still read correctly on a dark
