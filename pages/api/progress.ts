@@ -9,6 +9,7 @@ import { loadGradableQuizPages } from "../../src/lib/training/quiz-pages";
 import { logToDb } from "../../src/lib/models/SystemLog";
 import { celebrateIfCourseCompleted } from "../../src/lib/training/celebration";
 import { stampNewCompletions } from "../../src/lib/training/completions";
+import { ensureProgressRecord } from "../../src/lib/progressRecord";
 
 export default async function handler(
   req: NextApiRequest,
@@ -70,6 +71,7 @@ export default async function handler(
           completedPages: [],
           unlockedPages: [],
           quizResults: [],
+          videoPositions: [],
           courseCompleted: false
         });
         return;
@@ -115,6 +117,9 @@ export default async function handler(
         completedPages: progress.completedPages || [],
         unlockedPages: progress.unlockedPages || [],
         quizResults: progress.quizResults || [],
+        // How far into each video the rep watched, so the lesson player can
+        // resume where they left off instead of restarting from zero.
+        videoPositions: progress.videoPositions || [],
         courseCompleted: progress.courseCompleted || false,
         ...(progressPercent !== undefined
           ? { progressPercent, completedLessons: completedLessons ?? 0, totalLessons: totalLessons ?? 0 }
@@ -152,108 +157,137 @@ export default async function handler(
     }
 
     try {
-      // Find existing progress or create new
-      let progress = await UserProgressModel.findOne({ userId, courseId });
+      // Read-modify-write on a record with array fields carries Mongoose's
+      // optimistic version guard: if another write lands between the read and
+      // the save, .save() throws VersionError and THIS WRITE IS LOST. That is a
+      // live scenario, not a theoretical one — the website, the phone app and
+      // the watch-position heartbeat all write this same record — and a dropped
+      // write here means a rep finished a lesson and it never got ticked.
+      //
+      // So a conflict is retried rather than surfaced: re-read the record and
+      // re-apply against whatever landed in the meantime. Every mutation below
+      // is a union or an idempotent set, so replaying it is safe. Bounded,
+      // because a conflict that survives four attempts is not contention any
+      // more and should be reported rather than looped on.
+      let progress: any = null;
+      let progressBefore: any = null;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          // Make the record exist BEFORE reading it, so two writes arriving together
+          // for a rep with no progress in this course cannot both try to insert and
+          // have one lose the race (see ensureProgressRecord).
+          await ensureProgressRecord(userId, courseId);
 
-      // Pre-save snapshot for the celebration transition check (complete
-      // false -> true). toObject() detaches it from the doc mutated below.
-      const progressBefore = progress ? progress.toObject() : null;
+          // Find existing progress or create new
+          progress = await UserProgressModel.findOne({ userId, courseId });
 
-      // The server re-grades every incoming quiz result from its own answer
-      // key; the caller's claimed score and passed flag are ignored entirely
-      // (spec 2026-07-26 §5). Stored results with unchanged answers are
-      // preserved exactly, and an earned pass is never downgraded.
-      let quizResultsToStore = quizResults;
-      if (quizResults !== undefined) {
-        const quizPages = await loadGradableQuizPages(courseId);
-        const storedResults = (progress?.quizResults || []).map((r: any) =>
-          typeof r?.toObject === "function" ? r.toObject() : r
-        );
-        const outcome = resolveIncomingQuizResults({
-          quizPages,
-          stored: storedResults,
-          incoming: Array.isArray(quizResults) ? quizResults : [],
-        });
-        quizResultsToStore = outcome.results;
-        for (const r of outcome.rejected) {
-          await logToDb(
-            "warn",
-            "QUIZ-INTAKE",
-            `Rejected quiz claim: user ${userId}, course ${courseId}, page ${r.pageId}`,
-            { claimed: r.claimed, server: r.server }
-          );
-        }
-      }
+          // Pre-save snapshot for the celebration transition check (complete
+          // false -> true). toObject() detaches it from the doc mutated below.
+          progressBefore = progress ? progress.toObject() : null;
 
-      // Which pages this request is the FIRST to report complete. Only these
-      // may be dated: see the note at the stampNewCompletions() call below.
-      let justCompleted: string[] = [];
-
-      if (!progress) {
-        // Create new progress record
-        const initialPages = Array.isArray(completedPages) ? completedPages : [];
-        progress = new UserProgressModel({
-          userId,
-          courseId,
-          completedPages: completedPages || [],
-          quizResults: quizResultsToStore || [],
-          courseCompleted: courseCompleted || false
-        });
-        justCompleted = initialPages;
-        console.log('📝 Creating new progress record');
-      } else {
-        // Update existing progress
-        if (completedPages !== undefined) {
-          const incoming = Array.isArray(completedPages) ? completedPages : [];
-          const alreadyStored = new Set<string>(progress.completedPages || []);
-          // The admin Override tool is deliberately excluded: an admin ticking
-          // a box is a correction to the record, not evidence of when the rep
-          // actually watched the lesson, so it adds pages WITHOUT dating them.
-          // Only a learner's own save counts as a live completion.
-          justCompleted = req.body.replace === true
-            ? []
-            : incoming.filter((id: string) => !alreadyStored.has(id));
-          // The admin Override tool sends replace:true to set an EXACT set (it
-          // can uncheck pages to reset a rep). Every OTHER caller is a learner
-          // recording a watched page, where completedPages must only ever GROW.
-          // So we union with what's already stored. That makes the write immune
-          // to a stale, partial, racy, or cross-device array silently erasing
-          // already-watched pages — the root of the "I keep having to rewatch
-          // videos I already watched, and it won't clear" bug (a full-array
-          // replace from client state could wipe progress on any bad write).
-          if (req.body.replace === true) {
-            progress.completedPages = incoming;
-          } else {
-            progress.completedPages = Array.from(
-              new Set([...(progress.completedPages || []), ...incoming])
+          // The server re-grades every incoming quiz result from its own answer
+          // key; the caller's claimed score and passed flag are ignored entirely
+          // (spec 2026-07-26 §5). Stored results with unchanged answers are
+          // preserved exactly, and an earned pass is never downgraded.
+          let quizResultsToStore = quizResults;
+          if (quizResults !== undefined) {
+            const quizPages = await loadGradableQuizPages(courseId);
+            const storedResults = (progress?.quizResults || []).map((r: any) =>
+              typeof r?.toObject === "function" ? r.toObject() : r
             );
+            const outcome = resolveIncomingQuizResults({
+              quizPages,
+              stored: storedResults,
+              incoming: Array.isArray(quizResults) ? quizResults : [],
+            });
+            quizResultsToStore = outcome.results;
+            for (const r of outcome.rejected) {
+              await logToDb(
+                "warn",
+                "QUIZ-INTAKE",
+                `Rejected quiz claim: user ${userId}, course ${courseId}, page ${r.pageId}`,
+                { claimed: r.claimed, server: r.server }
+              );
+            }
           }
+
+          // Which pages this request is the FIRST to report complete. Only these
+          // may be dated: see the note at the stampNewCompletions() call below.
+          let justCompleted: string[] = [];
+
+          if (!progress) {
+            // Create new progress record
+            const initialPages = Array.isArray(completedPages) ? completedPages : [];
+            progress = new UserProgressModel({
+              userId,
+              courseId,
+              completedPages: completedPages || [],
+              quizResults: quizResultsToStore || [],
+              courseCompleted: courseCompleted || false
+            });
+            justCompleted = initialPages;
+            console.log('📝 Creating new progress record');
+          } else {
+            // Update existing progress
+            if (completedPages !== undefined) {
+              const incoming = Array.isArray(completedPages) ? completedPages : [];
+              const alreadyStored = new Set<string>(progress.completedPages || []);
+              // The admin Override tool is deliberately excluded: an admin ticking
+              // a box is a correction to the record, not evidence of when the rep
+              // actually watched the lesson, so it adds pages WITHOUT dating them.
+              // Only a learner's own save counts as a live completion.
+              justCompleted = req.body.replace === true
+                ? []
+                : incoming.filter((id: string) => !alreadyStored.has(id));
+              // The admin Override tool sends replace:true to set an EXACT set (it
+              // can uncheck pages to reset a rep). Every OTHER caller is a learner
+              // recording a watched page, where completedPages must only ever GROW.
+              // So we union with what's already stored. That makes the write immune
+              // to a stale, partial, racy, or cross-device array silently erasing
+              // already-watched pages — the root of the "I keep having to rewatch
+              // videos I already watched, and it won't clear" bug (a full-array
+              // replace from client state could wipe progress on any bad write).
+              if (req.body.replace === true) {
+                progress.completedPages = incoming;
+              } else {
+                progress.completedPages = Array.from(
+                  new Set([...(progress.completedPages || []), ...incoming])
+                );
+              }
+            }
+            if (quizResults !== undefined) {
+              progress.quizResults = quizResultsToStore;
+            }
+            if (courseCompleted !== undefined) {
+              progress.courseCompleted = courseCompleted;
+            }
+            console.log('📝 Updating existing progress record');
+          }
+
+          // Record WHEN each page was completed, alongside the completedPages list
+          // that says WHETHER it was. Only pages this request is the first to
+          // report get a date; anything already in completedPages was finished at
+          // an unknown past time (very possibly before dates were recorded at all)
+          // and dating it now would report a rep's entire back catalogue as
+          // completed today. Pages already carrying a date keep it, and pages that
+          // are no longer completed lose theirs, so the two lists cannot drift.
+          progress.pageCompletions = stampNewCompletions(
+            progress.pageCompletions,
+            progress.completedPages,
+            justCompleted,
+            new Date()
+          );
+
+          // Save to database
+          await progress.save();
+          break;
+        } catch (err: any) {
+          const contention = err?.name === "VersionError" || err?.code === 11000;
+          if (!contention || attempt >= 3) throw err;
+          console.log(`⚠️ Progress write contention (attempt ${attempt + 1}), retrying`);
         }
-        if (quizResults !== undefined) {
-          progress.quizResults = quizResultsToStore;
-        }
-        if (courseCompleted !== undefined) {
-          progress.courseCompleted = courseCompleted;
-        }
-        console.log('📝 Updating existing progress record');
       }
 
-      // Record WHEN each page was completed, alongside the completedPages list
-      // that says WHETHER it was. Only pages this request is the first to
-      // report get a date; anything already in completedPages was finished at
-      // an unknown past time (very possibly before dates were recorded at all)
-      // and dating it now would report a rep's entire back catalogue as
-      // completed today. Pages already carrying a date keep it, and pages that
-      // are no longer completed lose theirs, so the two lists cannot drift.
-      progress.pageCompletions = stampNewCompletions(
-        progress.pageCompletions,
-        progress.completedPages,
-        justCompleted,
-        new Date()
-      );
-
-      // Save to database
-      await progress.save();
       console.log('💾 Progress saved successfully');
 
       // Storm Bot celebration: fire-and-forget so the completing save stays

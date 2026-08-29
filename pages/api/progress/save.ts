@@ -7,6 +7,7 @@ import { loadGradableQuizPages } from "../../../src/lib/training/quiz-pages";
 import { logToDb } from "../../../src/lib/models/SystemLog";
 import { celebrateIfCourseCompleted } from "../../../src/lib/training/celebration";
 import { stampNewCompletions } from "../../../src/lib/training/completions";
+import { ensureProgressRecord } from "../../../src/lib/progressRecord";
 
 export default async function handler(
   req: NextApiRequest,
@@ -42,81 +43,102 @@ export default async function handler(
     }
 
     try {
-      // Find existing progress or create new
-      let progress = await UserProgressModel.findOne({ userId, courseId });
+      // Bounded retry on write contention, for the same reason as /api/progress:
+      // this record is written by the website, this endpoint and the
+      // watch-position heartbeat, and losing the race used to mean a rep's
+      // finished lesson was silently dropped. See the fuller note there.
+      let progress: any = null;
+      let progressBefore: any = null;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          // Same insert-race guard as /api/progress — and it matters across the two
+          // endpoints too, since a rep with the phone app and the website open can
+          // have both write this record at the same moment.
+          await ensureProgressRecord(userId, courseId);
 
-      // Pre-save snapshot for the celebration transition check (complete
-      // false -> true). toObject() detaches it from the doc mutated below.
-      const progressBefore = progress ? progress.toObject() : null;
+          // Find existing progress or create new
+          progress = await UserProgressModel.findOne({ userId, courseId });
 
-      if (!progress) {
-        // Create new progress record
-        progress = new UserProgressModel({
-          userId,
-          courseId,
-          completedPages: [],
-          quizResults: [],
-          courseCompleted: false
-        });
-        console.log('📝 Creating new progress record');
-      }
+          // Pre-save snapshot for the celebration transition check (complete
+          // false -> true). toObject() detaches it from the doc mutated below.
+          progressBefore = progress ? progress.toObject() : null;
 
-      // Update completed pages
-      const justCompleted: string[] = [];
-      if (pageId && !progress.completedPages.includes(pageId)) {
-        progress.completedPages.push(pageId);
-        justCompleted.push(pageId);
-        console.log('✅ Added page to completed:', pageId);
-      }
+          if (!progress) {
+            // Create new progress record
+            progress = new UserProgressModel({
+              userId,
+              courseId,
+              completedPages: [],
+              quizResults: [],
+              courseCompleted: false
+            });
+            console.log('📝 Creating new progress record');
+          }
 
-      // Record WHEN this page was completed. Only the page added just now is
-      // dated: pages already in completedPages were finished at some unknown
-      // past time (possibly before dates were recorded at all), and dating
-      // those "now" would report a rep's whole back catalogue as completed
-      // today. Pages already carrying a date keep it.
-      progress.pageCompletions = stampNewCompletions(
-        progress.pageCompletions,
-        progress.completedPages,
-        justCompleted,
-        new Date()
-      );
+          // Update completed pages
+          const justCompleted: string[] = [];
+          if (pageId && !progress.completedPages.includes(pageId)) {
+            progress.completedPages.push(pageId);
+            justCompleted.push(pageId);
+            console.log('✅ Added page to completed:', pageId);
+          }
 
-      // The server re-grades the incoming quiz result from its own answer key;
-      // the caller's claimed score and passed flag are ignored entirely (spec
-      // 2026-07-26 §5). This is what protects the current mobile build, which
-      // grades locally: it already sends the raw answers, so no app change is
-      // needed. Stored results with unchanged answers are preserved exactly,
-      // and an earned pass is never downgraded.
-      if (quizResult) {
-        const quizPages = await loadGradableQuizPages(courseId);
-        const storedResults = (progress.quizResults || []).map((r: any) =>
-          typeof r?.toObject === "function" ? r.toObject() : r
-        );
-        const outcome = resolveIncomingQuizResults({
-          quizPages,
-          stored: storedResults,
-          incoming: [quizResult],
-        });
-        progress.quizResults = outcome.results;
-        for (const r of outcome.rejected) {
-          await logToDb(
-            "warn",
-            "QUIZ-INTAKE",
-            `Rejected quiz claim: user ${userId}, course ${courseId}, page ${r.pageId}`,
-            { claimed: r.claimed, server: r.server }
+          // Record WHEN this page was completed. Only the page added just now is
+          // dated: pages already in completedPages were finished at some unknown
+          // past time (possibly before dates were recorded at all), and dating
+          // those "now" would report a rep's whole back catalogue as completed
+          // today. Pages already carrying a date keep it.
+          progress.pageCompletions = stampNewCompletions(
+            progress.pageCompletions,
+            progress.completedPages,
+            justCompleted,
+            new Date()
           );
+
+          // The server re-grades the incoming quiz result from its own answer key;
+          // the caller's claimed score and passed flag are ignored entirely (spec
+          // 2026-07-26 §5). This is what protects the current mobile build, which
+          // grades locally: it already sends the raw answers, so no app change is
+          // needed. Stored results with unchanged answers are preserved exactly,
+          // and an earned pass is never downgraded.
+          if (quizResult) {
+            const quizPages = await loadGradableQuizPages(courseId);
+            const storedResults = (progress.quizResults || []).map((r: any) =>
+              typeof r?.toObject === "function" ? r.toObject() : r
+            );
+            const outcome = resolveIncomingQuizResults({
+              quizPages,
+              stored: storedResults,
+              incoming: [quizResult],
+            });
+            progress.quizResults = outcome.results;
+            for (const r of outcome.rejected) {
+              await logToDb(
+                "warn",
+                "QUIZ-INTAKE",
+                `Rejected quiz claim: user ${userId}, course ${courseId}, page ${r.pageId}`,
+                { claimed: r.claimed, server: r.server }
+              );
+            }
+            console.log('📝 Quiz result re-graded server-side for:', quizResult.pageId);
+          }
+
+          // Update course completion
+          if (courseCompleted !== undefined) {
+            progress.courseCompleted = courseCompleted;
+            console.log('🎯 Course completion updated:', courseCompleted);
+          }
+
+          // Save to database
+          await progress.save();
+          break;
+        } catch (err: any) {
+          const contention = err?.name === "VersionError" || err?.code === 11000;
+          if (!contention || attempt >= 3) throw err;
+          console.log(`⚠️ Progress write contention (attempt ${attempt + 1}), retrying`);
         }
-        console.log('📝 Quiz result re-graded server-side for:', quizResult.pageId);
       }
 
-      // Update course completion
-      if (courseCompleted !== undefined) {
-        progress.courseCompleted = courseCompleted;
-        console.log('🎯 Course completion updated:', courseCompleted);
-      }
-
-      // Save to database
-      await progress.save();
       console.log('💾 Progress saved successfully');
 
       // Storm Bot celebration: fire-and-forget so the completing save stays
