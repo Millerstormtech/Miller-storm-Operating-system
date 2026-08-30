@@ -86,6 +86,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   bool _isLessonCompleted = false;
   bool _canGoNext = false;
   WebViewController? _webViewController;
+
+  // Video resume (ported from web PR #69). The furthest second the rep has
+  // watched of THIS lesson's video, loaded from the server so an interrupted
+  // rep resumes where they left off and can scrub back up to that point —
+  // instead of being locked to 0 every time the player is rebuilt. _lastSaved
+  // throttles the heartbeat so we only POST every ~10s of real progress.
+  int _resumeSeconds = 0;
+  int _lastSavedSeconds = 0;
   
   // Quiz state
   Map<String, int> _selectedAnswers = {};
@@ -164,6 +172,15 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           print(message.message == 'ended'
               ? '🎬 Video fully complete - marked + Next unlocked'
               : '🎬 Video near end - marked + Next unlocked');
+        },
+      )
+      ..addJavaScriptChannel(
+        // Heartbeat from the player: the furthest second watched so far. Saved
+        // to the server (throttled) so the lesson can be resumed later.
+        'VideoPositionChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          final secs = int.tryParse(message.message.trim());
+          if (secs != null) _saveVideoPosition(secs);
         },
       )
       ..addJavaScriptChannel(
@@ -251,7 +268,20 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             if (progressResponse.statusCode == 200) {
               final progressData = jsonDecode(progressResponse.body);
               savedQuizResults = progressData['quizResults'] ?? [];
-              
+
+              // Furthest-watched second for THIS lesson's video (index 0), so the
+              // player resumes where the rep left off. Server keeps it forward-
+              // only; resumeSecondsFor() below restarts if they'd finished.
+              final positions = progressData['videoPositions'] as List<dynamic>? ?? [];
+              final saved = positions.firstWhere(
+                (p) => p is Map && p['pageId'].toString() == widget.lessonId && ((p['videoIndex'] ?? 0) as num).toInt() == 0,
+                orElse: () => null,
+              );
+              if (saved != null && saved['seconds'] is num) {
+                _resumeSeconds = (saved['seconds'] as num).floor();
+                _lastSavedSeconds = _resumeSeconds;
+              }
+
               final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
               isCurrentLessonCompleted = completedPages.contains(widget.lessonId);
               
@@ -333,7 +363,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         if (lesson != null && lesson['videoUrl'] != null && lesson['videoUrl'].toString().trim().isNotEmpty) {
           final embedUrl = _getEmbedUrl(lesson['videoUrl']);
           _webViewController?.loadHtmlString(
-            _buildVideoHtml(embedUrl, _isLessonCompleted),
+            _buildVideoHtml(embedUrl, _isLessonCompleted, resumeSeconds: _resumeSeconds),
             baseUrl: 'https://millerstorm.tech',
           );
         } else if (lesson != null && lesson['isQuiz'] != true) {
@@ -355,7 +385,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     }
   }
 
-  String _buildVideoHtml(String embedUrl, bool isCompleted) {
+  String _buildVideoHtml(String embedUrl, bool isCompleted, {int resumeSeconds = 0}) {
     // Privileged leadership roles may always fast-forward/skip (as if the video
     // were already completed) — matches the web's `isPrivileged || completed`
     // seek rule. Without this, leaders were seek-locked in the app but not on web.
@@ -394,20 +424,40 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 </div>
 <script>
   var video = document.getElementById('player');
-  var maxTimeWatched = 0;
+  // Resume: seed the furthest-watched point from the server so the seek bar is
+  // scrubbable up to where the rep left off (not re-locked to 0), and jump the
+  // video there once we know it isn't basically finished. Ported from web #69.
+  var resumeAt = $resumeSeconds;
+  var maxTimeWatched = resumeAt > 0 ? resumeAt : 0;
   var isSeeking = false;
   var isCompleted = $isCompleted;
   var lastBlockNotice = 0;
+  var lastReported = maxTimeWatched;
   function notifyBlocked() {
     var now = Date.now();
     if (now - lastBlockNotice < 3000) return;
     lastBlockNotice = now;
     if (window.SeekBlockedChannel) { window.SeekBlockedChannel.postMessage('blocked'); }
   }
+  // Send the furthest second watched to the app, at most every ~5s of progress.
+  function reportPosition() {
+    if (!window.VideoPositionChannel) return;
+    if (maxTimeWatched - lastReported < 5) return;
+    lastReported = maxTimeWatched;
+    window.VideoPositionChannel.postMessage(String(Math.floor(maxTimeWatched)));
+  }
 
   video.setAttribute('playsinline', '');
   video.setAttribute('webkit-playsinline', '');
-  
+
+  video.addEventListener('loadedmetadata', function() {
+    // Only resume when it makes sense: a saved point past the end (finished)
+    // starts over, mirroring resumeSecondsFor(). END_TOLERANCE_SECONDS = 3.
+    if (resumeAt > 0 && video.duration && resumeAt < video.duration - 3) {
+      try { video.currentTime = resumeAt; } catch (e) {}
+    }
+  });
+
   video.onseeking = function() {
     isSeeking = true;
   };
@@ -430,7 +480,10 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       } else {
         maxTimeWatched = Math.max(maxTimeWatched, video.currentTime);
       }
+    } else if (isCompleted) {
+      maxTimeWatched = Math.max(maxTimeWatched, video.currentTime);
     }
+    reportPosition();
     // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
     if (video.duration && video.currentTime >= video.duration - 3) {
       sendUnlock();
@@ -444,7 +497,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   video.onended = function() {
     sendEnded();
   };
-  
+
   // Try to autoplay, but handle user gesture requirement
   video.play().catch(function(e) {
     console.log('Autoplay blocked, waiting for user interaction');
@@ -485,7 +538,9 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
 
 <script>
   var iframe = document.getElementById('player');
-  var maxTimeWatched = 0;
+  var resumeAt = $resumeSeconds;
+  var maxTimeWatched = resumeAt > 0 ? resumeAt : 0;
+  var lastReported = maxTimeWatched;
   var checkInterval;
   var isCompleted = $isCompleted;
   var lastBlockNotice = 0;
@@ -494,6 +549,12 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     if (now - lastBlockNotice < 3000) return;
     lastBlockNotice = now;
     if (window.SeekBlockedChannel) { window.SeekBlockedChannel.postMessage('blocked'); }
+  }
+  function reportPosition() {
+    if (!window.VideoPositionChannel) return;
+    if (maxTimeWatched - lastReported < 5) return;
+    lastReported = maxTimeWatched;
+    window.VideoPositionChannel.postMessage(String(Math.floor(maxTimeWatched)));
   }
   var unlockSent = false, endedSent = false;
   function post(msg) { if (window.VideoEndChannel) { window.VideoEndChannel.postMessage(msg); } }
@@ -506,6 +567,13 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     if (window.Vimeo) {
       var player = new Vimeo.Player(iframe);
 
+      // Resume where the rep left off (unless basically finished).
+      if (resumeAt > 0) {
+        player.getDuration().then(function(dur) {
+          if (dur && resumeAt < dur - 3) { player.setCurrentTime(resumeAt).catch(function(){}); }
+        }).catch(function(){});
+      }
+
       player.on('timeupdate', function(data) {
         if (!isCompleted) {
           if (data.seconds > maxTimeWatched + 2) {
@@ -514,7 +582,10 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           } else {
             maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
           }
+        } else {
+          maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
         }
+        reportPosition();
         // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
         if (data.duration && data.seconds >= data.duration - 3) {
           sendUnlock();
@@ -543,6 +614,11 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     });
 
     function onPlayerReady() {
+      // Resume where the rep left off (unless basically finished).
+      if (resumeAt > 0) {
+        var d = player.getDuration ? player.getDuration() : 0;
+        if (!d || resumeAt < d - 3) { try { player.seekTo(resumeAt, true); } catch (e) {} }
+      }
       checkInterval = setInterval(function() {
         var currentTime = player.getCurrentTime();
         if (!isCompleted) {
@@ -552,7 +628,10 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           } else {
             maxTimeWatched = Math.max(maxTimeWatched, currentTime);
           }
+        } else {
+          maxTimeWatched = Math.max(maxTimeWatched, currentTime);
         }
+        reportPosition();
         // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
         var dur = player.getDuration ? player.getDuration() : 0;
         if (dur && currentTime >= dur - 3) {
@@ -841,6 +920,34 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
   // Save progress for the current lesson WITHOUT navigating — used when a video
   // finishes so the NEXT lesson unlocks while the user stays on this screen
   // until they tap Next. Quizzes are marked complete separately (on pass).
+  // Persist the furthest-watched second of the current video (ported from web
+  // PR #69). Throttled to ~10s of progress like shouldPersistPosition() on the
+  // web; the server keeps it forward-only via $max, so out-of-order heartbeats
+  // are harmless. Its own tiny endpoint — a heartbeat must not pay for the
+  // course reload / quiz re-grade / celebrations that /api/progress does.
+  Future<void> _saveVideoPosition(int seconds) async {
+    if (_lesson == null || _lesson!['isQuiz'] == true) return;
+    if (seconds < 0) return;
+    // Only write once we've advanced ~10s past the last save (matches web).
+    if (seconds - _lastSavedSeconds < 10) return;
+    _lastSavedSeconds = seconds;
+    try {
+      await api.post(
+        Uri.parse('https://millerstorm.tech/api/progress/video-position'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'courseId': widget.courseId,
+          'pageId': _lesson!['id'],
+          'videoIndex': 0,
+          'seconds': seconds,
+        }),
+      );
+    } catch (e) {
+      // A dropped heartbeat just means the next one carries the position.
+      print('⚠️ Could not save video position: $e');
+    }
+  }
+
   Future<void> _markLessonComplete() async {
     if (_lesson == null || _lesson!['isQuiz'] == true) return;
     try {
@@ -1066,7 +1173,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                       if (_lesson != null && _lesson!['videoUrl'] != null) {
                         final embedUrl = _getEmbedUrl(_lesson!['videoUrl']);
                         _webViewController?.loadHtmlString(
-                          _buildVideoHtml(embedUrl, _isLessonCompleted),
+                          _buildVideoHtml(embedUrl, _isLessonCompleted, resumeSeconds: _resumeSeconds),
                           baseUrl: 'https://millerstorm.tech',
                         );
                       }
