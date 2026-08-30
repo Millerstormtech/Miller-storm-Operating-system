@@ -303,13 +303,17 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   Widget _statusBadge(String status) {
     final label = _statusLabel[status] ?? status;
-    final bg = status == 'completed' || status == 'approved'
-        ? const Color(0xFF16A34A)
-        : status == 'rejected'
-            ? const Color(0xFFDC2626)
-            : status == 'in_progress'
-                ? const Color(0xFFF59E0B)
-                : _primary;
+    // Semantic status colours (match the web): blue = new, indigo = approved,
+    // amber = in progress, green = completed, red = rejected.
+    final bg = status == 'completed'
+        ? const Color(0xFF16A34A)      // green
+        : status == 'approved'
+            ? const Color(0xFF4F46E5)  // indigo
+            : status == 'rejected'
+                ? const Color(0xFFDC2626)  // red
+                : status == 'in_progress'
+                    ? const Color(0xFFF59E0B)  // amber
+                    : const Color(0xFF2563EB); // blue — open
     return Row(
       children: [
         Container(

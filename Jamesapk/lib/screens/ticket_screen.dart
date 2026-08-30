@@ -85,19 +85,21 @@ class _TicketScreenState extends State<TicketScreen> {
     'completed': 'Completed',
     'rejected': 'Rejected',
   };
+  // Semantic status colours (match the web STATUS_COLOR): blue = new, indigo =
+  // acknowledged, amber = being worked on, green = done, red = declined.
   static const _statusBg = {
-    'open': Color(0xFFDBEAFE),
-    'approved': Color(0xFF15803D),
-    'in_progress': Color(0xFFDCFCE7),
-    'completed': Color(0xFFFEE2E2),
-    'rejected': Color(0xFFDC2626),
+    'open': Color(0xFFDBEAFE),        // blue
+    'approved': Color(0xFFE0E7FF),    // indigo
+    'in_progress': Color(0xFFFEF3C7), // amber
+    'completed': Color(0xFFDCFCE7),   // green
+    'rejected': Color(0xFFFEE2E2),    // red
   };
   static const _statusFg = {
-    'open': Color(0xFF1E40AF),
-    'approved': Color(0xFFFFFFFF),
-    'in_progress': Color(0xFF166534),
-    'completed': Color(0xFFB91C1C),
-    'rejected': Color(0xFFFFFFFF),
+    'open': Color(0xFF1E40AF),        // blue
+    'approved': Color(0xFF3730A3),    // indigo
+    'in_progress': Color(0xFF92400E), // amber
+    'completed': Color(0xFF166534),   // green
+    'rejected': Color(0xFFB91C1C),    // red
   };
 
   @override

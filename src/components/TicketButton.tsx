@@ -41,11 +41,11 @@ export const STATUS_LABEL: Record<string, string> = {
 };
 
 export const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
-  open: { bg: "#dbeafe", fg: "#1e40af" },        // light blue
-  approved: { bg: "#15803d", fg: "#ffffff" },     /* tokens-guard-ignore: js-identifier */ // dark green
-  in_progress: { bg: "#dcfce7", fg: "#166534" },  // light green
-  completed: { bg: "#fee2e2", fg: "#b91c1c" },    // light red
-  rejected: { bg: "#dc2626", fg: "#ffffff" },     /* tokens-guard-ignore: js-identifier */ // red
+  open: { bg: "#dbeafe", fg: "#1e40af" },         // blue — newly opened
+  approved: { bg: "#e0e7ff", fg: "#3730a3" },     /* tokens-guard-ignore: js-identifier */ // indigo — acknowledged
+  in_progress: { bg: "#fef3c7", fg: "#92400e" },  // amber — being worked on
+  completed: { bg: "#dcfce7", fg: "#166534" },    // green — done
+  rejected: { bg: "#fee2e2", fg: "#b91c1c" },     /* tokens-guard-ignore: js-identifier */ // red — declined
 };
 
 export function TicketButton() {
