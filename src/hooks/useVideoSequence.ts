@@ -24,6 +24,25 @@
 // when a lesson really has a Vimeo video.
 import type VimeoPlayer from '@vimeo/player';
 
+// The furthest-watched-point rules live in one pure module so the player and
+// the save endpoint can never disagree about them (CLAUDE.md module convention).
+import {
+  resumeSecondsFor,
+  shouldPersistPosition,
+} from '../lib/training/video-position';
+
+/**
+ * How the caller supplies and receives watch positions. Without this the
+ * furthest-watched point lives only inside this function and dies with the
+ * page, which is what locked an interrupted rep back to the start of a video.
+ */
+export type ResumeHooks = {
+  /** Furthest point already watched for this video, in seconds. 0 if never. */
+  getSaved: (videoIndex: number) => number;
+  /** Called when the watched point has moved far enough forward to persist. */
+  onProgress: (videoIndex: number, seconds: number) => void;
+};
+
 declare global {
   interface Window {
     YT: any;
@@ -334,7 +353,11 @@ export async function initVideoSequence(
   onSeekBlocked?: () => void,
   // When true (rep granted fast-forward by a manager/admin/C-Level), seeking is
   // NOT clamped to the watched point — the viewer can scrub freely.
-  allowFastForward = false
+  allowFastForward = false,
+  // Supplies the saved watch positions and receives updates to them. Omitted
+  // (e.g. by a preview surface with nothing to save to) the player still works,
+  // it just starts every video at zero the way it always used to.
+  resume?: ResumeHooks
 ): Promise<(() => void) | undefined> {
   if (typeof window === 'undefined') return;
 
@@ -356,6 +379,51 @@ export async function initVideoSequence(
   // Immediately simulate user interaction to unlock autoplay
   simulateUserInteraction();
 
+  // Where each video was left off. Seeding maxTimeWatched with this is what
+  // makes the seek bar scrubbable up to that point after an interruption —
+  // previously it was hardcoded to 0, so the clamp re-locked the rep to the
+  // very start of the video every time the player was rebuilt.
+  function savedFor(videoIndex: number): number {
+    if (!resume) return 0;
+    const saved = resume.getSaved(videoIndex);
+    return Number.isFinite(saved) && saved > 0 ? saved : 0;
+  }
+
+  // Last value we actually sent upstream, per video, so a throttled save is
+  // measured against what was persisted rather than against playback time.
+  const lastPersisted = new Map<number, number>();
+
+  /**
+   * Record that the rep has now watched up to `seconds` of this video.
+   * The point only ever moves forward, and only real forward progress is
+   * persisted (players fire time updates several times a second).
+   */
+  function noteWatched(entry: Entry, seconds: number) {
+    if (!Number.isFinite(seconds) || seconds < 0) return;
+    if (seconds > entry.maxTimeWatched) entry.maxTimeWatched = seconds;
+    if (!resume) return;
+    const last = lastPersisted.get(entry.seqIdx) ?? savedFor(entry.seqIdx);
+    if (!shouldPersistPosition(last, entry.maxTimeWatched)) return;
+    lastPersisted.set(entry.seqIdx, entry.maxTimeWatched);
+    resume.onProgress(entry.seqIdx, entry.maxTimeWatched);
+  }
+
+  /**
+   * Flush the current point regardless of the throttle. Called when the player
+   * is torn down (navigating away, closing the lesson) so the last few seconds
+   * before the rep left are not silently lost.
+   */
+  function flushWatched() {
+    if (!resume) return;
+    for (const entry of entries) {
+      const last = lastPersisted.get(entry.seqIdx) ?? savedFor(entry.seqIdx);
+      if (entry.maxTimeWatched > last) {
+        lastPersisted.set(entry.seqIdx, entry.maxTimeWatched);
+        resume.onProgress(entry.seqIdx, entry.maxTimeWatched);
+      }
+    }
+  }
+
   const allEls = Array.from(container.querySelectorAll<HTMLElement>('iframe, video'));
   if (allEls.length === 0) return;
 
@@ -371,7 +439,7 @@ export async function initVideoSequence(
       const video = el as HTMLVideoElement;
       const seqIdx = entries.length;
       video.autoplay = false; // we control playback manually
-      entries.push({ type: 'html5', seqIdx, video, el: video, maxTimeWatched: 0 });
+      entries.push({ type: 'html5', seqIdx, video, el: video, maxTimeWatched: savedFor(seqIdx) });
       return;
     }
     if (el.tagName === 'IFRAME') {
@@ -379,13 +447,13 @@ export async function initVideoSequence(
       const src = iframe.src || '';
       if (src.includes('youtube.com') || src.includes('youtu.be')) {
         const seqIdx = entries.length;
-        entries.push({ type: 'yt', seqIdx, player: null, ready: false, pendingPlay: false, el: iframe, maxTimeWatched: 0 });
+        entries.push({ type: 'yt', seqIdx, player: null, ready: false, pendingPlay: false, el: iframe, maxTimeWatched: savedFor(seqIdx) });
         ytRaw.push({ el: iframe, seqIdx });
         return;
       }
       if (src.includes('vimeo.com')) {
         const seqIdx = entries.length;
-        entries.push({ type: 'vimeo', seqIdx, player: null as any, el: iframe, maxTimeWatched: 0 });
+        entries.push({ type: 'vimeo', seqIdx, player: null as any, el: iframe, maxTimeWatched: savedFor(seqIdx) });
         vimeoRaw.push({ iframe, seqIdx });
       }
     }
@@ -441,6 +509,13 @@ export async function initVideoSequence(
     if (seqIdx !== total - 1 || unlockedNextStep) return;
     unlockedNextStep = true;
     onAllEnded(false); // mark watched + enable Next, but do NOT navigate
+    // Persist the point immediately rather than waiting for the next throttle
+    // window, which for most videos never arrives — the video ends first. Without
+    // this the stored point for a FINISHED video is wherever the last throttled
+    // write happened to land, so reopening a completed lesson would drop the rep
+    // partway in instead of starting it over (resumeSecondsFor only treats a
+    // video as finished once the stored point reaches the end).
+    try { flushWatched(); } catch {}
   }
   function finishVideo(seqIdx: number) {
     if (advanced.has(seqIdx)) return;
@@ -546,26 +621,44 @@ export async function initVideoSequence(
         const vimeoEntry = entries[seqIdx] as Extract<Entry, { type: 'vimeo' }>;
         vimeoEntry.player = vp;
 
-        if (!skipSeekLock) {
-          vp.on('timeupdate', (data: { seconds: number; duration?: number }) => {
-            if (data.seconds > vimeoEntry.maxTimeWatched + 2) {
-              vp.setCurrentTime(vimeoEntry.maxTimeWatched);
-              notifySeekBlocked();
-            } else {
-              vimeoEntry.maxTimeWatched = Math.max(vimeoEntry.maxTimeWatched, data.seconds);
-            }
-            // Reaching the last few seconds only UNLOCKS the next step.
-            if (data.duration && data.seconds >= data.duration - UNLOCK_BEFORE_END) {
-              unlockNextStep(seqIdx);
-            }
-          });
+        // Registered UNCONDITIONALLY. It used to sit inside `if (!skipSeekLock)`,
+        // which meant a viewer allowed to skip (a completed lesson, an unlockAll
+        // course, a granted fast-forward) had no end-of-video safety net at all
+        // and depended entirely on `ended` firing — and it also meant their
+        // watch position was never recorded. The clamp below is the only part
+        // that should depend on the seek lock.
+        vp.on('timeupdate', (data: { seconds: number; duration?: number }) => {
+          if (!skipSeekLock && data.seconds > vimeoEntry.maxTimeWatched + 2) {
+            vp.setCurrentTime(vimeoEntry.maxTimeWatched);
+            notifySeekBlocked();
+          } else {
+            noteWatched(vimeoEntry, data.seconds);
+          }
+          // Reaching the last few seconds only UNLOCKS the next step.
+          if (data.duration && data.seconds >= data.duration - UNLOCK_BEFORE_END) {
+            unlockNextStep(seqIdx);
+          }
+        });
 
+        if (!skipSeekLock) {
           vp.on('seeking', (data: { seconds: number }) => {
             if (data.seconds > vimeoEntry.maxTimeWatched + 1) {
               vp.setCurrentTime(vimeoEntry.maxTimeWatched);
               notifySeekBlocked();
             }
           });
+        }
+
+        // Pick up where the rep left off. A video they already watched to the
+        // end starts over instead (resumeSecondsFor), but its bar stays fully
+        // scrubbable because maxTimeWatched keeps the stored point.
+        if (vimeoEntry.maxTimeWatched > 0) {
+          Promise.resolve(vp.getDuration())
+            .then((dur: number) => {
+              const at = resumeSecondsFor(vimeoEntry.maxTimeWatched, dur);
+              if (at > 0) return vp.setCurrentTime(at);
+            })
+            .catch(() => {});
         }
 
         vp.on('ended', () => {
@@ -612,24 +705,35 @@ export async function initVideoSequence(
     e.video.setAttribute('webkit-playsinline', 'true');
     e.video.muted = false; // Keep audio on
     
-    if (!skipSeekLock) {
-      let isSeeking = false;
-      e.video.addEventListener('seeking', () => { isSeeking = true; });
-      e.video.addEventListener('seeked', () => { isSeeking = false; });
-      e.video.addEventListener('timeupdate', () => {
-        if (!isSeeking) {
-          if (e.video.currentTime > e.maxTimeWatched + 2) {
-            e.video.currentTime = e.maxTimeWatched;
-            notifySeekBlocked();
-          } else {
-            e.maxTimeWatched = Math.max(e.maxTimeWatched, e.video.currentTime);
-          }
+    // Registered unconditionally, for the same reason as the Vimeo handler
+    // above: the end-of-video safety net and the position tracking must run for
+    // every viewer, and only the clamp depends on the seek lock.
+    let isSeeking = false;
+    e.video.addEventListener('seeking', () => { isSeeking = true; });
+    e.video.addEventListener('seeked', () => { isSeeking = false; });
+    e.video.addEventListener('timeupdate', () => {
+      if (!isSeeking) {
+        if (!skipSeekLock && e.video.currentTime > e.maxTimeWatched + 2) {
+          e.video.currentTime = e.maxTimeWatched;
+          notifySeekBlocked();
+        } else {
+          noteWatched(e, e.video.currentTime);
         }
-        // Reaching the last few seconds only UNLOCKS the next step.
-        if (e.video.duration && e.video.currentTime >= e.video.duration - UNLOCK_BEFORE_END) {
-          unlockNextStep(e.seqIdx);
-        }
-      });
+      }
+      // Reaching the last few seconds only UNLOCKS the next step.
+      if (e.video.duration && e.video.currentTime >= e.video.duration - UNLOCK_BEFORE_END) {
+        unlockNextStep(e.seqIdx);
+      }
+    });
+
+    // Pick up where the rep left off, once the duration is known.
+    if (e.maxTimeWatched > 0) {
+      const applyResume = () => {
+        const at = resumeSecondsFor(e.maxTimeWatched, e.video.duration);
+        if (at > 0) e.video.currentTime = at;
+      };
+      if (e.video.readyState >= 1) applyResume();
+      else e.video.addEventListener('loadedmetadata', applyResume, { once: true });
     }
 
     e.video.addEventListener('ended', () => {
@@ -684,25 +788,33 @@ export async function initVideoSequence(
             ytEntry.ready = true;
             ytEntry.player = player;
 
-            if (!skipSeekLock) {
-              const interval = setInterval(() => {
-                if (player && player.getCurrentTime) {
-                  const currentTime = player.getCurrentTime();
-                  if (currentTime > ytEntry.maxTimeWatched + 2) {
-                    player.seekTo(ytEntry.maxTimeWatched, true);
-                    notifySeekBlocked();
-                  } else {
-                    ytEntry.maxTimeWatched = Math.max(ytEntry.maxTimeWatched, currentTime);
-                  }
-                  // Reaching the last few seconds only UNLOCKS the next step.
-                  const dur = player.getDuration ? player.getDuration() : 0;
-                  if (dur && currentTime >= dur - UNLOCK_BEFORE_END) {
-                    unlockNextStep(seqIdx);
-                  }
-                }
-              }, 500);
-              intervals.push(interval);
+            // Pick up where the rep left off, before the polling starts so the
+            // first tick does not record the pre-seek position.
+            if (ytEntry.maxTimeWatched > 0 && player.getDuration) {
+              const at = resumeSecondsFor(ytEntry.maxTimeWatched, player.getDuration());
+              if (at > 0) player.seekTo(at, true);
             }
+
+            // Runs unconditionally, for the same reason as the Vimeo and HTML5
+            // handlers: the end-of-video safety net and the position tracking
+            // apply to every viewer; only the clamp depends on the seek lock.
+            const interval = setInterval(() => {
+              if (player && player.getCurrentTime) {
+                const currentTime = player.getCurrentTime();
+                if (!skipSeekLock && currentTime > ytEntry.maxTimeWatched + 2) {
+                  player.seekTo(ytEntry.maxTimeWatched, true);
+                  notifySeekBlocked();
+                } else {
+                  noteWatched(ytEntry, currentTime);
+                }
+                // Reaching the last few seconds only UNLOCKS the next step.
+                const dur = player.getDuration ? player.getDuration() : 0;
+                if (dur && currentTime >= dur - UNLOCK_BEFORE_END) {
+                  unlockNextStep(seqIdx);
+                }
+              }
+            }, 500);
+            intervals.push(interval);
             
             // Aggressive autoplay for first YouTube video
             if (seqIdx === 0 && autoPlayRef.current) {
@@ -734,7 +846,23 @@ export async function initVideoSequence(
     });
   }
 
+  // A backgrounded tab is the ORIGINAL reported scenario: the rep takes a phone
+  // call, and a mobile browser may discard the page without ever running React
+  // cleanup. Nothing below would fire in that case, so the last throttle window
+  // would be lost. pagehide covers the discard; visibilitychange covers the
+  // moment the rep switches away, which is the last point we are guaranteed to
+  // get. The write itself uses keepalive so it survives the page going away.
+  const flushOnLeave = () => { try { flushWatched(); } catch {} };
+  const onVisibility = () => { if (document.visibilityState === 'hidden') flushOnLeave(); };
+  window.addEventListener('pagehide', flushOnLeave);
+  document.addEventListener('visibilitychange', onVisibility);
+
   return () => {
+    // Save the last few seconds before the players go away, so leaving a lesson
+    // mid-video does not lose everything since the previous throttled write.
+    flushOnLeave();
+    window.removeEventListener('pagehide', flushOnLeave);
+    document.removeEventListener('visibilitychange', onVisibility);
     vimeoPlayers.forEach(vp => { try { vp.destroy(); } catch {} });
     intervals.forEach(clearInterval);
   };

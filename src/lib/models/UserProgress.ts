@@ -42,6 +42,22 @@ const pageCompletionSchema = new Schema(
   { _id: false }
 );
 
+// How far into each training video the rep has actually watched, in seconds.
+// Keyed by page AND video index, because a lesson can hold several videos and
+// finishing the second must never claim credit for the first.
+//
+// Separate from completedPages on purpose: that stays the source of truth for
+// WHETHER a lesson is done, this records only HOW FAR. Before it existed the
+// furthest-watched point lived only in a browser variable that reset to 0 every
+// time the player was built, so an interrupted rep was locked back to the start
+// of the video (seeking is clamped to this point). Managed exclusively through
+// src/lib/training/video-position.ts, which enforces that the value only ever
+// grows -- a client reporting a smaller number is replaying, not regressing.
+const videoPositionSchema = new Schema(
+  { pageId: String, videoIndex: Number, seconds: Number },
+  { _id: false }
+);
+
 const userProgressSchema = new Schema(
   {
     userId: { type: String, required: true },
@@ -52,6 +68,7 @@ const userProgressSchema = new Schema(
     // Kept SEPARATE from completedPages so unlocking never counts toward progress
     // %/leaderboard — only actually watching a video marks a page completed.
     unlockedPages: [String],
+    videoPositions: [videoPositionSchema],
     quizResults: [quizResultSchema],
     courseCompleted: { type: Boolean, default: false },
     completedAt: Date

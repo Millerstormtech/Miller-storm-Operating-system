@@ -8,6 +8,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
+import {
+  findVideoPosition,
+  mergeVideoPosition,
+  type VideoPosition,
+} from "../../lib/training/video-position";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
 import { courseModules } from "../../lib/training/modules";
@@ -107,6 +112,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [showAIChat, setShowAIChat] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
+  // Live mirror of completedPages for the video effect to read without
+  // depending on it. See the note on that effect's dependency list.
+  const completedPagesRef = useRef(completedPages);
+  completedPagesRef.current = completedPages;
   // Pages a manager manually unlocked for this user (accessible without watching).
   const [unlockedPages, setUnlockedPages] = useState<Set<string>>(new Set());
   // Course id whose progress (completed/unlocked/quiz) has finished loading —
@@ -118,6 +127,34 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // Whether a manager/admin/C-Level has granted this rep free fast-forward. Kept
   // in a ref too so the async video-init callback always reads the latest value.
   const fastForwardRef = useRef(false);
+  // ── Video watch positions ──────────────────────────────────────────────────
+  // Held in a ref, not state, on purpose: these change every few seconds while
+  // a video plays, and putting them in state would re-render (and, via the
+  // effect below, rebuild) the player mid-playback.
+  const videoPositionsRef = useRef<VideoPosition[]>([]);
+  const videoPositionsCourseRef = useRef<string | null>(null);
+
+  // Read by the player when a lesson opens, so it starts where the rep left off
+  // and lets them scrub freely up to that point.
+  const savedPositionFor = (pageId: string, videoIndex: number): number =>
+    findVideoPosition(videoPositionsRef.current, pageId, videoIndex);
+
+  // Written as the rep watches. Updates the local copy immediately so a
+  // rebuild of the player mid-lesson still resumes correctly, then persists.
+  const persistPosition = (courseId: string, pageId: string, videoIndex: number, seconds: number) => {
+    videoPositionsRef.current = mergeVideoPosition(
+      videoPositionsRef.current, pageId, videoIndex, seconds
+    );
+    fetch('/api/progress/video-position', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId, pageId, videoIndex, seconds }),
+      // Survives the page being closed or discarded, which is when the final
+      // flush fires — a normal fetch would be cancelled with the document.
+      keepalive: true,
+    }).catch(() => {});
+  };
+
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   // questionId -> was the rep's OWN answer correct, from the server's grading
@@ -350,6 +387,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         .then(res => res.json())
         .then(data => {
           setCompletedPages(new Set(data.completedPages || []));
+          videoPositionsRef.current = data.videoPositions || [];
+          videoPositionsCourseRef.current = selectedCourse.id;
           setUnlockedPages(new Set(data.unlockedPages || []));
           setSavedQuizResults(data.quizResults || []);
           setCourseCompleted(data.courseCompleted || false);
@@ -533,7 +572,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       autoTriggeredRef.current = false; // reset after reading
       // "Unlock all" also lets everyone fast-forward/skip freely (as if the
       // video were already completed).
-      const isAlreadyCompleted = !!selectedCourse?.unlockAll || (activePageId ? completedPages.has(activePageId) : false);
+      const isAlreadyCompleted = !!selectedCourse?.unlockAll || (activePageId ? completedPagesRef.current.has(activePageId) : false);
+      const pageId = activePageId;
+      const courseId = selectedCourse.id;
       const cleanup = await initVideoSequence(
         container,
         (navigate: boolean) => onVideoEndedRef.current(navigate),
@@ -541,14 +582,19 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         shouldAutoStart,
         isAlreadyCompleted,
         () => setSeekToast("You are only able to fast forward if you already completed the video at least once before."),
-        fastForwardRef.current
+        fastForwardRef.current,
+        {
+          getSaved: (videoIndex: number) => savedPositionFor(pageId, videoIndex),
+          onProgress: (videoIndex: number, seconds: number) =>
+            persistPosition(courseId, pageId, videoIndex, seconds),
+        }
       );
       videoCleanupRef.current = cleanup;
 
       // If no videos were found on this page, mark it as completed so the user can advance
       if (!cleanup && !isAlreadyCompleted && activePageId) {
         console.log('[VideoSeq] No videos found on this page, marking as completed');
-        const newCompleted = new Set([...completedPages, activePageId]);
+        const newCompleted = new Set([...completedPagesRef.current, activePageId]);
         setCompletedPages(newCompleted);
         
         // Update the card progress state immediately
@@ -581,7 +627,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       videoCleanupRef.current = undefined;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen, completedPages]);
+  // completedPages is deliberately NOT a dependency, and is read through a ref
+  // instead. It changes the moment a lesson is marked watched — which happens 3
+  // seconds BEFORE the video ends — so depending on it tore the player down and
+  // destroyed the video mid-playback, right at the end. That is why the website
+  // never fired the "video truly ended" event and never auto-advanced, while
+  // the phone app (which does not rebuild its player) did.
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen]);
 
   const filteredCourses = useMemo(() => {
     const term = search.toLowerCase();
