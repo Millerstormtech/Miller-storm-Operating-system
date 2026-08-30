@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { DailyActivityModel } from "../../../src/lib/models/DailyActivity";
 import { UserModel } from "../../../src/lib/models/User";
+import { CourseModel } from "../../../src/lib/models/Course";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 
 // Admin report of daily rep activity.
@@ -53,6 +54,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ).lean()) as any[];
     const byId = new Map(users.map((u) => [u.id, u]));
 
+    // Resolve course titles so the report can group each rep's videos/quizzes
+    // under the course they belong to.
+    const courseIds = new Set<string>();
+    for (const r of rows) {
+      for (const v of (r.videos || [])) if (v.courseId) courseIds.add(String(v.courseId));
+      for (const q of (r.quizzes || [])) if (q.courseId) courseIds.add(String(q.courseId));
+    }
+    const courses = (await CourseModel.find(
+      { id: { $in: Array.from(courseIds) } },
+      { id: 1, title: 1 }
+    ).lean()) as any[];
+    const courseTitle = new Map(courses.map((c) => [c.id, c.title]));
+    const withCourse = (v: any) => ({
+      courseId: v.courseId, courseTitle: courseTitle.get(String(v.courseId)) || "Other",
+      pageId: v.pageId, title: v.title, secondsWeb: v.secondsWeb || 0, secondsMobile: v.secondsMobile || 0,
+    });
+
     const report = rows.map((r) => {
       const u = byId.get(r.userId);
       return {
@@ -66,8 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         videoSecondsMobile: r.videoSecondsMobile || 0,
         quizSecondsWeb: r.quizSecondsWeb || 0,
         quizSecondsMobile: r.quizSecondsMobile || 0,
-        videos: (r.videos || []).map((v: any) => ({ courseId: v.courseId, pageId: v.pageId, title: v.title, secondsWeb: v.secondsWeb || 0, secondsMobile: v.secondsMobile || 0 })),
-        quizzes: (r.quizzes || []).map((v: any) => ({ courseId: v.courseId, pageId: v.pageId, title: v.title, secondsWeb: v.secondsWeb || 0, secondsMobile: v.secondsMobile || 0 })),
+        videos: (r.videos || []).map(withCourse),
+        quizzes: (r.quizzes || []).map(withCourse),
       };
     });
     // Busiest reps first (by total app time).

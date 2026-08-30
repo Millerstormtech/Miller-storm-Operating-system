@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState, useCallback } from "react";
 // mobile), how much of that was watching training videos or taking quizzes, and
 // which videos they watched. Reads /api/activity/report (admin only).
 
-type LessonTime = { courseId: string; pageId: string; title: string; secondsWeb: number; secondsMobile: number };
+type LessonTime = { courseId: string; courseTitle: string; pageId: string; title: string; secondsWeb: number; secondsMobile: number };
 type Rep = {
   userId: string;
   name: string;
@@ -43,24 +43,56 @@ const ROLE_LABEL: Record<string, string> = {
 const th: React.CSSProperties = { padding: "10px 12px", fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 0.3, textAlign: "right", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14, color: "var(--text-primary)", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", borderTop: "1px solid var(--border-default)" };
 
-// A titled list of videos or quizzes, each row showing its Web and App time and
-// a total. Busiest first. Nothing rendered when there are none.
-function LessonBreakdown({ label, items, untitled }: { label: string; items: LessonTime[]; untitled: string }) {
-  if (!items.length) return null;
-  const sorted = [...items].sort((a, b) => (b.secondsWeb + b.secondsMobile) - (a.secondsWeb + a.secondsMobile));
+// One row: a video/quiz name + its Web time, App time, and total.
+function LessonRow({ name, secondsWeb, secondsMobile }: { name: string; secondsWeb: number; secondsMobile: number }) {
   return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-tertiary)", marginBottom: 6 }}>{label}</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {sorted.map((v) => (
-          <div key={v.pageId} style={{ display: "flex", alignItems: "baseline", gap: 12, fontSize: 13 }}>
-            <span style={{ color: "var(--text-primary)", flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{v.title || untitled}</span>
-            <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none", width: 92, textAlign: "right" }}>Web {fmt(v.secondsWeb)}</span>
-            <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none", width: 92, textAlign: "right" }}>App {fmt(v.secondsMobile)}</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 700, fontVariantNumeric: "tabular-nums", flex: "none", width: 72, textAlign: "right" }}>{fmt(v.secondsWeb + v.secondsMobile)}</span>
+    <div style={{ display: "flex", alignItems: "baseline", gap: 12, fontSize: 13, padding: "1px 0" }}>
+      <span style={{ color: "var(--text-primary)", flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{name}</span>
+      <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none", width: 92, textAlign: "right" }}>Web {fmt(secondsWeb)}</span>
+      <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none", width: 92, textAlign: "right" }}>App {fmt(secondsMobile)}</span>
+      <span style={{ color: "var(--text-primary)", fontWeight: 700, fontVariantNumeric: "tabular-nums", flex: "none", width: 72, textAlign: "right" }}>{fmt(secondsWeb + secondsMobile)}</span>
+    </div>
+  );
+}
+
+// Group a rep's videos + quizzes under the course each belongs to. Per course:
+// the course name, then its videos, then its quizzes.
+function CourseGroups({ videos, quizzes }: { videos: LessonTime[]; quizzes: LessonTime[] }) {
+  const courses = new Map<string, { title: string; videos: LessonTime[]; quizzes: LessonTime[]; total: number }>();
+  const bucket = (item: LessonTime, kind: "videos" | "quizzes") => {
+    const key = item.courseId || "__none__";
+    const g = courses.get(key) || { title: item.courseTitle || "Other", videos: [], quizzes: [], total: 0 };
+    g[kind].push(item);
+    g.total += item.secondsWeb + item.secondsMobile;
+    courses.set(key, g);
+  };
+  videos.forEach((v) => bucket(v, "videos"));
+  quizzes.forEach((q) => bucket(q, "quizzes"));
+  // Busiest course first; within a course, busiest item first.
+  const groups = [...courses.values()].sort((a, b) => b.total - a.total);
+  const byTime = (a: LessonTime, b: LessonTime) => (b.secondsWeb + b.secondsMobile) - (a.secondsWeb + a.secondsMobile);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "10px 0 2px" }}>
+      {groups.map((g, i) => (
+        <div key={i}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6, paddingBottom: 4, borderBottom: "1px solid var(--border-default)" }}>
+            {g.title}
           </div>
-        ))}
-      </div>
+          {g.videos.length > 0 && (
+            <div style={{ marginBottom: g.quizzes.length ? 8 : 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-tertiary)", margin: "2px 0 3px" }}>Videos</div>
+              {[...g.videos].sort(byTime).map((v) => <LessonRow key={v.pageId} name={v.title || "Untitled video"} secondsWeb={v.secondsWeb} secondsMobile={v.secondsMobile} />)}
+            </div>
+          )}
+          {g.quizzes.length > 0 && (
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-tertiary)", margin: "2px 0 3px" }}>Quizzes</div>
+              {[...g.quizzes].sort(byTime).map((q) => <LessonRow key={q.pageId} name={q.title || "Untitled quiz"} secondsWeb={q.secondsWeb} secondsMobile={q.secondsMobile} />)}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -165,8 +197,7 @@ export function ActivityReport() {
                     {isOpen && (r.videos.length + r.quizzes.length) > 0 && (
                       <tr>
                         <td colSpan={7} style={{ padding: "4px 12px 14px", background: "var(--surface-subtle)" }}>
-                          <LessonBreakdown label="Videos watched" items={r.videos} untitled="Untitled video" />
-                          <LessonBreakdown label="Quizzes" items={r.quizzes} untitled="Untitled quiz" />
+                          <CourseGroups videos={r.videos} quizzes={r.quizzes} />
                         </td>
                       </tr>
                     )}
