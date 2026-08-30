@@ -44,6 +44,9 @@ export function UserManagement(props: UserEditorProps) {
   }, [props.deletedUsers]);
   const [notifyUsers, setNotifyUsers] = useState<Record<string, boolean>>({});
   const [notifyUsersBySMS, setNotifyUsersBySMS] = useState<Record<string, boolean>>({});
+  // "Send Login Details" button: a Yes/Cancel confirm, then an email to the user.
+  const [showSendCredsConfirm, setShowSendCredsConfirm] = useState(false);
+  const [sendingCreds, setSendingCreds] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -659,6 +662,41 @@ export function UserManagement(props: UserEditorProps) {
     }
   }
 
+  // Email the selected user their login details (name, email, branch, role,
+  // manager, and the password if one was set on this account). Confirmed via the
+  // Yes/Cancel dialog. The button is disabled while there are unsaved edits, so
+  // the password we pass from the form matches what's actually saved.
+  async function sendLoginDetails() {
+    if (!selectedUser) return;
+    setShowSendCredsConfirm(false);
+    setSendingCreds(true);
+    try {
+      const res = await fetch("/api/users/send-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          // The plaintext password only exists in the form; send it so the email
+          // can show it, else the email tells them to use their existing one.
+          password: (selectedUser.password || "").trim() || null,
+        }),
+      });
+      if (res.ok) {
+        setSaveNotice(`Login details emailed to ${selectedUser.email}`);
+        if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
+        saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 3000);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(`Could not send the email: ${err.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("send-credentials error:", error);
+      alert("Could not send the email. Please try again.");
+    } finally {
+      setSendingCreds(false);
+    }
+  }
+
   return (
     <div className="admin-user-management">
       <style jsx global>{`
@@ -751,6 +789,25 @@ export function UserManagement(props: UserEditorProps) {
               </button>
               <button type="button" className="btn-primary btn-success" onClick={confirmNotifyUpdate} disabled={notifyingUpdate}>
                 {notifyingUpdate ? "Sending..." : "Send notification"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showSendCredsConfirm && selectedUser && (
+        <div className="overlay">
+          <div className="dialog" style={{ width: 460, maxWidth: "90vw" }}>
+            <div className="dialog-title">Send login details</div>
+            <div style={{ fontSize: 14, color: "var(--text-primary)", margin: "12px 0 20px", lineHeight: 1.5 }}>
+              Are you sure you want to send <strong>{selectedUser.name || selectedUser.email}</strong> an email
+              containing their login details?
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" className="btn-secondary btn-cancel" onClick={() => setShowSendCredsConfirm(false)} disabled={sendingCreds}>
+                Cancel
+              </button>
+              <button type="button" className="btn-primary btn-success" onClick={sendLoginDetails} disabled={sendingCreds}>
+                {sendingCreds ? "Sending…" : "Yes"}
               </button>
             </div>
           </div>
@@ -1125,16 +1182,18 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {/* Beside Save: email this user their login details (name, email,
-                      the password if set, role, login link) when you save. */}
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "var(--text-primary)", whiteSpace: "nowrap" }} title="Emails this user their login details (and password, if set) when you save.">
-                    <input
-                      type="checkbox"
-                      checked={!!notifyUsers[selectedUserId]}
-                      onChange={(e) => setNotifyUsers((prev) => ({ ...prev, [selectedUserId]: e.target.checked }))}
-                    />
-                    Notify user by email
-                  </label>
+                  {/* Emails this user their login details on demand. Disabled while
+                      there are unsaved edits, so the emailed password always matches
+                      what's actually saved. */}
+                  <button
+                    type="button"
+                    className="btn-secondary btn-small"
+                    disabled={isDirty || isSaving || sendingCreds || !((selectedUser.email || "").trim()) || !props.users.some((u) => u.id === selectedUser.id)}
+                    title={isDirty ? "Save your changes first" : "Email this user their login details"}
+                    onClick={() => setShowSendCredsConfirm(true)}
+                  >
+                    {sendingCreds ? "Sending…" : "Send Login Details"}
+                  </button>
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || !!roleError || isSaving} onClick={async () => {
                     if (emailError) {
                       emailInputRef.current?.focus();
