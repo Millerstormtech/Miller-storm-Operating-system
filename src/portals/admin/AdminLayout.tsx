@@ -29,6 +29,7 @@ type AdminViewId =
   | "messaging"
   | "leaderboard"
   | "emailConfig"
+  | "repActivity"
   | "teamStructure"
   | "tickets"
   | "announcements";

@@ -17,6 +17,7 @@ export const adminSidebarItems: { id: string; label: string; toggleKey?: string;
   { id: "teamStructure", label: "Organization Chart", toggleKey: "teamStructure", group: "Manage" },
   { id: "appsTools", label: "Tools & Products", toggleKey: "appsTools", group: "Manage" },
   { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig", group: "Manage" },
+  { id: "repActivity", label: "Rep Activity", path: "/admin/rep-activity", group: "Manage" },
 ];
 
 const allSidebarItems = adminSidebarItems;

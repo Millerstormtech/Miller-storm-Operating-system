@@ -12,6 +12,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
+import '../services/activity_tracker.dart';
 import '../theme/app_theme.dart';
 
 /// Order pages to match the folder-grouped module list, exactly like the web:
@@ -358,6 +359,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             }
           }
         });
+
+        // Now that the lesson type is known, tell the usage tracker.
+        _updateActivityContext();
 
         // Load video into WebView if available
         if (lesson != null && lesson['videoUrl'] != null && lesson['videoUrl'].toString().trim().isNotEmpty) {
@@ -1726,9 +1730,24 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     );
   }
 
+  // Tell the usage tracker whether this lesson is a video or a quiz, so time on
+  // it is counted (and the per-video breakdown filled). Cleared on dispose.
+  void _updateActivityContext() {
+    final l = _lesson;
+    if (l == null) { ActivityTracker.instance.clearContext(); return; }
+    if (l['isQuiz'] == true) {
+      ActivityTracker.instance.setContext(kind: 'quiz', courseId: widget.courseId, pageId: l['id']?.toString(), title: l['title']?.toString());
+    } else if ((l['videoUrl'] ?? '').toString().trim().isNotEmpty) {
+      ActivityTracker.instance.setContext(kind: 'video', courseId: widget.courseId, pageId: l['id']?.toString(), title: l['title']?.toString());
+    } else {
+      ActivityTracker.instance.clearContext();
+    }
+  }
+
   @override
   void dispose() {
     _stopVideo();
+    ActivityTracker.instance.clearContext();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();

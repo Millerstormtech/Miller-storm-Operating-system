@@ -8,6 +8,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
+import { setActivityContext, clearActivityContext } from "../../lib/activity/tracker";
 import {
   findVideoPosition,
   mergeVideoPosition,
@@ -454,6 +455,23 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     }
 
   }, [activePageId, savedQuizResults, selectedCourse]);
+
+  // Tell the usage tracker what the rep is doing, so time on a training video vs
+  // a quiz is counted (and the per-video breakdown filled) — see tracker.ts.
+  // Clears back to plain "app" when no lesson is open or the view unmounts.
+  useEffect(() => {
+    const pages = selectedCourse?.pages ?? [];
+    const page = activePageId ? pages.find(p => p.id === activePageId) : undefined;
+    if (!page) { clearActivityContext(); return; }
+    if (page.isQuiz) {
+      setActivityContext({ kind: "quiz", courseId: selectedCourse!.id, pageId: page.id, title: page.title });
+    } else if ((page.videoUrl ?? "").toString().trim()) {
+      setActivityContext({ kind: "video", courseId: selectedCourse!.id, pageId: page.id, title: page.title });
+    } else {
+      clearActivityContext();
+    }
+    return () => clearActivityContext();
+  }, [activePageId, selectedCourse]);
 
   // Resizer functionality
   useEffect(() => {

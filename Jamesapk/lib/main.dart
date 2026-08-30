@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'services/firebase_messaging_service.dart';
 import 'theme/app_theme.dart';
 import 'services/course_category_order.dart';
+import 'services/activity_tracker.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
@@ -131,12 +132,18 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
     // an active user never hits an expired token / "No courses" state.
     WidgetsBinding.instance.addObserver(this);
     api.refreshTokenNow();
+    // Start the usage heartbeat (foreground-only; discards anything while logged
+    // out). Reports time on the app + training videos/quizzes to the server.
+    ActivityTracker.instance.start();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       api.refreshTokenNow();
+      ActivityTracker.instance.onForeground();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      ActivityTracker.instance.onBackground();
     }
   }
 

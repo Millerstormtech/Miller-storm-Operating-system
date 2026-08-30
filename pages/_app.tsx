@@ -4,6 +4,7 @@ import { AuthProvider } from "../src/contexts/AuthContext";
 import { AppDialogs } from "../src/components/AppDialogs";
 import { ViewAsBanner } from "../src/components/ViewAsBanner";
 import { NewCoursePopup } from "../src/components/NewCoursePopup";
+import { ActivityBeacon } from "../src/components/ActivityBeacon";
 import "../src/tokens.css";
 import "../src/styles.css";
 
@@ -25,6 +26,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <AuthProvider>
+      <ActivityBeacon />
       <ViewAsBanner />
       {/* One shared corner pop-up for the whole app (announcements + new-course),
           so it shows on every page of every portal, not just dashboards. */}
