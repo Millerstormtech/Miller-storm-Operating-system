@@ -43,20 +43,12 @@ const ROLE_LABEL: Record<string, string> = {
 const th: React.CSSProperties = { padding: "10px 12px", fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 0.3, textAlign: "right", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14, color: "var(--text-primary)", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", borderTop: "1px solid var(--border-default)" };
 
-// One row: a video/quiz name + its Web time, App time, and total.
-function LessonRow({ name, secondsWeb, secondsMobile }: { name: string; secondsWeb: number; secondsMobile: number }) {
-  return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 12, fontSize: 13, padding: "1px 0" }}>
-      <span style={{ color: "var(--text-primary)", flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{name}</span>
-      <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none", width: 92, textAlign: "right" }}>Web {fmt(secondsWeb)}</span>
-      <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none", width: 92, textAlign: "right" }}>App {fmt(secondsMobile)}</span>
-      <span style={{ color: "var(--text-primary)", fontWeight: 700, fontVariantNumeric: "tabular-nums", flex: "none", width: 72, textAlign: "right" }}>{fmt(secondsWeb + secondsMobile)}</span>
-    </div>
-  );
-}
+const dth: React.CSSProperties = { padding: "6px 10px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-tertiary)", textAlign: "right", whiteSpace: "nowrap" };
+const dtd: React.CSSProperties = { padding: "6px 10px", fontSize: 13, color: "var(--text-muted)", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", borderTop: "1px solid var(--border-default)" };
 
-// Group a rep's videos + quizzes under the course each belongs to. Per course:
-// the course name, then its videos, then its quizzes.
+// A rep's videos + quizzes as a table, grouped by course: a full-width course
+// header row, then a Videos section and a Quizzes section, each item a row with
+// its Web / App / Total time.
 function CourseGroups({ videos, quizzes }: { videos: LessonTime[]; quizzes: LessonTime[] }) {
   const courses = new Map<string, { title: string; videos: LessonTime[]; quizzes: LessonTime[]; total: number }>();
   const bucket = (item: LessonTime, kind: "videos" | "quizzes") => {
@@ -68,31 +60,46 @@ function CourseGroups({ videos, quizzes }: { videos: LessonTime[]; quizzes: Less
   };
   videos.forEach((v) => bucket(v, "videos"));
   quizzes.forEach((q) => bucket(q, "quizzes"));
-  // Busiest course first; within a course, busiest item first.
   const groups = [...courses.values()].sort((a, b) => b.total - a.total);
   const byTime = (a: LessonTime, b: LessonTime) => (b.secondsWeb + b.secondsMobile) - (a.secondsWeb + a.secondsMobile);
 
+  const itemRow = (item: LessonTime, untitled: string) => (
+    <tr key={item.pageId}>
+      <td style={{ ...dtd, textAlign: "left", color: "var(--text-primary)", paddingLeft: 22, overflowWrap: "anywhere", whiteSpace: "normal" }}>{item.title || untitled}</td>
+      <td style={dtd}>{fmt(item.secondsWeb)}</td>
+      <td style={dtd}>{fmt(item.secondsMobile)}</td>
+      <td style={{ ...dtd, color: "var(--text-primary)", fontWeight: 700 }}>{fmt(item.secondsWeb + item.secondsMobile)}</td>
+    </tr>
+  );
+  const sectionRow = (label: string) => (
+    <tr><td colSpan={4} style={{ ...dtd, textAlign: "left", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-tertiary)", paddingTop: 8 }}>{label}</td></tr>
+  );
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "10px 0 2px" }}>
-      {groups.map((g, i) => (
-        <div key={i}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6, paddingBottom: 4, borderBottom: "1px solid var(--border-default)" }}>
-            {g.title}
-          </div>
-          {g.videos.length > 0 && (
-            <div style={{ marginBottom: g.quizzes.length ? 8 : 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-tertiary)", margin: "2px 0 3px" }}>Videos</div>
-              {[...g.videos].sort(byTime).map((v) => <LessonRow key={v.pageId} name={v.title || "Untitled video"} secondsWeb={v.secondsWeb} secondsMobile={v.secondsMobile} />)}
-            </div>
-          )}
-          {g.quizzes.length > 0 && (
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-tertiary)", margin: "2px 0 3px" }}>Quizzes</div>
-              {[...g.quizzes].sort(byTime).map((q) => <LessonRow key={q.pageId} name={q.title || "Untitled quiz"} secondsWeb={q.secondsWeb} secondsMobile={q.secondsMobile} />)}
-            </div>
-          )}
-        </div>
-      ))}
+    <div style={{ overflowX: "auto", border: "1px solid var(--border-default)", borderRadius: 10, margin: "8px 0 2px", background: "var(--surface-default)" }}>
+      <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 520 }}>
+        <thead>
+          <tr>
+            <th style={{ ...dth, textAlign: "left" }}>Lesson</th>
+            <th style={{ ...dth, width: 90 }}>Web</th>
+            <th style={{ ...dth, width: 90 }}>App</th>
+            <th style={{ ...dth, width: 80 }}>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g, i) => (
+            <Fragment key={i}>
+              <tr>
+                <td colSpan={4} style={{ ...dtd, textAlign: "left", fontSize: 14, fontWeight: 700, color: "var(--text-primary)", background: "var(--surface-subtle)" }}>{g.title}</td>
+              </tr>
+              {g.videos.length > 0 && sectionRow("Videos")}
+              {[...g.videos].sort(byTime).map((v) => itemRow(v, "Untitled video"))}
+              {g.quizzes.length > 0 && sectionRow("Quizzes")}
+              {[...g.quizzes].sort(byTime).map((q) => itemRow(q, "Untitled quiz"))}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -130,7 +137,7 @@ export function ActivityReport() {
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "var(--text-primary)" }}>
           <span style={{ fontWeight: 600 }}>Day</span>
           <input type="date" value={date} max={todayUtc()} onChange={(e) => setDate(e.target.value || todayUtc())}
-            style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-default)", color: "var(--text-primary)" }} />
+            style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-default)", color: "var(--text-primary)", colorScheme: "light dark" }} />
         </label>
         <button type="button" onClick={() => load(date)}
           style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--text-primary)" }}>
