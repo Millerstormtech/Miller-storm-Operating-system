@@ -40,8 +40,8 @@ const ROLE_LABEL: Record<string, string> = {
   "sales-team-lead": "Team Lead", sales: "Sales", marketing: "Marketing",
 };
 
-const th: React.CSSProperties = { padding: "10px 12px", fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 0.3, textAlign: "right", whiteSpace: "nowrap" };
-const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14, color: "var(--text-primary)", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", borderTop: "1px solid var(--border-default)" };
+const th: React.CSSProperties = { padding: "10px 12px", fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 0.3, textAlign: "center", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14, color: "var(--text-primary)", textAlign: "center", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", borderTop: "1px solid var(--border-default)" };
 
 const dth: React.CSSProperties = { padding: "6px 10px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-tertiary)", textAlign: "right", whiteSpace: "nowrap" };
 const dtd: React.CSSProperties = { padding: "6px 10px", fontSize: 13, color: "var(--text-muted)", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", borderTop: "1px solid var(--border-default)" };
@@ -164,12 +164,12 @@ export function ActivityReport() {
             <thead>
               <tr style={{ background: "var(--surface-subtle)" }}>
                 <th style={{ ...th, textAlign: "left" }}>Rep</th>
-                <th style={th}>App · Web</th>
-                <th style={th}>App · Mobile</th>
-                <th style={th}>App · Total</th>
+                <th style={th}>Web</th>
+                <th style={th}>App - Mobile</th>
+                <th style={th}>Total</th>
                 <th style={th}>Video</th>
                 <th style={th}>Quiz</th>
-                <th style={{ ...th, textAlign: "center" }}>Detail</th>
+                <th style={th}>Detail</th>
               </tr>
             </thead>
             <tbody>
