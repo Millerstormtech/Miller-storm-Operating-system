@@ -29,11 +29,16 @@ async function handler(
 
   if (req.method === "GET") {
     if (!requireRole(req, res, ["admin", "sales-team-lead", "c-level", "branch-manager"])) return;
-    const { role, managerId, deleted } = req.query;
+    const { role, managerId, deleted, deletionRequested } = req.query;
     const query: any = {};
     if (role) query.role = role;
     if (managerId) query.managerId = managerId;
-    if (deleted === "true") {
+    // Pending account-deletion requests: active accounts flagged by the user,
+    // shown in the admin "Delete Requests" tab.
+    if (deletionRequested === "true") {
+      query.deletionRequested = true;
+      query.deleted = { $ne: true };
+    } else if (deleted === "true") {
       query.deleted = true;
     } else if (deleted === "false" || deleted === undefined) {
       query.deleted = { $ne: true };

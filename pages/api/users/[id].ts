@@ -8,6 +8,8 @@ import { validateUserPayload } from "../../../src/lib/sanitize";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
 import { resolveBusinessPlanForProfileWrite } from "../../../src/lib/businessPlan/profileWrite";
+import { NotificationModel } from "../../../src/lib/models/Notification";
+import { sendPushNotification } from "../../../src/lib/firebase-admin";
 
 export default async function handler(
   req: NextApiRequest,
@@ -254,6 +256,90 @@ export default async function handler(
     // Save feature toggles only
     if (!action && featureToggles) {
       await UserModel.findOneAndUpdate({ id }, { featureToggles });
+      res.status(200).json({ success: true });
+      return;
+    }
+
+    // A user (from the app) asks to have their account deleted. Nothing is
+    // deleted here — the account is flagged and admins are notified; an admin
+    // approves or rejects it. Self or admin may raise it.
+    if (action === 'request-deletion') {
+      const user = await UserModel.findOneAndUpdate(
+        { id },
+        { deletionRequested: true, deletionRequestedAt: new Date() },
+        { returnDocument: "after" }
+      ).lean() as any;
+      if (!user) { res.status(404).json({ error: "User not found" }); return; }
+      // Tell every admin (bell + push) so it shows in the Delete Requests tab.
+      try {
+        const admins = await UserModel.find({ role: "admin", deleted: { $ne: true } }, { id: 1, fcmToken: 1 }).lean() as any[];
+        await Promise.all(admins.map(async (admin) => {
+          await NotificationModel.create({
+            id: `notif-${Date.now()}-${admin.id}`,
+            userId: admin.id,
+            type: "account_deletion_request",
+            title: "🗑️ Account deletion request",
+            message: `${user.name || user.email} requested to delete their account.`,
+            metadata: { targetUserId: user.id },
+          });
+          if (admin.fcmToken) {
+            await sendPushNotification(admin.fcmToken, "🗑️ Account deletion request", `${user.name || user.email} requested to delete their account.`, { type: "account_deletion_request" }).catch(() => {});
+          }
+        }));
+      } catch (e: any) {
+        console.error("[deletion-request] notify admins failed:", e?.message || e);
+      }
+      res.status(200).json({ success: true });
+      return;
+    }
+
+    // Admin APPROVES a deletion request → soft-delete the account (same as a
+    // normal delete), clearing the request flag.
+    if (action === 'approve-deletion') {
+      if (auth.role !== "admin") { res.status(403).json({ error: "Only admins can approve deletions" }); return; }
+      const deletedUser = await UserModel.findOneAndUpdate(
+        { id },
+        { deleted: true, deletedAt: new Date(), deletionRequested: false },
+        { returnDocument: "after" }
+      ).lean() as any;
+      if (!deletedUser) { res.status(404).json({ error: "User not found" }); return; }
+      // Drop them from StormChat groups, exactly like DELETE does.
+      if (deletedUser?._id) {
+        const uid = String(deletedUser._id);
+        const { default: ChatGroup } = await import("../../../src/lib/models/ChatGroup");
+        await ChatGroup.updateMany(
+          { isDirect: { $ne: true } },
+          { $pull: { members: { $in: [uid, id] }, admins: { $in: [uid, id] } } }
+        );
+      }
+      res.status(200).json({ success: true });
+      return;
+    }
+
+    // Admin REJECTS a deletion request → clear the flag and tell the user.
+    if (action === 'reject-deletion') {
+      if (auth.role !== "admin") { res.status(403).json({ error: "Only admins can reject deletions" }); return; }
+      const user = await UserModel.findOneAndUpdate(
+        { id },
+        { deletionRequested: false, deletionRejected: true },
+        { returnDocument: "after" }
+      ).lean() as any;
+      if (!user) { res.status(404).json({ error: "User not found" }); return; }
+      try {
+        await NotificationModel.create({
+          id: `notif-${Date.now()}-${user.id}`,
+          userId: user.id,
+          type: "account_deletion_rejected",
+          title: "Account deletion declined",
+          message: "An admin has declined your account deletion request. Please continue learning!",
+          metadata: {},
+        });
+        if (user.fcmToken) {
+          await sendPushNotification(user.fcmToken, "Account deletion declined", "An admin has declined your account deletion request. Please continue learning!", { type: "account_deletion_rejected" }).catch(() => {});
+        }
+      } catch (e: any) {
+        console.error("[deletion-reject] notify user failed:", e?.message || e);
+      }
       res.status(200).json({ success: true });
       return;
     }

@@ -1,5 +1,7 @@
 import { useState, useRef, ChangeEvent } from "react";
 import { UserProfile } from "../../types";
+import { appConfirm, notify } from "../../lib/appDialogs";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function ProfilePage(props: {
   profile: UserProfile;
@@ -19,6 +21,34 @@ export function ProfilePage(props: {
   const saveNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   function update(next: Partial<UserProfile>) {
     props.onProfileChange({ ...profile, ...next });
+  }
+
+  const { logout } = useAuth();
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  // Request account deletion — nothing is deleted; an admin reviews it. On
+  // success we sign the user out: the account is locked until an admin approves
+  // or rejects it (login shows the pending popup meanwhile).
+  async function requestAccountDeletion() {
+    if (!profile.id) return;
+    if (!(await appConfirm("Send a request to an admin to delete your account? You'll be signed out until an admin approves or rejects it."))) return;
+    setDeleteBusy(true);
+    try {
+      const res = await fetch(`/api/users/${profile.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "request-deletion" }),
+      });
+      if (res.ok) {
+        notify("Your deletion request was sent — signing you out until an admin reviews it.", "success");
+        setTimeout(() => logout(), 1200);
+      } else {
+        notify("Could not send the request. Please try again.", "error");
+        setDeleteBusy(false);
+      }
+    } catch {
+      notify("Could not send the request. Please try again.", "error");
+      setDeleteBusy(false);
+    }
   }
 
   function handlePhotoSelected(event: ChangeEvent<HTMLInputElement>) {
@@ -124,6 +154,17 @@ export function ProfilePage(props: {
           <div className="pf-save-row">
             <button type="button" className="pf-save" onClick={save}>Save</button>
             {saveNotice && <span className="pf-notice">{saveNotice}</span>}
+          </div>
+
+          {/* Account deletion is a REQUEST — an admin reviews and approves it. */}
+          <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border-default)" }}>
+            <button type="button" onClick={requestAccountDeletion} disabled={deleteBusy}
+              style={{ background: "transparent", border: "1px solid rgba(224,20,24,0.5)", color: "#e01418", borderRadius: 10, padding: "10px 18px", fontSize: 14, fontWeight: 700, cursor: deleteBusy ? "default" : "pointer", opacity: deleteBusy ? 0.6 : 1 }}>
+              {deleteBusy ? "Sending…" : "Request Account Deletion"}
+            </button>
+            <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--text-muted)" }}>
+              This sends a request to an admin. Your account stays active until it&rsquo;s approved.
+            </div>
           </div>
         </div>
       </div>

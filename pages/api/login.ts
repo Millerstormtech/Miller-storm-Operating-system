@@ -112,8 +112,16 @@ export default async function handler(
     return;
   }
 
+  // Approved deletion: the account is gone. `code` lets the login screen show a
+  // specific popup instead of a generic error.
   if (user.deleted) {
-    res.status(403).json({ error: "Account has been deleted. Contact administrator." });
+    res.status(403).json({ code: "account_deleted", error: "Your account has been deleted." });
+    return;
+  }
+
+  // Pending deletion request: locked out until an admin approves or rejects it.
+  if (user.deletionRequested) {
+    res.status(403).json({ code: "deletion_pending", error: "Your account deletion request is still pending admin review." });
     return;
   }
 
@@ -133,7 +141,14 @@ export default async function handler(
     return;
   }
 
+  // A rejected deletion request: let them in, but flag it ONCE so the login
+  // screen can show the "request declined — carry on" popup, then clear it.
+  const deletionRejected = !!(user as any).deletionRejected;
+  if (deletionRejected) {
+    await UserModel.updateOne({ id: user.id }, { $set: { deletionRejected: false } });
+  }
+
   setSession(res, { id: user.id as string, role: user.role as string });
   const token = signSession({ id: user.id as string, role: user.role as string });
-  res.status(200).json({ ...sanitizeUser(user), token });
+  res.status(200).json({ ...sanitizeUser(user), token, deletionRejected });
 }

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useRouter } from "next/router";
 import { setToken, clearToken, installAuthFetch, getToken, setViewOnly } from "../lib/authToken";
+import { notify } from "../lib/appDialogs";
 import { enableWebPush } from "../lib/webPush";
 import {
   enableBiometric as enableBio,
@@ -197,7 +198,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Login failed");
+      // Carry the server's `code` (deletion_pending / account_deleted) so the
+      // login screen can show the right popup instead of a generic error.
+      const e: any = new Error(error.error || "Login failed");
+      e.code = error.code;
+      throw e;
     }
 
     const userData = await response.json();
@@ -210,6 +215,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     applySession(user, userData.token || null);
+
+    // Their deletion request was rejected by an admin — welcome them back once.
+    if (userData.deletionRejected) {
+      notify("An admin declined your account deletion request. Please continue your training!", "success");
+    }
 
     // Offer Face ID / fingerprint for next time — but only inside the installed
     // app/PWA (never on the plain web), if the device supports it and it isn't

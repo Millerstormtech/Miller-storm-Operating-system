@@ -15,9 +15,11 @@ export function UserManagementView() {
   const isAdmin = currentUser?.role === "admin";
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [deletedUsers, setDeletedUsers] = useState<UserProfile[]>([]);
-  const [activeTab, setActiveTab] = useState<"users" | "requests" | "deleted">("users");
+  const [deletionRequests, setDeletionRequests] = useState<UserProfile[]>([]);
+  const [activeTab, setActiveTab] = useState<"users" | "requests" | "deleted" | "deletionRequests">("users");
   const [deletedSearch, setDeletedSearch] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
+  const [deletionBusy, setDeletionBusy] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -26,6 +28,8 @@ export function UserManagementView() {
         if (res.ok) setUsers(await res.json());
         const deletedRes = await fetch("/api/users?deleted=true");
         if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
+        const reqRes = await fetch("/api/users?deletionRequested=true");
+        if (reqRes.ok) setDeletionRequests(await reqRes.json());
       } catch (error) {
         console.error("Failed to load users:", error);
       }
@@ -56,14 +60,37 @@ export function UserManagementView() {
 
   async function reloadUsers() {
     try {
-      const [usersRes, deletedRes] = await Promise.all([
+      const [usersRes, deletedRes, reqRes] = await Promise.all([
         fetch("/api/users?deleted=false"),
         fetch("/api/users?deleted=true"),
+        fetch("/api/users?deletionRequested=true"),
       ]);
       if (usersRes.ok) setUsers(await usersRes.json());
       if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
+      if (reqRes.ok) setDeletionRequests(await reqRes.json());
     } catch (error) {
       console.error("Failed to reload users:", error);
+    }
+  }
+
+  // Approve → the account is soft-deleted; Reject → flag cleared + user notified.
+  async function resolveDeletionRequest(userId: string, approve: boolean, name: string) {
+    if (approve && !(await appConfirm(`Approve deletion of ${name}? Their account will be deleted (moved to Deleted Users).`))) return;
+    if (!approve && !(await appConfirm(`Reject ${name}'s deletion request? They'll keep their account and be notified.`))) return;
+    setDeletionBusy(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: approve ? "approve-deletion" : "reject-deletion" }),
+      });
+      if (!res.ok) { alert("Could not update the request. Try again."); return; }
+      await reloadUsers();
+    } catch (e) {
+      console.error("resolveDeletionRequest error:", e);
+      alert("Could not update the request. Try again.");
+    } finally {
+      setDeletionBusy(null);
     }
   }
 
@@ -75,6 +102,7 @@ export function UserManagementView() {
             { id: "users", label: "User Management", badge: 0, badgeBg: "" },
             { id: "requests", label: "User Requests", badge: pendingCount, badgeBg: "#e01418" },
             { id: "deleted", label: "🗑️ Deleted Users", badge: deletedUsers.length, badgeBg: "#7a7f87" },
+            { id: "deletionRequests", label: "🗑️ Delete Requests", badge: deletionRequests.length, badgeBg: "#e01418" },
           ] as const).map((t) => {
             const active = activeTab === t.id;
             return (
@@ -153,6 +181,60 @@ export function UserManagementView() {
           onUsersChange={handleUsersChange}
           onDeletedUsersChange={() => {}}
         />
+      ) : activeTab === "deletionRequests" ? (
+        <div className="panel">
+          <div className="panel-header">Account Deletion Requests</div>
+          <div className="panel-body">
+            {deletionRequests.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🗑️</div>
+                <div style={{ fontSize: 16, fontWeight: 500 }}>No pending deletion requests</div>
+                <div style={{ fontSize: 13, marginTop: 6 }}>When a user requests account deletion from the app, it shows up here for you to approve or reject.</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {deletionRequests.map((user) => {
+                  const busy = deletionBusy === user.id;
+                  return (
+                    <div key={user.id} style={{ padding: 16, backgroundColor: "var(--surface-subtle)", borderLeft: "3px solid #e01418", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{user.name}</div>
+                        <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 4 }}>
+                          {(user.roles || [user.role]).map((r) => (r || "").toUpperCase()).join(", ")} • {user.email}
+                        </div>
+                        {(user as any).deletionRequestedAt && (
+                          <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
+                            Requested: {new Date((user as any).deletionRequestedAt).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-success"
+                          disabled={busy}
+                          onClick={() => resolveDeletionRequest(user.id, false, user.name || user.email)}
+                        >
+                          {busy ? "…" : "Reject"}
+                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            style={{ background: "#dc2626", color: "var(--text-inverse)", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}
+                            onClick={() => resolveDeletionRequest(user.id, true, user.name || user.email)}
+                          >
+                            {busy ? "…" : "Approve & Delete"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       ) : activeTab === "deleted" ? (
         <div className="panel">
           <div className="panel-header">Deleted Users</div>

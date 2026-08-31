@@ -42,6 +42,7 @@ const LoginPage: NextPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [popup, setPopup] = useState<{ title: string; message: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [bioAvailable, setBioAvailable] = useState(false);
   const [bioLabel, setBioLabel] = useState("Face ID");
@@ -82,7 +83,14 @@ const LoginPage: NextPage = () => {
     try {
       await login(email, password);
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      // Account-deletion states get a dedicated popup, not the inline error.
+      if (err.code === "deletion_pending") {
+        setPopup({ title: "Deletion request pending", message: "Your account deletion request is still pending admin review. You can't sign in until an admin approves or rejects it." });
+      } else if (err.code === "account_deleted") {
+        setPopup({ title: "Account deleted", message: "Your account has been deleted. If this is a mistake, contact your administrator." });
+      } else {
+        setError(err.message || "Login failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -90,6 +98,21 @@ const LoginPage: NextPage = () => {
 
   return (
     <AuthShell>
+      {popup && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPopup(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(92vw, 400px)", background: "#fff", borderRadius: 16, padding: 24, boxShadow: "0 24px 60px rgba(0,0,0,0.28)", textAlign: "center" }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🗑️</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 }}>{popup.title}</div>
+            <div style={{ fontSize: 14, color: "#4b5563", lineHeight: 1.5, marginBottom: 20 }}>{popup.message}</div>
+            <button type="button" onClick={() => setPopup(null)} style={{ width: "100%", padding: "11px 18px", borderRadius: 24, border: "none", background: "#CB0002", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>OK</button>
+          </div>
+        </div>
+      )}
       <h1 className="ms-auth__title" style={{ whiteSpace: 'nowrap', fontSize: 'clamp(15px, 4.4vw, 26px)', textWrap: 'nowrap', textTransform: 'none' }}>Miller Storm Operating System</h1>
       <p className="ms-auth__subtitle">Sign in to your Miller Storm account.</p>
 

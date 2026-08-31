@@ -5,6 +5,16 @@ import 'api_client.dart';
 
 const String baseUrl = 'https://millerstorm.tech';
 
+/// A login failure that carries the server's `code` (e.g. deletion_pending /
+/// account_deleted) so the login screen can show the right popup.
+class LoginException implements Exception {
+  final String message;
+  final String? code;
+  LoginException(this.message, {this.code});
+  @override
+  String toString() => message;
+}
+
 class AuthService {
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
@@ -30,7 +40,7 @@ class AuthService {
 
       if (!response.statusCode.toString().startsWith('2')) {
         print('❌ Login failed: ${data['error']}');
-        throw Exception(data['error'] ?? 'Login failed');
+        throw LoginException(data['error'] ?? 'Login failed', code: data['code'] as String?);
       }
 
       print('✅ Login successful');

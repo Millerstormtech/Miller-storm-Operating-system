@@ -176,6 +176,33 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // A simple info popup for the account-deletion states (pending / deleted /
+  // rejected) shown on the login screen.
+  Future<void> _showAccountPopup(String title, String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Text('🗑️', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(title, style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold, fontSize: 17))),
+          ],
+        ),
+        content: Text(message, style: TextStyle(color: AppColors.textLight, height: 1.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK', style: TextStyle(color: Color(0xFFCB0002), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _isLoading = true; _error = ''; });
@@ -194,7 +221,24 @@ class _LoginScreenState extends State<LoginScreen> {
       if (role == 'sales' || role == 'marketing' || role == 'sales-team-lead' || role == 'c-level' || role == 'branch-manager') {
         await AuthService.enableBiometricLogin();
       }
+      // Their deletion request was rejected — welcome them back before landing.
+      if (user['deletionRejected'] == true && mounted) {
+        await _showAccountPopup('Account deletion declined',
+            'An admin has declined your account deletion request. Please continue your training!');
+      }
+      if (!mounted) return;
       _navigateByRole(user);
+    } on LoginException catch (e) {
+      // Account-deletion states get a dedicated popup, not the inline error.
+      if (e.code == 'deletion_pending') {
+        await _showAccountPopup('Deletion request pending',
+            "Your account deletion request is still pending admin review. You can't sign in until an admin approves or rejects it.");
+      } else if (e.code == 'account_deleted') {
+        await _showAccountPopup('Account deleted',
+            'Your account has been deleted. If this is a mistake, contact your administrator.');
+      } else {
+        setState(() { _error = e.message; });
+      }
     } catch (e) {
       setState(() { _error = e.toString().replaceFirst('Exception: ', ''); });
     } finally {

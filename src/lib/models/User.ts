@@ -63,6 +63,14 @@ const userSchema = new Schema(
     testAccount: { type: Boolean, default: false },
     deleted: { type: Boolean, default: false },
     deletedAt: Date,
+    // The user asked (from the app) to have their account deleted. It stays
+    // fully active until an ADMIN approves the request — only then is it
+    // soft-deleted. Admin can also reject, which clears this and notifies them.
+    deletionRequested: { type: Boolean, default: false },
+    deletionRequestedAt: Date,
+    // Set true when an admin REJECTS a deletion request; shown once as a popup on
+    // the user's next login (web + mobile), then cleared.
+    deletionRejected: { type: Boolean, default: false },
     strengths: String,
     weaknesses: String,
     bio: String,
@@ -102,5 +110,12 @@ userSchema.index(
 // member list — never scan the whole users collection.
 userSchema.index({ managerId: 1, role: 1 });
 userSchema.index({ role: 1 });
+
+// In dev, hot-reload keeps the previously compiled schema cached under
+// models.User, so newly added fields (e.g. deletionRequested/deletionRejected)
+// would be silently dropped on write. Drop the cache so the current schema wins.
+if (process.env.NODE_ENV !== "production" && (models as any).User) {
+  delete (models as any).User;
+}
 
 export const UserModel = models.User || model("User", userSchema);

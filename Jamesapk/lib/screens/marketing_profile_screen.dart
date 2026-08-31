@@ -373,11 +373,11 @@ class _MarketingProfileScreenState extends State<MarketingProfileScreen> {
         backgroundColor: _white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Delete Account',
+          'Request Account Deletion',
           style: TextStyle(color: _textDark, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Are you sure you want to delete your account? This action cannot be undone.',
+          'Send a request to an admin to delete your account? Your account stays active until an admin approves the request.',
           style: TextStyle(color: _textDark),
         ),
         actions: [
@@ -387,7 +387,7 @@ class _MarketingProfileScreenState extends State<MarketingProfileScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: _primary, fontWeight: FontWeight.bold)),
+            child: const Text('Send Request', style: TextStyle(color: _primary, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -400,29 +400,46 @@ class _MarketingProfileScreenState extends State<MarketingProfileScreen> {
     });
 
     try {
-      final response = await api.delete(
+      // Don't delete — ask an admin to. The account stays active until approved.
+      final response = await api.patch(
         Uri.parse('https://millerstorm.tech/api/users/$_userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'action': 'request-deletion'}),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 204) {
+      if (response.statusCode == 200) {
+        // Sign out right away: the account is locked until an admin approves or
+        // rejects the request (login shows the pending popup meanwhile).
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account deleted successfully'),
-              backgroundColor: Color(0xFFCB0002),
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: _white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text('Request sent', style: TextStyle(color: _textDark, fontWeight: FontWeight.bold)),
+              content: Text(
+                "Your account deletion request was sent to an admin. You'll be signed out until it's approved or rejected.",
+                style: TextStyle(color: _textDark),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK', style: TextStyle(color: Color(0xFFCB0002), fontWeight: FontWeight.bold)),
+                ),
+              ],
             ),
           );
-          _logout();
+          if (mounted) _logout();
         }
       } else {
-        throw Exception('Failed to delete account: ${response.statusCode}');
+        throw Exception('Failed to send request: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error deleting account: $e');
+      print('Error requesting account deletion: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to delete account: $e'),
+            content: Text('Failed to send request: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -781,7 +798,7 @@ class _MarketingProfileScreenState extends State<MarketingProfileScreen> {
                         ),
                       ),
                       child: const Text(
-                        'Delete Account',
+                        'Request Account Deletion',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -882,7 +899,7 @@ class _MarketingProfileScreenState extends State<MarketingProfileScreen> {
                 ),
               ),
               child: const Text(
-                'Delete Account',
+                'Request Account Deletion',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
