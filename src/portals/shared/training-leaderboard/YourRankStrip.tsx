@@ -22,7 +22,7 @@ export function YourRankStrip({
         style={{
           fontSize: 11,
           fontWeight: 700,
-          color: "#4f46e5",
+          color: "var(--clb-rank-label)",
           textTransform: "uppercase",
           letterSpacing: 0.5,
           marginBottom: 5,
@@ -36,7 +36,7 @@ export function YourRankStrip({
         isNarrow={isNarrow}
         youTag
         milestone={row.credentials ? nextCredential(row.credentials) : null}
-        containerStyle={{ background: "#eef2ff", border: "1.5px solid #c7d2fe", marginBottom: 0 }}
+        containerStyle={{ background: "var(--clb-rank-bg)", border: "1.5px solid var(--clb-rank-border)", marginBottom: 0 }}
         onClick={onClick}
       />
     </div>

@@ -18,7 +18,7 @@ export function MyTeamSummary({
         style={{
           fontSize: 11,
           fontWeight: 700,
-          color: "#0f766e",
+          color: "var(--clb-team-label)",
           textTransform: "uppercase",
           letterSpacing: 0.5,
           marginBottom: 5,
@@ -31,8 +31,8 @@ export function MyTeamSummary({
           display: "flex",
           alignItems: "center",
           gap: 12,
-          background: "#f0fdfa",
-          border: "1.5px solid #99f6e4",
+          background: "var(--clb-team-bg)",
+          border: "1.5px solid var(--clb-team-border)",
           borderRadius: 12,
           padding: isNarrow ? "10px 11px" : "11px 14px",
         }}
@@ -45,7 +45,7 @@ export function MyTeamSummary({
             {summary.size} rep{summary.size === 1 ? "" : "s"} · team average {summary.avgPct}% · rank #{summary.rank} of {summary.teamCount} teams
           </div>
         </div>
-        <ProgressRing pct={summary.avgPct} size={isNarrow ? 46 : 52} holeBg="#f0fdfa" />
+        <ProgressRing pct={summary.avgPct} size={isNarrow ? 46 : 52} holeBg="var(--clb-team-bg)" />
       </div>
     </div>
   );
