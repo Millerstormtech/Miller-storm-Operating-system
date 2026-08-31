@@ -71,6 +71,9 @@ const userSchema = new Schema(
     // Set true when an admin REJECTS a deletion request; shown once as a popup on
     // the user's next login (web + mobile), then cleared.
     deletionRejected: { type: Boolean, default: false },
+    // Set true when the deletion happened by APPROVING the user's own request (vs
+    // an admin deleting them directly), so the login popup can say the right thing.
+    deletionApproved: { type: Boolean, default: false },
     strengths: String,
     weaknesses: String,
     bio: String,

@@ -224,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Their deletion request was rejected — welcome them back before landing.
       if (user['deletionRejected'] == true && mounted) {
         await _showAccountPopup('Account deletion declined',
-            'An admin has declined your account deletion request. Please continue your training!');
+            'Your delete account request has been rejected by the admin. Please log in and continue your training.');
       }
       if (!mounted) return;
       _navigateByRole(user);
@@ -232,10 +232,9 @@ class _LoginScreenState extends State<LoginScreen> {
       // Account-deletion states get a dedicated popup, not the inline error.
       if (e.code == 'deletion_pending') {
         await _showAccountPopup('Deletion request pending',
-            "Your account deletion request is still pending admin review. You can't sign in until an admin approves or rejects it.");
+            'Your delete account request is currently pending. Please wait while the admin reviews your request.');
       } else if (e.code == 'account_deleted') {
-        await _showAccountPopup('Account deleted',
-            'Your account has been deleted. If this is a mistake, contact your administrator.');
+        await _showAccountPopup('Account deleted', e.message);
       } else {
         setState(() { _error = e.message; });
       }

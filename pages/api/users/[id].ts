@@ -299,7 +299,7 @@ export default async function handler(
       if (auth.role !== "admin") { res.status(403).json({ error: "Only admins can approve deletions" }); return; }
       const deletedUser = await UserModel.findOneAndUpdate(
         { id },
-        { deleted: true, deletedAt: new Date(), deletionRequested: false },
+        { deleted: true, deletedAt: new Date(), deletionRequested: false, deletionApproved: true },
         { returnDocument: "after" }
       ).lean() as any;
       if (!deletedUser) { res.status(404).json({ error: "User not found" }); return; }

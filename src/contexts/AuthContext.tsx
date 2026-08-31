@@ -218,7 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Their deletion request was rejected by an admin — welcome them back once.
     if (userData.deletionRejected) {
-      notify("An admin declined your account deletion request. Please continue your training!", "success");
+      notify("Your delete account request has been rejected by the admin. Please log in and continue your training.", "success");
     }
 
     // Offer Face ID / fingerprint for next time — but only inside the installed

@@ -85,9 +85,9 @@ const LoginPage: NextPage = () => {
     } catch (err: any) {
       // Account-deletion states get a dedicated popup, not the inline error.
       if (err.code === "deletion_pending") {
-        setPopup({ title: "Deletion request pending", message: "Your account deletion request is still pending admin review. You can't sign in until an admin approves or rejects it." });
+        setPopup({ title: "Deletion request pending", message: "Your delete account request is currently pending. Please wait while the admin reviews your request." });
       } else if (err.code === "account_deleted") {
-        setPopup({ title: "Account deleted", message: "Your account has been deleted. If this is a mistake, contact your administrator." });
+        setPopup({ title: "Account deleted", message: err.message || "Your account has been deleted." });
       } else {
         setError(err.message || "Login failed");
       }

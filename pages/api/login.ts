@@ -112,10 +112,14 @@ export default async function handler(
     return;
   }
 
-  // Approved deletion: the account is gone. `code` lets the login screen show a
-  // specific popup instead of a generic error.
+  // Account is gone. `code` lets the login screen show a popup; the message
+  // differs depending on whether the user's OWN request was approved or an admin
+  // deleted them directly. The client shows this exact text for that popup.
   if (user.deleted) {
-    res.status(403).json({ code: "account_deleted", error: "Your account has been deleted." });
+    const message = (user as any).deletionApproved
+      ? "Your delete account request has been approved by the admin. Your account is no longer active."
+      : "Your account has been deleted. Contact your administrator.";
+    res.status(403).json({ code: "account_deleted", error: message });
     return;
   }
 
