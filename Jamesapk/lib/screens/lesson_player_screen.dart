@@ -56,7 +56,7 @@ class LessonPlayerScreen extends StatefulWidget {
   State<LessonPlayerScreen> createState() => _LessonPlayerScreenState();
 }
 
-class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
+class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBindingObserver {
   Color get _bg => AppColors.bg;
   Color get _white => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
@@ -95,6 +95,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   // throttles the heartbeat so we only POST every ~10s of real progress.
   int _resumeSeconds = 0;
   int _lastSavedSeconds = 0;
+  // The freshest watched position, pushed from the player JS ~every second into
+  // this Dart field. Read at teardown / background instead of querying the
+  // webview (which _stopVideo() has already cleared — racy). The 10s network
+  // throttle stays; only this in-memory value updates that often.
+  int _currentVideoSeconds = 0;
   
   // Quiz state
   Map<String, int> _selectedAnswers = {};
@@ -121,8 +126,19 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // Backgrounding the app mid-video (e.g. taking a phone call) is the exact
+    // case this feature exists for, so listen for it to flush the position.
+    WidgetsBinding.instance.addObserver(this);
     _initWebViewController();
     _fetchLessonData();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // Force past the 10s throttle: this may be the last chance to save.
+      _saveVideoPosition(_currentVideoSeconds, force: true);
+    }
   }
 
   void _initWebViewController() {
@@ -181,7 +197,10 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         'VideoPositionChannel',
         onMessageReceived: (JavaScriptMessage message) {
           final secs = int.tryParse(message.message.trim());
-          if (secs != null) _saveVideoPosition(secs);
+          if (secs != null) {
+            _currentVideoSeconds = secs; // keep the freshest value for teardown/background
+            _saveVideoPosition(secs);    // network write stays 10s-throttled
+          }
         },
       )
       ..addJavaScriptChannel(
@@ -446,7 +465,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   // Send the furthest second watched to the app, at most every ~5s of progress.
   function reportPosition() {
     if (!window.VideoPositionChannel) return;
-    if (maxTimeWatched - lastReported < 5) return;
+    if (maxTimeWatched - lastReported < 1) return;
     lastReported = maxTimeWatched;
     window.VideoPositionChannel.postMessage(String(Math.floor(maxTimeWatched)));
   }
@@ -556,7 +575,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
   }
   function reportPosition() {
     if (!window.VideoPositionChannel) return;
-    if (maxTimeWatched - lastReported < 5) return;
+    if (maxTimeWatched - lastReported < 1) return;
     lastReported = maxTimeWatched;
     window.VideoPositionChannel.postMessage(String(Math.floor(maxTimeWatched)));
   }
@@ -929,11 +948,16 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
   // web; the server keeps it forward-only via $max, so out-of-order heartbeats
   // are harmless. Its own tiny endpoint — a heartbeat must not pay for the
   // course reload / quiz re-grade / celebrations that /api/progress does.
-  Future<void> _saveVideoPosition(int seconds) async {
+  // `force` bypasses the 10s throttle for the final save at teardown / on
+  // background — otherwise a rep 14:58 in who takes a call would be dropped back
+  // to the last 10s-boundary. Without force it's the normal 10s heartbeat.
+  Future<void> _saveVideoPosition(int seconds, {bool force = false}) async {
     if (_lesson == null || _lesson!['isQuiz'] == true) return;
-    if (seconds < 0) return;
-    // Only write once we've advanced ~10s past the last save (matches web).
-    if (seconds - _lastSavedSeconds < 10) return;
+    // Nothing new to save beyond what we already stored (also covers the
+    // forward-only rule so a stale/duplicate final flush is a no-op).
+    if (seconds <= _lastSavedSeconds) return;
+    // Normal path throttles to ~10s of progress; a forced flush skips it.
+    if (!force && seconds - _lastSavedSeconds < 10) return;
     _lastSavedSeconds = seconds;
     try {
       await api.post(
@@ -1746,6 +1770,12 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
 
   @override
   void dispose() {
+    // Save the final position BEFORE tearing the player down. Read from the Dart
+    // field (updated ~every second), not the webview — _stopVideo() clears the
+    // source, so querying the player here would be racy. Fire-and-forget: the
+    // POST doesn't need this widget alive.
+    _saveVideoPosition(_currentVideoSeconds, force: true);
+    WidgetsBinding.instance.removeObserver(this);
     _stopVideo();
     ActivityTracker.instance.clearContext();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
