@@ -3029,6 +3029,9 @@ function UnlockLessonPanel(props: {
   const [ffBusy, setFfBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  // Courses collapsed in the unlock list (arrow toggles). A search always shows
+  // matches expanded regardless of this set.
+  const [collapsedCourses, setCollapsedCourses] = useState<Set<string>>(new Set());
 
   const memberIds = Array.from(selectedMemberIds);
   const memberCount = memberIds.length;
@@ -3182,31 +3185,54 @@ function UnlockLessonPanel(props: {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {courseBlocks.map(({ course, pages }) => {
-              const keys = pages.map((p: any) => `${course.id}::${p.id}`);
-              const allSel = keys.length > 0 && keys.every((k: string) => selected.has(k));
+              const lessons = pages.filter((p: any) => !p.isQuiz);
+              const quizzes = pages.filter((p: any) => p.isQuiz);
+              const lessonKeys = lessons.map((p: any) => `${course.id}::${p.id}`);
+              const quizKeys = quizzes.map((p: any) => `${course.id}::${p.id}`);
+              const allLessons = lessonKeys.length > 0 && lessonKeys.every((k: string) => selected.has(k));
+              const allQuizzes = quizKeys.length > 0 && quizKeys.every((k: string) => selected.has(k));
+              // A search always shows matches; otherwise honour the collapse toggle.
+              const expanded = q !== '' || !collapsedCourses.has(course.id);
+              const chip = (active: boolean): React.CSSProperties => ({ background: active ? 'rgba(202,0,2,0.16)' : 'rgba(202,0,2,0.08)', color: '#e01418', border: '1px solid rgba(224,20,24,0.35)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' });
               return (
                 <div key={course.id} style={{ background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 16px', background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{course.title}</span>
-                    <button type="button" onClick={() => toggleSelectWholeCourse(course.id, pages)}
-                      style={{ background: allSel ? 'rgba(202,0,2,0.16)' : 'rgba(202,0,2,0.08)', color: '#e01418', border: '1px solid rgba(224,20,24,0.35)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      {allSel ? 'Deselect all' : '🔓 Unlock whole course'}
+                  <div style={{ padding: '12px 16px', background: 'var(--surface-subtle)', borderBottom: expanded ? '1px solid var(--border-default)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    {/* Title + expand/collapse arrow (disabled while searching). */}
+                    <button type="button"
+                      onClick={() => { if (q !== '') return; setCollapsedCourses(prev => { const n = new Set(prev); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n; }); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: 0, cursor: q !== '' ? 'default' : 'pointer', minWidth: 0 }}>
+                      <span style={{ color: 'var(--text-subtle)', fontSize: 12, width: 12, transition: 'transform 0.15s', transform: expanded ? 'rotate(90deg)' : 'none' }}>▸</span>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', textAlign: 'left' }}>{course.title}</span>
                     </button>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {lessons.length > 0 && (
+                        <button type="button" onClick={() => toggleSelectWholeCourse(course.id, lessons)} style={chip(allLessons)}>
+                          {allLessons ? 'Deselect Lessons' : 'Choose all Course Lessons'}
+                        </button>
+                      )}
+                      {quizzes.length > 0 && (
+                        <button type="button" onClick={() => toggleSelectWholeCourse(course.id, quizzes)} style={chip(allQuizzes)}>
+                          {allQuizzes ? 'Deselect Quizzes' : 'Choose all Course Quizzes'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {pages.map((p: any) => {
-                      const key = `${course.id}::${p.id}`;
-                      return (
-                        <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer' }}>
-                          <input type="checkbox" checked={selected.has(key)} onChange={() => toggleSelect(course.id, p.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-subtle)', marginRight: 6 }}>{p.isQuiz ? 'Quiz' : 'Lesson'}</span>
-                            <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>{p.title}</span>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
+                  {expanded && (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {pages.map((p: any) => {
+                        const key = `${course.id}::${p.id}`;
+                        return (
+                          <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={selected.has(key)} onChange={() => toggleSelect(course.id, p.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ fontSize: 11, color: 'var(--text-subtle)', marginRight: 6 }}>{p.isQuiz ? 'Quiz' : 'Lesson'}</span>
+                              <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>{p.title}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -37,6 +37,9 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
   bool _busy = false;
   bool _ffBusy = false;
   String _search = '';
+  // Courses collapsed in the unlock list (arrow toggles). A search always
+  // shows matches expanded regardless of this set.
+  final Set<String> _collapsedCourses = <String>{};
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -185,6 +188,21 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
 
   // Keys of every (published) page in a course — with many members we no longer
   // show per-member unlocked/completed status, so every lesson/quiz is selectable.
+  Widget _chooseChip(String label, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? _blue.withOpacity(0.20) : _blue.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _blue.withOpacity(0.4)),
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _blue)),
+      ),
+    );
+  }
+
   List<String> _pageKeys(String courseId, List pages) => pages
       .map((p) => '$courseId::${(p['id'] ?? '').toString()}')
       .toList();
@@ -525,8 +543,15 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
   }
 
   Widget _courseCard(dynamic course, String cid, List pages) {
-    final pageKeys = _pageKeys(cid, pages);
-    final allSelected = pageKeys.isNotEmpty && pageKeys.every(_selected.contains);
+    final lessons = pages.where((p) => p["isQuiz"] != true).toList();
+    final quizzes = pages.where((p) => p["isQuiz"] == true).toList();
+    final lessonKeys = _pageKeys(cid, lessons);
+    final quizKeys = _pageKeys(cid, quizzes);
+    final allLessons = lessonKeys.isNotEmpty && lessonKeys.every(_selected.contains);
+    final allQuizzes = quizKeys.isNotEmpty && quizKeys.every(_selected.contains);
+    // A search always shows matches expanded; else honour the collapse toggle.
+    final searching = _search.trim().isNotEmpty;
+    final expanded = searching || !_collapsedCourses.contains(cid);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -544,34 +569,43 @@ class _CLevelUnlockLessonScreenState extends State<CLevelUnlockLessonScreen> {
               color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text((course['title'] ?? 'Course').toString(),
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
+                // Title + expand/collapse arrow (disabled while searching).
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: searching ? null : () => setState(() {
+                    if (_collapsedCourses.contains(cid)) { _collapsedCourses.remove(cid); } else { _collapsedCourses.add(cid); }
+                  }),
+                  child: Row(
+                    children: [
+                      Icon(expanded ? Icons.keyboard_arrow_down : Icons.chevron_right, size: 20, color: _textLight),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text((course['title'] ?? 'Course').toString(),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
+                      ),
+                    ],
+                  ),
                 ),
-                if (pageKeys.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => _toggleSelectWholeCourse(cid, pages),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: allSelected ? _blue.withOpacity(0.20) : _blue.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _blue.withOpacity(0.4)),
-                      ),
-                      child: Text(
-                        allSelected ? 'Deselect all' : '🔓 Unlock whole course',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _blue),
-                      ),
-                    ),
+                if (lessons.isNotEmpty || quizzes.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (lessons.isNotEmpty)
+                        _chooseChip(allLessons ? 'Deselect Lessons' : 'Choose all Course Lessons', allLessons, () => _toggleSelectWholeCourse(cid, lessons)),
+                      if (quizzes.isNotEmpty)
+                        _chooseChip(allQuizzes ? 'Deselect Quizzes' : 'Choose all Course Quizzes', allQuizzes, () => _toggleSelectWholeCourse(cid, quizzes)),
+                    ],
                   ),
                 ],
               ],
             ),
           ),
-          ...pages.map<Widget>((p) {
+          if (expanded) ...pages.map<Widget>((p) {
             final pid = (p['id'] ?? '').toString();
             final key = '$cid::$pid';
             return Container(
