@@ -12,7 +12,7 @@ export const marketingSidebarItems = [
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
-  { id: "ai-chat", label: "Jay's AI Clone", toggleKey: "aiAssistant" },
+  { id: "ai-chat", label: "Jayi", toggleKey: "aiAssistant" },
   { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
   { id: "profile", label: "Profile", toggleKey: "profile" },
 ];

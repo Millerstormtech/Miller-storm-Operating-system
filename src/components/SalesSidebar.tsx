@@ -21,7 +21,7 @@ export const salesSidebarItems = [
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "training", label: "Training Center", toggleKey: "training" },
-  { id: "aiChat", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "aiChat", label: "Jayi", toggleKey: "aiChat" },
   { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
   { id: "profile", label: "Profile", toggleKey: "profile" },
 ];

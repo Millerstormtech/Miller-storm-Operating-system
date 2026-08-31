@@ -194,12 +194,12 @@ export function UserManagement(props: UserEditorProps) {
     // Shared
     dashboard: "My Dashboard",
     rankings: "Sales Leaderboard",
-    aiChat: "Jay's AI Clone",
+    aiChat: "Jayi",
     profile: "My Profile",
     training: "Training Center",
     // Marketing
     assets: "Marketing Assets",
-    aiAssistant: "Jay's AI Clone",
+    aiAssistant: "Jayi",
   };
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);

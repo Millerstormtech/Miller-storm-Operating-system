@@ -67,7 +67,7 @@ class _JaysAiCloneScreenState extends State<JaysAiCloneScreen> {
         backgroundColor: _white,
         elevation: 0,
         foregroundColor: _textDark,
-        title: Text("Jay's AI Clone",
+        title: Text("Jayi",
             style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700)),
       ),
       body: _loading

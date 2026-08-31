@@ -20,7 +20,7 @@ export const salesTeamLeadSidebarItems = [
   { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
   { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
   { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
-  { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
+  { id: "jays-ai-clone", label: "Jayi", toggleKey: "aiChat" },
   { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];

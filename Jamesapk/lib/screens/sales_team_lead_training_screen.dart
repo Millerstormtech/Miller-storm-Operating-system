@@ -190,7 +190,7 @@ class _SalesTeamLeadTrainingScreenState extends State<SalesTeamLeadTrainingScree
                               ),
                             )
                           : const Icon(Icons.smart_toy_outlined, color: _primary, size: 28),
-                      tooltip: "Jay's AI Clone",
+                      tooltip: "Jayi",
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       onPressed: () {

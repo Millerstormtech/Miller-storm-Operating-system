@@ -402,7 +402,7 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
                     ),
                   )
                 : const Icon(Icons.smart_toy_outlined, color: _primary, size: 26),
-            tooltip: "Jay's AI Clone",
+            tooltip: "Jayi",
             onPressed: _openJaysAi,
           ),
           IconButton(

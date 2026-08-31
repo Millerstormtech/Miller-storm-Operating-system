@@ -402,7 +402,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                     ),
                   )
                 : const Icon(Icons.smart_toy_outlined, color: _primary, size: 26),
-            tooltip: "Jay's AI Clone",
+            tooltip: "Jayi",
             onPressed: _openJaysAi,
           ),
           IconButton(

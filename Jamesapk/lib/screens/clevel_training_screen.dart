@@ -200,7 +200,7 @@ class _CLevelTrainingScreenState extends State<CLevelTrainingScreen> {
                               ),
                             )
                           : const Icon(Icons.smart_toy_outlined, color: _primary, size: 30),
-                      tooltip: "Jay's AI Clone",
+                      tooltip: "Jayi",
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       onPressed: () {
