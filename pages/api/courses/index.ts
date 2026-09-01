@@ -35,8 +35,17 @@ export default async function handler(
       console.timeEnd("🚀 COURSES API TOTAL");
       return;
     }
-    const userId = auth.sub;
-    const userRole = auth.role;
+    let userId = auth.sub;
+    let userRole = auth.role;
+    // Admins (and leaders who share User Management) can request a SPECIFIC
+    // user's course view via ?forUserId=, so the training progress they see
+    // matches that rep's own Training Center exactly (same access-filtered set,
+    // same page counts). Falls back to the caller when absent/unauthorized.
+    const forUserId = typeof req.query.forUserId === "string" ? req.query.forUserId : "";
+    if (forUserId && (auth.role === "admin" || auth.role === "c-level" || auth.role === "branch-manager")) {
+      const target = await UserModel.findOne({ id: forUserId }, { id: 1, role: 1 }).lean() as any;
+      if (target) { userId = target.id; userRole = target.role; }
+    }
     // Lightweight list mode (mobile course list): strip heavy per-page content
     // (HTML body, transcript, quiz questions) since the list only needs course
     // title/cover/progress — the detail screen re-fetches the full course.

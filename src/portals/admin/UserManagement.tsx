@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { appConfirm } from "../../lib/appDialogs";
 import { UserProfile, FeatureToggles } from "../../types";
-import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
 import { roleDisplayName } from "../../lib/roleLabels";
 import { useAuth } from "../../contexts/AuthContext";
@@ -145,24 +144,16 @@ export function UserManagement(props: UserEditorProps) {
   function openTrainingProgress(user: UserProfile) {
     setTrainingModalData([]);
     setIsLoadingTrainingModal(true);
-    fetch('/api/courses').then(r => r.json()).then(async (courses) => {
+    // Fetch courses AS THIS USER (forUserId) so the course set, names, page
+    // counts AND progress match exactly what their own Training Center shows.
+    // The endpoint access-filters to this user and returns per-course progress
+    // computed the same way, so we use it directly instead of recomputing.
+    fetch(`/api/courses?forUserId=${encodeURIComponent(user.id)}`).then(r => r.json()).then((courses) => {
       const published = (courses || []).filter((c: any) => c.status === 'published');
-      if (!published.length) { setTrainingModalData([]); setIsLoadingTrainingModal(false); return; }
-      const courseIds = published.map((c: any) => c.id).join(',');
-      const progRes = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
-      const progData = progRes.ok ? await progRes.json() : {};
       const rows = published.map((course: any) => {
-        // Count ALL published items (lessons + quizzes), matching the app.
-        const publishedPages = (course.pages || []).filter((p: any) => p.status === 'published');
-        const total = publishedPages.length;
-        const rec = progData[course.id] || {};
-        const completedSet = new Set(rec.completedPages || []);
-        const quizResults = rec.quizResults || [];
-        const completed = publishedPages.filter((p: any) =>
-          p.isQuiz
-            ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
-            : completedSet.has(p.id)
-        ).length;
+        const total = course.progress?.totalLessons
+          ?? (course.pages || []).filter((p: any) => p.status === 'published').length;
+        const completed = course.progress?.completedLessons ?? 0;
         return { course, completed, total, isCompleted: total > 0 && completed >= total };
       }).filter((r: any) => r.total > 0);
       setTrainingModalData(rows);
