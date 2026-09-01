@@ -96,6 +96,21 @@ export function TicketButton() {
   // reply the user hasn't opened shows a red pending badge on the ticket.
   const [readMap, setReadMap] = useState<Record<string, number>>({});
 
+  // Let other UI (e.g. a "Submit Draw Request" sidebar item) open this same
+  // support form, optionally pre-selecting a ticket type.
+  useEffect(() => {
+    function onOpen(e: Event) {
+      const detail = (e as CustomEvent).detail || {};
+      setSelectedId(null);
+      setFields({});
+      setNote("");
+      if (typeof detail.type === "string") setType(detail.type);
+      setOpen(true);
+    }
+    window.addEventListener("open-support-ticket", onOpen);
+    return () => window.removeEventListener("open-support-ticket", onOpen);
+  }, []);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem("ticketReadCounts");

@@ -14,7 +14,7 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // cancelled the feature on 2026-08-05, so the nav entry was removed. The page
 // and its API still exist but nothing links to them; see the note in
 // pages/*/my-tasks.tsx before reviving or deleting them.
-export const salesSidebarItems = [
+export const salesSidebarItems: { id: string; label: string; toggleKey?: string }[] = [
   { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
@@ -23,6 +23,9 @@ export const salesSidebarItems = [
   { id: "training", label: "Training Center", toggleKey: "training" },
   { id: "aiChat", label: "Jayi", toggleKey: "aiChat" },
   { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
+  // Opens the same Support ticket form as the top-bar button, pre-selected to
+  // Draw Request — an action item, not a page (handled in handleNavigation).
+  { id: "submit-draw-request", label: "Submit Draw Request" },
   { id: "profile", label: "Profile", toggleKey: "profile" },
 ];
 
@@ -40,10 +43,16 @@ export function SalesSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesS
   const featureToggles = useFeatureToggles(user?.id);
 
   const sidebarItems = featureToggles
-    ? baseItems.filter(item => featureToggles[item.toggleKey] !== false)
+    ? baseItems.filter(item => !item.toggleKey || featureToggles[item.toggleKey] !== false)
     : baseItems;
 
   function handleNavigation(id: string) {
+    // Not a page: open the shared Support form pre-selected to Draw Request
+    // (same as the top-bar Support button).
+    if (id === "submit-draw-request") {
+      window.dispatchEvent(new CustomEvent("open-support-ticket", { detail: { type: "draw_request" } }));
+      return;
+    }
     // Clicking "Training Center" while already on it should return to the course
     // list. Same-route navigation doesn't remount the page (so a course stays
     // open), so we signal the Training Center to reset to its course grid.
