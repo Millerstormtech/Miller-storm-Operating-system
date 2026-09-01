@@ -6,6 +6,8 @@ import { UserModel } from "../../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { sendSupportTicketCreatedEmail } from "../../../src/lib/email";
 import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES, ownedTicketTypes } from "../../../src/lib/support/categories";
+import { computeSalesRows } from "../../../src/lib/leaderboard/compute";
+import { normName } from "../../../src/lib/leaderboard/identity";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -87,7 +89,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // The email body carries the field values above the free-text note.
   const fieldLines = supportFieldLines(ticketType, fields);
-  const emailNote = fieldLines.length ? `${fieldLines.join("\n")}\n\n${note}` : note;
+  let emailNote = fieldLines.length ? `${fieldLines.join("\n")}\n\n${note}` : note;
+
+  // Draw Request emails carry the requesting rep's last-90-days metrics so the
+  // billing team can judge the draw in context. Best-effort: if the compute
+  // fails or the rep isn't found in the sales data, the metrics are just omitted
+  // (never blocks the ticket, which is already saved above).
+  if (ticketType === "draw_request") {
+    try {
+      const end = new Date();
+      const start = new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const rows = await computeSalesRows({ start, end });
+      const submitterKey = normName(name);
+      const rep = rows.find((r) => normName(r.name) === submitterKey);
+      const block = rep
+        ? [
+            "Sales rep — last 90 days:",
+            `- Verified door knocks: ${(rep.verifiedKnocks || 0).toLocaleString()}`,
+            `- Leads Created: ${(rep.leadsCreated || 0).toLocaleString()}`,
+            `- Claims Filed: ${(rep.filed || 0).toLocaleString()}`,
+            `- Contracts: ${(rep.won || 0).toLocaleString()}`,
+            `- Contract Amount: $${Math.round(rep.revenue || 0).toLocaleString()}`,
+          ].join("\n")
+        : "Sales rep — last 90 days: metrics unavailable for this rep.";
+      emailNote = `${emailNote}\n\n${block}`;
+    } catch (e: any) {
+      console.error("[draw-request] 90-day metrics compute failed:", e?.message || e);
+    }
+  }
 
   try {
     const admins = await UserModel.find(
