@@ -257,6 +257,21 @@ Please review and action it in the Admin Portal → Tickets.
 © 2026-2027 Miller Storm. All Rights Reserved.`,
     variables: ["{{adminName}}", "{{userName}}", "{{userEmail}}", "{{type}}", "{{note}}"],
   },
+  ticketReply: {
+    subject: "New reply on a support ticket — {{type}}",
+    body: `{{intro}}
+
+- Ticket type: {{type}}
+- From: {{senderName}}
+
+Message:
+{{message}}
+
+Open the app to view the full conversation and reply.
+
+© 2026-2027 Miller Storm. All Rights Reserved.`,
+    variables: ["{{intro}}", "{{type}}", "{{senderName}}", "{{message}}"],
+  },
   ticketApproved: {
     subject: "Your ticket has been approved ✅",
     body: `Hi {{name}},

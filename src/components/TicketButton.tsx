@@ -457,9 +457,6 @@ function TicketConversation(props: {
   if (!ticket) return null;
   const messages = ticket.messages ?? [];
   const status = ticket.status;
-  // The raiser replies only when support spoke last. With no replies yet, they
-  // wait for support to ask the first question.
-  const myTurn = messages.length === 0 ? false : !!messages[messages.length - 1].fromStaff;
   const current = STATUS_FLOW.indexOf(status);
 
   return (
@@ -511,22 +508,16 @@ function TicketConversation(props: {
         )}
       </div>
 
-      {/* Reply box — only on the raiser's turn; hides after they send. */}
+      {/* Reply box — either side can send anytime (no turn restriction). */}
       <div style={{ padding: 16, borderTop: "1px solid var(--border-default)" }}>
-        {myTurn ? (
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSend(); }} placeholder="Write a reply…" rows={2} style={{ flex: 1, resize: "vertical", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-default)", color: "var(--text-primary)", fontFamily: "inherit" }} />
-            <label title="Attach photo or video" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 42, height: 42, borderRadius: 999, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", cursor: uploading ? "default" : "pointer", fontSize: 18, flex: "0 0 auto" }}>
-              {uploading ? "⏳" : "📎"}
-              <input type="file" accept="image/*,video/*" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onAttach(f); e.target.value = ""; }} style={{ display: "none" }} />
-            </label>
-            <button onClick={onSend} disabled={sending || !draft.trim()} style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "#fff", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}>{sending ? "Sending…" : "Send"}</button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "var(--surface-subtle)", border: "1px dashed var(--border-default)", color: "var(--text-muted)", fontSize: 13 }}>
-            ⏳ {messages.length === 0 ? "Support will message you here if needed." : "Waiting for support to reply…"}
-          </div>
-        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSend(); }} placeholder="Write a reply…" rows={2} style={{ flex: 1, resize: "vertical", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-default)", color: "var(--text-primary)", fontFamily: "inherit" }} />
+          <label title="Attach photo or video" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 42, height: 42, borderRadius: 999, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", cursor: uploading ? "default" : "pointer", fontSize: 18, flex: "0 0 auto" }}>
+            {uploading ? "⏳" : "📎"}
+            <input type="file" accept="image/*,video/*" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onAttach(f); e.target.value = ""; }} style={{ display: "none" }} />
+          </label>
+          <button onClick={onSend} disabled={sending || !draft.trim()} style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "#fff", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}>{sending ? "Sending…" : "Send"}</button>
+        </div>
       </div>
     </div>
   );

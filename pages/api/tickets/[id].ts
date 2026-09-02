@@ -4,9 +4,9 @@ import { TicketModel } from "../../../src/lib/models/Ticket";
 import { NotificationModel } from "../../../src/lib/models/Notification";
 import { UserModel } from "../../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
-import { sendTicketStatusEmail } from "../../../src/lib/email";
+import { sendTicketStatusEmail, sendTicketReplyEmail } from "../../../src/lib/email";
 import { sendPushNotification } from "../../../src/lib/firebase-admin";
-import { ownedTicketTypes } from "../../../src/lib/support/categories";
+import { ownedTicketTypes, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel } from "../../../src/lib/support/categories";
 
 const STATUS_MSG: Record<string, { title: string; message: string }> = {
   approved: { title: "Ticket Approved ✅", message: "Your ticket has been approved by our team." },
@@ -80,17 +80,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    // Turn-based conversation: you can only send when the OTHER side spoke last.
-    // The original request counts as the raiser's turn, so support asks first.
-    // After you send it's their turn — enforced here so the rule is authoritative,
-    // not just hidden in the UI.
-    const existing = ticket.messages || [];
-    const lastFromStaff = existing.length ? !!existing[existing.length - 1].fromStaff : false;
-    const myTurn = isStaff ? !lastFromStaff : lastFromStaff;
-    if (!myTurn) {
-      res.status(409).json({ error: "It's the other participant's turn to reply." });
-      return;
-    }
+    // Free-form conversation: either side can send any number of messages at any
+    // time (the turn-based restriction was removed — a handler often needs to send
+    // several follow-ups before the rep replies, and vice versa).
 
     // Name the sender: the raiser's own name for their side, else the admin's
     // name (falling back to "Support Team").
@@ -118,8 +110,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Notify the OTHER side about the new reply.
     try {
+      const typeLabel = supportTypeLabel(ticket.type);
       if (isStaff) {
-        // Staff (admin or the type's owner) replied → notify the raiser (bell + push).
+        // Staff (admin or the type's owner) replied → notify the raiser (bell +
+        // push + email), so they know a question/answer is waiting.
         await NotificationModel.create({
           id: `notif-${Date.now()}-${ticket.userId}`,
           userId: ticket.userId,
@@ -135,11 +129,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ticketId: ticket.id,
           });
         }
+        if (ticket.email) {
+          await sendTicketReplyEmail({ to: ticket.email, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: true }).catch(() => {});
+        }
       } else {
         // Raiser replied → notify every admin (bell + push) so a handler sees it.
         const admins = await UserModel.find(
           { role: "admin", deleted: { $ne: true } },
-          { id: 1, fcmToken: 1 }
+          { id: 1, fcmToken: 1, email: 1 }
         ).lean() as any[];
         await Promise.all(admins.map(async (admin) => {
           await NotificationModel.create({
@@ -157,6 +154,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }).catch(() => {});
           }
         }));
+        // Email the handlers: every admin PLUS this type's owner addresses (same
+        // people the original ticket went to), deduped.
+        const adminEmails = admins.map((a) => a.email).filter(Boolean);
+        const ownerEmails = SUPPORT_CATEGORY_BY_KEY[ticket.type]?.emails || [];
+        const recipients = Array.from(new Set([...ownerEmails, ...adminEmails].filter(Boolean).map((e) => e.toLowerCase())));
+        await Promise.all(recipients.map((to) =>
+          sendTicketReplyEmail({ to, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: false }).catch(() => {})
+        ));
       }
     } catch (e: any) {
       console.error("[ticket] reply notify failed:", e?.message || e);

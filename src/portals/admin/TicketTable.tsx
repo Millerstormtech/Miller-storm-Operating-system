@@ -227,10 +227,6 @@ function Conversation(props: {
 }) {
   const { ticket, myId, draft, setDraft, sending, uploading, onSend, onAttach } = props;
   const messages = ticket.messages ?? [];
-  // Turn-based: staff can reply only when the user spoke last (or nobody has yet,
-  // so staff asks the first question). After staff sends, the box hides until the
-  // user answers.
-  const staffTurn = messages.length === 0 ? true : !messages[messages.length - 1].fromStaff;
   return (
     <div style={{ padding: 16, borderTop: "1px solid var(--border-default)" }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 10 }}>
@@ -247,33 +243,27 @@ function Conversation(props: {
           <div style={{ fontSize: 13, color: "var(--text-subtle)", fontStyle: "italic" }}>No replies yet. Start the conversation below.</div>
         )}
       </div>
-      {staffTurn ? (
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSend(); }}
-            placeholder={messages.length === 0 ? "Ask the user a question…" : "Write a reply to the user…"}
-            rows={2}
-            style={{ flex: 1, resize: "vertical", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-default)", color: "var(--text-primary)", fontFamily: "inherit" }}
-          />
-          <label title="Attach photo or video" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 42, height: 42, borderRadius: 999, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", cursor: uploading ? "default" : "pointer", fontSize: 18, flex: "0 0 auto" }}>
-            {uploading ? "⏳" : "📎"}
-            <input type="file" accept="image/*,video/*" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onAttach(f); e.target.value = ""; }} style={{ display: "none" }} />
-          </label>
-          <button
-            onClick={onSend}
-            disabled={sending || !draft.trim()}
-            style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "#fff", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}
-          >
-            {sending ? "Sending…" : "Send"}
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "var(--surface-default)", border: "1px dashed var(--border-default)", color: "var(--text-muted)", fontSize: 13 }}>
-          ⏳ Waiting for {ticket.name} to reply… you can send again once they answer.
-        </div>
-      )}
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSend(); }}
+          placeholder={messages.length === 0 ? "Ask the user a question…" : "Write a reply to the user…"}
+          rows={2}
+          style={{ flex: 1, resize: "vertical", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-default)", color: "var(--text-primary)", fontFamily: "inherit" }}
+        />
+        <label title="Attach photo or video" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 42, height: 42, borderRadius: 999, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", cursor: uploading ? "default" : "pointer", fontSize: 18, flex: "0 0 auto" }}>
+          {uploading ? "⏳" : "📎"}
+          <input type="file" accept="image/*,video/*" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onAttach(f); e.target.value = ""; }} style={{ display: "none" }} />
+        </label>
+        <button
+          onClick={onSend}
+          disabled={sending || !draft.trim()}
+          style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "#fff", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}
+        >
+          {sending ? "Sending…" : "Send"}
+        </button>
+      </div>
     </div>
   );
 }

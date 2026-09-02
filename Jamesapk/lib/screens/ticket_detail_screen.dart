@@ -172,22 +172,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
-  // Turn-based conversation: you can only reply when the LAST message was from the
-  // other side. After you send, it's their turn — your box hides until they answer.
-  // With no replies yet the original request counts as the raiser's turn, so the
-  // raiser waits for support to ask the first question.
-  bool get _myTurn {
-    final msgs = (_ticket['messages'] as List?) ?? const [];
-    if (msgs.isEmpty) return false; // waiting for support to start the chat
-    final last = msgs.last as Map;
-    final senderId = (last['senderId'] ?? '').toString();
-    final raiserId = (_ticket['userId'] ?? '').toString();
-    final lastFromStaff =
-        last['fromStaff'] == true || (senderId.isNotEmpty && senderId != raiserId);
-    // The raiser (mobile viewer) replies only when support spoke last.
-    return lastFromStaff;
-  }
-
   @override
   Widget build(BuildContext context) {
     final status = (_ticket['status'] ?? 'open').toString();
@@ -263,43 +247,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     },
                   ),
           ),
-          // Reply box — only when it's the raiser's turn to answer. After sending,
-          // it hides until support replies again.
-          _myTurn ? _replyBar() : _waitingBar(status),
+          // Reply box — always available; either side can send anytime (the
+          // turn-based restriction was removed).
+          _replyBar(),
         ],
       ),
     );
   }
 
-  Widget _waitingBar(String status) {
-    final msgs = (_ticket['messages'] as List?) ?? const [];
-    final text = msgs.isEmpty
-        ? 'Support will reach out here if they need anything.'
-        : 'Waiting for support to reply…';
-    return SafeArea(
-      top: false,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: _surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.hourglass_empty, size: 16, color: AppColors.textPlaceholder),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(text,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: AppColors.textLight)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _statusBadge(String status) {
     final label = _statusLabel[status] ?? status;
