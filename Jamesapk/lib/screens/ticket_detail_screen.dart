@@ -99,10 +99,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       setState(() => _ticket = Map<String, dynamic>.from(jsonDecode(res.body)));
       _scrollToBottom();
       return true;
-    } else if (res.statusCode == 409) {
-      // Someone replied first — resync so the turn state is correct.
-      _toast('Support just replied — please read the latest message.');
-      _fetch();
     } else {
       _toast('Could not send. Try again.');
     }
