@@ -699,6 +699,19 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 }
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined, color: Color(0xFFCB0002)),
+              title: const Text('Send Document'),
+              subtitle: const Text('PDF, Word, Excel, or any file'),
+              onTap: () async {
+                Navigator.pop(context);
+                final result = await FilePicker.platform.pickFiles();
+                final path = result?.files.single.path;
+                if (path != null) {
+                  _uploadFile(File(path), 'file');
+                }
+              },
+            ),
             // Polls only make sense in groups/subgroups, not 1:1 personal chats.
             if (widget.group['isDirect'] != true)
               ListTile(
@@ -937,6 +950,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
     if (type == 'image' && fileSizeMB > 30) {
       _showError('Image size exceeds 30MB limit');
+      return;
+    }
+    if (type == 'file' && fileSizeMB > 100) {
+      _showError('File size exceeds 100MB limit (${fileSizeMB.toStringAsFixed(1)}MB)');
       return;
     }
 
@@ -2962,6 +2979,48 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               ),
             ),
           ],
+        ),
+      );
+    } else if (messageType == 'file' && message['mediaUrl'] != null) {
+      // A document/PDF/any other file: a tappable card that opens (or downloads)
+      // the file in the browser. Name is the original filename.
+      final fileUrl = message['mediaUrl'].toString().startsWith('http')
+          ? message['mediaUrl'].toString()
+          : 'https://millerstorm.tech${message['mediaUrl']}';
+      final fileName = (message['message'] ?? 'Document').toString();
+      return GestureDetector(
+        onTap: () async {
+          try {
+            await launchUrl(Uri.parse(fileUrl), mode: LaunchMode.externalApplication);
+          } catch (_) {}
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withOpacity(0.35)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.insert_drive_file_outlined, color: textColor, size: 26),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(fileName,
+                        maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor)),
+                    Text('Tap to open',
+                        style: TextStyle(fontSize: 11, color: textColor.withOpacity(0.8))),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

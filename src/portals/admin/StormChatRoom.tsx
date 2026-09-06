@@ -1537,7 +1537,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              title="Attach photo or video"
+              title="Attach a photo, video, or document"
               style={{ ...COMPOSER_BTN, cursor: uploading ? 'not-allowed' : 'pointer' }}
             >
               {uploading ? '⏳' : '📎'}
@@ -1545,7 +1545,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,video/*"
+              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,application/pdf"
               style={{ display: 'none' }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
