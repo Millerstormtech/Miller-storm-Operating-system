@@ -1,7 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:http/http.dart' as http;
 import 'api_client.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -256,6 +255,14 @@ class FirebaseMessagingService {
       return;
     }
 
+    // New training with no specific course (e.g. fast-forward allowed for the
+    // whole team) -> land on the courses list.
+    if (type == 'new_training' && data['courseId'] == null) {
+      print('🚀 Navigating to courses (no courseId)');
+      _navigatorKey!.currentState!.pushNamed('/courses');
+      return;
+    }
+
     // New training (new lesson/quiz published) -> open that course and jump
     // straight into the new lesson/quiz when we know which page it is.
     if (type == 'new_training' && data['courseId'] != null) {
@@ -273,8 +280,9 @@ class FirebaseMessagingService {
       return;
     }
 
-    // Ticket status update -> open the user's tickets screen.
-    if (type == 'ticket_update') {
+    // Ticket status update or a new reply on the conversation -> open the
+    // user's tickets screen (the reply badge/thread lives there).
+    if (type == 'ticket_update' || type == 'ticket_reply') {
       print('🚀 Navigating to tickets');
       _navigatorKey!.currentState!.pushNamed('/tickets');
       return;
