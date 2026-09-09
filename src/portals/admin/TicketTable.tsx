@@ -32,6 +32,18 @@ type Ticket = {
 
 const STATUS_OPTIONS = ["open", "approved", "in_progress", "completed", "rejected"];
 
+// Messages from the raiser that staff hasn't answered yet — i.e. the trailing
+// run of non-staff messages. Once staff replies, the run (and the badge) resets.
+function pendingFromUser(t: Ticket): number {
+  const msgs = t.messages ?? [];
+  let n = 0;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].fromStaff) break;
+    n++;
+  }
+  return n;
+}
+
 export function TicketTable() {
   // Chat bubbles are coloured relative to whoever is looking: only *your own*
   // messages are red/right; everyone else's — the raiser AND other staff — are
@@ -112,7 +124,9 @@ export function TicketTable() {
     } catch {} finally { setUploading(false); }
   };
 
-  const rows = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
+  const filtered = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
+  // Tickets waiting on a staff reply float to the top so nothing gets missed.
+  const rows = [...filtered].sort((a, b) => (pendingFromUser(b) > 0 ? 1 : 0) - (pendingFromUser(a) > 0 ? 1 : 0));
 
   return (
     <div style={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 16, padding: 24, boxShadow: "0 10px 24px rgba(15,23,42,0.06)" }}>
@@ -145,6 +159,7 @@ export function TicketTable() {
               {rows.map((t) => {
                 const c = STATUS_COLOR[t.status] || STATUS_COLOR.open;
                 const count = t.messages?.length ?? 0;
+                const pending = pendingFromUser(t);
                 const open = openId === t.id;
                 return (
                   <Fragment key={t.id}>
@@ -180,12 +195,20 @@ export function TicketTable() {
                         </select>
                       </td>
                       <td style={td}>
-                        <button
-                          onClick={() => { setOpenId(open ? null : t.id); setDraft(""); }}
-                          style={{ padding: "6px 12px", borderRadius: 999, border: "1px solid var(--border-default)", background: open ? "#CB0002" : "var(--surface-subtle)", color: open ? "#fff" : "var(--text-primary)", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
-                        >
-                          💬 {count > 0 ? count : ""}
-                        </button>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <button
+                            onClick={() => { setOpenId(open ? null : t.id); setDraft(""); }}
+                            style={{ padding: "6px 12px", borderRadius: 999, border: pending > 0 && !open ? "1px solid #CB0002" : "1px solid var(--border-default)", background: open ? "#CB0002" : "var(--surface-subtle)", color: open ? "#fff" : "var(--text-primary)", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+                          >
+                            💬 {count > 0 ? count : ""}
+                          </button>
+                          {/* Red badge: the raiser sent messages staff hasn't answered yet. */}
+                          {pending > 0 && (
+                            <span title={`${pending} unanswered message${pending > 1 ? "s" : ""} from ${t.name}`} style={{ background: "#CB0002", color: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(203,0,2,0.35)" }}>
+                              {pending} new
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                     {open && (
