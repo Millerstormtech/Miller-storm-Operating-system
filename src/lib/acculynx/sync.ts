@@ -13,6 +13,7 @@ import { resolveSyncMode } from "./sync-policy";
 import { getWindowRange } from "./windows";
 import { normEmail, normName, normPhone } from "../leaderboard/identity";
 import { celebrateSalesFact } from "../stormbot/sales-celebration";
+import { shouldAlertSyncFailure, alertSyncFailure } from "../ops/syncAlert";
 
 const MAPPING_CFG: MappingConfig = {
   repTypes: REP_TYPES,
@@ -270,7 +271,15 @@ async function syncOneLocation(
   } catch (err: any) {
     result.status = "failed";
     result.error = err?.message ?? String(err);
-    if (!dryRun) { state.lastStatus = "failed"; state.lastError = result.error; }
+    if (!dryRun) {
+      const prevStatus = state.lastStatus;
+      state.lastStatus = "failed"; state.lastError = result.error;
+      // Email an operator only on the SECOND consecutive failure, so a one-off
+      // blip stays quiet but a real outage that survives the next run is seen.
+      if (shouldAlertSyncFailure(prevStatus, "failed")) {
+        await alertSyncFailure("AccuLynx", result.error || "", state.branch);
+      }
+    }
     // NOTE: lastSyncAt is intentionally NOT advanced on failure -> next run repairs.
   } finally {
     if (!dryRun) { state.running = false; await state.save(); }
