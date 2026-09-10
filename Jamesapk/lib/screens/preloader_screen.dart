@@ -51,6 +51,16 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
       controller.setVolume(0);
       controller.addListener(_onTick);
       await controller.play();
+      // Playback is actually running now, so re-arm the safety net for the
+      // clip's full length plus a small buffer. The boot-time 6s timer counted
+      // decoder startup against the ~5s clip — on devices where initialize()
+      // is slow it fired mid-video (or before the first frame), which looked
+      // like the preloader being skipped entirely.
+      _fallbackTimer?.cancel();
+      _fallbackTimer = Timer(
+        controller.value.duration + const Duration(seconds: 2),
+        _goNext,
+      );
       setState(() {});
     } catch (_) {
       // Asset/codec problem — skip straight through after a brief beat.

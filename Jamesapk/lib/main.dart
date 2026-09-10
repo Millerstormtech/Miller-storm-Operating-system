@@ -89,13 +89,23 @@ void main() async {
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
 
+  // Show the UI immediately — the video preloader must start the moment the
+  // Android 12 system splash finishes. Firebase + push setup happens in the
+  // background (unawaited): its permission dialog and FCM/network calls used
+  // to block runApp(), which kept the static system splash on screen for
+  // seconds and made the preloader look like it never played.
+  runApp(const MillerStormApp());
+  unawaited(_initFirebase());
+}
+
+Future<void> _initFirebase() async {
   try {
     // Initialize Firebase with platform-specific options
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print('✅ Firebase initialized');
-    
+
     // Initialize messaging service only if Firebase is initialized
     await FirebaseMessagingService.initialize();
     print('✅ Firebase Messaging initialized');
@@ -103,8 +113,6 @@ void main() async {
     print('⚠️ Firebase initialization failed: $e');
     print('⚠️ App will run without push notifications');
   }
-  
-  runApp(const MillerStormApp());
 }
 
 class MillerStormApp extends StatefulWidget {
