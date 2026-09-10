@@ -1,0 +1,35 @@
+name: Tests
+
+# Why this exists
+# ---------------
+# The repo has real tests over the modules that decide who gets paid (training
+# scoring, leaderboard ranking, sync policy) but NOTHING ran them automatically —
+# the only checks on a PR were the two PR-hygiene guards. A regression in that
+# pure logic could merge fully green. This runs both test runners on every PR
+# and every push to the default branch.
+#
+# There are TWO runners and `npm test` only runs one (see CLAUDE.md): Vitest via
+# a hand-curated allow-list, and node:test for the node-style files Vitest can't
+# execute. `npm run test:all` runs both. Node 24 is required — test:node relies
+# on Node stripping TypeScript types natively.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: npm run test:all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:all
