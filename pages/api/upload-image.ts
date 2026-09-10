@@ -3,6 +3,7 @@ import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import { requireUser, allowMethods } from '../../src/lib/auth';
+import { isAllowedUploadName } from '../../src/lib/uploads/allowedTypes';
 
 export const config = {
   api: {
@@ -36,6 +37,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     maxTotalFileSize: 1000 * 1024 * 1024, // 1000MB
     allowEmptyFiles: false,
     minFileSize: 1, // At least 1 byte
+    // Reject anything the browser would execute (stored XSS from the app's own
+    // origin). Same allowlist as src/lib/uploads/allowedTypes.ts / upload-server.js.
+    filter: ({ originalFilename }) => isAllowedUploadName(originalFilename || ''),
   });
  
   try {
