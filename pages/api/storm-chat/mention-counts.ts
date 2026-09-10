@@ -3,6 +3,7 @@ import { connectMongo } from '../../../src/lib/mongodb';
 import ChatMessage from '../../../src/lib/models/ChatMessage';
 import GroupReadReceipt from '../../../src/lib/models/GroupReadReceipt';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
+import { mongoIdForAppId } from '../../../src/lib/stormchat/appIds';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET'])) return;
@@ -34,9 +35,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       (receipts as any[]).map((r) => [r.groupId, r.lastReadAt])
     );
 
+    // ChatMessage.mentions holds Mongo _ids (see messages/[groupId].ts), while
+    // the session carries the app id. Matching `mentions: auth.sub` never hit,
+    // so mention badges were always 0 until 2026-09-10.
+    const myMongoId = await mongoIdForAppId(userId);
     const orConditions = groupIdArray.map((groupId) => {
       const lastReadAt = lastReadByGroup.get(groupId);
-      const cond: any = { groupId, mentions: userId };
+      const cond: any = { groupId, mentions: { $in: [userId, myMongoId].filter(Boolean) } };
       if (lastReadAt) cond.createdAt = { $gt: lastReadAt };
       return cond;
     });
