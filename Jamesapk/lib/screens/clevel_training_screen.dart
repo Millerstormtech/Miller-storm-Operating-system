@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import '../theme/app_theme.dart';
 import '../widgets/clevel_bottom_nav.dart';
 import 'package:flutter/services.dart';
@@ -194,7 +195,7 @@ class _CLevelTrainingScreenState extends State<CLevelTrainingScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 image: DecorationImage(
-                                  image: NetworkImage(_jayAvatarUrl!),
+                                  image: avatarProvider(_jayAvatarUrl!),
                                   fit: BoxFit.cover,
                                 ),
                               ),

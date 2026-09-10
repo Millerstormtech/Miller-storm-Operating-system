@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -266,7 +267,7 @@ class _SalesTeamLeadAllPlansScreenState extends State<SalesTeamLeadAllPlansScree
                 radius: 24,
                 backgroundColor: _border.withOpacity(0.3),
                 backgroundImage: (member['headshotUrl'] != null && member['headshotUrl'].toString().isNotEmpty)
-                  ? NetworkImage(member['headshotUrl'].toString().startsWith('http') 
+                  ? avatarProvider(member['headshotUrl'].toString().startsWith('http') 
                       ? member['headshotUrl'].toString() 
                       : 'https://millerstorm.tech${member['headshotUrl']}')
                   : null,

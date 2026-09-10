@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -996,7 +997,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   alignment: Alignment.center,
                   child: img.isNotEmpty
                       ? CachedNetworkImage(
-                          imageUrl: 'https://millerstorm.tech$img',
+                          imageUrl: avatarUrl('https://millerstorm.tech$img'),
                           fit: BoxFit.cover, width: 44, height: 44,
                           errorWidget: (_, __, ___) => _initial(name),
                         )
@@ -1179,7 +1180,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
           alignment: Alignment.center,
           child: img.isNotEmpty
               ? CachedNetworkImage(
-                  imageUrl: 'https://millerstorm.tech$img',
+                  imageUrl: avatarUrl('https://millerstorm.tech$img'),
                   fit: BoxFit.cover, width: 40, height: 40,
                   errorWidget: (_, __, ___) => _initial(name),
                 )

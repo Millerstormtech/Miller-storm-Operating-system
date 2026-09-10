@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import 'dart:convert';
@@ -511,7 +512,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                 borderRadius: BorderRadius.circular(8),
                 image: botImageUrl.isNotEmpty
                     ? DecorationImage(
-                        image: NetworkImage(botImageUrl),
+                        image: avatarProvider(botImageUrl),
                         fit: BoxFit.cover,
                       )
                     : null,
@@ -616,7 +617,7 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 image: botImageUrl.isNotEmpty
                                     ? DecorationImage(
-                                        image: NetworkImage(botImageUrl),
+                                        image: avatarProvider(botImageUrl),
                                         fit: BoxFit.cover,
                                       )
                                     : null,

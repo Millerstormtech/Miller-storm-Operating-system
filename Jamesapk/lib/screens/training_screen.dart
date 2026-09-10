@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import '../theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -184,7 +185,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     radius: 26,
                     backgroundColor: _border,
                     backgroundImage: _userHeadshotUrl.isNotEmpty
-                        ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
+                        ? avatarProvider('https://millerstorm.tech$_userHeadshotUrl')
                         : null,
                     child: _userHeadshotUrl.isEmpty
                         ? Icon(Icons.person, size: 28, color: _textLight)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import '../widgets/branch_manager_bottom_nav.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -496,7 +497,7 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
                         radius: 40,
                         backgroundColor: _white.withOpacity(0.2),
                         backgroundImage: _userHeadshotUrl.isNotEmpty
-                            ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
+                            ? avatarProvider('https://millerstorm.tech$_userHeadshotUrl')
                             : null,
                         child: _userHeadshotUrl.isEmpty
                             ? Icon(Icons.person, color: _white, size: 40)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -269,7 +270,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
             CircleAvatar(
               radius: 25,
               backgroundColor: _primary.withOpacity(0.1),
-              backgroundImage: fullImageUrl.isNotEmpty ? NetworkImage(fullImageUrl) : null,
+              backgroundImage: fullImageUrl.isNotEmpty ? avatarProvider(fullImageUrl) : null,
               child: fullImageUrl.isEmpty ? Text(
                 (member['name'] ?? 'U')[0].toUpperCase(),
                 style: const TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 20),

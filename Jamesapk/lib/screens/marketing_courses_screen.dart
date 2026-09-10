@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
@@ -398,7 +399,7 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
                     height: 28,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      image: DecorationImage(image: NetworkImage(_jayAvatarUrl!), fit: BoxFit.cover),
+                      image: DecorationImage(image: avatarProvider(_jayAvatarUrl!), fit: BoxFit.cover),
                     ),
                   )
                 : const Icon(Icons.smart_toy_outlined, color: _primary, size: 26),

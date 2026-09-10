@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/gestures.dart';
@@ -1448,7 +1449,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                       radius: 18,
                                       backgroundColor: const Color(0xFFF3F4F6),
                                       backgroundImage: headshotUrl.isNotEmpty
-                                          ? NetworkImage('https://millerstorm.tech$headshotUrl')
+                                          ? avatarProvider('https://millerstorm.tech$headshotUrl')
                                           : null,
                                       child: headshotUrl.isEmpty
                                           ? Text(
@@ -1492,9 +1493,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: CachedNetworkImage(
-                              imageUrl: (replyingTo['mediaUrl'] as String).startsWith('http')
-                                  ? replyingTo['mediaUrl']
-                                  : 'https://millerstorm.tech${replyingTo['mediaUrl']}',
+                              imageUrl: optimizedImageUrl(
+                                  (replyingTo['mediaUrl'] as String).startsWith('http')
+                                      ? replyingTo['mediaUrl']
+                                      : 'https://millerstorm.tech${replyingTo['mediaUrl']}',
+                                  width: 128),
                               width: 48,
                               height: 48,
                               fit: BoxFit.cover,
@@ -1727,8 +1730,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       alignment: Alignment.center,
       decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF374151)),
       child: url.isNotEmpty
-          ? Image.network(
-              'https://millerstorm.tech$url',
+          ? Image(
+              image: avatarProvider('https://millerstorm.tech$url', width: 64),
               width: 22,
               height: 22,
               fit: BoxFit.cover,
@@ -1956,9 +1959,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                               ClipRRect(
                                                 borderRadius: BorderRadius.circular(4),
                                                 child: CachedNetworkImage(
-                                                  imageUrl: effectiveReplyMediaUrl.startsWith('http')
-                                                      ? effectiveReplyMediaUrl
-                                                      : 'https://millerstorm.tech$effectiveReplyMediaUrl',
+                                                  imageUrl: optimizedImageUrl(
+                                                      effectiveReplyMediaUrl.startsWith('http')
+                                                          ? effectiveReplyMediaUrl
+                                                          : 'https://millerstorm.tech$effectiveReplyMediaUrl',
+                                                      width: 128),
                                                   width: 40,
                                                   height: 40,
                                                   fit: BoxFit.cover,
@@ -2617,7 +2622,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                       radius: 16,
                                       backgroundColor: const Color(0xFFE5E7EB),
                                       backgroundImage: headshot.isNotEmpty
-                                          ? NetworkImage(headshot.startsWith('http')
+                                          ? avatarProvider(headshot.startsWith('http')
                                               ? headshot
                                               : 'https://millerstorm.tech$headshot')
                                           : null,
@@ -2881,7 +2886,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                   },
                 )
               : CachedNetworkImage(
-                  imageUrl: imageUrl,
+                  // Thumbnail through the web optimizer (~30-60KB) — the tap
+                  // opens ImageViewerScreen with the ORIGINAL full-res url.
+                  imageUrl: optimizedImageUrl(imageUrl),
                   width: 200,
                   height: 150,
                   fit: BoxFit.cover,

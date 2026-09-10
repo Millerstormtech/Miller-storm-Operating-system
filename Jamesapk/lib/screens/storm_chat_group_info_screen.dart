@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
@@ -417,7 +418,7 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
                             radius: 22,
                             backgroundColor: const Color(0xFFF3F4F6),
                             backgroundImage: headshotUrl.isNotEmpty
-                                ? NetworkImage('https://millerstorm.tech$headshotUrl')
+                                ? avatarProvider('https://millerstorm.tech$headshotUrl')
                                 : null,
                             child: headshotUrl.isEmpty
                                 ? Text(name[0].toUpperCase(), style: const TextStyle(color: _textLight, fontWeight: FontWeight.w600))

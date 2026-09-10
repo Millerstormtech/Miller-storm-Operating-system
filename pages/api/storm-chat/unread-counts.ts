@@ -36,7 +36,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const orConditions = groupIdArray.map((groupId) => {
       const lastReadAt = lastReadByGroup.get(groupId);
-      const cond: any = { groupId, senderId: { $ne: userId } };
+      // System messages ("X joined the group") are informational: they show in
+      // the thread when the group is opened, but never count as unread — no
+      // red badge on web or mobile for a join.
+      const cond: any = { groupId, senderId: { $ne: userId }, messageType: { $ne: 'system' } };
       if (lastReadAt) cond.createdAt = { $gt: lastReadAt };
       return cond;
     });
