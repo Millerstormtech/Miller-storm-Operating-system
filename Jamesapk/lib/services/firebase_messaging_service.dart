@@ -8,6 +8,7 @@ import 'auth_service.dart';
 import '../firebase_options.dart';
 import '../screens/storm_chat_room_screen.dart';
 import '../screens/course_detail_screen.dart';
+import '../screens/announcements_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -251,7 +252,26 @@ class FirebaseMessagingService {
     // sign-in; a notification tap can never bypass that.
     final storedUser = await AuthService.getStoredUser();
     if (storedUser == null) {
+      // Remember what was tapped: the login handoff preloader replays it after
+      // a successful sign-in, so the user still lands on the tapped content
+      // (e.g. the Announcements list) instead of losing the notification.
+      pendingInitialMessage = message;
       _navigatorKey!.currentState!.pushNamedAndRemoveUntil('/login', (route) => false);
+      return;
+    }
+
+    // Company announcement -> open the Announcements list (compose section
+    // only for the roles that may post — same rule as the web).
+    if (type == 'announcement') {
+      print('🚀 Navigating to announcements');
+      final role = (storedUser['role'] ?? '').toString();
+      _navigatorKey!.currentState!.push(
+        MaterialPageRoute(
+          builder: (_) => AnnouncementsScreen(
+            canCompose: role == 'c-level' || role == 'admin',
+          ),
+        ),
+      );
       return;
     }
 

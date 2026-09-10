@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { NotificationModel } from "../../src/lib/models/Notification";
-import { requireRole, allowMethods } from "../../src/lib/auth";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 import { sendPushNotificationToMultiple } from "../../src/lib/firebase-admin";
 
 // Company-wide announcements. Admin & C-Level only.
@@ -17,11 +17,51 @@ import { sendPushNotificationToMultiple } from "../../src/lib/firebase-admin";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET", "POST"])) return;
 
-  // Only admin and c-level may see the audience size or post.
-  const auth = requireRole(req, res, ["admin", "c-level"]);
+  // History is readable by ANY signed-in user (announcements are company-wide
+  // anyway); composing — and the audience count for the composer — stays with
+  // the leadership roles.
+  const auth = requireUser(req, res);
   if (!auth) return;
 
   await connectMongo();
+
+  // GET ?history=1 → every announcement ever sent, newest first. There is no
+  // separate Announcements collection: each send wrote one Notification row per
+  // recipient sharing the same `notif-<stamp>-<i>` id stamp, so collapse the
+  // rows back to one entry per stamp (per-user rows may have been dismissed and
+  // deleted, but an announcement survives as long as ANY recipient's row does).
+  if (req.method === "GET" && req.query.history) {
+    const history = await NotificationModel.aggregate([
+      { $match: { type: "announcement" } },
+      { $addFields: { stamp: { $arrayElemAt: [{ $split: ["$id", "-"] }, 1] } } },
+      {
+        $group: {
+          _id: "$stamp",
+          title: { $first: "$title" },
+          message: { $first: "$message" },
+          link: { $first: "$metadata.link" },
+          postedByName: { $first: "$metadata.postedByName" },
+          createdAt: { $first: "$createdAt" },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      { $limit: 100 },
+    ]);
+    return res.status(200).json(history.map((h: any) => ({
+      title: h.title,
+      message: h.message,
+      link: h.link || "",
+      postedByName: h.postedByName || "",
+      createdAt: h.createdAt,
+    })));
+  }
+
+  // Composer roles: admin & c-level only — same on web and mobile. Everyone
+  // else (sales, team leads, branch managers) only reads the history above.
+  const composerRoles = ["admin", "c-level"];
+  if (!composerRoles.includes(auth.role || "")) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
 
   // Everyone active — no role/branch/team targeting in phase one.
   const audienceFilter = { deleted: { $ne: true }, suspended: { $ne: true } };

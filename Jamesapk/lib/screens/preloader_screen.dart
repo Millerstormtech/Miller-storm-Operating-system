@@ -86,6 +86,10 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
 
     if (widget.nextRoute != null) {
       Navigator.pushReplacementNamed(context, widget.nextRoute!);
+      // A notification tapped while logged OUT is stashed and replayed here,
+      // right after the login handoff lands on the dashboard — so the tapped
+      // content (e.g. the Announcements list) opens on top of it.
+      FirebaseMessagingService.handlePendingInitialMessage();
       return;
     }
 
