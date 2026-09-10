@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/avatar_url.dart';
 import '../theme/app_theme.dart';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -928,10 +929,14 @@ class _BranchManagerTrainingLeaderboardScreenState extends State<BranchManagerTr
   Widget _avatar(String name, String headshotUrl, double radius) {
     if (headshotUrl.isNotEmpty) {
       final url = headshotUrl.startsWith('http') ? headshotUrl : 'https://millerstorm.tech$headshotUrl';
+      // Initials stay visible under the photo, so a slow or broken image never
+      // leaves a blank grey circle; the optimized 128px URL loads in ~a second.
       return CircleAvatar(
         radius: radius,
-        backgroundColor: _border,
-        backgroundImage: CachedNetworkImageProvider(url),
+        backgroundColor: _avatarColor(name),
+        foregroundImage: avatarProvider(url, width: 128),
+        onForegroundImageError: (_, __) {},
+        child: Text(_initials(name), style: TextStyle(color: _white, fontSize: radius * 0.7, fontWeight: FontWeight.w700)),
       );
     }
     return CircleAvatar(

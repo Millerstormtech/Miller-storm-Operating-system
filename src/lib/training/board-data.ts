@@ -45,9 +45,19 @@ export async function loadBoardData(): Promise<BoardData> {
     suspended: { $ne: true },
     testAccount: { $ne: true },
   })
-    .select("id name email role headshotUrl")
+    .select("id name email role headshotUrl territory managerId")
     .lean();
   const ranked = users.filter((u) => isRankedUser({ role: u.role, email: u.email }));
+
+  // Managers' names, for the team/branch fallback below: a rep the org chart
+  // doesn't know can still be labeled through their assigned team lead.
+  const managerIds = Array.from(new Set(ranked.map((u: any) => u.managerId).filter(Boolean)));
+  const managers = managerIds.length
+    ? await UserModel.find({ id: { $in: managerIds } }).select("id name").lean()
+    : [];
+  const managerNameById = new Map<string, string>(
+    (managers as any[]).map((m) => [String(m.id), (m.name || "").toString()])
+  );
 
   // All progress for these reps across all courses, in one query.
   const userIds = ranked.map((u) => u.id);
@@ -80,8 +90,17 @@ export async function loadBoardData(): Promise<BoardData> {
     const credentials = credentialProgress(courses as any, statsById);
     // Branch and Team resolved by NAME via the org chart, the same source the
     // Sales Leaderboard uses, so labels agree across both boards (master 2.5).
-    const team = resolveTeam(u.name);
-    const branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(u.name) || "";
+    // Reps the chart doesn't know fall back to their profile: team through
+    // their assigned team lead (managerId), branch through the lead or their
+    // own territory — so nobody shows a blank "Branch · Team" line.
+    let team = resolveTeam(u.name);
+    let branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(u.name) || "";
+    if (!team && (u as any).managerId) {
+      const mgrName = managerNameById.get(String((u as any).managerId)) || "";
+      team = resolveTeam(mgrName) || (mgrName ? mgrName.trim().split(/\s+/)[0] : "");
+      if (!branch) branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(mgrName) || "";
+    }
+    if (!branch) branch = ((u as any).territory || "").toString().split("·")[0].trim();
     return {
       id: u.id,
       name: u.name || u.email,
