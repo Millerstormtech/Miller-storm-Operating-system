@@ -199,8 +199,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // group.members and mentionedUserIds are Mongo _ids; Notification.userId
       // must be the app id the bell queries by (see src/lib/stormchat/appIds.ts).
+      // senderIds carries BOTH the app id and the Mongo _id of the sender; the
+      // ids being filtered here are Mongo _ids, so comparing against the bare
+      // app id (as this once did) never excluded the sender and they were
+      // notified about their own message.
       const mentionAppIds = await appIdsForMongoIds(
-        mentionedUserIds.filter((id) => id !== senderId)
+        mentionedUserIds.filter((id) => !senderIds.includes(id))
       );
 
       // 1. Mention notifications
@@ -226,7 +230,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // 2. New message notifications for other members
       const otherMemberIds = group.members.filter(
-        (id: string) => id !== senderId && !mentionedUserIds.includes(id)
+        (id: string) => !senderIds.includes(id) && !mentionedUserIds.includes(id)
       );
       
       console.log(`[CHAT] Notifying ${otherMemberIds.length} other members (Sender: ${senderId})`);
