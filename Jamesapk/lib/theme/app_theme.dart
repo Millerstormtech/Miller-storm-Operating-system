@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Global light/dark theme controller. Holds the user's choice, persists it,
@@ -6,20 +9,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// [AppColors], which flips with [isDark].
 class ThemeController extends ChangeNotifier {
   static const _key = 'ms_dark_mode';
+
+  /// Keeps Android's APP-level night mode in step with the in-app theme, so
+  /// the Android 12+ system splash (drawn before any Dart runs) uses the right
+  /// dark/light background on the NEXT cold start — no white flash before the
+  /// dark video preloader. No-op on iOS/web and on Android < 12.
+  static const _nativeTheme = MethodChannel('millerstorm/native_theme');
+
   bool _isDark = false;
   bool get isDark => _isDark;
+
+  void _syncNativeSplash() {
+    if (kIsWeb || !Platform.isAndroid) return;
+    _nativeTheme.invokeMethod('setNightMode', _isDark).catchError((_) {});
+  }
 
   Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _isDark = prefs.getBool(_key) ?? false;
       notifyListeners();
+      _syncNativeSplash();
     } catch (_) {}
   }
 
   Future<void> toggle() async {
     _isDark = !_isDark;
     notifyListeners();
+    _syncNativeSplash();
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_key, _isDark);
@@ -30,6 +47,7 @@ class ThemeController extends ChangeNotifier {
     if (_isDark == value) return;
     _isDark = value;
     notifyListeners();
+    _syncNativeSplash();
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_key, _isDark);

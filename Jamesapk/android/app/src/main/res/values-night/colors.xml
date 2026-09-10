@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cold-start launch background in dark mode: the app's dark bg, matching
+         the dark animation preloader that follows. -->
+    <color name="launchBackground">#0D0E11</color>
+</resources>

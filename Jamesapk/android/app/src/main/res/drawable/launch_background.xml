@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- Cold-start launch screen for Android < 12: themed background (light, or
+     dark via values-night) with the roof mark centered — the same look as the
+     Android 12+ system splash, so every phone gets the branded preloader. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/launchBackground" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
+    <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+            android:src="@drawable/ic_notification_large" />
+    </item>
 </layer-list>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ system-splash icon: the roof mark (transparent background) with
+     breathing room, so the OS never boxes the launcher icon in a white square.
+     The inset keeps the wide roof wings inside the splash icon's safe area. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_notification_large"
+    android:inset="18%" />

@@ -13,6 +13,9 @@
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <!-- Themed (not system) color: fills the instant between the system
+             splash dismissing and Flutter's first frame with the same light
+             background the video preloader uses — no flash. -->
+        <item name="android:windowBackground">@color/launchBackground</item>
     </style>
 </resources>

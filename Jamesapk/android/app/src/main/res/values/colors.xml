@@ -2,7 +2,8 @@
 <resources>
     <!-- Tint for the status-bar notification icon (Miller Storm red). -->
     <color name="notification_color">#CB0002</color>
-    <!-- Cold-start launch background: the app's dark bg, so there is no white
-         flash before the animation preloader. -->
-    <color name="launchBackground">#0D0E11</color>
+    <!-- Cold-start launch background: matches the app's light bg (values-night
+         overrides it with the dark bg), so there is no color flash before the
+         animation preloader. -->
+    <color name="launchBackground">#F3F4F6</color>
 </resources>
