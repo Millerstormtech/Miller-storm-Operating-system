@@ -584,7 +584,7 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
     if (course == null) return const SizedBox.shrink();
     final title = (course['title'] ?? '').toString();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         onTap: _continuingResume ? null : () => _continueWhereLeftOff(course),
         child: Container(
@@ -668,7 +668,6 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
           ),
         ),
         ),
-        _buildResumeBanner(),
         Expanded(
           child: _filteredCourses.isEmpty
               ? (_loadError && _searchQuery.isEmpty
@@ -746,9 +745,11 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
                           (it) => !(it is Map && it.containsKey('__header__')));
                       return ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: items.length,
+                        // +1: the resume banner scrolls with the list as its first row.
+                        itemCount: items.length + 1,
                         itemBuilder: (context, index) {
-                          final item = items[index];
+                          if (index == 0) return _buildResumeBanner();
+                          final item = items[index - 1];
                           if (item is Map && item.containsKey('__header__')) {
                             return _categoryHeader(item['__header__'] as String);
                           }
@@ -777,7 +778,7 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
                             ),
                           );
                           // Spotlight the first course card for the tour.
-                          if (index == firstCourseIdx) {
+                          if (index - 1 == firstCourseIdx) {
                             return Showcase(
                               key: _kGrid,
                               title: 'Pick a course',
