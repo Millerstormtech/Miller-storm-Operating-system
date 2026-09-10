@@ -11,6 +11,17 @@ import { resolveBusinessPlanForProfileWrite } from "../../../src/lib/businessPla
 import { NotificationModel } from "../../../src/lib/models/Notification";
 import { sendPushNotification } from "../../../src/lib/firebase-admin";
 
+// Fields a non-admin may never change on their own record via PUT. Kept as a
+// deny-list (not an allow-list) so new harmless profile fields keep working
+// without an edit here; anything privileged that is added to the User model
+// must be appended.
+const SELF_EDIT_FORBIDDEN_FIELDS = [
+  "role", "roles", "managerId", "email", "territory", "branches",
+  "suspended", "deleted", "deletedAt",
+  "deletionRequested", "deletionRequestedAt", "deletionRejected", "deletionApproved",
+  "testAccount", "featureToggles", "fastForwardAllowed", "acculynxUserId",
+] as const;
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -77,6 +88,22 @@ export default async function handler(
     }
 
     const { password, passwordHash: _ph, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, id: _id, createdAt: _ca, updatedAt: _ua, __v: _v, _id: _mid, businessPlan: incomingBusinessPlan, ...rest } = payload;
+
+    // A user editing THEMSELVES may only touch profile fields. Everything that
+    // decides what they are allowed to do, who they report to, or whether the
+    // account is active is set by an admin/leader on someone ELSE's record and
+    // must never ride in on a self-write: before this guard (2026-09-10) a rep
+    // could PUT { role: "admin" } to their own id and become an admin on next
+    // login, because `rest` was spread straight into $set below. Email, branch
+    // and territory are included because they are the join keys for AccuLynx /
+    // RepCard matching and the leaderboard, and the phone app already shows them
+    // as "set by your admin". Stripping (rather than rejecting) keeps a stale
+    // client that echoes the whole user object back working unchanged.
+    if (!isAdmin) {
+      for (const key of SELF_EDIT_FORBIDDEN_FIELDS) {
+        delete (rest as Record<string, unknown>)[key];
+      }
+    }
     const plainPassword = typeof password === "string" && password.trim().length > 0 ? password.trim() : null;
 
     // Fetch existing user to get current passwordHash
