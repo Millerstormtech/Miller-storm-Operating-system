@@ -2827,9 +2827,11 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 Playlist Progress
               </button>
-              {/* Unlock Lesson is a company-wide leadership tool (C-Level /
-                  Branch Manager). Sales Team Leads don't get it. */}
-              {props.companyWide && (
+              {/* Unlock Lesson is available to every leadership role. Sales Team
+                  Leads see only their own team here (salesUsers is already scoped
+                  by managerId), and /api/manager/unlock-lesson enforces the same
+                  team check server-side. The phone app has offered this to team
+                  leads since day one; the web used to hide it (2026-09-10). */}
               <button
                 type="button"
                 onClick={() => setTeamProgressView('unlock')}
@@ -2848,7 +2850,6 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 🔓 Unlock Lesson
               </button>
-              )}
             </div>
           </div>
           <div className="panel-body">

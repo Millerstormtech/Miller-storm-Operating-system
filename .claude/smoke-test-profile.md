@@ -55,7 +55,8 @@ The universal process lives in the skill; this file holds the **project-specific
 ## ID gotchas (bite every time)
 - Users have BOTH an app `id` (e.g. `"user-123"`, = `auth.sub`) and a Mongo `_id`. `chatgroups.members/admins` may store either; the messages handler resolves both. Progress/notifications/leaderboard key off the **app `id`**.
 - `courses` pages: `?summary=1` **drops `pages` entirely**; `?list=1` **keeps light page metadata** (id/title/status/folderId/isQuiz) but strips `pages.body/transcript/quizQuestions`. No flag = full heavy payload. Pick the flag by what the screen actually reads.
-- Chat `mentions` are stored as Mongo `_id` strings but the count endpoints query by `auth.sub` — preserve that quirk when seeding, don't "fix" it in a perf pass.
+- Chat `mentions` and `chatgroups.members` are stored as Mongo `_id` strings. Since PR #70 (2026-09-10) `mention-counts` resolves the caller's `_id` via `src/lib/stormchat/appIds.ts` and matches either id, and chat/Storm Bot **notifications are written under the app id** (`appIdsForMongoIds`). Seed `members`/`mentions` with Mongo `_id`s and assert `notifications.userId` is the app id. (Before #70 notifications were written under the `_id` and were invisible to every reader.)
+- Smoke recipe that worked for #70: seed script in the session scratchpad using `mongodb-memory-server` + `bcryptjs` hash `smoke1234` for a seeded team lead; `NODE_ENV=production npx next start -p 6790` with `AUTH_SECRET` set; API probes with minted tokens; Playwright login through the UI as the seeded lead, `redirect_to=%2Fmanager%2FonlineTraining`. **Never `npm run build` while `next start` is running** — the app serves 500s until the build finishes and the server is restarted.
 
 ## Cases worth always checking
 - **Notifications** GET returns **unread only** (both consumers filter unread); seed *newer read* rows to confirm they're withheld and the badge count stays exact.

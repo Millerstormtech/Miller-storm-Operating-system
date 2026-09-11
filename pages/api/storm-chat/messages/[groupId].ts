@@ -9,6 +9,7 @@ import { logToDb } from '../../../../src/lib/models/SystemLog';
 import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canReadMessages, canSendMessage } from '../../../../src/lib/stormchat/access';
+import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST', 'PATCH', 'DELETE'])) return;
@@ -196,32 +197,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Create notifications for group members
       const notificationPromises: Promise<any>[] = [];
 
+      // group.members and mentionedUserIds are Mongo _ids; Notification.userId
+      // must be the app id the bell queries by (see src/lib/stormchat/appIds.ts).
+      // senderIds carries BOTH the app id and the Mongo _id of the sender; the
+      // ids being filtered here are Mongo _ids, so comparing against the bare
+      // app id (as this once did) never excluded the sender and they were
+      // notified about their own message.
+      const mentionAppIds = await appIdsForMongoIds(
+        mentionedUserIds.filter((id) => !senderIds.includes(id))
+      );
+
       // 1. Mention notifications
-      for (const mentionedUserId of mentionedUserIds) {
-        if (mentionedUserId !== senderId) {
-          notificationPromises.push(
-            NotificationModel.create({
-              id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              userId: mentionedUserId,
-              type: 'stormchat_mention',
-              title: `You were mentioned by ${senderName}`,
-              message: messageType === 'text' 
-                ? (message?.substring(0, 100) || 'New message')
-                : (messageType === 'image' ? 'Shared an image' : 'New message'),
-              read: false,
-              metadata: {
-                groupId,
-                groupName: group.name,
-                messageId: newMessage._id
-              }
-            })
-          );
-        }
+      for (const mentionedAppId of mentionAppIds) {
+        notificationPromises.push(
+          NotificationModel.create({
+            id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            userId: mentionedAppId,
+            type: 'stormchat_mention',
+            title: `You were mentioned by ${senderName}`,
+            message: messageType === 'text'
+              ? (message?.substring(0, 100) || 'New message')
+              : (messageType === 'image' ? 'Shared an image' : 'New message'),
+            read: false,
+            metadata: {
+              groupId,
+              groupName: group.name,
+              messageId: newMessage._id
+            }
+          })
+        );
       }
 
       // 2. New message notifications for other members
       const otherMemberIds = group.members.filter(
-        (id: string) => id !== senderId && !mentionedUserIds.includes(id)
+        (id: string) => !senderIds.includes(id) && !mentionedUserIds.includes(id)
       );
       
       console.log(`[CHAT] Notifying ${otherMemberIds.length} other members (Sender: ${senderId})`);
@@ -235,11 +244,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const memberTitle = isDm ? `${senderName} sent you a message` : `New message in ${group.name}`;
       const memberBody = isDm ? bodyPreview : `${senderName}: ${bodyPreview}`;
 
-      for (const memberId of otherMemberIds) {
+      const otherMemberAppIds = await appIdsForMongoIds(otherMemberIds);
+      for (const memberAppId of otherMemberAppIds) {
         notificationPromises.push(
           NotificationModel.create({
             id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            userId: memberId,
+            userId: memberAppId,
             type: 'stormchat_message',
             title: memberTitle,
             message: memberBody,

@@ -10,6 +10,7 @@ import { NotificationModel } from "../models/Notification";
 import { UserModel } from "../models/User";
 import { sendPushNotificationToMultiple } from "../firebase-admin";
 import { logToDb } from "../models/SystemLog";
+import { appIdsForMongoIds } from "../stormchat/appIds";
 
 // Main Chat 2026 (public, top-level, whole company), targeted by _id so renaming
 // the group never breaks this. Verified against production 2026-08-03.
@@ -41,11 +42,14 @@ export async function announce(text: string): Promise<boolean> {
     const memberIds: string[] = group.members || [];
     const title = `New message in ${group.name}`;
     const body = `Miller Storm: ${text.substring(0, 100)}`;
+    // Notification.userId is the app id the bell queries by, not the Mongo _id
+    // in group.members (see src/lib/stormchat/appIds.ts).
+    const memberAppIds = await appIdsForMongoIds(memberIds);
     await Promise.all(
-      memberIds.map((memberId) =>
+      memberAppIds.map((memberAppId) =>
         NotificationModel.create({
           id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          userId: memberId,
+          userId: memberAppId,
           type: "stormchat_message",
           title,
           message: body,
