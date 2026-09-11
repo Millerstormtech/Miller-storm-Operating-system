@@ -41,6 +41,11 @@ class LessonPlayerScreen extends StatefulWidget {
   // Leadership roles (c-level / branch-manager / sales-team-lead) get every
   // lesson unlocked — same as the web's `!isPrivileged` rule.
   final bool isPrivileged;
+  // This rep was individually granted fast-forward by a manager/admin/C-Level
+  // (User.fastForwardAllowed) — same grant the web's video player checks
+  // before clamping seeks. Independent of isPrivileged: a rank-and-file rep
+  // can hold this grant without being leadership.
+  final bool fastForwardAllowed;
 
   const LessonPlayerScreen({
     super.key,
@@ -50,6 +55,7 @@ class LessonPlayerScreen extends StatefulWidget {
     required this.lessonTitle,
     this.playlistModules,
     this.isPrivileged = false,
+    this.fastForwardAllowed = false,
   });
 
   @override
@@ -412,7 +418,12 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
     // Privileged leadership roles may always fast-forward/skip (as if the video
     // were already completed) — matches the web's `isPrivileged || completed`
     // seek rule. Without this, leaders were seek-locked in the app but not on web.
-    isCompleted = isCompleted || widget.isPrivileged;
+    // A rep individually granted fast-forward (widget.fastForwardAllowed) gets
+    // the same bypass — this was missing entirely on mobile: the web checked
+    // User.fastForwardAllowed via useVideoSequence's `allowFastForward`, but
+    // nothing here ever read that flag, so a granted rep was still clamped to
+    // maxTimeWatched and forced to watch the whole video every time.
+    isCompleted = isCompleted || widget.isPrivileged || widget.fastForwardAllowed;
     final isDirectVideo = embedUrl.contains('/uploads/') ||
                           embedUrl.endsWith('.mp4') || 
                           embedUrl.endsWith('.mov') || 
@@ -935,6 +946,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           lessonTitle: prevLesson['title'],
           playlistModules: widget.playlistModules,
           isPrivileged: widget.isPrivileged,
+          fastForwardAllowed: widget.fastForwardAllowed,
         ),
       ),
     );
@@ -1057,6 +1069,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
               lessonTitle: nextLesson['title'],
               playlistModules: widget.playlistModules,
               isPrivileged: widget.isPrivileged,
+              fastForwardAllowed: widget.fastForwardAllowed,
             ),
           ),
         );

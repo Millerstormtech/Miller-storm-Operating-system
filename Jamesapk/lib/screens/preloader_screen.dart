@@ -148,7 +148,16 @@ class _PreloaderScreenState extends State<PreloaderScreen> {
         child: (c != null && c.value.isInitialized)
             ? AspectRatio(
                 aspectRatio: c.value.aspectRatio,
-                child: VideoPlayer(c),
+                // Some devices' H.264 decoders leak the encoder's edge padding
+                // as a thin green line along the frame border. Zoom in ~1% and
+                // clip, so the outermost pixels (where the artifact lives)
+                // never reach the screen.
+                child: ClipRect(
+                  child: Transform.scale(
+                    scale: 1.01,
+                    child: VideoPlayer(c),
+                  ),
+                ),
               )
             : const SizedBox.shrink(),
       ),

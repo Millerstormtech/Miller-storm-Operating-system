@@ -55,6 +55,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   // unlocked and may jump/fast-forward freely — no sequential gating.
   bool get _isPrivileged =>
       _userRole == 'c-level' || _userRole == 'branch-manager' || _userRole == 'sales-team-lead';
+  // A rep individually granted fast-forward by their manager/admin/C-Level
+  // (User.fastForwardAllowed) — same grant the web's TrainingCenter reads via
+  // GET /api/users/:id. Fetched live (not from the cached login session) so a
+  // grant flipped mid-session takes effect without the rep needing to log out.
+  bool _fastForwardAllowed = false;
   Set<String> _completedPageIds = <String>{};
   // Pages a manager manually unlocked for this user (accessible without watching,
   // but NOT counted as completed). Read from the progress API.
@@ -74,6 +79,21 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     super.initState();
     _loadUserId();
     _fetchCourseDetail();
+  }
+
+  Future<void> _loadFastForwardAllowed(String userId) async {
+    if (userId.isEmpty) return;
+    try {
+      final res = await api.get(
+        Uri.parse('https://millerstorm.tech/api/users/$userId'),
+      );
+      if (res.statusCode == 200 && mounted) {
+        final u = jsonDecode(res.body);
+        setState(() => _fastForwardAllowed = u?['fastForwardAllowed'] == true);
+      }
+    } catch (_) {
+      // Leave it false — the seek-lock just stays in place, same as before.
+    }
   }
 
   // Guard so the notification-driven page only auto-opens once, even though
@@ -105,6 +125,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             lessonTitle: page['title']?.toString() ?? 'Lesson',
             playlistModules: widget.playlistModules,
             isPrivileged: _isPrivileged,
+            fastForwardAllowed: _fastForwardAllowed,
           ),
         ),
       );
@@ -118,6 +139,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       _userId = user?['id'] ?? user?['_id'] ?? '';
       _userRole = user?['role']?.toString();
     });
+    _loadFastForwardAllowed(_userId ?? '');
   }
 
   Future<void> _fetchCourseDetail() async {
@@ -332,6 +354,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   lessonTitle: nextLesson['title'] ?? 'Lesson',
                   playlistModules: widget.playlistModules,
                   isPrivileged: _isPrivileged,
+                  fastForwardAllowed: _fastForwardAllowed,
                 ),
               ),
             );
@@ -661,6 +684,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                     lessonTitle: page['title'] ?? 'Lesson ${pageIndex + 1}',
                                     playlistModules: widget.playlistModules,
                                     isPrivileged: _isPrivileged,
+                                    fastForwardAllowed: _fastForwardAllowed,
                                   ),
                                 ),
                               );
