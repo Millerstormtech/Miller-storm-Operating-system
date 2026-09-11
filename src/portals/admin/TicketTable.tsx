@@ -198,13 +198,13 @@ export function TicketTable() {
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                           <button
                             onClick={() => { setOpenId(open ? null : t.id); setDraft(""); }}
-                            style={{ padding: "6px 12px", borderRadius: 999, border: pending > 0 && !open ? "1px solid #CB0002" : "1px solid var(--border-default)", background: open ? "#CB0002" : "var(--surface-subtle)", color: open ? "#fff" : "var(--text-primary)", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+                            style={{ padding: "6px 12px", borderRadius: 999, border: pending > 0 && !open ? "1px solid #CB0002" : "1px solid var(--border-default)", background: open ? "#CB0002" : "var(--surface-subtle)", color: open ? "var(--text-inverse)" : "var(--text-primary)", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
                           >
                             💬 {count > 0 ? count : ""}
                           </button>
                           {/* Red badge: the raiser sent messages staff hasn't answered yet. */}
                           {pending > 0 && (
-                            <span title={`${pending} unanswered message${pending > 1 ? "s" : ""} from ${t.name}`} style={{ background: "#CB0002", color: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(203,0,2,0.35)" }}>
+                            <span title={`${pending} unanswered message${pending > 1 ? "s" : ""} from ${t.name}`} style={{ background: "#CB0002", color: "var(--text-inverse)", borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(203,0,2,0.35)" }}>
                               {pending} new
                             </span>
                           )}
@@ -282,7 +282,7 @@ function Conversation(props: {
         <button
           onClick={onSend}
           disabled={sending || !draft.trim()}
-          style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "#fff", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}
+          style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "var(--text-inverse)", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}
         >
           {sending ? "Sending…" : "Send"}
         </button>
@@ -298,7 +298,7 @@ function Bubble(props: { mine: boolean; fromStaff: boolean; name: string; text: 
   // recognisable as support rather than the raiser.
   return (
     <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
-      <div style={{ maxWidth: "78%", background: mine ? "#CB0002" : "var(--surface-default)", color: mine ? "#fff" : "var(--text-primary)", border: mine ? "none" : "1px solid var(--border-default)", borderRadius: 12, padding: "8px 12px" }}>
+      <div style={{ maxWidth: "78%", background: mine ? "#CB0002" : "var(--surface-default)", color: mine ? "var(--text-inverse)" : "var(--text-primary)", border: mine ? "none" : "1px solid var(--border-default)", borderRadius: 12, padding: "8px 12px" }}>
         <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85, marginBottom: 2 }}>
           {fromStaff ? `${name} · Support` : name}
         </div>

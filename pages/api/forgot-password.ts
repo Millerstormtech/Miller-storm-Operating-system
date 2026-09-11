@@ -5,12 +5,21 @@ import { UserModel } from "../../src/lib/models/User";
 import { PasswordResetModel } from "../../src/lib/models/PasswordReset";
 import { sendPasswordResetEmail } from "../../src/lib/email";
 import { allowMethods } from "../../src/lib/auth";
+import { rateLimit, clientIp } from "../../src/lib/rateLimit";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (!allowMethods(req, res, ["POST"])) return;
+
+  // Throttle so this cannot be used to blast reset emails or probe accounts.
+  const limit = rateLimit(`forgot:ip:${clientIp(req)}`, 10, 15 * 60 * 1000);
+  if (!limit.ok) {
+    res.setHeader("Retry-After", String(limit.retryAfterSec));
+    res.status(429).json({ error: "Too many requests. Please wait a few minutes and try again." });
+    return;
+  }
 
   await connectMongo();
 

@@ -105,11 +105,11 @@ const LoginPage: NextPage = () => {
           onClick={() => setPopup(null)}
           style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(92vw, 400px)", background: "#fff", borderRadius: 16, padding: 24, boxShadow: "0 24px 60px rgba(0,0,0,0.28)", textAlign: "center" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(92vw, 400px)", background: "var(--surface-default)", borderRadius: 16, padding: 24, boxShadow: "0 24px 60px rgba(0,0,0,0.28)", textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🗑️</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 }}>{popup.title}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>{popup.title}</div>
             <div style={{ fontSize: 14, color: "#4b5563", lineHeight: 1.5, marginBottom: 20 }}>{popup.message}</div>
-            <button type="button" onClick={() => setPopup(null)} style={{ width: "100%", padding: "11px 18px", borderRadius: 24, border: "none", background: "#CB0002", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>OK</button>
+            <button type="button" onClick={() => setPopup(null)} style={{ width: "100%", padding: "11px 18px", borderRadius: 24, border: "none", background: "#CB0002", color: "var(--text-inverse)", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>OK</button>
           </div>
         </div>
       )}

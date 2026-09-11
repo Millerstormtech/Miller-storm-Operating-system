@@ -31,7 +31,12 @@ module.exports = {
       max_memory_restart: '2G',
       env: {
         NODE_ENV: 'production',
-        PORT: 6788
+        PORT: 6788,
+        // The upload server now requires the same session token the app issues,
+        // so it needs AUTH_SECRET. It also reads .env at startup as a fallback,
+        // but set it here too so the requirement is explicit and it never starts
+        // unauthenticated. Must match the app's AUTH_SECRET.
+        AUTH_SECRET: process.env.AUTH_SECRET
       },
       error_file: '/var/www/millerstorm/logs/upload-err.log',
       out_file: '/var/www/millerstorm/logs/upload-out.log',
@@ -118,6 +123,30 @@ module.exports = {
       },
       error_file: '/var/www/millerstorm/logs/monthly-king-err.log',
       out_file: '/var/www/millerstorm/logs/monthly-king-out.log',
+      merge_logs: true,
+      time: true
+    },
+    {
+      // Nightly MongoDB backup. There was NO backup of any kind before this: a
+      // disk failure would lose every training record, quiz result, and chat.
+      // Dumps each collection to gzipped NDJSON under BACKUP_DIR (default
+      // /var/www/millerstorm-backups, OUTSIDE the app dir) and prunes to
+      // BACKUP_RETAIN_DAYS. Runs daily at BACKUP_HOUR (Central). It uses the
+      // Mongo driver, not mongodump, so no extra binary is needed.
+      // IMPORTANT: this protects against data corruption/accidental deletes,
+      // not disk loss, until the folder is copied OFF the box — set up an
+      // off-server sync (rclone/scp/S3) of BACKUP_DIR as a follow-up.
+      name: 'mongo-backup',
+      script: 'scripts/backup-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/millerstorm/logs/mongo-backup-err.log',
+      out_file: '/var/www/millerstorm/logs/mongo-backup-out.log',
       merge_logs: true,
       time: true
     }

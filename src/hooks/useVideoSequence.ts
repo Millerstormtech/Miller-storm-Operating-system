@@ -560,7 +560,7 @@ export async function initVideoSequence(
       btn.type = 'button';
       btn.title = 'Replay';
       btn.style.cssText =
-        'width:72px;height:72px;border-radius:50%;border:none;background:rgba(0,0,0,0.62);color:#fff;' +
+        'width:72px;height:72px;border-radius:50%;border:none;background:rgba(0,0,0,0.62);color:var(--text-inverse);' +
         'cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;';
       btn.onmouseover = () => { btn.style.background = 'rgba(0,0,0,0.8)'; };
       btn.onmouseout = () => { btn.style.background = 'rgba(0,0,0,0.62)'; };

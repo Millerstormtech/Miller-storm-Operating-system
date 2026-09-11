@@ -416,7 +416,7 @@ export function TicketButton() {
                           <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>{supportTypeLabel(t.type)}</span>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             {pending > 0 && (
-                              <span style={{ background: "#CB0002", color: "#fff", borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+                              <span style={{ background: "#CB0002", color: "var(--text-inverse)", borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
                                 {pending} new
                               </span>
                             )}
@@ -469,7 +469,7 @@ function TicketConversation(props: {
             {STATUS_FLOW.map((s, i) => (
               <div key={s} style={{ display: "flex", alignItems: "center", flex: i < STATUS_FLOW.length - 1 ? 1 : "0 0 auto" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: i <= current ? "#CB0002" : "var(--surface-subtle)", border: `2px solid ${i <= current ? "#CB0002" : "var(--border-default)"}`, color: "#fff", fontSize: 11 }}>{i <= current ? "✓" : ""}</div>
+                  <div style={{ width: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: i <= current ? "#CB0002" : "var(--surface-subtle)", border: `2px solid ${i <= current ? "#CB0002" : "var(--border-default)"}`, color: "var(--text-inverse)", fontSize: 11 }}>{i <= current ? "✓" : ""}</div>
                   <span style={{ fontSize: 9, fontWeight: i === current ? 700 : 500, color: i <= current ? "var(--text-primary)" : "var(--text-subtle)" }}>{STATUS_LABEL[s]}</span>
                 </div>
                 {i < STATUS_FLOW.length - 1 && <div style={{ flex: 1, height: 2, margin: "0 4px 16px", background: i < current ? "#CB0002" : "var(--border-default)" }} />}
@@ -490,7 +490,7 @@ function TicketConversation(props: {
             const mine = !m.fromStaff;
             return (
               <div key={m._id || i} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
-                <div style={{ maxWidth: "80%", background: mine ? "#CB0002" : "var(--surface-subtle)", color: mine ? "#fff" : "var(--text-primary)", border: mine ? "none" : "1px solid var(--border-default)", borderRadius: 12, padding: "8px 12px" }}>
+                <div style={{ maxWidth: "80%", background: mine ? "#CB0002" : "var(--surface-subtle)", color: mine ? "var(--text-inverse)" : "var(--text-primary)", border: mine ? "none" : "1px solid var(--border-default)", borderRadius: 12, padding: "8px 12px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85, marginBottom: 2 }}>{m.fromStaff ? `${m.senderName} · Support` : m.senderName}</div>
                   {m.mediaUrl && (m.mediaType === "video" ? (
                     <video src={m.mediaUrl} controls style={{ maxWidth: "100%", maxHeight: 240, borderRadius: 8, marginBottom: m.text ? 6 : 0, display: "block" }} />
@@ -516,7 +516,7 @@ function TicketConversation(props: {
             {uploading ? "⏳" : "📎"}
             <input type="file" accept="image/*,video/*" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onAttach(f); e.target.value = ""; }} style={{ display: "none" }} />
           </label>
-          <button onClick={onSend} disabled={sending || !draft.trim()} style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "#fff", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}>{sending ? "Sending…" : "Send"}</button>
+          <button onClick={onSend} disabled={sending || !draft.trim()} style={{ padding: "10px 18px", borderRadius: 999, border: "none", background: sending || !draft.trim() ? "var(--border-default)" : "#CB0002", color: "var(--text-inverse)", fontSize: 14, fontWeight: 700, cursor: sending || !draft.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}>{sending ? "Sending…" : "Send"}</button>
         </div>
       </div>
     </div>

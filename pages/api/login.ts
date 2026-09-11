@@ -4,6 +4,7 @@ import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { exactCaseInsensitive } from "../../src/lib/sanitize";
 import { setSession, signSession } from "../../src/lib/auth";
+import { rateLimit, clientIp } from "../../src/lib/rateLimit";
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,11 +27,32 @@ export default async function handler(
     return;
   }
 
-  await connectMongo();
   const { email, password } = req.body || {};
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const normalizedPassword =
     typeof password === "string" ? password.trim() : "";
+
+  // Throttle brute-force / credential-stuffing: per IP, and per targeted email.
+  // The per-IP bucket stops one machine trying many accounts; the per-email
+  // bucket stops a botnet hammering one account. Bursty real logins (a typo or
+  // two) stay well under these ceilings.
+  const ip = clientIp(req);
+  const ipLimit = rateLimit(`login:ip:${ip}`, 20, 5 * 60 * 1000); // 20 / 5 min / IP
+  if (!ipLimit.ok) {
+    res.setHeader("Retry-After", String(ipLimit.retryAfterSec));
+    res.status(429).json({ error: "Too many attempts. Please wait a moment and try again." });
+    return;
+  }
+  if (normalizedEmail) {
+    const emailLimit = rateLimit(`login:email:${normalizedEmail}`, 10, 5 * 60 * 1000); // 10 / 5 min / account
+    if (!emailLimit.ok) {
+      res.setHeader("Retry-After", String(emailLimit.retryAfterSec));
+      res.status(429).json({ error: "Too many attempts. Please wait a moment and try again." });
+      return;
+    }
+  }
+
+  await connectMongo();
   const moduleKeys = [
     "dashboard",
     "userManagement",
@@ -108,7 +130,9 @@ export default async function handler(
   const user = await UserModel.findOne({ email: exactCaseInsensitive(normalizedEmail) }).lean();
 
   if (!user) {
-    res.status(404).json({ error: "User not found" });
+    // Same status and message as a wrong password below, so an attacker cannot
+    // tell a registered email from an unregistered one (account enumeration).
+    res.status(401).json({ error: "Invalid credentials" });
     return;
   }
 

@@ -8,6 +8,7 @@ import { buildUserIndex, extractKnockDrafts } from "./mapping";
 import { normEmail, normPhone } from "../leaderboard/identity";
 import { REPCARD_LEADERBOARD_ID, REPCARD_LEADERBOARD_NAME, REPCARD_VDK_FIELD } from "./config";
 import { getWindowRange } from "../acculynx/windows";
+import { shouldAlertSyncFailure, alertSyncFailure } from "../ops/syncAlert";
 
 function dateOnly(d: Date): string { return d.toISOString().slice(0, 10); }
 
@@ -109,7 +110,14 @@ export async function runSync(opts: { mode?: "incremental" | "backfill"; dryRun?
     }
   } catch (err: any) {
     result.status = "failed"; result.error = err?.message ?? String(err);
-    if (!dryRun) { state.lastStatus = "failed"; state.lastError = result.error; }
+    if (!dryRun) {
+      const prevStatus = state.lastStatus;
+      state.lastStatus = "failed"; state.lastError = result.error;
+      // Second consecutive failure only — see acculynx/sync.ts for the reasoning.
+      if (shouldAlertSyncFailure(prevStatus, "failed")) {
+        await alertSyncFailure("RepCard", result.error || "", state.branch);
+      }
+    }
   } finally {
     if (!dryRun) { state.running = false; await state.save(); }
   }
