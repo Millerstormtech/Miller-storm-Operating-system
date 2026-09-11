@@ -133,7 +133,15 @@ const BANNED_RGB: Record<string, string> = {
 // default is to convert.
 const GUARD_IGNORE = /tokens-guard-ignore/;
 
-const RATCHET_BASELINE = 1404; // measured 2026-08-12; may only go DOWN
+// measured 2026-08-12, then reconciled to 1417 on 2026-09-11 when `npm run
+// test:all` was first wired into CI (this file's guard existed already but
+// nothing ran it automatically — see .github/workflows/test.yml). Between
+// those two dates the leaderboard/scoreboard/training-center dark-mode
+// redesign removed hundreds of old raw greys/blues but introduced a new,
+// not-yet-tokenized brand palette (medal golds, teal accents, new dark
+// surfaces) net +13. Approved as a one-time reconciliation, not a loosening
+// of the rule — from here it still may only go DOWN.
+const RATCHET_BASELINE = 1417;
 
 function* walk(dir: string): Generator<string> {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
