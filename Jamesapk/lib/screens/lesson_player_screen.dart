@@ -112,8 +112,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
   bool _quizSubmitted = false;
   Map<String, dynamic>? _quizScore;
   List<dynamic> _savedQuizResults = [];
-  // Quiz gating: shuffled question order (per user / per attempt) and the
+  // Quiz gating: the question order/subset (per user / per attempt) and the
   // failed-attempt counter (1st fail -> try again, 2nd fail -> relearn).
+  // The server (see quiz-pick.ts) already picks + pins these before this
+  // screen ever sees them — lesson['quizQuestions'] IS the shown set, in the
+  // exact order to display, for THIS attempt. It's the same pin the web reads,
+  // so a rep switching devices mid-attempt (e.g. a laptop dying before
+  // submit) sees the identical questions on mobile, not an independent local
+  // reshuffle. Nothing here re-shuffles or re-slices any more.
   List<dynamic> _shuffledQuestions = [];
   int _quizAttempts = 0;
   // Server-graded marking: questionId -> was the rep's OWN answer correct?
@@ -359,8 +365,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
           
           // If this is a quiz, check if user already completed it
           if (lesson?['isQuiz'] == true) {
-            // Shuffle the question order (different per user / per attempt).
-            _shuffledQuestions = List<dynamic>.from(lesson!['quizQuestions'] ?? [])..shuffle();
+            // The server already picked (and pinned) this attempt's question
+            // set — see the field comment on _shuffledQuestions above.
+            _shuffledQuestions = List<dynamic>.from(lesson!['quizQuestions'] ?? []);
 
             final savedResult = savedQuizResults.firstWhere(
               (r) => r['pageId'] == lesson!['id'],
@@ -911,16 +918,22 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     );
   }
 
-  // Retry the same quiz: reset answers and reshuffle the question order.
-  void _retryQuiz() {
+  // Retry the same quiz: reset answers, then re-fetch this lesson so the
+  // question set comes from a fresh server pick. Submitting the failed
+  // attempt already cleared its pin server-side (pages/api/training/quiz.ts),
+  // so this refetch is what generates the new one — same reshuffle-on-retry
+  // behavior as before question pinning existed, just server-driven now so a
+  // device switch mid-retry still sees the identical (new) set rather than a
+  // locally reshuffled one only this screen knows about.
+  Future<void> _retryQuiz() async {
     setState(() {
       _quizSubmitted = false;
       _quizScore = null;
       _quizReview = {};
       _quizFailed = false;
       _selectedAnswers = {};
-      _shuffledQuestions = List<dynamic>.from(_lesson!['quizQuestions'] ?? [])..shuffle();
     });
+    await _fetchLessonData();
   }
 
   // Send the user back to the lesson immediately before this quiz to relearn it.
@@ -1979,15 +1992,20 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                           if (_lesson?['isQuiz'] == true && !_quizSubmitted)
                             GestureDetector(
                               onTap: () {
-                                final questions = _lesson!['quizQuestions'] as List<dynamic>? ?? [];
-                                if (_selectedAnswers.length == questions.length) {
+                                // Gate against the SHOWN subset, not the full bank —
+                                // matches the web (quizQuestionOrder[...].length).
+                                // Comparing against the raw pool here would leave
+                                // Submit permanently disabled once questionsToShow
+                                // is smaller than the pool (rep answers all 10
+                                // shown, but 10 == 16 is never true).
+                                if (_selectedAnswers.length == _shuffledQuestions.length) {
                                   _submitQuiz();
                                 }
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                 decoration: BoxDecoration(
-                                  color: _selectedAnswers.length == (_lesson!['quizQuestions'] as List<dynamic>? ?? []).length
+                                  color: _selectedAnswers.length == _shuffledQuestions.length
                                       ? _primary
                                       : _border,
                                   borderRadius: BorderRadius.circular(20),

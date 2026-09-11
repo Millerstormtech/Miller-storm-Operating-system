@@ -9,6 +9,7 @@ import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { gradeQuizAttempt, toLearnerReview } from "../../../src/lib/training/quiz-grading";
 import { celebrateIfCourseCompleted } from "../../../src/lib/training/celebration";
+import { clearQuizPick } from "../../../src/lib/training/quiz-pick";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["POST"])) return;
@@ -58,6 +59,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!visible) return res.status(404).json({ error: "Not found" });
 
   const grade = gradeQuizAttempt(page, answers);
+
+  // This attempt is over either way — a pass locks in the result below; a
+  // fail sends the rep to retry/relearn. Either way, the pinned question set
+  // for the attempt that just ended is done with: a retry must get a
+  // genuinely fresh random pick (unchanged from before pinning existed), and
+  // this clears the way for that pick to be generated on the next open.
+  await clearQuizPick(auth.sub, courseId, pageId).catch(() => {});
 
   if (grade.passed) {
     // Self only: a quiz pass must be earned, so the target is always the

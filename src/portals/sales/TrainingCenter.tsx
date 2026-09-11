@@ -18,7 +18,7 @@ import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
 import { courseModules } from "../../lib/training/modules";
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
-import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
+import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing } from "../../lib/quiz";
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 import { GuidedTour } from "../shared/guided-tour/GuidedTour";
 import { TRAINING_CENTER_TOUR } from "../shared/guided-tour/definitions/trainingCenter";
@@ -171,7 +171,6 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // Quiz gating: failed-attempt counter, shuffled question order per quiz, and
   // the pass/fail modal ("try again" or "relearn the lesson").
   const [quizAttempts, setQuizAttempts] = useState<Record<string, number>>({});
-  const [quizQuestionOrder, setQuizQuestionOrder] = useState<Record<string, any[]>>({});
   const [quizModal, setQuizModal] = useState<{ mode: 'retry' | 'relearn'; pageId: string; pct: number; prevLessonId: string | null } | null>(null);
   const [courseCompleted, setCourseCompleted] = useState(false);
   const [activeTab, setActiveTab] = useState<'courses' | 'myPlaylists' | 'assignedPlaylists'>('courses');
@@ -449,10 +448,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       setSelectedAnswers({});
     }
 
-    // Give each quiz a shuffled question order (per user, per attempt).
-    if (page.isQuiz && page.quizQuestions && page.quizQuestions.length > 0) {
-      setQuizQuestionOrder(prev => prev[page.id] ? prev : { ...prev, [page.id]: selectQuizQuestions(page.quizQuestions!, page.questionsToShow) });
-    }
+    // The question order/subset for this quiz already came back pinned from
+    // the server (see quiz-pick.ts) as page.quizQuestions — no client-side
+    // pick needed any more, which is what keeps web and the mobile app
+    // showing the identical set for the same not-yet-submitted attempt.
 
   }, [activePageId, savedQuizResults, selectedCourse]);
 
@@ -1464,8 +1463,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       }
     };
 
-    // Retry the same quiz: reset answers and reshuffle the question order.
-    const handleQuizRetry = (pageId: string) => {
+    // Retry the same quiz: reset answers, then fetch a fresh pick from the
+    // server. Submitting the failed attempt already cleared its pin
+    // server-side (pages/api/training/quiz.ts), so this refetch is what
+    // generates the new one — same reshuffle-on-retry behavior as before
+    // question pinning existed, just server-driven now so a device switch
+    // mid-retry still sees the identical (new) set rather than a locally
+    // reshuffled one only this tab knows about.
+    const handleQuizRetry = async (pageId: string) => {
       setQuizModal(null);
       setQuizSubmitted(false);
       setQuizScore(null);
@@ -1473,9 +1478,20 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       setQuizError(null);
       setQuizFailAction(null);
       setSelectedAnswers({});
-      const page = pages.find(p => p.id === pageId);
-      if (page?.quizQuestions?.length) {
-        setQuizQuestionOrder(prev => ({ ...prev, [pageId]: selectQuizQuestions(page.quizQuestions!, page.questionsToShow) }));
+      if (!selectedCourse || !user?.id) return;
+      try {
+        const res = await fetch(`/api/courses/${selectedCourse.id}?userId=${user.id}`);
+        if (!res.ok) return;
+        const fresh = await res.json();
+        const freshPage = (fresh.pages ?? []).find((p: any) => p.id === pageId);
+        if (!freshPage?.quizQuestions) return;
+        setSelectedCourse(prev =>
+          prev
+            ? { ...prev, pages: (prev.pages ?? []).map(p => (p.id === pageId ? { ...p, quizQuestions: freshPage.quizQuestions } : p)) }
+            : prev
+        );
+      } catch (err) {
+        console.error('Failed to refresh quiz questions for retry:', err);
       }
     };
 
@@ -1605,7 +1621,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     </div>
                   )}
                   <div style={{ padding: '12px' }}>
-                    {(quizQuestionOrder[activePage.id] || activePage.quizQuestions).map((q, qIdx) => (
+                    {(activePage.quizQuestions ?? []).map((q, qIdx) => (
                       <div key={q.id} style={{ marginBottom: 32 }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
                         {q.options.map((option: string, optIdx: number) => {
@@ -1650,7 +1666,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activePage.isQuiz && !quizSubmitted && (
-                    <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0) || quizSubmitting}>Submit Quiz</button>
+                    <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0) || quizSubmitting}>Submit Quiz</button>
                   )}
                   {activePage.isQuiz && quizSubmitted && quizFailAction && (
                     quizFailAction.mode === 'retry'
@@ -2058,7 +2074,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                       </div>
                     )}
                     <div style={{ padding: "12px" }}>
-                      {(quizQuestionOrder[activePage.id] || activePage.quizQuestions).map((q, qIdx) => (
+                      {(activePage.quizQuestions ?? []).map((q, qIdx) => (
                         <div key={q.id} style={{ marginBottom: 32 }}>
                           <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
                           {q.options.map((option: string, optIdx: number) => {
@@ -2200,7 +2216,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         type="button" 
                         className="btn-primary" 
                         onClick={handleSubmitQuiz}
-                        disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0) || quizSubmitting}
+                        disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0) || quizSubmitting}
                       >
                         Submit Quiz
                       </button>

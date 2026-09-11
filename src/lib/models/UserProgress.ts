@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, deleteModel } from "mongoose";
 
 // Which of the learner's own answers were right. Deliberately does NOT record
 // the correct option: nothing that reaches a learner may carry the answer key
@@ -58,6 +58,20 @@ const videoPositionSchema = new Schema(
   { _id: false }
 );
 
+// The specific question ids a rep is currently looking at for a not-yet-
+// submitted quiz attempt (a subset of the pool when the quiz has
+// questionsToShow set). Pinned server-side the first time the quiz is opened
+// so the web and the mobile app show the IDENTICAL set for the same attempt —
+// switching devices mid-attempt (e.g. a laptop dying before submit) must not
+// hand the rep a different random subset than the one they were already
+// looking at. Cleared by pages/api/training/quiz.ts on submit (pass OR fail),
+// so a retry after a failed attempt still gets a genuinely fresh random pick,
+// same as before this existed.
+const quizPickSchema = new Schema(
+  { pageId: String, questionIds: [String], pickedAt: Date },
+  { _id: false }
+);
+
 const userProgressSchema = new Schema(
   {
     userId: { type: String, required: true },
@@ -70,6 +84,7 @@ const userProgressSchema = new Schema(
     unlockedPages: [String],
     videoPositions: [videoPositionSchema],
     quizResults: [quizResultSchema],
+    quizPicks: [quizPickSchema],
     courseCompleted: { type: Boolean, default: false },
     completedAt: Date
   },
@@ -78,4 +93,13 @@ const userProgressSchema = new Schema(
 
 userProgressSchema.index({ userId: 1, courseId: 1 }, { unique: true });
 
-export const UserProgressModel = models.UserProgress || model("UserProgress", userProgressSchema);
+// In dev, Next.js keeps the previously-compiled Mongoose model in `models` across
+// hot-reloads. If the schema changed (e.g. this quizPicks field), the stale model
+// silently strips that field from writes under strict mode. Drop the cached model
+// so the latest schema is always used (see the identical note in Course.ts). In
+// production the model compiles once, so `models.UserProgress` is falsy here and
+// this is a no-op.
+if (models.UserProgress) {
+  deleteModel("UserProgress");
+}
+export const UserProgressModel = model("UserProgress", userProgressSchema);

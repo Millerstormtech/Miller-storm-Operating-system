@@ -5,6 +5,7 @@ import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { isQuizResultPassing } from "../../../src/lib/quiz";
 import { stripAnswerKeyFromPages } from "../../../src/lib/training/answer-key";
+import { getOrCreateQuizPick } from "../../../src/lib/training/quiz-pick";
 
 export default async function handler(
   req: NextApiRequest,
@@ -86,7 +87,7 @@ export default async function handler(
             unlockedPages = (userProgress.unlockedPages || []) as string[];
             quizResultsOut = userProgress.quizResults || [];
             const completedSet = new Set(userProgress.completedPages || []);
-            const quizResults = userProgress.quizResults || [];
+            const quizResults = (userProgress.quizResults || []) as any[];
             const completedCount = publishedPages.filter((p: any) =>
               p.isQuiz
                 ? isQuizResultPassing(quizResults.find((r: any) => r.pageId === p.id))
@@ -125,6 +126,32 @@ export default async function handler(
                 order: p.order,
                 questionsToShow: p.questionsToShow,
               }
+        );
+      }
+
+      // Pin the specific questions shown for any not-yet-submitted quiz
+      // attempt, so web (which gets every quiz's full bank in THIS response
+      // when no pageId is given) and the mobile app (which gets just the one
+      // open page) agree on the identical subset for the same attempt —
+      // switching devices mid-attempt must show the same questions, not a
+      // fresh independent random pick. See quiz-pick.ts. Only pages whose
+      // quizQuestions actually made it into this response need it: list mode
+      // strips quizQuestions entirely at the DB level, and pages other than
+      // the open one in ?pageId= mode were just trimmed to light metadata above.
+      const quizPagesToPick = (pagesOut || []).filter(
+        (p: any) => p?.isQuiz && Array.isArray(p.quizQuestions) && p.quizQuestions.length > 0
+      );
+      if (quizPagesToPick.length > 0) {
+        await Promise.all(
+          quizPagesToPick.map(async (p: any) => {
+            p.quizQuestions = await getOrCreateQuizPick(
+              userId,
+              String(id),
+              p.id,
+              p.quizQuestions,
+              p.questionsToShow
+            );
+          })
         );
       }
 
