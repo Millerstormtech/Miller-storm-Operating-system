@@ -317,7 +317,13 @@ function waitForLoad(iframe: HTMLIFrameElement): Promise<void> {
 type Entry =
   | { type: 'vimeo'; seqIdx: number; player: VimeoPlayer; el: HTMLIFrameElement; maxTimeWatched: number }
   | { type: 'yt';    seqIdx: number; player: any; ready: boolean; pendingPlay: boolean; el: HTMLIFrameElement; maxTimeWatched: number }
-  | { type: 'html5'; seqIdx: number; video: HTMLVideoElement; el: HTMLVideoElement; maxTimeWatched: number };
+  | { type: 'html5'; seqIdx: number; video: HTMLVideoElement; el: HTMLVideoElement; maxTimeWatched: number }
+  // Loom has no playback-event API for an embedded VIEWER (its "Loom SDK" embeds
+  // the RECORDER inside a third-party app — a different product entirely — and
+  // exposes nothing for reading play/pause/ended/timeupdate on an already-shared
+  // video). maxTimeWatched here is a wall-clock elapsed-time ESTIMATE, not real
+  // playback progress. See the Loom section below for the full reasoning.
+  | { type: 'loom';  seqIdx: number; el: HTMLIFrameElement; maxTimeWatched: number };
 
 /** Scroll the next video into view smoothly inside the lesson scroll container */
 function scrollToEntry(entry: Entry) {
@@ -430,6 +436,7 @@ export async function initVideoSequence(
   const entries: Entry[] = [];
   const ytRaw: { el: HTMLIFrameElement; seqIdx: number }[] = [];
   const vimeoRaw: { iframe: HTMLIFrameElement; seqIdx: number }[] = [];
+  const loomRaw: { iframe: HTMLIFrameElement; seqIdx: number }[] = [];
   const vimeoPlayers: VimeoPlayer[] = [];
   const intervals: any[] = [];
 
@@ -455,6 +462,19 @@ export async function initVideoSequence(
         const seqIdx = entries.length;
         entries.push({ type: 'vimeo', seqIdx, player: null as any, el: iframe, maxTimeWatched: savedFor(seqIdx) });
         vimeoRaw.push({ iframe, seqIdx });
+        return;
+      }
+      if (src.includes('loom.com')) {
+        // Previously fell through unmatched entirely: no entry was created, so
+        // a lesson whose ONLY video was a Loom embed left `entries` empty and
+        // this function returned with nothing to clean up. The caller (both web
+        // portals) treats "no cleanup function" as "this page has no video" and
+        // auto-marks the lesson complete WITHOUT it ever being watched — the
+        // opposite failure from mobile (which just never completed it at all),
+        // but still wrong. This entry is what stops both.
+        const seqIdx = entries.length;
+        entries.push({ type: 'loom', seqIdx, el: iframe, maxTimeWatched: savedFor(seqIdx) });
+        loomRaw.push({ iframe, seqIdx });
       }
     }
   });
@@ -484,6 +504,11 @@ export async function initVideoSequence(
       } else {
         e.pendingPlay = true;
       }
+    } else if (e.type === 'loom') {
+      // No player API to call play() on — Loom exposes none. The rep starts
+      // it themselves via Loom's own on-screen controls; Autoplay chaining
+      // simply doesn't apply here, same as it wouldn't for any other page
+      // with no controllable video.
     } else {
       attemptMobileAutoplay(() => e.video.play());
     }
@@ -695,6 +720,59 @@ export async function initVideoSequence(
       }
     }
   }
+
+  // ── Loom: wall-clock timer, no player events exist to hook ────────────────
+  // There is no seek-lock here — Loom's own on-screen scrub bar lives inside
+  // its iframe and cannot be intercepted from outside it, unlike Vimeo/YouTube's
+  // SDKs. What follows is the best available substitute for "watched": assume
+  // playback starts roughly when the iframe mounts (we cannot detect an actual
+  // play event either) and time out once that long. Duration comes from Loom's
+  // public oEmbed endpoint, which needs no auth and works for any public share
+  // link — the exact response shape isn't documented anywhere we could verify,
+  // so several plausible field names are tried and a fixed fallback duration
+  // covers the case where none of them match or the request fails, so a Loom
+  // lesson can never be walled off forever even if that guess is wrong.
+  const LOOM_FALLBACK_DURATION = 90;
+  loomRaw.forEach(({ iframe, seqIdx }) => {
+    const loomEntry = entries[seqIdx] as Extract<Entry, { type: 'loom' }>;
+    const idMatch = iframe.src.match(/loom\.com\/(?:share|embed)\/([a-zA-Z0-9]+)/);
+    const resumeAt = loomEntry.maxTimeWatched;
+    const startedAt = Date.now() - resumeAt * 1000;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    let finished = false;
+
+    function tick(durationSecs: number) {
+      const elapsed = resumeAt + (Date.now() - startedAt) / 1000;
+      noteWatched(loomEntry, elapsed);
+      if (elapsed >= durationSecs - UNLOCK_BEFORE_END) {
+        unlockNextStep(seqIdx);
+      }
+      if (elapsed >= durationSecs && !finished) {
+        finished = true;
+        finishVideo(seqIdx);
+        if (interval) clearInterval(interval);
+      }
+    }
+
+    function startTimer(durationSecs: number | null) {
+      const d = durationSecs && durationSecs > 0 ? durationSecs : LOOM_FALLBACK_DURATION;
+      interval = setInterval(() => tick(d), 1000);
+      intervals.push(interval);
+    }
+
+    if (idMatch) {
+      const shareUrl = `https://www.loom.com/share/${idMatch[1]}`;
+      fetch(`https://www.loom.com/v1/oembed?url=${encodeURIComponent(shareUrl)}&format=json`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          const d = data?.duration ?? data?.duration_seconds ?? data?.durationSeconds ?? data?.duration_sec;
+          startTimer(typeof d === 'number' ? d : null);
+        })
+        .catch(() => startTimer(null));
+    } else {
+      startTimer(null);
+    }
+  });
 
   // ── HTML5 ─────────────────────────────────────────────────────────────────
   entries.forEach(e => {

@@ -550,6 +550,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
 
     final isYouTube = embedUrl.contains('youtube.com') || embedUrl.contains('youtu.be');
     final isVimeo = embedUrl.contains('vimeo.com');
+    final isLoom = embedUrl.contains('loom.com');
+    // Loom's own oEmbed endpoint expects the public share-style URL, not the
+    // embed URL this player actually loads — same video id either way.
+    final loomIdMatch = RegExp(r'loom\.com/(?:share|embed)/([a-zA-Z0-9]+)').firstMatch(embedUrl);
+    final loomShareUrl = loomIdMatch != null ? 'https://www.loom.com/share/${loomIdMatch.group(1)}' : '';
 
     return '''
 <!DOCTYPE html>
@@ -692,6 +697,63 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     initVimeo();
   } else if (iframe.src.indexOf('vimeo.com') !== -1) {
     iframe.onload = initVimeo;
+  }
+
+  // Loom: no playback-event API exists for an embedded VIEWER iframe (its
+  // "Loom SDK" embeds the RECORDER inside a third-party app — a different
+  // product — and exposes nothing for reading play/pause/ended/timeupdate on
+  // an already-shared video). Previously this meant NOTHING here ever called
+  // sendUnlock()/sendEnded() for a Loom lesson, so it could never complete and
+  // walled off every lesson after it in a gated course — the reported bug.
+  //
+  // What follows is the best available substitute for "watched": a wall-clock
+  // timer sized to the video's real length via Loom's public oEmbed endpoint
+  // (no auth needed), starting roughly from when the iframe mounts since an
+  // actual play event can't be detected either. Two consequences worth being
+  // explicit about: there is no seek-lock here (Loom's own on-screen scrub bar
+  // can't be intercepted from outside the iframe), and the reported watch
+  // position is an elapsed-time estimate, not real playback progress. Loom's
+  // exact oEmbed response shape isn't documented anywhere verifiable, so
+  // several plausible field names are tried and a fixed fallback duration
+  // covers the case where none match or the request fails, so a Loom lesson
+  // can never be walled off forever even if that guess turns out wrong.
+  var isLoom = $isLoom;
+  if (isLoom) {
+    var loomShareUrl = '$loomShareUrl';
+    var loomFallbackDuration = 90;
+    var loomStartedAt = Date.now() - resumeAt * 1000;
+    var loomFinished = false;
+
+    function loomTick(durationSecs) {
+      var elapsed = resumeAt + (Date.now() - loomStartedAt) / 1000;
+      maxTimeWatched = Math.max(maxTimeWatched, elapsed);
+      reportPosition();
+      if (elapsed >= durationSecs - 3) {
+        sendUnlock();
+      }
+      if (elapsed >= durationSecs && !loomFinished) {
+        loomFinished = true;
+        sendEnded();
+        clearInterval(checkInterval);
+      }
+    }
+
+    function loomStartTimer(durationSecs) {
+      var d = durationSecs && durationSecs > 0 ? durationSecs : loomFallbackDuration;
+      checkInterval = setInterval(function() { loomTick(d); }, 1000);
+    }
+
+    if (loomShareUrl) {
+      fetch('https://www.loom.com/v1/oembed?url=' + encodeURIComponent(loomShareUrl) + '&format=json')
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          var d = data && (data.duration || data.duration_seconds || data.durationSeconds || data.duration_sec);
+          loomStartTimer(typeof d === 'number' ? d : null);
+        })
+        .catch(function() { loomStartTimer(null); });
+    } else {
+      loomStartTimer(null);
+    }
   }
 </script>
 </body>
