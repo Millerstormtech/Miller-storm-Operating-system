@@ -7,6 +7,7 @@ import { LessonTick } from "../../components/LessonTick";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
+import { useIsNarrow } from "../shared/training-leaderboard/useIsNarrow";
 import {
   findVideoPosition,
   mergeVideoPosition,
@@ -239,6 +240,12 @@ export function ManagerOnlineTrainingPage(props: {
   // Refs for video sequencing (must live at top level, not inside CourseView)
   const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
   const videoCallbackRef = useRef<(() => void) | undefined>(undefined);
+  // The lesson body the video player drives. Only one lesson layout renders at
+  // a time (phone below 768px, desktop above), so this is always the copy on
+  // screen. Both used to render when a lesson was opened by link, and the
+  // player drove the first one on the page, not the one being watched.
+  const lessonBodyRef = useRef<HTMLDivElement | null>(null);
+  const isNarrow = useIsNarrow();
   const [autoPlay, setAutoPlay] = useState<boolean>(() => {
     // Autoplay defaults to OFF for everyone; it's ON only if the user explicitly
     // turned it on (stored as 'true'). Absent/'false' → OFF.
@@ -661,10 +668,14 @@ export function ManagerOnlineTrainingPage(props: {
     videoCleanupRef.current?.();
     videoCleanupRef.current = undefined;
 
+    // Set when this effect is torn down. The player setup below is async, so the
+    // lesson can change while it is still running; a setup that finishes after
+    // that must undo itself instead of leaving a second player attached.
+    let cancelled = false;
     const timer = setTimeout(async () => {
-      const container = document.querySelector<HTMLElement>('.course-page-body-input');
+      const container = lessonBodyRef.current;
       if (!container) {
-        console.log('[VideoSeq] container .course-page-body-input not found');
+        console.log('[VideoSeq] no lesson body on screen');
         return;
       }
       // Privileged leadership roles may always fast-forward/skip (as if the
@@ -686,6 +697,7 @@ export function ManagerOnlineTrainingPage(props: {
             persistPosition(courseId, pageId, videoIndex, seconds),
         }
       );
+      if (cancelled) { cleanup?.(); return; }
       videoCleanupRef.current = cleanup;
 
       // If no videos were found on this page, mark it as completed so the user can advance
@@ -717,6 +729,7 @@ export function ManagerOnlineTrainingPage(props: {
     }, 1200);
 
     return () => {
+      cancelled = true;
       clearTimeout(timer);
       videoCleanupRef.current?.();
       videoCleanupRef.current = undefined;
@@ -728,7 +741,7 @@ export function ManagerOnlineTrainingPage(props: {
   // destroyed the video mid-playback, right at the end. That is why the website
   // never fired the "video truly ended" event and never auto-advanced, while
   // the phone app (which does not rebuild its player) did.
-  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen]);
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen, isNarrow]);
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
   // Per-course raw completed pages + last-touched time for the "Continue where
@@ -1914,7 +1927,9 @@ export function ManagerOnlineTrainingPage(props: {
         {mobileCourseScreen === 'overview' && MobileOverview()}
 
         {/* MOBILE: Lesson screen */}
-        {mobileCourseScreen === 'lesson' && activePage && (
+        {/* Phone widths only. A lesson link sets the lesson screen on a computer
+            too, and rendering this copy there put a second player on the page. */}
+        {isNarrow && mobileCourseScreen === 'lesson' && activePage && (
           <div className="mobile-lesson-fullpage">
             <button type="button" onClick={() => setMobileCourseScreen('overview')}
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '12px 16px', fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 500 }}
@@ -1967,6 +1982,7 @@ export function ManagerOnlineTrainingPage(props: {
               ) : (
                 <div className="course-page-editor-body">
                   <div className="course-page-body-input"
+                    ref={lessonBodyRef}
                     dangerouslySetInnerHTML={{ __html: (activePage.body || '').replace(/(<iframe[^>]*vimeo[^>]*)loading="lazy"/gi, '$1') }}
                     style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '4px', whiteSpace: 'pre-wrap', minHeight: 'auto', maxHeight: 'none', overflow: 'visible' }}
                   />
@@ -2320,8 +2336,11 @@ export function ManagerOnlineTrainingPage(props: {
                   </div>
                 ) : (
                   <div className="course-page-editor-body">
+                    {/* Desktop widths only: the phone layout renders its own copy. */}
+                    {!isNarrow && (
                     <div
                       className="course-page-body-input"
+                      ref={lessonBodyRef}
                       dangerouslySetInnerHTML={{ __html: (activePage.body || "").replace(/(<iframe[^>]*vimeo[^>]*)loading="lazy"/gi, '$1') }}
                       style={{
                         padding: "12px",
@@ -2337,6 +2356,7 @@ export function ManagerOnlineTrainingPage(props: {
                         overflow: "visible"
                       }}
                     />
+                    )}
                     
                     {((activePage.resourceLinks && activePage.resourceLinks.length > 0) || (activePage.fileUrls && activePage.fileUrls.length > 0)) && (
                       <div style={{ marginTop: 24, padding: "16px", backgroundColor: "var(--surface-subtle)", borderRadius: 8 }}>
