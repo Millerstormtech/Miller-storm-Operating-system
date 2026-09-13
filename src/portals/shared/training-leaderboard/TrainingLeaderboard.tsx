@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import { useRouter } from "next/router";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isRankedRole } from "../../../lib/training/scoring";
 import type { BoardFilters, OverallResponse, OverallRow } from "../../../lib/training/board";
@@ -111,6 +112,21 @@ export function TrainingLeaderboard() {
     const branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(user.name) || "";
     if (branch) setFilters((f) => ({ ...f, branch }));
   }, [user?.role, user?.name]);
+
+  // The dashboard's Training Center "See all" opens this board already
+  // filtered (?branch= or ?team=; see lib/scoreboard/links.ts). Applied once on
+  // arrival, and the filters stay editable like any other.
+  const router = useRouter();
+  const linkApplied = useRef(false);
+  useEffect(() => {
+    if (!router.isReady || linkApplied.current) return;
+    linkApplied.current = true;
+    const branch = typeof router.query.branch === "string" ? router.query.branch : "";
+    const team = typeof router.query.team === "string" ? router.query.team : "";
+    if (branch || team) {
+      setFilters((f) => ({ ...f, ...(branch ? { branch } : {}), ...(team ? { team } : {}) }));
+    }
+  }, [router.isReady, router.query]);
 
   const allRows = useMemo(
     () => (data?.rows || []).filter((r) => !hiddenIds.has(r.id)),

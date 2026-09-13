@@ -12,7 +12,9 @@ export function sumTotals(rows: SalesRow[]): Totals {
   );
 }
 
-export function scopeRows(rows: SalesRow[], scope: Scope): SalesRow[] {
+// Generic so a caller can scope rows that carry extra fields (the Lowest knocks
+// card keeps each row's leaderboard id) without a second copy of these rules.
+export function scopeRows<T extends SalesRow>(rows: T[], scope: Scope): T[] {
   switch (scope.level) {
     case "self":
       return rows.filter((r) => r.repUserId != null && r.repUserId === scope.userId);

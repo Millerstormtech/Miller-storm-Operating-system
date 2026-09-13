@@ -1,6 +1,8 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/router";
 import { BRANCHES, BRANCH_ORDER } from "../lib/repcard/branches";
+import { parseSalesLink } from "../lib/scoreboard/links";
 import { NO_VALUE, matchesSelection, selectedNames, selectionChipLabel } from "../lib/leaderboard/filters";
 import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
@@ -59,7 +61,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   // The active query (a quick window OR a from/to range) — the single fetch trigger.
-  const [query, setQuery] = useState("window=month");
+  // Null until the URL has been read, so a dashboard link asking for "this year"
+  // does not first fetch (and flash) this month.
+  const [query, setQuery] = useState<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   // This calendar month's top rep by Contract Amount. Computed server-side from
@@ -126,7 +130,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     }
   }, []);
 
-  useEffect(() => { load(query); }, [query, load]);
+  useEffect(() => { if (query) load(query); }, [query, load]);
 
   // Follow the app-wide light/dark theme (the header toggle sets data-theme on
   // <html>). Mirror it into state so styled-jsx can restyle via a class, and
@@ -251,6 +255,54 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     () => (currentUserId ? rows.find((r) => r.repUserId === currentUserId) : undefined),
     [rows, currentUserId]
   );
+
+  // Dashboard links ("See all") open this board with its period, sort and
+  // filters already set; the rules and the link format live in
+  // lib/scoreboard/links.ts. Applied ONCE on arrival, then every control works
+  // as normal. A plain visit carries nothing and gets the usual defaults.
+  const router = useRouter();
+  const linkApplied = useRef(false);
+  // Where to scroll once rows are drawn: "me" or a row id. One attempt only,
+  // so re-sorting later never yanks the page back.
+  const [focus, setFocus] = useState<string | null>(null);
+  // A rep named on the dashboard (e.g. Lowest knocks) keeps an outline so the
+  // reader can see which row they came for.
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!router.isReady || linkApplied.current) return;
+    linkApplied.current = true;
+    const link = parseSalesLink(router.query);
+    if (link.from && link.to) {
+      setIsCustom(true);
+      setFrom(link.from);
+      setTo(link.to);
+    } else if (link.window) {
+      setWindow(link.window);
+    }
+    if (link.sort) {
+      setSortKey(link.sort);
+      setSortDir(link.dir ?? (COLUMNS.find((c) => c.key === link.sort)?.type === "text" ? "asc" : "desc"));
+    }
+    if (link.branch) setBranchSel(new Set([link.branch]));
+    if (link.team) setTeamSel(new Set([link.team]));
+    setFocus(link.focus);
+    if (link.focus && link.focus !== "me") setHighlightId(link.focus);
+    setQuery(link.apiQuery ?? "window=month");
+  }, [router.isReady, router.query]);
+
+  useEffect(() => {
+    if (!focus || loading) return;
+    const id = focus === "me" ? me?.id : focus;
+    setFocus(null);
+    if (!id) return;
+    // The table and the phone cards are both in the page with one hidden by
+    // CSS, so scroll to whichever copy of the row is actually showing.
+    const target = Array.from(rootRef.current?.querySelectorAll<HTMLElement>(`[data-row-id="${id}"]`) ?? []).find(
+      (el) => el.offsetParent !== null
+    );
+    target?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focus, loading, me, visible]);
 
   function onSort(key: SortKey) {
     if (key === sortKey) {
@@ -637,7 +689,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
               ) : visible.map((r, i) => {
                 const isYou = currentUserId && r.repUserId === currentUserId;
                 return (
-                  <tr key={r.id} className={`sl__row${i === 0 ? " sl__row--top" : ""}${isYou ? " sl__row--you" : ""}`}>
+                  <tr key={r.id} data-row-id={r.id} className={`sl__row${i === 0 ? " sl__row--top" : ""}${isYou ? " sl__row--you" : ""}${r.id === highlightId ? " sl__row--focus" : ""}`}>
                     <td className={`sl__rank${i === 0 ? " sl__rank--gold" : ""}`}>{i + 1}</td>
                     <td className="sl__rep">
                       <span className="sl__rep-inner">
@@ -740,7 +792,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
             const subtitle = [r.branch, TEAM_LEADS[r.team] || r.team].filter(Boolean).join(" · ");
             return (
-              <div key={r.id} className={`sl__card${i === 0 ? " sl__card--top" : ""}${isYou ? " sl__card--you" : ""}`}>
+              <div key={r.id} data-row-id={r.id} className={`sl__card${i === 0 ? " sl__card--top" : ""}${isYou ? " sl__card--you" : ""}${r.id === highlightId ? " sl__card--focus" : ""}`}>
                 <div className="sl__card-head">
                   <div className={`sl__card-rank${i === 0 ? " sl__rank--gold" : ""}`}>{medal || i + 1}</div>
                   <RepAvatar name={stripFormerMarker(r.name)} url={r.headshotUrl} size={44} fontSize={18} />
@@ -989,6 +1041,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__row { border-bottom: 1px solid var(--line); transition: background 0.12s; }
         .sl__row:hover { background: var(--hover); }
         .sl__row--you { background: var(--you); }
+        .sl__row--focus { background: var(--you); box-shadow: inset 3px 0 0 var(--th-active); }
         .sl__row--top { background: var(--top-grad); box-shadow: inset 3px 0 0 #ca0002; }
         .sl__rank { padding: 14px 16px; text-align: center; font-weight: 800; font-size: 22px; color: var(--rank); width: 64px; }
         .sl__rank--gold { color: var(--gold); }
@@ -1024,6 +1077,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__card { margin-bottom: 10px; background: var(--panel); border-radius: 14px; border: 1px solid var(--line); padding: 12px; }
         .sl__card--you { border-color: rgba(202, 0, 2, 0.5); background: var(--you); }
         .sl__card--top { border-color: rgba(241, 195, 60, 0.5); background: var(--top-grad); }
+        .sl__card--focus { border-color: var(--th-active); background: var(--you); }
         .sl__card-head { display: flex; align-items: center; gap: 10px; }
         .sl__card-rank { width: 34px; text-align: center; font-size: 18px; font-weight: 800; color: var(--muted); flex-shrink: 0; }
         .sl__card-id { flex: 1; min-width: 0; }
