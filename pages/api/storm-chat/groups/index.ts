@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canSeeGroupInList, isMemberOf as memberOf, dmParticipants } from '../../../../src/lib/stormchat/access';
+import { applyCustomOrder } from '../../../../src/lib/stormchat/chatOrder';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -34,16 +35,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const effectiveUserId =
         requestedId && requestedId !== auth.sub && auth.role === 'admin' ? requestedId : auth.sub;
 
+      // The caller's own chatOrder — applied further down to whatever list is
+      // being returned, not just a ?mine=1 fetch. "My personal reorder"
+      // applies to whatever chat list I'm looking at (e.g. an admin's broader
+      // group-management view, which is NOT scoped to groups they're a member
+      // of), not only the personal mine=1 shape sales/manager/etc. use. The
+      // ?manage=1 view is the one exception — it keeps the older, separate
+      // GLOBAL drag order (ChatGroup.order) instead, unchanged.
       let myDoc: any = null;
-      if (req.query.mine) {
-        myDoc = await UserModel.findOne({ id: effectiveUserId }, { _id: 1 }).lean();
-        if (myDoc?._id) {
-          try {
-            const { addUserToPublicGroups } = await import('../../../../src/lib/publicGroups');
-            await addUserToPublicGroups(String(myDoc._id));
-          } catch (e) {
-            console.error('[groups] public-group self-heal failed:', e);
-          }
+      if (!req.query.manage) {
+        myDoc = await UserModel.findOne({ id: effectiveUserId }, { _id: 1, chatOrder: 1 }).lean();
+      }
+
+      // Public-group self-heal stays scoped to the personal mine=1 fetch: it's
+      // about making sure the CALLER sees every public group in THEIR OWN
+      // list, not a side effect of a broader admin management fetch.
+      if (req.query.mine && myDoc?._id) {
+        try {
+          const { addUserToPublicGroups } = await import('../../../../src/lib/publicGroups');
+          await addUserToPublicGroups(String(myDoc._id));
+        } catch (e) {
+          console.error('[groups] public-group self-heal failed:', e);
         }
       }
 
@@ -192,6 +204,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           groups.sort((a: any, b: any) =>
             new Date(b.lastMessageAt as any).getTime() - new Date(a.lastMessageAt as any).getTime()
           );
+
+          // Layer the rep's own manual drag-order on top of the recency sort —
+          // DMs and Groups are ordered independently, matching the two
+          // sections both web and mobile render them in. Anything the rep
+          // hasn't manually placed (a brand-new chat) falls back to the
+          // recency order above, appended after everything they HAVE
+          // arranged (see chatOrder.ts). This is the ONE place the order is
+          // decided — both platforms just render whatever comes back here,
+          // so a reorder saved on either one shows up identically on both.
+          const chatOrder = myDoc?.chatOrder;
+          if (chatOrder && (chatOrder.dms?.length || chatOrder.groups?.length)) {
+            const dmItems = groups.filter((g: any) => g.isDirect);
+            const groupItems = groups.filter((g: any) => !g.isDirect);
+            groups = [
+              ...applyCustomOrder(dmItems, chatOrder.dms),
+              ...applyCustomOrder(groupItems, chatOrder.groups),
+            ];
+          }
         }
       }
 

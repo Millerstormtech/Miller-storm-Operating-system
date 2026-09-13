@@ -47,6 +47,61 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
   // Admin's own private messages (DMs) — admin participates like any other user.
   const [myDms, setMyDms] = useState<ChatGroup[]>([]);
+  // Drag-reorder for the admin's OWN dms — a personal preference, saved to
+  // User.chatOrder and read back by /api/storm-chat/groups?mine=1 (which
+  // fetchMyDms already calls), so this is the SAME order web/mobile show for
+  // every other role — admin isn't a special case here. A plain ref, not
+  // state: dragover fires continuously while dragging, and this button is a
+  // plain inline JSX element (not a separately-instantiated component), so a
+  // re-render here just re-diffs the same DOM node — safe, unlike the row
+  // component pattern used elsewhere in StormChat that a state update WOULD
+  // break mid-drag.
+  const dragDmIdRef = useRef<string | null>(null);
+  function reorderMyDms(draggedId: string, targetId: string) {
+    if (draggedId === targetId) return;
+    setMyDms(prev => {
+      const fromIdx = prev.findIndex(g => g._id === draggedId);
+      const toIdx = prev.findIndex(g => g._id === targetId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const reordered = [...prev];
+      const [moved] = reordered.splice(fromIdx, 1);
+      reordered.splice(toIdx, 0, moved);
+      fetch("/api/storm-chat/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ list: "dms", order: reordered.map(g => g._id) }),
+      }).catch(() => {});
+      return reordered;
+    });
+  }
+
+  // Same personal-order pattern for the admin's own top-level Groups
+  // (subgroups aren't independently reorderable — same scoping as every other
+  // role's chat list). NOT the same thing as the pre-existing
+  // draggedGroupId/dragOverGroupId + handleGroupDrag* below: those save a
+  // GLOBAL order (ChatGroup.order) via PUT /api/storm-chat/groups/reorder and
+  // were never actually wired to a draggable element. This is deliberately
+  // separate and personal, matching how DMs work above.
+  const dragGroupIdRef = useRef<string | null>(null);
+  function reorderMyGroups(draggedId: string, targetId: string) {
+    if (draggedId === targetId) return;
+    setGroups(prev => {
+      const topLevel = prev.filter(g => !g.parentGroupId);
+      const subs = prev.filter(g => g.parentGroupId);
+      const fromIdx = topLevel.findIndex(g => g._id === draggedId);
+      const toIdx = topLevel.findIndex(g => g._id === targetId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const reordered = [...topLevel];
+      const [moved] = reordered.splice(fromIdx, 1);
+      reordered.splice(toIdx, 0, moved);
+      fetch("/api/storm-chat/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ list: "groups", order: reordered.map(g => g._id) }),
+      }).catch(() => {});
+      return [...reordered, ...subs];
+    });
+  }
   const [dmUnread, setDmUnread] = useState<Record<string, number>>({});
   const [groupUnread, setGroupUnread] = useState<Record<string, number>>({});
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
@@ -162,11 +217,39 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
   function groupTile(group: ChatGroup, isSub: boolean) {
     const subCount = groups.filter(sg => sg.parentGroupId === group._id).length;
     const unread = groupUnread[group._id] || 0;
+    // Drag-reorder only applies to top-level groups — a subgroup moves with
+    // its parent, same scoping as every other role's chat list.
+    const dragProps = isSub ? {} : {
+      draggable: true,
+      onDragStart: (e: React.DragEvent<HTMLButtonElement>) => { dragGroupIdRef.current = group._id; e.dataTransfer.effectAllowed = 'move'; },
+      onDragOver: (e: React.DragEvent<HTMLButtonElement>) => {
+        if (!dragGroupIdRef.current) return;
+        e.preventDefault();
+        e.currentTarget.style.borderColor = 'var(--brand-on-surface)';
+      },
+      onDragLeave: (e: React.DragEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = ''; },
+      onDrop: (e: React.DragEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.currentTarget.style.borderColor = '';
+        const draggedId = dragGroupIdRef.current;
+        dragGroupIdRef.current = null;
+        if (draggedId) reorderMyGroups(draggedId, group._id);
+      },
+      onDragEnd: (e: React.DragEvent<HTMLButtonElement>) => { dragGroupIdRef.current = null; e.currentTarget.style.borderColor = ''; },
+    };
     return (
       <button type="button" className="sc-tile"
         onClick={() => handleGroupClick(group)}
         title="Click to open chat · double-click to manage"
-        style={isSub ? { background: '#fafbfc' } : undefined}>
+        style={isSub ? { background: '#fafbfc' } : undefined}
+        {...dragProps}>
+        {!isSub && (
+          <span title="Drag to reorder" aria-hidden style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0, cursor: 'grab', padding: '4px 2px' }}>
+            {[0, 1, 2].map(i => (
+              <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-subtle)' }} />
+            ))}
+          </span>
+        )}
         <div style={{ width: isSub ? 36 : 44, height: isSub ? 36 : 44, borderRadius: 12, background: 'linear-gradient(135deg,var(--gray-700) /* no semantic: gradient stop */,var(--gray-900) /* no semantic: gradient stop */)', backgroundImage: group.imageUrl ? `url(${group.imageUrl})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: isSub ? 15 : 18, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
           {!group.imageUrl && '👥'}
         </div>
@@ -957,7 +1040,37 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
                 const img = dm.dmOther?.imageUrl || '';
                 const unread = dmUnread[dm._id] || 0;
                 return (
-                  <button key={dm._id} type="button" className="sc-tile" onClick={() => openDm(dm)}>
+                  <button
+                    key={dm._id}
+                    type="button"
+                    className="sc-tile"
+                    onClick={() => openDm(dm)}
+                    draggable
+                    onDragStart={(e) => { dragDmIdRef.current = dm._id; e.dataTransfer.effectAllowed = "move"; }}
+                    onDragOver={(e) => {
+                      if (!dragDmIdRef.current) return;
+                      e.preventDefault();
+                      e.currentTarget.style.borderColor = "var(--brand-on-surface)";
+                    }}
+                    onDragLeave={(e) => { e.currentTarget.style.borderColor = ""; }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.style.borderColor = "";
+                      const draggedId = dragDmIdRef.current;
+                      dragDmIdRef.current = null;
+                      if (draggedId) reorderMyDms(draggedId, dm._id);
+                    }}
+                    onDragEnd={(e) => { dragDmIdRef.current = null; e.currentTarget.style.borderColor = ""; }}
+                  >
+                    <span
+                      title="Drag to reorder"
+                      aria-hidden
+                      style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0, cursor: "grab", padding: "4px 2px" }}
+                    >
+                      {[0, 1, 2].map(i => (
+                        <span key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--text-subtle)" }} />
+                      ))}
+                    </span>
                     <div style={{ position: 'relative', width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,var(--gray-500) /* no semantic: gradient stop */,var(--gray-700) /* no semantic: gradient stop */)', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 17, fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                       <span>{name?.[0]?.toUpperCase() || '👤'}</span>
                       {img && <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}

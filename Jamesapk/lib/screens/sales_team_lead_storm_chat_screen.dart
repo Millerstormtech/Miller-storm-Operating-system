@@ -301,46 +301,144 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
             children: [
               if (dms.isNotEmpty) ...[
                 _sectionLabel('Direct Messages'),
-                ...dms.asMap().entries.map((e) {
-                  final card = _buildDmCard(e.value);
-                  // Spotlight the first DM card for the tour.
-                  return e.key == 0
-                      ? Showcase(
-                          key: _kDms,
-                          title: 'Direct messages',
-                          description: 'Your one to one conversations. The red number is how many messages you have not read yet.',
-                          child: card,
-                        )
-                      : card;
-                }),
+                _buildReorderableDms(dms),
                 const SizedBox(height: 8),
               ],
               if (topLevel.isNotEmpty) ...[
                 if (dms.isNotEmpty) _sectionLabel('Groups'),
-                ...topLevel.asMap().entries.expand((entry) {
-                  final g = entry.value;
-                  final card = _buildGroupCard(g);
-                  // Spotlight the first group card for the tour.
-                  final wrapped = entry.key == 0
-                      ? Showcase(
-                          key: _kGroups,
-                          title: 'Groups',
-                          description: 'Your group chats. Tap one to open it.',
-                          child: card,
-                        )
-                      : card;
-                  return [
-                    wrapped,
-                    ..._subgroupsOf(g['_id'])
-                        .map((sg) => _buildGroupCard(sg, isSubgroup: true)),
-                  ];
-                }),
+                _buildReorderableGroups(topLevel),
               ],
             ],
           );
         },
       ),
     );
+  }
+
+  // Small grip icon that starts a drag for this reorderable item — a
+  // dedicated handle rather than "long-press anywhere" because DM rows
+  // already use long-press for delete (_confirmDeleteDm), so the two gestures
+  // must not compete for the same touch.
+  Widget _dragHandle(int index) {
+    return ReorderableDragStartListener(
+      index: index,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Icon(Icons.drag_indicator, size: 20, color: _textLight.withOpacity(0.6)),
+      ),
+    );
+  }
+
+  // Drag-reorder for DMs. Persisted to the server (POST /api/storm-chat/reorder)
+  // so the SAME order shows up on the web, which reads it from the same
+  // place — see pages/api/storm-chat/groups/index.ts. This screen never
+  // decides the order itself beyond reflecting what was just dragged locally
+  // and what the next fetch confirms back from the server.
+  Widget _buildReorderableDms(List<dynamic> dms) {
+    return ReorderableListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: false,
+      onReorder: (oldIndex, newIndex) => _reorderDms(dms, oldIndex, newIndex),
+      children: dms.asMap().entries.map((e) {
+        final card = _buildDmCard(e.value);
+        // Spotlight the first DM card for the tour.
+        final wrapped = e.key == 0
+            ? Showcase(
+                key: _kDms,
+                title: 'Direct messages',
+                description: 'Your one to one conversations. The red number is how many messages you have not read yet.',
+                child: card,
+              )
+            : card;
+        return Row(
+          key: ValueKey('dm-${e.value['_id']}'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [_dragHandle(e.key), Expanded(child: wrapped)],
+        );
+      }).toList(),
+    );
+  }
+
+  void _reorderDms(List<dynamic> currentDms, int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final reordered = List<dynamic>.from(currentDms);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    setState(() {
+      final nonDms = groups.where((g) => g['isDirect'] != true).toList();
+      groups = [...reordered, ...nonDms];
+    });
+    _saveChatOrder('dms', reordered.map((g) => g['_id'].toString()).toList());
+  }
+
+  // Drag-reorder for top-level groups — a group's subgroups move WITH it
+  // (they aren't independently reorderable), so each draggable item is the
+  // group card plus its subgroup cards as one unit.
+  Widget _buildReorderableGroups(List<dynamic> topLevel) {
+    return ReorderableListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: false,
+      onReorder: (oldIndex, newIndex) => _reorderTopLevelGroups(topLevel, oldIndex, newIndex),
+      children: topLevel.asMap().entries.map((entry) {
+        final g = entry.value;
+        final card = _buildGroupCard(g);
+        // Spotlight the first group card for the tour.
+        final wrapped = entry.key == 0
+            ? Showcase(
+                key: _kGroups,
+                title: 'Groups',
+                description: 'Your group chats. Tap one to open it.',
+                child: card,
+              )
+            : card;
+        final subgroups = _subgroupsOf(g['_id']);
+        return Row(
+          key: ValueKey('group-${g['_id']}'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _dragHandle(entry.key),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  wrapped,
+                  ...subgroups.map((sg) => _buildGroupCard(sg, isSubgroup: true)),
+                ],
+              ),
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  void _reorderTopLevelGroups(List<dynamic> currentTopLevel, int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final reordered = List<dynamic>.from(currentTopLevel);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    setState(() {
+      final topLevelIds = currentTopLevel.map((g) => g['_id'].toString()).toSet();
+      final others = groups.where((g) => !topLevelIds.contains(g['_id'].toString())).toList();
+      groups = [...reordered, ...others];
+    });
+    _saveChatOrder('groups', reordered.map((g) => g['_id'].toString()).toList());
+  }
+
+  // Persists the caller's own manual order. The server (POST
+  // /api/storm-chat/reorder, read back by GET /api/storm-chat/groups) is what
+  // BOTH web and mobile actually read the order from on their next fetch, so
+  // this is what makes a reorder on one platform show up on the other.
+  Future<void> _saveChatOrder(String list, List<String> order) async {
+    try {
+      await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/reorder'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'list': list, 'order': order}),
+      );
+    } catch (_) {}
   }
 
   void _snack(String msg) {

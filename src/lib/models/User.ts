@@ -90,6 +90,19 @@ const userSchema = new Schema(
     phone: String,
     territory: String,
     branches: [String],
+    // This user's manual drag-reorder of their own StormChat list — the SAME
+    // list order on web and mobile, since both read it from here (the server
+    // is the single source of truth, neither client keeps its own copy).
+    // dms/groups are ChatGroup _id strings, in the user's chosen order.
+    // A chat not in these arrays (new, or never manually placed) falls back
+    // to the existing "most recent message first" order, appended after
+    // everything the user HAS manually arranged. Not present/empty = no
+    // manual reorder has ever been saved for that list, so recency sort alone
+    // still applies exactly as before this feature existed.
+    chatOrder: {
+      type: new Schema({ dms: [String], groups: [String] }, { _id: false }),
+      default: undefined,
+    },
     passwordHash: String,
     businessPlan: businessPlanSchema,
     videoUrl: String,

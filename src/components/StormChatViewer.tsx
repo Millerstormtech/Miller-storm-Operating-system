@@ -51,6 +51,13 @@ export function StormChatViewer() {
   const [joinTarget, setJoinTarget] = useState<ChatGroup | null>(null);
   const [joinSending, setJoinSending] = useState(false);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
+  // Manual drag-reorder state (see reorderSection() below). Declared up here,
+  // BEFORE the `if (selected) return <StormChatRoom />` early return further
+  // down — a hook called only on the branch that DOESN'T return early changes
+  // how many hooks React sees between renders ("Rendered fewer hooks than
+  // expected"), which is exactly what putting this ref next to reorderSection
+  // (after that early return) caused.
+  const dragIdRef = useRef<string | null>(null);
 
   useEffect(() => { if (user?.id) loadGroups(); }, [user?.id]);
 
@@ -247,6 +254,55 @@ export function StormChatViewer() {
     }
   }
 
+  // Manual drag-reorder, within a section (DMs and Groups reorder
+  // independently, matching how they're rendered). Updates local state
+  // immediately for a responsive drag, then persists in the background — the
+  // server (pages/api/storm-chat/groups) is what BOTH web and mobile actually
+  // read the order from, so this save is what makes it show up on the phone
+  // too, not anything kept only in this component's state.
+  //
+  // dragIdRef (declared up top, near the other hooks) is a ref, not state:
+  // `dragover` fires continuously (many times a second) while a drag is in
+  // progress. GroupRow below is a component defined INSIDE this one's render
+  // — a pre-existing pattern that's harmless for a plain click, but means
+  // every re-render of StormChatViewer hands React a brand new GroupRow
+  // function reference, so it tears down and rebuilds the row's actual DOM
+  // node. That's fine between clicks; it's fatal in the middle of a native
+  // browser drag, which is anchored to a specific DOM element — the OS-level
+  // drag session gets silently cancelled the instant its element is replaced.
+  // Going through setState here (as this originally did) re-rendered the
+  // parent on every dragover tick and killed the drag almost immediately.
+  // Mutating the hovered row's own style directly, exactly like the existing
+  // onMouseEnter/onMouseLeave handlers just below already do, never touches
+  // React state, so no re-render happens and the drag survives.
+  function reorderSection(isDirect: boolean, draggedId: string, targetId: string) {
+    if (draggedId === targetId) return;
+    setGroups(prev => {
+      const section = prev.filter(g => !!g.isDirect === isDirect);
+      const rest = prev.filter(g => !!g.isDirect !== isDirect);
+      const fromIdx = section.findIndex(g => g._id === draggedId);
+      const toIdx = section.findIndex(g => g._id === targetId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const reordered = [...section];
+      const [moved] = reordered.splice(fromIdx, 1);
+      reordered.splice(toIdx, 0, moved);
+      fetch("/api/storm-chat/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ list: isDirect ? "dms" : "groups", order: reordered.map(g => g._id) }),
+      }).catch(() => {});
+      // Order between the two sections in this combined array doesn't matter —
+      // the render below re-splits by isDirect, so only each section's OWN
+      // relative order (preserved here) is ever actually shown.
+      return isDirect ? [...reordered, ...rest] : [...rest, ...reordered];
+    });
+  }
+
+  // Dragging only makes sense against the REAL, unfiltered list — while a
+  // search is active, "visible" is a filtered subset, so a drop's target
+  // position there would not mean what it looks like against the full list.
+  const dragEnabled = q.length === 0;
+
   function GroupRow({ g }: { g: ChatGroup }) {
     const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const longPressed = useRef(false);
@@ -271,10 +327,37 @@ export function StormChatViewer() {
         onTouchStart={startPress}
         onTouchEnd={cancelPress}
         onTouchMove={cancelPress}
-        style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%", transition: "background 0.15s, border-color 0.15s" }}
+        draggable={dragEnabled}
+        onDragStart={(e) => { dragIdRef.current = g._id; e.dataTransfer.effectAllowed = "move"; }}
+        onDragOver={(e) => {
+          if (!dragEnabled || !dragIdRef.current) return;
+          e.preventDefault();
+          e.currentTarget.style.borderColor = "var(--brand-on-surface)";
+        }}
+        onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-default)"; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.currentTarget.style.borderColor = "var(--border-default)";
+          const draggedId = dragIdRef.current;
+          dragIdRef.current = null;
+          if (draggedId) reorderSection(!!g.isDirect, draggedId, g._id);
+        }}
+        onDragEnd={(e) => { dragIdRef.current = null; e.currentTarget.style.borderColor = "var(--border-default)"; }}
+        style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%", transition: "background 0.15s, border-color 0.15s" }}
         onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-muted)"; e.currentTarget.style.borderColor = "var(--border-strong)"; }}
         onMouseLeave={e => { cancelPress(); e.currentTarget.style.background = "var(--surface-default)"; e.currentTarget.style.borderColor = "var(--border-default)"; }}
       >
+        {dragEnabled && (
+          <span
+            title="Drag to reorder"
+            aria-hidden
+            style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0, cursor: "grab", padding: "4px 2px" }}
+          >
+            {[0, 1, 2].map(i => (
+              <span key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--text-subtle)" }} />
+            ))}
+          </span>
+        )}
         <div style={{ width: 48, height: 48, borderRadius: "50%", background: img ? "transparent" : (g.isDirect ? "linear-gradient(135deg, #e01418, #b30002)" : "var(--surface-muted)"), color: g.isDirect ? "var(--text-inverse)" : "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: 16, fontWeight: 700, letterSpacing: "0.02em" }}>
           {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(titleFor(g))}
         </div>
