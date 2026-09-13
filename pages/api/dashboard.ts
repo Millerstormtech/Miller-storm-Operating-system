@@ -254,12 +254,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 lowRaw.map((r) => ({
                   ...toSalesRow(r),
                   id: r.id,
+                  isTeamLead: r.isTeamLead,
                   firstKnockDay: knockSpans.get(r.id)?.first ?? null,
                   lastKnockDay: knockSpans.get(r.id)?.last ?? null,
                 })),
                 scope
               ),
-              lowWindow.from
+              lowWindow
             ),
           }
         : null;

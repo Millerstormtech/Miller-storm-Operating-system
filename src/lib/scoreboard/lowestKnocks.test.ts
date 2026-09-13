@@ -7,12 +7,14 @@ const rep = (over: Partial<KnockCandidate>): KnockCandidate => ({
   name: "",
   knocks: 0,
   former: false,
+  isTeamLead: false,
   firstKnockDay: "2026-01-05",
   lastKnockDay: "2026-09-10",
   ...over,
 });
 
 const FROM = "2026-09-05";
+const WIN = { from: FROM, to: "2026-09-11" };
 
 describe("lastCompleteDays", () => {
   it("is the seven days ending yesterday in Central time", () => {
@@ -45,12 +47,12 @@ describe("lowestKnocks", () => {
       rep({ name: "C", knocks: 12 }),
       rep({ name: "D", knocks: 8 }),
     ];
-    expect(lowestKnocks(rows, FROM).map((r) => [r.name, r.knocks])).toEqual([["B", 3], ["D", 8], ["C", 12]]);
+    expect(lowestKnocks(rows, WIN).map((r) => [r.name, r.knocks])).toEqual([["B", 3], ["D", 8], ["C", 12]]);
   });
 
   it("never names a former rep", () => {
     const rows = [rep({ name: "Gone", knocks: 0, former: true }), rep({ name: "Here", knocks: 5 })];
-    expect(lowestKnocks(rows, FROM).map((r) => r.name)).toEqual(["Here"]);
+    expect(lowestKnocks(rows, WIN).map((r) => r.name)).toEqual(["Here"]);
   });
 
   it("leaves out a rep who started knocking after the window opened", () => {
@@ -59,11 +61,27 @@ describe("lowestKnocks", () => {
       rep({ name: "Day one", knocks: 2, firstKnockDay: FROM }),
       rep({ name: "Veteran", knocks: 9 }),
     ];
-    expect(lowestKnocks(rows, FROM).map((r) => r.name)).toEqual(["Day one", "Veteran"]);
+    expect(lowestKnocks(rows, WIN).map((r) => r.name)).toEqual(["Day one", "Veteran"]);
   });
 
   it("leaves out a rep with no recorded first knock rather than calling them a zero", () => {
-    expect(lowestKnocks([rep({ name: "Unknown", knocks: 0, firstKnockDay: null, lastKnockDay: null })], FROM)).toEqual([]);
+    expect(lowestKnocks([rep({ name: "Unknown", knocks: 0, firstKnockDay: null, lastKnockDay: null })], WIN)).toEqual([]);
+  });
+
+  it("never names a team lead or branch manager", () => {
+    const rows = [rep({ name: "Lead", knocks: 0, isTeamLead: true }), rep({ name: "Rep", knocks: 9 })];
+    expect(lowestKnocks(rows, WIN).map((r) => r.name)).toEqual(["Rep"]);
+  });
+
+  it("leaves out anyone with no knock in the last 30 days: they have left, they are not low", () => {
+    const rows = [
+      // Window ends 2026-09-11, so the 30 days run 2026-08-13 to 2026-09-11.
+      rep({ name: "Gone since June", knocks: 0, lastKnockDay: "2026-06-17" }),
+      rep({ name: "One day too old", knocks: 0, lastKnockDay: "2026-08-12" }),
+      rep({ name: "Just inside", knocks: 0, lastKnockDay: "2026-08-13" }),
+      rep({ name: "Active", knocks: 5 }),
+    ];
+    expect(lowestKnocks(rows, WIN).map((r) => r.name)).toEqual(["Just inside", "Active"]);
   });
 
   it("breaks ties by who has gone longest without a knock", () => {
@@ -73,7 +91,7 @@ describe("lowestKnocks", () => {
       rep({ name: "Middle", knocks: 0, lastKnockDay: "2026-08-28" }),
       rep({ name: "Active", knocks: 4 }),
     ];
-    expect(lowestKnocks(rows, FROM).map((r) => r.name)).toEqual(["Longest", "Middle", "Recent"]);
+    expect(lowestKnocks(rows, WIN).map((r) => r.name)).toEqual(["Longest", "Middle", "Recent"]);
   });
 
   it("falls back to name order when knocks and last knock are both equal", () => {
@@ -81,16 +99,16 @@ describe("lowestKnocks", () => {
       rep({ name: "Zed", knocks: 0, lastKnockDay: "2026-08-20" }),
       rep({ name: "Amy", knocks: 0, lastKnockDay: "2026-08-20" }),
     ];
-    expect(lowestKnocks(rows, FROM).map((r) => r.name)).toEqual(["Amy", "Zed"]);
+    expect(lowestKnocks(rows, WIN).map((r) => r.name)).toEqual(["Amy", "Zed"]);
   });
 
   it("returns fewer than three, or none, when that is all there is", () => {
-    expect(lowestKnocks([rep({ name: "Only" })], FROM)).toHaveLength(1);
-    expect(lowestKnocks([], FROM)).toEqual([]);
+    expect(lowestKnocks([rep({ name: "Only" })], WIN)).toHaveLength(1);
+    expect(lowestKnocks([], WIN)).toEqual([]);
   });
 
   it("returns only the fields the card needs", () => {
-    const [r] = lowestKnocks([rep({ name: "A", repUserId: "u1", knocks: 2 })], FROM);
+    const [r] = lowestKnocks([rep({ name: "A", repUserId: "u1", knocks: 2 })], WIN);
     expect(r).toEqual({ id: "rc:A", repUserId: "u1", name: "A", knocks: 2, lastKnockDay: "2026-09-10" });
   });
 });
