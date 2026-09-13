@@ -1938,9 +1938,9 @@ export function UserManagement(props: UserEditorProps) {
             <div style={{
               padding: "18px 24px 0 24px",
               display: "flex", justifyContent: "space-between", alignItems: "center",
-              background: "#f5f3ff",
+              background: "var(--dev-accent-bg)",
             }}>
-              <div style={{ fontWeight: 700, fontSize: 16, color: "#7c3aed", marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "var(--dev-accent-label)", marginBottom: 12 }}>
                 👨‍💻 Developer Accounts
               </div>
               <button
@@ -1957,10 +1957,10 @@ export function UserManagement(props: UserEditorProps) {
             </div>
 
             {/* Tabs */}
-            <div style={{ 
-              display: "flex", 
+            <div style={{
+              display: "flex",
               borderBottom: "1px solid var(--border-default)",
-              background: "#f5f3ff",
+              background: "var(--dev-accent-bg)",
               paddingLeft: 24,
               paddingRight: 24,
             }}>
@@ -1974,8 +1974,8 @@ export function UserManagement(props: UserEditorProps) {
                   cursor: "pointer",
                   fontSize: 14,
                   fontWeight: developerModalTab === "selection" ? 600 : 400,
-                  color: developerModalTab === "selection" ? "#7c3aed" : "var(--text-muted)",
-                  borderBottom: developerModalTab === "selection" ? "2px solid #7c3aed" : "2px solid transparent",
+                  color: developerModalTab === "selection" ? "var(--dev-accent-label)" : "var(--text-muted)",
+                  borderBottom: developerModalTab === "selection" ? "2px solid var(--dev-accent-label)" : "2px solid transparent",
                 }}
               >
                 New Selection
@@ -1990,8 +1990,8 @@ export function UserManagement(props: UserEditorProps) {
                   cursor: "pointer",
                   fontSize: 14,
                   fontWeight: developerModalTab === "selected" ? 600 : 400,
-                  color: developerModalTab === "selected" ? "#7c3aed" : "var(--text-muted)",
-                  borderBottom: developerModalTab === "selected" ? "2px solid #7c3aed" : "2px solid transparent",
+                  color: developerModalTab === "selected" ? "var(--dev-accent-label)" : "var(--text-muted)",
+                  borderBottom: developerModalTab === "selected" ? "2px solid var(--dev-accent-label)" : "2px solid transparent",
                 }}
               >
                 Selected Accounts ({developerUsers.size})
@@ -2021,7 +2021,7 @@ export function UserManagement(props: UserEditorProps) {
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 16px", cursor: "pointer",
-                            background: isSelected ? "#f5f3ff" : idx % 2 === 0 ? "var(--surface-default)" : "#fafafa",
+                            background: isSelected ? "var(--dev-accent-bg)" : idx % 2 === 0 ? "var(--surface-default)" : "var(--surface-subtle)",
                             borderBottom: idx < draftUsers.length - 1 ? "1px solid var(--border-subtle)" : "none",
                             transition: "background 0.15s",
                           }}
@@ -2030,7 +2030,7 @@ export function UserManagement(props: UserEditorProps) {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleDeveloperUser(user.id)}
-                            style={{ width: 16, height: 16, accentColor: "#7c3aed", cursor: "pointer" }}
+                            style={{ width: 16, height: 16, accentColor: "var(--dev-accent-solid)", cursor: "pointer" }}
                           />
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 14 }}>{user.name}</div>
@@ -2039,7 +2039,7 @@ export function UserManagement(props: UserEditorProps) {
                             </div>
                           </div>
                           {isSelected && (
-                            <span style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600 }}>✓ Developer</span>
+                            <span style={{ fontSize: 11, color: "var(--dev-accent-label)", fontWeight: 600 }}>✓ Developer</span>
                           )}
                         </label>
                       );
@@ -2063,7 +2063,7 @@ export function UserManagement(props: UserEditorProps) {
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 16px",
-                            background: idx % 2 === 0 ? "var(--surface-default)" : "#fafafa",
+                            background: idx % 2 === 0 ? "var(--surface-default)" : "var(--surface-subtle)",
                             borderBottom: idx < draftUsers.filter(u => developerUsers.has(u.id)).length - 1 ? "1px solid var(--border-subtle)" : "none",
                           }}
                         >
@@ -2073,13 +2073,13 @@ export function UserManagement(props: UserEditorProps) {
                               {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
                             </div>
                           </div>
-                          <span style={{ 
-                            padding: "4px 10px", 
+                          <span style={{
+                            padding: "4px 10px",
                             borderRadius: 6,
-                            background: "#f5f3ff",
-                            color: "#7c3aed",
-                            fontSize: 11, 
-                            fontWeight: 600 
+                            background: "var(--dev-accent-bg)",
+                            color: "var(--dev-accent-label)",
+                            fontSize: 11,
+                            fontWeight: 600
                           }}>
                             ✓ Developer
                           </span>
@@ -2101,7 +2101,7 @@ export function UserManagement(props: UserEditorProps) {
                 onClick={() => setShowDeveloperModal(false)}
                 style={{
                   padding: "8px 18px", borderRadius: 8,
-                  border: "1px solid #d1d5db", background: "var(--surface-default)",
+                  border: "1px solid var(--border-default)", background: "var(--surface-default)",
                   fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)",
                   cursor: "pointer",
                 }}
@@ -2111,7 +2111,7 @@ export function UserManagement(props: UserEditorProps) {
                 style={{
                   padding: "8px 20px", borderRadius: 8,
                   border: "none",
-                  background: "#7c3aed",
+                  background: "var(--dev-accent-solid)",
                   fontSize: 13, fontWeight: 600, color: "var(--text-inverse)",
                   cursor: "pointer",
                 }}

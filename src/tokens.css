@@ -115,6 +115,17 @@
   --clb-team-label:   #0f766e;
   --trend-down:       #d6323b;
 
+  /* Admin's Developer Accounts modal: a violet accent distinct from the site's
+     red brand, so "developer mode" reads as its own thing. -bg/-label are a
+     tinted surface + the text/icon that sits on it (same pair shape as
+     --clb-rank-*), so they flip together in dark mode. -solid is for a SOLID
+     violet surface with white text on it (the Save Changes button) or a
+     checkbox's accent-color — invariant like --brand-fill, because a solid
+     background with fixed-color text must not flip independently of it. */
+  --dev-accent-bg:    #f5f3ff;
+  --dev-accent-label: #7c3aed;
+  --dev-accent-solid: #7c3aed;
+
   /* Advisory, not an error. For a hint that something needs a human's attention
      but nothing is broken and nothing is blocked -- e.g. User Management noting
      that a rep's Branch disagrees with RepCard. Distinct from --trend-down,
@@ -167,6 +178,13 @@
   --clb-team-bg:      rgba(20, 184, 166, 0.14);
   --clb-team-border:  rgba(45, 212, 191, 0.34);
   --clb-team-label:   #5eead4;
+
+  /* Developer Accounts violet — tinted dark so the light label stays readable
+     against it, same reasoning as clb-rank above. -solid stays put: it's a
+     solid button/checkbox fill with white text on it either way. */
+  --dev-accent-bg:    rgba(124, 58, 237, 0.16);
+  --dev-accent-label: #c4b5fd;
+  --dev-accent-solid: #7c3aed;
 
   /* Amber flips for the same reason the two above do: #92400e is a dark brown
      on a dark ground and does not read. */
