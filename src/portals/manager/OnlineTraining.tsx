@@ -17,6 +17,7 @@ import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/qu
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { courseModules } from "../../lib/training/modules";
 import { formatLessonLength, courseLengthLabel, timeLeftLabel } from "../../lib/training/lesson-length";
+import { newSinceFinished, newItemsLabel } from "../../lib/training/new-since-finished";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -736,6 +737,8 @@ export function ManagerOnlineTrainingPage(props: {
   // you left off" resume banner (the viewer's OWN progress).
   const [courseCompletedMap, setCourseCompletedMap] = useState<Record<string, Set<string>>>({});
   const [courseUpdatedMap, setCourseUpdatedMap] = useState<Record<string, number>>({});
+  // Per course: lessons and quizzes added after this user finished it.
+  const [courseNewItems, setCourseNewItems] = useState<Record<string, string[]>>({});
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
   const [teamProgress, setTeamProgress] = useState<{ user: any; rows: { course: any; completed: number; total: number; isCompleted: boolean }[] }[]>([]);
   const [isLoadingTeam, setIsLoadingTeam] = useState(false);
@@ -779,6 +782,7 @@ export function ManagerOnlineTrainingPage(props: {
           const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
           const completedMap: Record<string, Set<string>> = {};
           const updatedMap: Record<string, number> = {};
+          const newItemsMap: Record<string, string[]> = {};
 
           publishedCourses.forEach(course => {
             const courseData = data[course.id] || {};
@@ -791,11 +795,13 @@ export function ManagerOnlineTrainingPage(props: {
             );
             completedMap[course.id] = new Set<string>(courseData.completedPages || []);
             updatedMap[course.id] = courseData.updatedAt ? new Date(courseData.updatedAt).getTime() : 0;
+            newItemsMap[course.id] = newSinceFinished(course.pages || [], course.folders || [], courseData);
           });
 
           setCourseProgress(progressMap);
           setCourseCompletedMap(completedMap);
           setCourseUpdatedMap(updatedMap);
+          setCourseNewItems(newItemsMap);
         }
       } catch (err) {
         console.error('Failed to load progress:', err);
@@ -1728,6 +1734,8 @@ export function ManagerOnlineTrainingPage(props: {
     const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
     const totalLessons = (selectedCourse.pages ?? []).filter(p => p.status === 'published').length;
     const totalSections = (selectedCourse.folders ?? []).length;
+    // Lessons and quizzes added to this course after the rep finished it.
+    const newIds = new Set(newSinceFinished(selectedCourse.pages ?? [], selectedCourse.folders ?? [], { courseCompleted, completedPages, quizResults: savedQuizResults }));
 
     const MobileOverview = () => (
       <div className="mobile-course-overview">
@@ -1807,7 +1815,7 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
                 <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                  {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}
+                  {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}{newIds.has(page.id) ? <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                 </span>
               </div>
             );
@@ -1845,7 +1853,7 @@ export function ManagerOnlineTrainingPage(props: {
                     >
                       <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
                       <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                        {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}
+                        {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}{newIds.has(page.id) ? <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                       </span>
                     </div>
                   );
@@ -2121,7 +2129,7 @@ export function ManagerOnlineTrainingPage(props: {
                     >
                       <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                         <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}{folderName ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {folderName}</span> : null}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}{folderName ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {folderName}</span> : null}</span>{newIds.has(page.id) ? <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                       </span>
                     </div>
                   );
@@ -2143,7 +2151,7 @@ export function ManagerOnlineTrainingPage(props: {
                   >
                     <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                       <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>{newIds.has(page.id) ? <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                     </span>
                   </div>
                 );
@@ -2187,7 +2195,7 @@ export function ManagerOnlineTrainingPage(props: {
                         >
                           <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                             <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>{newIds.has(page.id) ? <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                           </span>
                         </div>
                       );
@@ -2620,8 +2628,9 @@ export function ManagerOnlineTrainingPage(props: {
                       {(() => {
                         const lessons = (course.pages ?? []).filter(p => p.status === 'published' && !p.isQuiz).length;
                         const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-                        const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
-                        const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
+                        const newLabel = newItemsLabel(course.pages ?? [], courseNewItems[course.id] || []);
+                        const statusText = newLabel ? "New lessons" : progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
+                        const statusColor = newLabel ? "var(--brand-on-surface)" : progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
                         const mods = courseModules(course);
                         return (
                           <>
@@ -2649,7 +2658,7 @@ export function ManagerOnlineTrainingPage(props: {
                               </div>
                             )}
                             {lessons > 0 && (
-                              <div className="training-card-lessons">{lessons} lesson{lessons === 1 ? "" : "s"}{courseLengthLabel(course.pages ?? [], course.folders ?? []) ? ` · ${courseLengthLabel(course.pages ?? [], course.folders ?? [])}` : ""}</div>
+                              <div className="training-card-lessons">{lessons} lesson{lessons === 1 ? "" : "s"}{courseLengthLabel(course.pages ?? [], course.folders ?? []) ? ` · ${courseLengthLabel(course.pages ?? [], course.folders ?? [])}` : ""}{newItemsLabel(course.pages ?? [], courseNewItems[course.id] || []) ? ` · ${newItemsLabel(course.pages ?? [], courseNewItems[course.id] || [])}` : ""}</div>
                             )}
                             <div className="training-card-progress-track">
                               <div

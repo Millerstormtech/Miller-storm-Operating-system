@@ -747,13 +747,29 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          page['title'] ?? 'Lesson ${pageIndex + 1}',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            color: _textDark,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                page['title'] ?? 'Lesson ${pageIndex + 1}',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: _textDark,
+                                                ),
+                                              ),
+                                            ),
+                                            // Added to the course after this user finished it. The
+                                            // server decides (newPageIds), same rule as the web.
+                                            if (((_course?['newPageIds'] as List?) ?? const []).contains(pageId))
+                                              Padding(
+                                                padding: const EdgeInsets.only(left: 6),
+                                                child: Text(
+                                                  'New',
+                                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _primary),
+                                                ),
+                                              ),
+                                          ],
                                         ),
                                         // Only show "Video lesson" if page has videoUrl and is not a quiz
                                         if (page['isQuiz'] != true && page['videoUrl'] != null && page['videoUrl'].toString().isNotEmpty)

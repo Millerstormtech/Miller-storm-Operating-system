@@ -70,7 +70,7 @@ export default async function handler(
       // caused mobile timeouts (courses have 80+ pages each). The light metadata
       // is tiny AND is needed by consumers like the manager "unlock lessons"
       // screen, so we keep it.
-      courseQuery.select('id title description icon coverImageUrl category order status accessMode unlockAll folders.id folders.title folders.status pages.id pages.title pages.status pages.isQuiz pages.folderId pages.durationSeconds');
+      courseQuery.select('id title description icon coverImageUrl category order status accessMode unlockAll folders.id folders.title folders.status pages.id pages.title pages.status pages.isQuiz pages.isFinalTest pages.folderId pages.durationSeconds');
     }
     // ⏱️ PERF: MongoDB course query
     console.time("📦 Mongo Course Query");
