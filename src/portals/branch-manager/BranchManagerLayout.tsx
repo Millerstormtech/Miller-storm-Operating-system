@@ -34,7 +34,8 @@ type BranchManagerViewId =
   | "jays-ai-clone"
   | "my-profile"
   | "user-management"
-  | "my-tasks";
+  | "my-tasks"
+  | "rep-activity";
 
 type BranchManagerLayoutProps = {
   children: React.ReactNode;

@@ -7,7 +7,7 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // Branch Manager (executive) panel navigation. Company-wide view — every item shows the
 // whole organization, not a single team. Each item carries a feature-toggle key so
 // an admin can hide any page for this user from User Management.
-export const branchManagerSidebarItems = [
+export const branchManagerSidebarItems: { id: string; label: string; toggleKey?: string }[] = [
   { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
   { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
@@ -17,6 +17,9 @@ export const branchManagerSidebarItems = [
   { id: "training", label: "Training Center", toggleKey: "training" },
   { id: "jays-ai-clone", label: "Jayi", toggleKey: "aiChat" },
   { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
+  // No toggleKey, matching admin's own Rep Activity link (also un-togglable) —
+  // this is a leadership-visibility page, not a per-user permission.
+  { id: "rep-activity", label: "Rep Activity" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 
@@ -35,7 +38,7 @@ export function BranchManagerSidebar({ activeId, isCollapsed, onToggleCollapse }
 
   // Hide any page whose feature toggle is explicitly turned off for this user.
   const sidebarItems = featureToggles
-    ? baseItems.filter(item => featureToggles[item.toggleKey] !== false)
+    ? baseItems.filter(item => !item.toggleKey || featureToggles[item.toggleKey] !== false)
     : baseItems;
 
   function handleNavigation(id: string) {

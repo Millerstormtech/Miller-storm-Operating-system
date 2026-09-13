@@ -5,10 +5,14 @@ import { UserModel } from "../../../src/lib/models/User";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 
-// Admin report of daily rep activity.
+// Leadership report of daily rep activity.
 //   GET /api/activity/report?date=YYYY-MM-DD   → every rep's totals for that day
 //   GET /api/activity/report?userId=<id>&days=N → one rep's last N days
-// Admin only: this is workforce usage data, never exposed to the rep it is about.
+// Admin, C-Level and Branch Manager only — this is workforce usage data,
+// never exposed to the rep it is about. Company-wide for every allowed role
+// (no branch scoping), matching how these same roles already see the full
+// company in User Management.
+const ALLOWED_ROLES = ["admin", "c-level", "branch-manager"];
 
 function todayUtc(): string {
   const d = new Date();
@@ -24,8 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const auth = requireUser(req, res);
   if (!auth) return;
-  if (auth.role !== "admin") {
-    res.status(403).json({ error: "Admins only" });
+  if (!ALLOWED_ROLES.includes(auth.role || "")) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
 

@@ -35,7 +35,8 @@ type CLevelViewId =
   | "my-profile"
   | "user-management"
   | "announcements"
-  | "my-tasks";
+  | "my-tasks"
+  | "rep-activity";
 
 type CLevelLayoutProps = {
   children: React.ReactNode;

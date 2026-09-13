@@ -1,8 +1,10 @@
 import { Fragment, useEffect, useState, useCallback } from "react";
 
-// Admin view of daily rep activity: how long each rep spent on the app (web vs
-// mobile), how much of that was watching training videos or taking quizzes, and
-// which videos they watched. Reads /api/activity/report (admin only).
+// Leadership view of daily rep activity: how long each rep spent on the app
+// (web vs mobile), how much of that was watching training videos or taking
+// quizzes, and which videos they watched. Reads /api/activity/report (admin,
+// c-level and branch-manager). Shared as-is by all three roles' pages —
+// nothing here is admin-specific.
 
 type LessonTime = { courseId: string; courseTitle: string; pageId: string; title: string; secondsWeb: number; secondsMobile: number };
 type Rep = {
