@@ -16,6 +16,7 @@ import {
 } from "../../lib/training/video-position";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
+import { formatLessonLength, courseLengthLabel, timeLeftLabel } from "../../lib/training/lesson-length";
 import { courseModules } from "../../lib/training/modules";
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing } from "../../lib/quiz";
@@ -988,7 +989,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                             )}
                             {lessonCount(course) > 0 && (
                               <div className="training-card-lessons">
-                                {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}
+                                {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}{courseLengthLabel(course.pages ?? [], course.folders ?? []) ? ` · ${courseLengthLabel(course.pages ?? [], course.folders ?? [])}` : ""}
                               </div>
                             )}
                             <div className="training-card-progress-track">
@@ -1290,7 +1291,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         <div style={{ padding: '24px 16px 8px' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Course Content</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
-            {totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons
+            {totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons{(() => { const t = timeLeftLabel(selectedCourse.pages ?? [], completedPages, selectedCourse.folders ?? []); return t ? ` • ${t}` : ''; })()}
           </div>
         </div>
         {/* Lesson list */}
@@ -1320,7 +1321,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
                   <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                    {!unlocked && "🔒 "}{page.title}
+                    {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}
                   </span>
                 </div>
               </div>
@@ -1367,7 +1368,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
                         <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                          {!unlocked && "🔒 "}{page.title}
+                          {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}
                         </span>
                       </div>
                     </div>
@@ -1951,7 +1952,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   >
                     <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                       <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>
                     </span>
                   </div>
                 );
@@ -1995,7 +1996,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         >
                           <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                             <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>
                           </span>
                         </div>
                       );

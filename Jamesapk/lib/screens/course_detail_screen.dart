@@ -8,6 +8,18 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import 'lesson_player_screen.dart';
 
+/// " · 4 min" for a lesson with a known length, "" otherwise. Mirrors
+/// formatLessonLength() in src/lib/training/lesson-length.ts on the web.
+String lessonLengthSuffix(dynamic seconds) {
+  if (seconds is! num || seconds <= 0) return '';
+  final rounded = (seconds / 60).round();
+  final minutes = rounded < 1 ? 1 : rounded;
+  if (minutes < 60) return ' · $minutes min';
+  final hours = minutes ~/ 60;
+  final rest = minutes % 60;
+  return rest == 0 ? ' · $hours hr' : ' · $hours hr $rest min';
+}
+
 class CourseDetailScreen extends StatefulWidget {
   final String courseId;
   final String courseTitle;
@@ -756,7 +768,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                               ),
                                               const SizedBox(width: 4),
                                               Text(
-                                                'Video lesson',
+                                                'Video lesson${lessonLengthSuffix(page['durationSeconds'])}',
                                                 style: TextStyle(
                                                   fontSize: 11,
                                                   color: _textLight,

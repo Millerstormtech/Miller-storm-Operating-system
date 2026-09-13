@@ -6,6 +6,7 @@ import { NotificationModel } from "../../../src/lib/models/Notification";
 import { sendPushNotificationToMultiple } from "../../../src/lib/firebase-admin";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 import { trainingRouteForRole } from "../../../src/lib/trainingRoute";
+import { fillMissingDurations } from "../../../src/lib/lessonDurations";
 
 type ContentAnnouncement = {
   course: any;
@@ -194,6 +195,12 @@ export default async function handler(
       if (newPages.length) announcements.push({ course, newPages });
     }
     await notifyNewContent(announcements);
+
+    // Look up any lesson lengths still missing, from Vimeo. Fire-and-forget:
+    // a slow lookup must never hold up the save, and the next save retries.
+    fillMissingDurations(migratedCourses.map((c) => c.id)).catch((e) =>
+      console.error("[Bulk Save] Lesson length lookup failed:", e)
+    );
 
     // Return only the saved courses
     const savedCourses = await CourseModel.find({ 

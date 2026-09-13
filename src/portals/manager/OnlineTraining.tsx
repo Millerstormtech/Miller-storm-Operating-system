@@ -16,6 +16,7 @@ import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing } from "../
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { courseModules } from "../../lib/training/modules";
+import { formatLessonLength, courseLengthLabel, timeLeftLabel } from "../../lib/training/lesson-length";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -1781,7 +1782,7 @@ export function ManagerOnlineTrainingPage(props: {
         </div>
         <div style={{ padding: '24px 16px 8px' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Course Content</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons{(() => { const t = timeLeftLabel(selectedCourse.pages ?? [], completedPages, selectedCourse.folders ?? []); return t ? ` • ${t}` : ''; })()}</div>
         </div>
         <div style={{ borderTop: '1px solid var(--border-default)' }}>
           {pages.filter(p => !p.folderId).map(page => {
@@ -1806,7 +1807,7 @@ export function ManagerOnlineTrainingPage(props: {
               >
                 <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
                 <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                  {!unlocked && "🔒 "}{page.title}
+                  {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}
                 </span>
               </div>
             );
@@ -1844,7 +1845,7 @@ export function ManagerOnlineTrainingPage(props: {
                     >
                       <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} style={{ marginRight: 10 }} />
                       <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                        {!unlocked && "🔒 "}{page.title}
+                        {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}
                       </span>
                     </div>
                   );
@@ -2120,7 +2121,7 @@ export function ManagerOnlineTrainingPage(props: {
                     >
                       <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                         <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{folderName ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {folderName}</span> : null}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}{folderName ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {folderName}</span> : null}</span>
                       </span>
                     </div>
                   );
@@ -2142,7 +2143,7 @@ export function ManagerOnlineTrainingPage(props: {
                   >
                     <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                       <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>
                     </span>
                   </div>
                 );
@@ -2186,7 +2187,7 @@ export function ManagerOnlineTrainingPage(props: {
                         >
                           <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                             <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>
                           </span>
                         </div>
                       );
@@ -2648,7 +2649,7 @@ export function ManagerOnlineTrainingPage(props: {
                               </div>
                             )}
                             {lessons > 0 && (
-                              <div className="training-card-lessons">{lessons} lesson{lessons === 1 ? "" : "s"}</div>
+                              <div className="training-card-lessons">{lessons} lesson{lessons === 1 ? "" : "s"}{courseLengthLabel(course.pages ?? [], course.folders ?? []) ? ` · ${courseLengthLabel(course.pages ?? [], course.folders ?? [])}` : ""}</div>
                             )}
                             <div className="training-card-progress-track">
                               <div

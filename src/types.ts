@@ -157,6 +157,9 @@ export type CoursePage = {
   // For quizzes: how many questions (randomly chosen from quizQuestions) to
   // actually show the user. Undefined / 0 / >= total means show them all.
   questionsToShow?: number;
+  // Video length in seconds, from Vimeo. Shown as "4 min" per lesson and
+  // "45 min left" per course; formatted only by src/lib/training/lesson-length.ts.
+  durationSeconds?: number;
 };
 
 export type CourseFolder = {
