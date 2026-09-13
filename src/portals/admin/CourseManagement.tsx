@@ -1,3 +1,4 @@
+import { removedPageIds } from "../../lib/training/progress-cleanup";
 import { useRef, useState, useEffect } from "react";
 import { Course, CoursePage, CourseFolder } from "../../types";
 import { Toast } from "../../components/Toast";
@@ -99,7 +100,7 @@ export function CourseManagement(props: CourseEditorProps) {
       deleteCourse(selectedCourse.id);
     } else if (deleteTarget === 'lesson') {
       const nextPages = (selectedCourse.pages ?? []).filter(p => !deleteSelectedIds.has(p.id));
-      persistCourse({ ...selectedCourse, pages: nextPages });
+      void persistAndCleanRemovedPages(selectedCourse, { ...selectedCourse, pages: nextPages });
       if (activePageId && deleteSelectedIds.has(activePageId)) {
         const fallback = nextPages[nextPages.length - 1] ?? nextPages[0];
         setActivePageId(fallback ? fallback.id : null);
@@ -107,13 +108,28 @@ export function CourseManagement(props: CourseEditorProps) {
     } else if (deleteTarget === 'module') {
       const remainingFolders = (selectedCourse.folders ?? []).filter(f => !deleteSelectedIds.has(f.id));
       const remainingPages = (selectedCourse.pages ?? []).filter(p => !deleteSelectedIds.has(p.folderId ?? ''));
-      persistCourse({ ...selectedCourse, folders: remainingFolders, pages: remainingPages });
+      void persistAndCleanRemovedPages(selectedCourse, { ...selectedCourse, folders: remainingFolders, pages: remainingPages });
       if (activePageId && !remainingPages.some(p => p.id === activePageId)) {
         const fallback = remainingPages[remainingPages.length - 1] ?? remainingPages[0];
         setActivePageId(fallback ? fallback.id : null);
       }
     }
     closeDeleteModal();
+  }
+  // Deleting lessons or a whole module used to leave those pages in every rep's
+  // saved progress (completion, unlocks, quiz results, completion dates, video
+  // positions, pinned quiz picks). Moving a lesson already cleaned up; deleting
+  // now does the same, and only once the save has succeeded. The server also
+  // refuses to clean any page that is still in the course.
+  async function persistAndCleanRemovedPages(before: Course, after: Course) {
+    const removed = removedPageIds(before.pages ?? [], after.pages ?? []);
+    const saved = await persistCourse(after);
+    if (!saved || removed.length === 0) return;
+    fetch("/api/courses/move-lesson-cleanup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pageIds: removed, fromCourseId: after.id }),
+    }).catch((e) => console.error("Delete progress cleanup failed:", e));
   }
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(280);
@@ -668,9 +684,10 @@ export function CourseManagement(props: CourseEditorProps) {
   // alone only changes local state, so a refresh reloaded the DB copy and the
   // "deleted" lesson came back. Skips the API while creating a brand-new course
   // (it isn't saved until the user hits Save).
-  async function persistCourse(updated: Course, successMsg?: string) {
+  // Resolves true only when the change reached the server.
+  async function persistCourse(updated: Course, successMsg?: string): Promise<boolean> {
     updateCourse(updated);
-    if (isCreatingNewCourse) return;
+    if (isCreatingNewCourse) return false;
     try {
       const cleaned = props.cleanCourses ? props.cleanCourses([updated])[0] : updated;
       const res = await fetch("/api/courses/bulk", {
@@ -682,9 +699,11 @@ export function CourseManagement(props: CourseEditorProps) {
       setOriginalCourse(JSON.parse(JSON.stringify(updated)));
       setHasChanges(false);
       if (successMsg) showToast(successMsg, "success");
+      return true;
     } catch (e) {
       console.error("Failed to persist course change:", e);
       showToast("Couldn't save the change. Please try again.", "error");
+      return false;
     }
   }
 
