@@ -436,7 +436,7 @@ class _BranchManagerProfileScreenState extends State<BranchManagerProfileScreen>
             IconButton(
               icon: Icon(Icons.campaign_outlined, color: _white),
               onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const AnnouncementsScreen(canCompose: false))),
+                  MaterialPageRoute(builder: (_) => const AnnouncementsScreen(canCompose: true))),
               tooltip: 'Announcements',
             ),
             IconButton(

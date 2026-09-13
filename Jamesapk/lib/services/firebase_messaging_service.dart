@@ -268,7 +268,10 @@ class FirebaseMessagingService {
       _navigatorKey!.currentState!.push(
         MaterialPageRoute(
           builder: (_) => AnnouncementsScreen(
-            canCompose: role == 'c-level' || role == 'admin',
+            canCompose: role == 'c-level' ||
+                role == 'admin' ||
+                role == 'branch-manager' ||
+                role == 'sales-team-lead',
           ),
         ),
       );

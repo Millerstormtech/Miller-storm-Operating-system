@@ -4,22 +4,33 @@ import { UserModel } from "../../src/lib/models/User";
 import { NotificationModel } from "../../src/lib/models/Notification";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { sendPushNotificationToMultiple } from "../../src/lib/firebase-admin";
+import { resolveAudience, isResolveError, type TeamLeadCandidate } from "../../src/lib/announcements/audience";
 
-// Company-wide announcements. Admin & C-Level only.
+// Company-wide (or scoped) announcements.
 //
-// Modelled on notify-update.ts, but targets EVERYONE (all active, non-deleted,
-// non-suspended users), not just sales roles. One Notification row is written
-// per recipient, which gives per-person read/dismiss for free (no new tracking
-// collection), and a phone push goes out reusing the existing FCM helper.
+// Modelled on notify-update.ts, but can target everyone, one or more branches,
+// or one or more teams (a sales-team-lead + their reports) instead of just
+// sales roles. One Notification row is written per recipient, which gives
+// per-person read/dismiss for free (no new tracking collection), and a phone
+// push goes out reusing the existing FCM helper.
 //
-//   GET  → { recipients } — the audience size, for the composer's confirm step.
-//   POST → send the announcement; returns the recipient + push counts.
+//   GET  ?options=1                  → audience picker options for THIS caller's role
+//   GET  ?audienceType=...&branches=...&teamLeadIds=...  → the audience size, for the composer's confirm step
+//   GET  ?history=1                  → every announcement ever sent, newest first
+//   POST                             → send the announcement; returns the recipient + push counts
+//
+// AUDIENCE RULES — the actual scoping logic lives in
+// src/lib/announcements/audience.ts (pure, unit-tested), so the size preview
+// (GET) and the real send (POST) can never disagree about who a pick reaches:
+//   admin / c-level        → everyone, any branch(es), or any team(s)
+//   branch-manager         → their own branch(es) only, or team(s) within their own branch(es)
+//   sales-team-lead        → their own team only (no choice — always forced server-side)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET", "POST"])) return;
 
   // History is readable by ANY signed-in user (announcements are company-wide
-  // anyway); composing — and the audience count for the composer — stays with
-  // the leadership roles.
+  // or scoped, but everyone should see what's already gone out); composing —
+  // and the audience picker/count for the composer — stays with leadership.
   const auth = requireUser(req, res);
   if (!auth) return;
 
@@ -41,6 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           message: { $first: "$message" },
           link: { $first: "$metadata.link" },
           postedByName: { $first: "$metadata.postedByName" },
+          audienceLabel: { $first: "$metadata.audienceLabel" },
           createdAt: { $first: "$createdAt" },
         },
       },
@@ -52,23 +64,120 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: h.message,
       link: h.link || "",
       postedByName: h.postedByName || "",
+      audienceLabel: h.audienceLabel || "Everyone",
       createdAt: h.createdAt,
     })));
   }
 
-  // Composer roles: admin & c-level only — same on web and mobile. Everyone
-  // else (sales, team leads, branch managers) only reads the history above.
-  const composerRoles = ["admin", "c-level"];
+  // Composer roles: leadership only. Everyone else (sales, marketing) only
+  // reads the history above.
+  const composerRoles = ["admin", "c-level", "branch-manager", "sales-team-lead"];
   if (!composerRoles.includes(auth.role || "")) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  // Everyone active — no role/branch/team targeting in phase one.
-  const audienceFilter = { deleted: { $ne: true }, suspended: { $ne: true } };
+  const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
+
+  // The caller's own record — needed to resolve "their branch(es)" / "their
+  // team" for the two scoped roles. Never trust a body/query-supplied branch
+  // or team list for those roles; always re-derive from THIS record.
+  const caller = (await UserModel.findOne(
+    { id: auth.sub },
+    { id: 1, name: 1, role: 1, territory: 1, branches: 1 }
+  ).lean()) as any;
+  // Raw (original-case) values — these are what get used in the actual Mongo
+  // $in query and shown in labels, since territory/branches store real case.
+  const callerBranchesRaw = Array.from(
+    new Set([caller?.territory, ...(caller?.branches || [])].filter(Boolean).map((s) => String(s).trim()))
+  );
+  // Normalized (lowercased) — used only for matching against OTHER users'
+  // branch values, which may differ in case.
+  const callerBranchesNorm = callerBranchesRaw.map(norm);
+
+  // Every distinct branch name in use, from EITHER field — matches the same
+  // fuzzy "territory OR branches" convention branchGroup.ts already uses for
+  // StormChat branch groups, so "which branches exist" agrees everywhere.
+  async function allBranches(): Promise<string[]> {
+    const [territories, branchLists] = await Promise.all([
+      UserModel.distinct("territory", { deleted: { $ne: true } }),
+      UserModel.distinct("branches", { deleted: { $ne: true } }),
+    ]);
+    const set = new Set<string>();
+    for (const t of territories) if (t) set.add(String(t).trim());
+    for (const b of branchLists) if (b) set.add(String(b).trim());
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+
+  // Every sales-team-lead, each carrying the branch(es) their OWN record
+  // carries — used both to list "teams" and to check whether a given team
+  // lead falls inside a branch-manager's branch(es).
+  async function allTeamLeads(): Promise<TeamLeadCandidate[]> {
+    const leads = (await UserModel.find(
+      { role: "sales-team-lead", deleted: { $ne: true } },
+      { id: 1, name: 1, territory: 1, branches: 1 }
+    ).lean()) as any[];
+    return leads.map((l) => ({
+      id: l.id,
+      name: l.name || l.id,
+      branches: Array.from(new Set([l.territory, ...(l.branches || [])].filter(Boolean).map(norm))),
+    }));
+  }
+
+  // GET ?options=1 → what this caller is allowed to pick, for the "Who will
+  // see this" dropdown and its branch/team sub-picker.
+  if (req.method === "GET" && req.query.options) {
+    if (auth.role === "sales-team-lead") {
+      return res.status(200).json({
+        types: ["team"],
+        branches: [],
+        teams: [{ id: auth.sub, name: caller?.name || "My Team" }],
+      });
+    }
+    if (auth.role === "branch-manager") {
+      const leads = await allTeamLeads();
+      const teamsInBranch = leads.filter((l) => l.branches.some((b) => callerBranchesNorm.includes(b)));
+      return res.status(200).json({
+        types: ["branch", "team"],
+        branches: callerBranchesRaw,
+        teams: teamsInBranch.map((l) => ({ id: l.id, name: l.name })),
+      });
+    }
+    // admin / c-level
+    const [branches, leads] = await Promise.all([allBranches(), allTeamLeads()]);
+    return res.status(200).json({
+      types: ["everyone", "branch", "team"],
+      branches,
+      teams: leads.map((l) => ({ id: l.id, name: l.name })),
+    });
+  }
+
+  async function resolve(raw: any) {
+    const allTeamLeadsList = await allTeamLeads();
+    const allBranchesList = auth!.role === "admin" || auth!.role === "c-level" ? await allBranches() : [];
+    return resolveAudience(
+      {
+        role: auth!.role || "",
+        callerId: auth!.sub,
+        callerName: caller?.name || "",
+        callerBranchesRaw,
+        callerBranchesNorm,
+        allBranchesRaw: allBranchesList,
+        allTeamLeads: allTeamLeadsList,
+      },
+      raw
+    );
+  }
 
   if (req.method === "GET") {
-    const recipients = await UserModel.countDocuments(audienceFilter);
-    return res.status(200).json({ recipients });
+    const audienceRaw = {
+      type: req.query.audienceType,
+      branches: typeof req.query.branches === "string" ? req.query.branches.split(",").filter(Boolean) : [],
+      teamLeadIds: typeof req.query.teamLeadIds === "string" ? req.query.teamLeadIds.split(",").filter(Boolean) : [],
+    };
+    const resolved = await resolve(audienceRaw);
+    if (isResolveError(resolved)) return res.status(200).json({ recipients: 0, error: resolved.error });
+    const recipients = await UserModel.countDocuments(resolved.filter);
+    return res.status(200).json({ recipients, audienceLabel: resolved.label });
   }
 
   // POST — send the announcement.
@@ -80,10 +189,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Title and message are required." });
   }
 
+  const resolved = await resolve(req.body?.audience);
+  if (isResolveError(resolved)) return res.status(400).json({ error: resolved.error });
+
   // The author comes from the session, never the request body.
   const author = (await UserModel.findOne({ id: auth.sub }, { id: 1, name: 1 }).lean()) as any;
 
-  const recipients = (await UserModel.find(audienceFilter, { id: 1, fcmToken: 1 }).lean()) as any[];
+  const recipients = (await UserModel.find(resolved.filter, { id: 1, fcmToken: 1 }).lean()) as any[];
 
   // Phone push to every device we have a token for.
   const pushTokens = recipients.map((u) => u.fcmToken).filter(Boolean);
@@ -104,7 +216,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     title,
     message,
     read: false,
-    metadata: { link, postedBy: author?.id || auth.sub, postedByName: author?.name || "" },
+    metadata: { link, postedBy: author?.id || auth.sub, postedByName: author?.name || "", audienceLabel: resolved.label },
   }));
   if (docs.length) {
     await NotificationModel.insertMany(docs, { ordered: false });
@@ -116,5 +228,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     pushTokens: pushTokens.length,
     pushSuccess: pushResult.successCount,
     pushFailed: pushResult.failureCount,
+    audienceLabel: resolved.label,
   });
 }

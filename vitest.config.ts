@@ -34,6 +34,7 @@ export default defineConfig({
       "src/portals/shared/guided-tour/**/*.test.ts",
       "src/lib/report/**/*.test.ts",
       "src/lib/tasks/**/*.test.ts",
+      "src/lib/announcements/**/*.test.ts",
       // Targeted, NOT the whole leaderboard folder: adding src/lib/leaderboard/**
       // would also wake identity/merge/ranking, which have never run here.
       "src/lib/leaderboard/contractKing.test.ts",

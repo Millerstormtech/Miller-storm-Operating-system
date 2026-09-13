@@ -35,7 +35,8 @@ type BranchManagerViewId =
   | "my-profile"
   | "user-management"
   | "my-tasks"
-  | "rep-activity";
+  | "rep-activity"
+  | "announcements";
 
 type BranchManagerLayoutProps = {
   children: React.ReactNode;

@@ -2,14 +2,22 @@ import { useRouter } from "next/router";
 import { useAuth } from "../contexts/AuthContext";
 
 // Header button, next to the Tickets button, that opens the announcement
-// composer. Only admin and c-level can post, so it's hidden for everyone else.
+// composer. Admin, C-Level, Branch Manager and Sales Team Lead can post
+// (each scoped server-side to their own audience — see pages/api/announcements.ts),
+// so it's hidden for everyone else.
+const ANNOUNCEMENT_ROUTE_BY_ROLE: Record<string, string> = {
+  admin: "/admin/announcements",
+  "c-level": "/c-level/announcements",
+  "branch-manager": "/branch-manager/announcements",
+  "sales-team-lead": "/manager/announcements",
+};
+
 export function AnnouncementButton() {
   const router = useRouter();
   const { user } = useAuth();
-  const role = user?.role;
-  if (role !== "admin" && role !== "c-level") return null;
-
-  const href = role === "admin" ? "/admin/announcements" : "/c-level/announcements";
+  const role = user?.role || "";
+  const href = ANNOUNCEMENT_ROUTE_BY_ROLE[role];
+  if (!href) return null;
 
   return (
     <button
