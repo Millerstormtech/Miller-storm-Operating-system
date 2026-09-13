@@ -17,8 +17,13 @@
 //   - anyone with no knock in the 30 days ending yesterday is left out. On live data
 //     the card was full of reps who stopped knocking in June and July but were
 //     never deactivated in RepCard; they have left, they are not "low".
-//   - team leads (branch managers included, they lead a team too) are left out.
-//     The card is about reps; leaders mostly do not knock.
+//   - leaders are left out: team leads from the org chart, plus anyone whose
+//     Miller Storm account is a leadership role (branch manager, team lead,
+//     c-level, admin). The card is about reps; leaders mostly do not knock. The
+//     account role catches a branch manager the org chart does not list as a lead.
+//     NOTE: this rule does not know who has LEFT. It only sees that someone has
+//     not knocked in 30 days; leaving, leave of absence and a role change all look
+//     the same to it.
 // Sales reps never get this card; that is decided by the API, not here.
 import { centralDateStr } from "../acculynx/windows";
 
@@ -30,8 +35,8 @@ export interface KnockCandidate {
   /** Verified knocks inside the window. */
   knocks: number;
   former: boolean;
-  /** Leads a team (org chart). Branch managers lead one too. */
-  isTeamLead: boolean;
+  /** Team lead in the org chart, or a leadership account role (see LEADER_ROLES). */
+  isLeader: boolean;
   /** First and last days with a verified knock, as Central YYYY-MM-DD. */
   firstKnockDay: string | null;
   lastKnockDay: string | null;
@@ -60,6 +65,9 @@ export function lastCompleteDays(now: Date, days = 7): { from: string; to: strin
 /** How long without a single knock before a rep is treated as gone, not low. */
 export const STALE_DAYS = 30;
 
+/** Miller Storm account roles that are never named on the card. */
+export const LEADER_ROLES: readonly string[] = ["branch-manager", "sales-team-lead", "c-level", "admin"];
+
 export function lowestKnocks(rows: KnockCandidate[], window: { from: string; to: string }, n = 3): LowKnocker[] {
   // Last day of the 30-day lookback that ends on the window's last day.
   const staleBefore = shiftDay(window.to, -(STALE_DAYS - 1));
@@ -67,7 +75,7 @@ export function lowestKnocks(rows: KnockCandidate[], window: { from: string; to:
     // A rep with no recorded first knock cannot be shown to have been knocking
     // for the whole window, so they are treated like a new rep, not as a zero.
     .filter((r) => !r.former && r.firstKnockDay != null && r.firstKnockDay <= window.from)
-    .filter((r) => !r.isTeamLead)
+    .filter((r) => !r.isLeader)
     .filter((r) => r.lastKnockDay != null && r.lastKnockDay >= staleBefore)
     .sort(
       (a, b) =>

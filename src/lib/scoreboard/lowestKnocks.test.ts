@@ -7,7 +7,7 @@ const rep = (over: Partial<KnockCandidate>): KnockCandidate => ({
   name: "",
   knocks: 0,
   former: false,
-  isTeamLead: false,
+  isLeader: false,
   firstKnockDay: "2026-01-05",
   lastKnockDay: "2026-09-10",
   ...over,
@@ -69,7 +69,7 @@ describe("lowestKnocks", () => {
   });
 
   it("never names a team lead or branch manager", () => {
-    const rows = [rep({ name: "Lead", knocks: 0, isTeamLead: true }), rep({ name: "Rep", knocks: 9 })];
+    const rows = [rep({ name: "Lead", knocks: 0, isLeader: true }), rep({ name: "Rep", knocks: 9 })];
     expect(lowestKnocks(rows, WIN).map((r) => r.name)).toEqual(["Rep"]);
   });
 

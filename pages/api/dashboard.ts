@@ -31,7 +31,7 @@ import { previousSlice } from "../../src/lib/scoreboard/periods";
 import { toSalesRow } from "../../src/lib/scoreboard/rows";
 import { normEmail } from "../../src/lib/leaderboard/identity";
 import { loadBoardData } from "../../src/lib/training/board-data";
-import { lowestKnocks, lastCompleteDays } from "../../src/lib/scoreboard/lowestKnocks";
+import { lowestKnocks, lastCompleteDays, LEADER_ROLES } from "../../src/lib/scoreboard/lowestKnocks";
 import {
   METRICS,
   topN,
@@ -206,14 +206,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const lowWindow = scope.level === "self" ? null : lastCompleteDays(now);
 
     const shared = await loadSharedRosterData();
-    const [yearRaw, monthRaw, prevRaw, board, lowRaw, knockSpans] = await Promise.all([
+    const [yearRaw, monthRaw, prevRaw, board, lowRaw, knockSpans, leaderUsers] = await Promise.all([
       computeSalesRows(year, shared),
       computeSalesRows(month, shared),
       computeSalesRows(prevMonth, shared),
       loadBoardData(),
       lowWindow ? computeSalesRows(customRange(lowWindow.from, lowWindow.to, now), shared) : Promise.resolve(null),
       lowWindow ? loadKnockSpans() : Promise.resolve(null),
+      // Leadership accounts, so a branch manager the org chart does not list as a
+      // team lead is still never named on the Lowest Knocks card.
+      lowWindow
+        ? UserModel.find({ $or: [{ role: { $in: LEADER_ROLES } }, { roles: { $in: LEADER_ROLES } }] }).select("id").lean()
+        : Promise.resolve(null),
     ]);
+    const leaderIds = new Set<string>(((leaderUsers as any[]) || []).map((u) => String(u.id)));
 
     const yearRows = scopeRows(yearRaw.map(toSalesRow), scope);
     const monthRows = scopeRows(monthRaw.map(toSalesRow), scope);
@@ -254,7 +260,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 lowRaw.map((r) => ({
                   ...toSalesRow(r),
                   id: r.id,
-                  isTeamLead: r.isTeamLead,
+                  isLeader: r.isTeamLead || (r.repUserId != null && leaderIds.has(r.repUserId)),
                   firstKnockDay: knockSpans.get(r.id)?.first ?? null,
                   lastKnockDay: knockSpans.get(r.id)?.last ?? null,
                 })),
