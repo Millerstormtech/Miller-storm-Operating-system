@@ -2,6 +2,7 @@ import { useState, useRef, ChangeEvent } from "react";
 import { UserProfile } from "../../types";
 import { appConfirm, notify } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
+import { MyCertificates } from "../../components/MyCertificates";
 
 export function ProfilePage(props: {
   profile: UserProfile;
@@ -167,6 +168,9 @@ export function ProfilePage(props: {
             </div>
           </div>
         </div>
+
+        {/* Everything this person has earned, each downloadable. */}
+        <MyCertificates />
       </div>
 
       <style jsx>{`

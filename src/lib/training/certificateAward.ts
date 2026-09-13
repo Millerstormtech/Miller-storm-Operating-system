@@ -17,6 +17,7 @@ import { credentialProgress, CREDENTIALS, canonicalCategory } from "./credential
 import { renderCertificatePdf, certificateFilename } from "../certificate/render";
 import { credentialNumber } from "../certificate/template";
 import { certificateDate } from "../certificate/date";
+import { credentialCertificateInput } from "../certificate/credential";
 import { sendCertificateEarnedEmail } from "../email";
 
 const COURSE_SELECT =
@@ -122,23 +123,20 @@ export async function awardCertificatesIfEarned(params: {
         .map((c: any) => String(c.title || ""))
         .filter(Boolean);
 
-      // Tier 1 alone is signed. Since the word Diploma was retired that
-      // signature is the only thing on the page saying which credential
-      // outranks the others, so it is not decoration.
-      const signature =
-        key === "certificate" ? { name: "Jay Miller", title: "Chief Executive Officer" } : null;
-
       let pdf: { filename: string; content: Buffer } | null = null;
       try {
-        const content = await renderCertificatePdf({
-          name: userName,
-          credential: meta.label,
-          courses: titles,
-          issuedDate: certificateDate(now),
-          credentialId,
-          signature,
-          sealRing: key === "certificate" ? "Miller Storm" : meta.label,
-        });
+        // Built by certificate/credential.ts, which the My Profile download uses
+        // too, so a copy downloaded later is this same sheet. Tier 1 alone is
+        // signed; the reason is written there.
+        const content = await renderCertificatePdf(
+          credentialCertificateInput({
+            userName,
+            credential: { key, label: meta.label },
+            courseTitles: titles,
+            issuedDate: certificateDate(now),
+            credentialId,
+          })
+        );
         pdf = { filename: certificateFilename(userName, meta.label), content };
       } catch (e: any) {
         // The rep still hears they earned it. Flag the row so it can be reissued.
