@@ -14,7 +14,7 @@ export function PageHeader({ title, subtitle, actions, back }: { title: string; 
   const activeTourId = useActiveTourId();
   const hasRight = !!actions || !!activeTourId;
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 24px 0" }}>
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 24px 24px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
         {back}
         <div style={{ minWidth: 0 }}>
