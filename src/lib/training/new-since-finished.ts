@@ -16,6 +16,7 @@
 //
 // PURE ONLY: no database, no React, no I/O.
 import { isQuizResultPassing } from "../quiz";
+import { inDisplayOrder } from "./display-order";
 
 type Stamp = Date | string | number | null | undefined;
 
@@ -65,16 +66,6 @@ export function finishedAt(pages: NewItemPage[], progress: NewItemProgress | nul
     ...(progress.pageCompletions || []).map((c) => timeOf(c?.completedAt)),
   ].filter((t): t is number => t !== null);
   return activity.length ? Math.max(...activity) : null;
-}
-
-/** Rep-facing order: pages outside folders first, then each folder in turn. */
-function inDisplayOrder<T extends NewItemPage>(pages: T[], folders: NewItemFolder[]): T[] {
-  const known = new Set(folders.map((f) => f.id));
-  return [
-    ...pages.filter((p) => !p.folderId),
-    ...folders.flatMap((f) => pages.filter((p) => p.folderId === f.id)),
-    ...pages.filter((p) => p.folderId && !known.has(p.folderId)),
-  ];
 }
 
 /** The lessons, and their quizzes, added after this rep finished and not done yet. */
