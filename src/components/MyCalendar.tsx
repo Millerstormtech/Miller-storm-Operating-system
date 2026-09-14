@@ -123,7 +123,7 @@ export function MyCalendar() {
         .cal-connect { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
         .cal-connect-btn {
           display: inline-block; padding: 11px 22px; border-radius: 999px; cursor: pointer;
-          background: var(--brand-on-surface); color: #fff; text-decoration: none;
+          background: var(--brand-on-surface); color: var(--text-inverse); text-decoration: none;
           font-size: 14px; font-weight: 700;
         }
         .cal-connect-btn:hover { opacity: 0.9; }

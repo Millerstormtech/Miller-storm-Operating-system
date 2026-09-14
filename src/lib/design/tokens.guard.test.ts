@@ -27,6 +27,10 @@ const EXEMPT_FILES = [
   "src/lib/emailTemplatesServer.ts",
   "pages/api/training-timer.ts",                     // 14 hex, emailed via Resend
   "pages/api/playlist-assignments/weekly-digest.ts", // 10 hex, manager digest cron
+  // Google's OAuth redirect lands the browser here directly via res.send() —
+  // a standalone <html> document outside Next's page tree, so it never loads
+  // tokens.css and var(--surface-default) etc. would resolve to nothing.
+  "pages/api/calendar/callback.ts",
   // This file's own BANNED / BANNED_RGB dictionaries are string keys like
   // "#F3F4F6" and "107,114,128" — the regexes below would match themselves
   // as offences if this file scanned its own source. Same category as
