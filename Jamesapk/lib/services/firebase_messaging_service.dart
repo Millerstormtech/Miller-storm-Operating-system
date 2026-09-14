@@ -319,6 +319,14 @@ class FirebaseMessagingService {
       return;
     }
 
+    // A Google Calendar event reminder (24h/1h/30m before it starts) ->
+    // open My Calendar.
+    if (type == 'calendar_reminder') {
+      print('🚀 Navigating to My Calendar');
+      _navigatorKey!.currentState!.pushNamed('/calendar');
+      return;
+    }
+
     // StormChat message/mention -> open the chat room (existing behavior).
     final groupId = data['groupId'];
     if (groupId != null && _navigatorKey != null) {

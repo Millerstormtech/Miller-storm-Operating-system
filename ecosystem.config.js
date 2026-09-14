@@ -172,6 +172,28 @@ module.exports = {
       out_file: '/var/www/millerstorm/logs/training-nudge-out.log',
       merge_logs: true,
       time: true
+    },
+    {
+      // Google Calendar event reminders: 24h/1h/30m before each connected
+      // user's event starts. Checks every 5 minutes (tighter than the other
+      // crons since reminders are time-sensitive to the minute) and POSTs
+      // http://localhost:$PORT/api/calendar/reminders-cron, which does the
+      // actual work and never double-sends (unique index per user+event+lead
+      // time), so an overlapping schedule or a restart is always safe.
+      name: 'calendar-reminders',
+      script: 'scripts/calendar-reminders-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 6790
+      },
+      error_file: '/var/www/millerstorm/logs/calendar-reminders-err.log',
+      out_file: '/var/www/millerstorm/logs/calendar-reminders-out.log',
+      merge_logs: true,
+      time: true
     }
   ]
 };

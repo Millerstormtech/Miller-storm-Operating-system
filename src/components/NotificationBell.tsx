@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { Toast } from "./Toast";
 import { useAuth } from "../contexts/AuthContext";
 import { trainingRouteForRole } from "../lib/trainingRoute";
+import { calendarRouteForRole } from "../lib/calendarRoute";
 
 type Notification = {
   id: string;
@@ -121,6 +122,12 @@ export function NotificationBell({ userId }: { userId: string }) {
       setShowDropdown(false);
       const base = trainingRouteForRole(user?.role);
       router.push(`${base}?tab=assignedPlaylists`);
+    } else if (notif.type === 'calendar_reminder') {
+      // A calendar reminder always opens the recipient's OWN My Calendar page
+      // — same reasoning as training's role-aware route below, not the
+      // generic watchUrl branch, which is hardcoded to Training Center.
+      setShowDropdown(false);
+      router.push(calendarRouteForRole(user?.role));
     } else if (notif.metadata?.watchUrl || notif.metadata?.courseId) {
       // Training notifications (e.g. an unlocked lesson) always open the
       // recipient's OWN Training Center, resolved from their role — NOT the
