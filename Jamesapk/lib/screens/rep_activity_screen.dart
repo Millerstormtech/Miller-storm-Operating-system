@@ -249,7 +249,7 @@ class _RepActivityScreenState extends State<RepActivityScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Wrap(spacing: 14, runSpacing: 6, children: [
+                Wrap(spacing: 24, runSpacing: 10, children: [
                   _metric('Web', _fmtSeconds(appWeb)),
                   _metric('Mobile', _fmtSeconds(appMobile)),
                   _metric('Total', _fmtSeconds(appWeb + appMobile), bold: true),
