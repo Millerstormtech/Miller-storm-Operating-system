@@ -30,6 +30,7 @@ import {
   resumeSecondsFor,
   shouldPersistPosition,
 } from '../lib/training/video-position';
+import { vimeoMayAutoplay, vimeoPlayerSrc } from '../lib/training/vimeo-embed';
 
 /**
  * How the caller supplies and receives watch positions. Without this the
@@ -282,27 +283,17 @@ function extractYTVideoId(src: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Add ?api=1 to Vimeo iframe src so the JS SDK can communicate with the player */
-function enableVimeoApi(iframe: HTMLIFrameElement): void {
-  const src = iframe.src;
-  if (!src || src.includes('api=1')) return; // already enabled
-  try {
-    const url = new URL(src);
-    url.searchParams.set('api', '1');
-    url.searchParams.set('autopause', '0');
-    // Mobile-friendly parameters without background mode (which can interfere with ended events)
-    url.searchParams.set('autoplay', '1');
-    url.searchParams.set('muted', '0');
-    url.searchParams.set('playsinline', '1');
-    url.searchParams.set('controls', '1');
-    url.searchParams.set('loop', '0'); // Explicitly disable looping
-    iframe.removeAttribute('loading');
-    iframe.src = url.toString();
-  } catch {
-    const sep = src.includes('?') ? '&' : '?';
-    iframe.removeAttribute('loading');
-    iframe.src = src + sep + 'api=1&autopause=0&autoplay=1&muted=0&playsinline=1&controls=1&loop=0';
-  }
+/**
+ * Add ?api=1 to a Vimeo iframe so the JS SDK can talk to the player. Returns
+ * true when the src changed, which reloads the iframe: only then is there a
+ * load event to wait for. The parameters live in lib/training/vimeo-embed.
+ */
+function enableVimeoApi(iframe: HTMLIFrameElement, autoplay: boolean): boolean {
+  const next = vimeoPlayerSrc(iframe.src, autoplay);
+  if (!next) return false; // already enabled
+  iframe.removeAttribute('loading');
+  iframe.src = next;
+  return true;
 }
 
 /** Wait for iframe load event (with 5s safety timeout) */
@@ -437,7 +428,8 @@ export async function initVideoSequence(
   const ytRaw: { el: HTMLIFrameElement; seqIdx: number }[] = [];
   const vimeoRaw: { iframe: HTMLIFrameElement; seqIdx: number }[] = [];
   const loomRaw: { iframe: HTMLIFrameElement; seqIdx: number }[] = [];
-  const vimeoPlayers: VimeoPlayer[] = [];
+  // How to undo each Vimeo player this run set up (see the returned cleanup).
+  const vimeoTeardowns: Array<() => void> = [];
   const intervals: any[] = [];
 
   // ── Collect elements ──────────────────────────────────────────────────────
@@ -638,13 +630,33 @@ export async function initVideoSequence(
     // Fetch the Vimeo SDK now (once), only because this lesson has Vimeo videos.
     const { default: VimeoPlayerImpl } = await import('@vimeo/player');
     await Promise.all(vimeoRaw.map(async ({ iframe, seqIdx }) => {
-      enableVimeoApi(iframe); // rewrites src → triggers reload
-      await waitForLoad(iframe); // wait for reload to complete
+      // Only the lesson's first video may start by itself, and only with Autoplay
+      // on. Autoplay used to be forced on for every Vimeo video in the lesson.
+      const reloading = enableVimeoApi(iframe, vimeoMayAutoplay(seqIdx, autoPlayRef.current));
+      // An iframe prepared by an earlier run (the same lesson set up again) does
+      // not reload, so no load event comes and waiting would stall 5 seconds.
+      if (reloading) await waitForLoad(iframe);
       try {
+        // The SDK hands back the existing player when this iframe already has one.
         const vp = new VimeoPlayerImpl(iframe);
-        vimeoPlayers.push(vp);
         const vimeoEntry = entries[seqIdx] as Extract<Entry, { type: 'vimeo' }>;
         vimeoEntry.player = vp;
+
+        // Every handler this run adds, so cleanup removes exactly these.
+        const handlers: Array<[any, any]> = [];
+        const on = (event: any, fn: any) => { vp.on(event, fn); handlers.push([event, fn]); };
+        vimeoTeardowns.push(() => {
+          for (const [event, fn] of handlers) {
+            try { vp.off(event, fn); } catch { /* ignore */ }
+          }
+          // destroy() also REMOVES the iframe from the page and React never puts
+          // it back, so the video vanished and the next run found no video to
+          // play. Only a player whose iframe is already gone (the lesson changed
+          // or closed) is destroyed, to release the SDK's own listeners.
+          if (!iframe.isConnected) {
+            Promise.resolve(vp.destroy()).catch(() => {});
+          }
+        });
 
         // Registered UNCONDITIONALLY. It used to sit inside `if (!skipSeekLock)`,
         // which meant a viewer allowed to skip (a completed lesson, an unlockAll
@@ -652,7 +664,7 @@ export async function initVideoSequence(
         // and depended entirely on `ended` firing — and it also meant their
         // watch position was never recorded. The clamp below is the only part
         // that should depend on the seek lock.
-        vp.on('timeupdate', (data: { seconds: number; duration?: number }) => {
+        on('timeupdate', (data: { seconds: number; duration?: number }) => {
           if (!skipSeekLock && data.seconds > vimeoEntry.maxTimeWatched + 2) {
             vp.setCurrentTime(vimeoEntry.maxTimeWatched);
             notifySeekBlocked();
@@ -666,7 +678,7 @@ export async function initVideoSequence(
         });
 
         if (!skipSeekLock) {
-          vp.on('seeking', (data: { seconds: number }) => {
+          on('seeking', (data: { seconds: number }) => {
             if (data.seconds > vimeoEntry.maxTimeWatched + 1) {
               vp.setCurrentTime(vimeoEntry.maxTimeWatched);
               notifySeekBlocked();
@@ -686,7 +698,7 @@ export async function initVideoSequence(
             .catch(() => {});
         }
 
-        vp.on('ended', () => {
+        on('ended', () => {
           console.log(`[VideoSeq] Vimeo video ${seqIdx} ended. Total videos: ${total}`);
           finishVideo(seqIdx);
           const mount: HTMLElement | null = (vp as any).element?.parentElement || iframe.parentElement;
@@ -706,7 +718,7 @@ export async function initVideoSequence(
               .catch(() => {});
           }
         });
-        vp.on('play', () => removeReplayOverlay((vp as any).element?.parentElement || iframe.parentElement));
+        on('play', () => removeReplayOverlay((vp as any).element?.parentElement || iframe.parentElement));
       } catch (err) {
         console.error('[VideoSeq] VimeoPlayer init failed for index', seqIdx, err);
       }
@@ -941,7 +953,7 @@ export async function initVideoSequence(
     flushOnLeave();
     window.removeEventListener('pagehide', flushOnLeave);
     document.removeEventListener('visibilitychange', onVisibility);
-    vimeoPlayers.forEach(vp => { try { vp.destroy(); } catch {} });
+    vimeoTeardowns.forEach((teardown) => teardown());
     intervals.forEach(clearInterval);
   };
 }

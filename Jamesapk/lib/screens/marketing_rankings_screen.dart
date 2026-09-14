@@ -7,6 +7,7 @@ import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../widgets/scoreboard_view.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/marketing_bottom_nav.dart';
 import '../theme/app_theme.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
@@ -82,6 +83,7 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
   // 'leaderboard' (the live board) or 'dashboard' (the web-style Scoreboard).
   String _tab = 'dashboard'; // default landing = My Dashboard
   String? _userId;
+  final GlobalKey<NotificationBellState> _bellKey = GlobalKey<NotificationBellState>();
 
   // Rep multi-select filter (deferred apply, like web): the committed set that
   // filters the table. The in-panel draft + search live inside the sheet.
@@ -116,6 +118,9 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<void> _fetch() async {
+    // Pull-to-refresh should also refresh the bell's unread count — it
+    // otherwise only ever fetches once, in its own initState.
+    _bellKey.currentState?.refresh();
     if (_period == 'custom' && (_from == null || _to == null)) {
       setState(() => _loading = false);
       return;
@@ -493,6 +498,7 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
     ];
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const MarketingBottomNav(active: 'leaderboard'),
       body: SafeArea(
         child: Column(
           children: [
@@ -506,6 +512,16 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: Icon(Icons.menu, color: _textDark),
+                          tooltip: 'Menu',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,7 +531,7 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
                           ],
                         ),
                       ),
-                      if (_userId != null) NotificationBell(userId: _userId!),
+                      if (_userId != null) NotificationBell(key: _bellKey, userId: _userId!),
                       const SizedBox(width: 4),
                       Showcase(
                         key: _kReplay,
@@ -605,7 +621,6 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
                       ),
                     ),
             ),
-            _buildBottomNav(context),
           ],
         ),
       ),
@@ -1300,71 +1315,4 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
         ),
       );
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItemActive(Icons.leaderboard_outlined, 'Sales'),
-              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/marketing-stormchat'),
-              _navItem(context, Icons.apps_outlined, 'Tools', false, '/marketing-apps-tools-items'),
-              _navItem(context, Icons.school_outlined, 'Training', false, '/marketing-courses'),
-              _navItem(context, Icons.person_outline, 'Profile', false, '/marketing-profile'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          color: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: active ? _primary : _textPlaceholder, size: 24),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: TextStyle(fontSize: 10, color: active ? _primary : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(color: _primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(label,
-                style: const TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600),
-                maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
 }

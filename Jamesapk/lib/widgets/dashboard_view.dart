@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:ui' show FontFeature;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/api_client.dart';
+import 'notification_bell.dart';
 
 /// The role dashboard board (PR #67, mobile). ONE widget for every role — the
 /// server (`GET /api/dashboard`) decides scope and returns everything in display
@@ -30,15 +32,33 @@ class _DashboardViewState extends State<DashboardView> {
   bool _loading = true;
   bool _error = false;
   Map<String, dynamic>? _data;
+  String? _userId;
+  final GlobalKey<NotificationBellState> _bellKey = GlobalKey<NotificationBellState>();
 
   @override
   void initState() {
     super.initState();
+    _loadUserId();
     _fetch();
+  }
+
+  Future<void> _loadUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userStr = prefs.getString('user');
+      if (userStr != null) {
+        final user = jsonDecode(userStr);
+        if (mounted) setState(() => _userId = (user['id'] ?? user['_id'])?.toString());
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetch() async {
     setState(() { _loading = true; _error = false; });
+    // Pull-to-refresh should also refresh the bell's unread count — it
+    // otherwise only ever fetches once, in its own initState. Fire-and-forget
+    // so a slow notifications call never delays the dashboard board itself.
+    _bellKey.currentState?.refresh();
     try {
       final res = await api.get(Uri.parse('https://millerstorm.tech/api/dashboard'));
       if (res.statusCode == 200) {
@@ -139,17 +159,33 @@ class _DashboardViewState extends State<DashboardView> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        // Greeting on the left, scope label on the right.
+        // Menu on the left (opens this screen's Scaffold drawer — every role
+        // wraps DashboardView in its own Scaffold(drawer: ...), so this one
+        // button works for all of them), greeting, scope label on the right.
         Padding(
           padding: const EdgeInsets.only(bottom: 12, top: 4),
           child: Row(
             children: [
+              Builder(
+                builder: (context) => IconButton(
+                  icon: Icon(Icons.menu, color: AppColors.textDark),
+                  tooltip: 'Menu',
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                ),
+              ),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text('Hi, ${_firstName((scope['viewer'] ?? '').toString())}',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textDark)),
               ),
               const SizedBox(width: 8),
+              if (_userId != null) ...[
+                NotificationBell(key: _bellKey, userId: _userId!),
+                const SizedBox(width: 8),
+              ],
               _kicker(chipText),
             ],
           ),

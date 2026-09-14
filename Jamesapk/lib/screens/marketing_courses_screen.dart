@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/avatar_url.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
@@ -10,10 +9,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/marketing_bottom_nav.dart';
 import 'course_detail_screen.dart';
-import 'jays_ai_clone_screen.dart';
-import 'ai_clone_chat_screen.dart';
-import 'training_leaderboard_screen.dart';
 
 class MarketingCoursesScreen extends StatefulWidget {
   // Which tab to open on (0 = Courses, 1 = My Playlists, 2 = Assigned). A
@@ -40,10 +37,6 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
   // Red-badge count on the Assigned tab: assignments arrived since the rep last
   // opened that tab. Clears to 0 when they open it.
   int _assignedBadge = 0;
-  // AI bots assigned to this rep's panel (light payload). Drives the header
-  // icon avatar and the "open chat directly" behaviour.
-  List<dynamic> _jayBots = [];
-  String? _jayAvatarUrl;
   bool _isLoading = true;
   bool _hasCachedData = false;
   // "Continue where you left off" — true while resolving the next lesson to open.
@@ -72,7 +65,6 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
     super.initState();
     _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
     _tabController.addListener(_onTabChanged);
-    _loadCachedJayAvatar();
     _loadData();
   }
 
@@ -108,71 +100,7 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
       _fetchCourses(),
       _fetchMyPlaylists(),
       _fetchAssignedPlaylists(),
-      _fetchJayAvatar(),
     ]);
-  }
-
-  // Fetch the bots assigned to this rep's panel (light payload = fast). Used for
-  // the header avatar and to open the chat directly when there's a single bot.
-  Future<void> _fetchJayAvatar() async {
-    try {
-      final user = await AuthService.getStoredUser();
-      final role = user?['role']?.toString();
-      final res = await api.get(Uri.parse('https://millerstorm.tech/api/ai-bots?light=1'));
-      if (res.statusCode != 200) return;
-      final data = json.decode(res.body) as List;
-      final assigned = data.where((b) {
-        final ar = b['assignedRoles'];
-        return ar is List && role != null && ar.contains(role);
-      }).toList();
-      if (!mounted) return;
-      String? avatar;
-      if (assigned.isNotEmpty) {
-        final raw = (assigned.first['botAvatarUrl'] ?? assigned.first['imageUrl'] ?? '').toString();
-        if (raw.isNotEmpty) avatar = raw.startsWith('http') ? raw : 'https://millerstorm.tech$raw';
-      }
-      setState(() {
-        _jayBots = assigned;
-        // Only overwrite with a REAL avatar — never null out a cached one on a
-        // transient/empty fetch, so the photo doesn't revert to the robot.
-        if (avatar != null && avatar.isNotEmpty) _jayAvatarUrl = avatar;
-      });
-      // Cache it so the next app open shows the photo instantly (no robot flash).
-      if (avatar != null && avatar.isNotEmpty) {
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('jay_avatar_url', avatar);
-        } catch (_) {}
-      }
-    } catch (_) {
-      // Keep the fallback robot icon on any error.
-    }
-  }
-
-  // Show the last-known Jay avatar from cache immediately on open, so the robot
-  // icon doesn't flash before the network fetch completes.
-  Future<void> _loadCachedJayAvatar() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString('jay_avatar_url');
-      if (cached != null && cached.isNotEmpty && mounted) {
-        setState(() => _jayAvatarUrl = cached);
-      }
-    } catch (_) {}
-  }
-
-  // Open Jay's AI Clone: a single bot goes straight into chat (no list screen);
-  // multiple bots show the picker; none shows a toast.
-  void _openJaysAi() {
-    if (_jayBots.length == 1) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => AiCloneChatScreen(bot: _jayBots.first)));
-    } else if (_jayBots.length > 1) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const JaysAiCloneScreen()));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No AI assistant available yet')),
-      );
-    }
   }
 
   Future<void> _loadCachedCourses() async {
@@ -378,12 +306,10 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        // Prevent back button from exiting app
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const MarketingBottomNav(active: 'training'),
         appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
@@ -392,26 +318,6 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
           style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [
-          IconButton(
-            icon: _jayAvatarUrl != null
-                ? Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(image: avatarProvider(_jayAvatarUrl!), fit: BoxFit.cover),
-                    ),
-                  )
-                : const Icon(Icons.smart_toy_outlined, color: _primary, size: 26),
-            tooltip: "Jayi",
-            onPressed: _openJaysAi,
-          ),
-          IconButton(
-            icon: const Text('🏆', style: TextStyle(fontSize: 26)),
-            onPressed: () {
-              Navigator.pushNamed(context, '/marketing-training-leaderboard');
-            },
-          ),
           Showcase(
             key: _kReplay,
             title: 'Replay anytime',
@@ -475,7 +381,6 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
               ],
             ),
           ),
-          _buildBottomNav(),
         ],
       ),
       ),
@@ -1259,94 +1164,4 @@ class _MarketingCoursesScreenState extends State<MarketingCoursesScreen> with Si
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.leaderboard_outlined, 'Sales', '/marketing-rankings'),
-              const SizedBox(width: 2),
-              _navItem(Icons.chat_bubble, 'StormChat', '/marketing-stormchat'),
-              const SizedBox(width: 2),
-              _navItem(Icons.apps, 'Tools', '/marketing-apps-tools-items'),
-              const SizedBox(width: 2),
-              _navItemActive(Icons.school, 'Training'),
-              const SizedBox(width: 2),
-              _navItem(Icons.person, 'Profile', '/marketing-profile'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, String route) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => Navigator.pushReplacementNamed(context, route),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: _textLight, size: 24),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(fontSize: 10, color: _textLight),
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: _primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600),
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

@@ -11,10 +11,10 @@ class NotificationBell extends StatefulWidget {
   const NotificationBell({super.key, required this.userId, this.userRole});
 
   @override
-  State<NotificationBell> createState() => _NotificationBellState();
+  State<NotificationBell> createState() => NotificationBellState();
 }
 
-class _NotificationBellState extends State<NotificationBell> {
+class NotificationBellState extends State<NotificationBell> {
   List<ns.Notification> _notifications = [];
   int _unreadCount = 0;
   bool _isLoading = true;
@@ -24,6 +24,13 @@ class _NotificationBellState extends State<NotificationBell> {
     super.initState();
     _fetchNotifications();
   }
+
+  /// Re-fetches the unread count/list. Called by a parent screen's own
+  /// pull-to-refresh (via a `GlobalKey<NotificationBellState>`) so the bell
+  /// doesn't go stale between the once-per-mount initState fetch and whatever
+  /// else the user does on that screen — matches the web bell's freshness
+  /// (Header.tsx's NotificationBell polls every 20s on its own).
+  Future<void> refresh() => _fetchNotifications();
 
   Future<void> _fetchNotifications() async {
     final notifications = await ns.NotificationService.fetchNotifications(widget.userId);

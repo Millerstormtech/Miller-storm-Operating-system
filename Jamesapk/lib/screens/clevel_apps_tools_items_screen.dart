@@ -164,12 +164,10 @@ class _CLevelAppsToolsItemsScreenState extends State<CLevelAppsToolsItemsScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/clevel-training');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const CLevelBottomNav(active: 'apps'),
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
@@ -260,7 +258,6 @@ class _CLevelAppsToolsItemsScreenState extends State<CLevelAppsToolsItemsScreen>
                             },
                           ),
           ),
-          CLevelBottomNav(active: 'apps'),
         ],
       ),
       ),

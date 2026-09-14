@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dashboard_view.dart';
 import '../widgets/branch_manager_bottom_nav.dart';
@@ -12,13 +11,10 @@ class BranchManagerDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async { await SystemNavigator.pop(); return false; },
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
-        bottomNavigationBar: const BranchManagerBottomNav(active: 'dashboard'),
-        body: const SafeArea(bottom: false, child: DashboardView()),
-      ),
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      drawer: const BranchManagerBottomNav(active: 'dashboard'),
+      body: const SafeArea(bottom: false, child: DashboardView()),
     );
   }
 }

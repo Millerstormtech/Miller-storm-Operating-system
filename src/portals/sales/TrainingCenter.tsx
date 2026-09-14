@@ -8,6 +8,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
 import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
+import { useIsNarrow } from "../shared/training-leaderboard/useIsNarrow";
 import { setActivityContext, clearActivityContext } from "../../lib/activity/tracker";
 import {
   findVideoPosition,
@@ -228,6 +229,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const videoCallbackRef = useRef<(() => void) | undefined>(undefined);
   // True when the page change was triggered by a video ending (so next lesson's video should auto-start)
   const autoTriggeredRef = useRef(false);
+  // The lesson body the video player drives. Only one lesson layout renders at
+  // a time (phone below 768px, desktop above), so this is always the copy on
+  // screen. Both used to render when a lesson was opened by link, and the
+  // player drove the first one on the page, not the one being watched.
+  const lessonBodyRef = useRef<HTMLDivElement | null>(null);
+  const isNarrow = useIsNarrow();
   const [autoPlay, setAutoPlay] = useState<boolean>(() => {
     // Autoplay defaults to OFF for everyone; it's ON only if the user explicitly
     // turned it on (stored as 'true'). Absent/'false' → OFF.
@@ -581,10 +588,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     videoCleanupRef.current?.();
     videoCleanupRef.current = undefined;
 
+    // Set when this effect is torn down. The player setup below is async, so the
+    // lesson can change while it is still running; a setup that finishes after
+    // that must undo itself instead of leaving a second player attached.
+    let cancelled = false;
     const timer = setTimeout(async () => {
-      const container = document.querySelector<HTMLElement>('.course-page-body-input');
+      const container = lessonBodyRef.current;
       if (!container) {
-        console.log('[VideoSeq] container .course-page-body-input not found');
+        console.log('[VideoSeq] no lesson body on screen');
         return;
       }
       const shouldAutoStart = autoTriggeredRef.current;
@@ -608,6 +619,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             persistPosition(courseId, pageId, videoIndex, seconds),
         }
       );
+      if (cancelled) { cleanup?.(); return; }
       videoCleanupRef.current = cleanup;
 
       // If no videos were found on this page, mark it as completed so the user can advance
@@ -641,6 +653,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     }, 1200);
 
     return () => {
+      cancelled = true;
       clearTimeout(timer);
       videoCleanupRef.current?.();
       videoCleanupRef.current = undefined;
@@ -652,7 +665,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // destroyed the video mid-playback, right at the end. That is why the website
   // never fired the "video truly ended" event and never auto-advanced, while
   // the phone app (which does not rebuild its player) did.
-  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen]);
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen, isNarrow]);
 
   const filteredCourses = useMemo(() => {
     const term = search.toLowerCase();
@@ -1559,7 +1572,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           }
           @media (max-width: 767px) {
             .mobile-course-overview { display: block; }
-            .mobile-lesson-view { display: block; }
+            .mobile-lesson-fullpage { display: block; }
             .desktop-course-view { display: none !important; }
             .course-header-desktop-actions { display: flex !important; flex-wrap: wrap; gap: 6px; }
             .course-header-mobile-actions { display: none !important; }
@@ -1567,7 +1580,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           }
           @media (min-width: 768px) {
             .mobile-course-overview { display: none !important; }
-            .mobile-lesson-view { display: none !important; }
+            .mobile-lesson-fullpage { display: none !important; }
             .desktop-course-view { display: contents; }
             .course-header-desktop-actions { display: flex !important; }
             .course-header-mobile-actions { display: none !important; }
@@ -1608,7 +1621,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         {mobileCourseScreen === 'overview' && MobileOverview()}
 
         {/* MOBILE: Lesson screen - full page, no sidebar */}
-        {mobileCourseScreen === 'lesson' && activePage && (
+        {/* Phone widths only. A lesson link sets the lesson screen on a computer
+            too, and rendering this copy there put a second player on the page. */}
+        {isNarrow && mobileCourseScreen === 'lesson' && activePage && (
           <div className="mobile-lesson-fullpage">
             <button
               type="button"
@@ -1662,6 +1677,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               ) : (
                 <div className="course-page-editor-body" data-tour="video-area">
                   <div className="course-page-body-input"
+                    ref={lessonBodyRef}
                     dangerouslySetInnerHTML={{ __html: (activePage.body || '').replace(/(<iframe[^>]*vimeo[^>]*)loading="lazy"/gi, '$1') }}
                     style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '4px', whiteSpace: 'pre-wrap', minHeight: 'auto', maxHeight: 'none', overflow: 'visible' }}
                   />
@@ -2138,8 +2154,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   </div>
                 ) : (
                   <div className="course-page-editor-body" data-tour="video-area">
+                    {/* Desktop widths only: the phone layout renders its own copy. */}
+                    {!isNarrow && (
                     <div
                       className="course-page-body-input"
+                      ref={lessonBodyRef}
                       dangerouslySetInnerHTML={{ __html: (activePage.body || "").replace(/(<iframe[^>]*vimeo[^>]*)loading="lazy"/gi, '$1') }}
                       style={{
                         padding: "12px",
@@ -2151,6 +2170,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         overflow: "visible"
                       }}
                     />
+                    )}
                     
                     {((activePage.resourceLinks && activePage.resourceLinks.length > 0) || (activePage.fileUrls && activePage.fileUrls.length > 0)) && (
                       <div style={{ marginTop: 24, padding: "16px", backgroundColor: "var(--surface-subtle)", borderRadius: 8 }}>

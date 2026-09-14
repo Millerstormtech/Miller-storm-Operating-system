@@ -10,7 +10,6 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../utils/role_labels.dart';
 import '../theme/app_theme.dart';
-import 'announcements_screen.dart';
 
 class CLevelProfileScreen extends StatefulWidget {
   const CLevelProfileScreen({super.key});
@@ -415,12 +414,10 @@ class _CLevelProfileScreenState extends State<CLevelProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/clevel-training');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const CLevelBottomNav(active: 'profile'),
         appBar: AppBar(
           backgroundColor: _primary,
           elevation: 0,
@@ -433,17 +430,6 @@ class _CLevelProfileScreenState extends State<CLevelProfileScreen> {
             ),
           ),
           actions: [
-            IconButton(
-              icon: Icon(Icons.campaign_outlined, color: _white),
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const AnnouncementsScreen(canCompose: true))),
-              tooltip: 'Announcements',
-            ),
-            IconButton(
-              icon: Icon(Icons.confirmation_number_outlined, color: _white),
-              onPressed: () => Navigator.pushNamed(context, '/tickets'),
-              tooltip: 'Support',
-            ),
             AnimatedBuilder(
               animation: themeController,
               builder: (context, _) => IconButton(
@@ -459,14 +445,7 @@ class _CLevelProfileScreenState extends State<CLevelProfileScreen> {
             ),
           ],
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: _buildViewMode(),
-            ),
-            CLevelBottomNav(active: 'profile'),
-          ],
-        ),
+        body: _buildViewMode(),
       ),
     );
   }

@@ -1,13 +1,25 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/api_client.dart';
+import '../services/auth_service.dart';
+import '../screens/announcements_screen.dart';
+import '../screens/jays_ai_clone_screen.dart';
+import '../screens/ai_clone_chat_screen.dart';
 
-/// Bottom navigation for the C-Level panel. Visually identical to the Sales Team
-/// Lead bar, but its slots and routes are C-Level's:
+/// Left slide-in navigation drawer for the C-Level panel — replaces the old
+/// bottom bar (same items, same routes, same active-highlight logic), opened
+/// via a hamburger button each screen adds to its own header and closed by
+/// tapping an item, outside the drawer, or the system back gesture. Matches
+/// the web sidebar's role: a collapsible menu on the left, not pinned across
+/// the bottom.
 ///
-///   Dashboard · Sales · StormChat · Tools & Products · Training · Users
+///   Dashboard · Sales · StormChat · Tools & Products · Training ·
+///   Course Leaderboard · Jayi · Announcements · Support · Profile
 ///
-/// (Course Leaderboard is reached from the 🏆 button in the Training header and
-/// Profile from the avatar, exactly like the Sales Team Lead panel.)
+/// Kept the class name CLevelBottomNav (not renamed to *Drawer) so every
+/// existing call site only needed its Scaffold slot changed (bottomNavigationBar
+/// -> drawer), not an import + class rename across 6 files.
 class CLevelBottomNav extends StatelessWidget {
   /// One of: 'dashboard', 'leaderboard', 'stormchat', 'apps', 'training', 'profile'.
   final String active;
@@ -17,29 +29,40 @@ class CLevelBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2)),
-        ],
-      ),
+    return Drawer(
+      backgroundColor: AppColors.surface,
       child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _item(context, Icons.dashboard_outlined, 'Dashboard', 'dashboard', '/clevel-dashboard'),
-              _item(context, Icons.leaderboard_outlined, 'Sales', 'leaderboard', '/clevel-rankings'),
-              _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/clevel-stormchat'),
-              _item(context, Icons.apps_outlined, 'Tools', 'apps', '/clevel-apps-tools-items'),
-              _item(context, Icons.school_outlined, 'Training', 'training', '/clevel-training'),
-              _item(context, Icons.person_outline, 'Profile', 'profile', '/clevel-profile'),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+              child: Text(
+                'Miller Storm',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textDark),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _item(context, Icons.dashboard_outlined, 'My Dashboard', 'dashboard', '/clevel-dashboard'),
+                  _item(context, Icons.leaderboard_outlined, 'Sales Leaderboard', 'leaderboard', '/clevel-rankings'),
+                  _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/clevel-stormchat'),
+                  _item(context, Icons.apps_outlined, 'Apps & Tools', 'apps', '/clevel-apps-tools-items'),
+                  _item(context, Icons.school_outlined, 'Training Center', 'training', '/clevel-training'),
+                  _actionItem(context, Icons.emoji_events_outlined, 'Course Leaderboard',
+                      () => Navigator.pushNamed(context, '/clevel-training-leaderboard')),
+                  _actionItem(context, Icons.smart_toy_outlined, 'Jayi', () => _openJaysAi(context)),
+                  _actionItem(context, Icons.campaign_outlined, 'Announcements',
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnnouncementsScreen(canCompose: true)))),
+                  _actionItem(context, Icons.confirmation_number_outlined, 'Support',
+                      () => Navigator.pushNamed(context, '/tickets')),
+                  _item(context, Icons.person_outline, 'Profile', 'profile', '/clevel-profile'),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -47,35 +70,79 @@ class CLevelBottomNav extends StatelessWidget {
 
   Widget _item(BuildContext context, IconData icon, String label, String key, String route) {
     final active = this.active == key;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: active ? null : () => Navigator.pushReplacementNamed(context, route),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: active
-              ? BoxDecoration(color: _primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8))
-              : null,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: active ? _primary : AppColors.textPlaceholder, size: 22),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  color: active ? _primary : AppColors.textPlaceholder,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+    return ListTile(
+      leading: Icon(icon, color: active ? _primary : AppColors.textPlaceholder),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: active ? _primary : AppColors.textDark,
+          fontWeight: active ? FontWeight.w700 : FontWeight.normal,
         ),
       ),
+      selected: active,
+      selectedTileColor: _primary.withOpacity(0.08),
+      onTap: active
+          ? () => Navigator.pop(context) // already here — just close the drawer
+          : () {
+              Navigator.pop(context); // close the drawer first
+              Navigator.pushNamed(context, route); // push (not replace) so back returns here
+            },
     );
+  }
+
+  // One-off destinations opened on top of whatever screen the drawer was
+  // opened from — same look as _item, just no "active" state to track.
+  Widget _actionItem(BuildContext context, IconData icon, String label, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: AppColors.textPlaceholder),
+      title: Text(label, style: TextStyle(color: AppColors.textDark)),
+      onTap: () {
+        Navigator.pop(context); // close the drawer first
+        onTap();
+      },
+    );
+  }
+
+  // Same "single bot -> chat, multiple -> picker, none -> toast" logic used by
+  // every panel's header Jayi icon. Captures the Navigator/ScaffoldMessenger
+  // BEFORE the awaits below — the drawer (and this context) closes and can
+  // unmount as soon as it's tapped, so using `context` itself after the async
+  // gap silently no-ops once it's gone; the captured state objects don't.
+  Future<void> _openJaysAi(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // The bot lookup below is two network round-trips — show a spinner right
+    // away so tapping Jayi doesn't just look like the screen froze.
+    showDialog(
+      context: navigator.context,
+      useRootNavigator: false,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: _primary)),
+    );
+
+    try {
+      final user = await AuthService.getStoredUser();
+      final role = user?['role']?.toString();
+      final res = await api.get(Uri.parse('https://millerstorm.tech/api/ai-bots?light=1'));
+      navigator.pop(); // dismiss the loading spinner
+      if (res.statusCode != 200) return;
+      final data = json.decode(res.body) as List;
+      final assigned = data.where((b) {
+        final ar = b['assignedRoles'];
+        return ar is List && role != null && ar.contains(role);
+      }).toList();
+      if (assigned.length == 1) {
+        navigator.push(MaterialPageRoute(builder: (_) => AiCloneChatScreen(bot: assigned.first)));
+      } else if (assigned.length > 1) {
+        navigator.push(MaterialPageRoute(builder: (_) => const JaysAiCloneScreen()));
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('No AI assistant available yet')),
+        );
+      }
+    } catch (_) {
+      navigator.pop(); // dismiss the loading spinner on error too
+    }
   }
 }

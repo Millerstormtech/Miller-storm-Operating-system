@@ -164,12 +164,10 @@ class _BranchManagerAppsToolsItemsScreenState extends State<BranchManagerAppsToo
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/bm-training');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const BranchManagerBottomNav(active: 'apps'),
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
@@ -260,7 +258,6 @@ class _BranchManagerAppsToolsItemsScreenState extends State<BranchManagerAppsToo
                             },
                           ),
           ),
-          BranchManagerBottomNav(active: 'apps'),
         ],
       ),
       ),

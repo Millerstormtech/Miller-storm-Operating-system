@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/sales_team_lead_bottom_nav.dart';
 import 'storm_chat_room_screen.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -179,12 +180,10 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/manager-training');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const SalesTeamLeadBottomNav(active: 'stormchat'),
         body: SafeArea(
         child: Column(
           children: [
@@ -193,13 +192,27 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'StormChat',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: _textDark,
-                    ),
+                  Row(
+                    children: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: Icon(Icons.menu, color: _textDark),
+                          tooltip: 'Menu',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'StormChat',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: _textDark,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -234,7 +247,6 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
                       ? _buildEmptyState()
                       : _buildGroupsList(),
             ),
-            _buildBottomNav(context),
           ],
         ),
       ),
@@ -974,94 +986,4 @@ class _SalesTeamLeadStormChatScreenState extends State<SalesTeamLeadStormChatScr
     }
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(context, Icons.dashboard_outlined, 'Dashboard', false, '/manager-dashboard'),
-              _navItem(context, Icons.leaderboard_outlined, 'Sales', false, '/manager-rankings'),
-              const SizedBox(width: 2),
-              _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.apps_outlined, 'Tools', false, '/manager-apps-tools-items'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.school_outlined, 'Training', false, '/manager-training'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          color: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: _placeholder, size: 24),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: _placeholder,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFCB0002).withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: const Color(0xFFCB0002), size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Color(0xFFCB0002),
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

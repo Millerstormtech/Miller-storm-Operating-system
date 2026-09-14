@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dashboard_view.dart';
 import '../widgets/clevel_bottom_nav.dart';
@@ -11,13 +10,10 @@ class CLevelDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async { await SystemNavigator.pop(); return false; },
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
-        bottomNavigationBar: const CLevelBottomNav(active: 'dashboard'),
-        body: const SafeArea(bottom: false, child: DashboardView()),
-      ),
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      drawer: const CLevelBottomNav(active: 'dashboard'),
+      body: const SafeArea(bottom: false, child: DashboardView()),
     );
   }
 }

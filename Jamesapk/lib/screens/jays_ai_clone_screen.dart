@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/role_bottom_nav.dart';
 import 'ai_clone_chat_screen.dart';
 
 /// Jay's AI Clone — lists the available AI assistants (bots) and opens a chat
@@ -63,6 +64,7 @@ class _JaysAiCloneScreenState extends State<JaysAiCloneScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const RoleBottomNav(),
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,

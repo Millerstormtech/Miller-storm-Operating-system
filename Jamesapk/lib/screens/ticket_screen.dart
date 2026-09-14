@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../services/api_client.dart';
+import '../widgets/role_bottom_nav.dart';
 import 'ticket_detail_screen.dart';
 
 class TicketScreen extends StatefulWidget {
@@ -276,6 +277,7 @@ class _TicketScreenState extends State<TicketScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const RoleBottomNav(),
       appBar: AppBar(
         backgroundColor: _primary,
         title: Text('Support',

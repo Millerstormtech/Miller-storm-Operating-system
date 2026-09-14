@@ -12,6 +12,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../theme/app_theme.dart';
+import '../widgets/role_bottom_nav.dart';
 
 class AiCloneChatScreen extends StatefulWidget {
   final dynamic bot;
@@ -495,13 +496,11 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
 
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const RoleBottomNav(),
       appBar: AppBar(
         backgroundColor: _primary,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Row(
           children: [
             Container(

@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import '../services/api_client.dart';
 import '../theme/app_theme.dart';
+import '../widgets/role_bottom_nav.dart';
 
 /// Company announcements page, opened from the profile screens.
 ///
@@ -50,6 +51,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   final Set<String> _selectedBranches = {};
   final Set<String> _selectedTeamIds = {};
   String _audienceLabel = 'Everyone';
+  // Distinguishes "still fetching" and "fetch failed" from "this role only has
+  // one option" — all three leave _audienceTypes at its single-item default,
+  // but only the first two should show something other than a disabled field.
+  bool _optionsLoading = true;
+  bool _optionsFailed = false;
 
   static const Map<String, String> _audienceTypeLabel = {
     'everyone': 'Everyone',
@@ -94,6 +100,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   }
 
   Future<void> _loadOptions() async {
+    setState(() { _optionsLoading = true; _optionsFailed = false; });
     try {
       final res = await api.get(
         Uri.parse('https://millerstorm.tech/api/announcements?options=1'),
@@ -108,14 +115,19 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
           _allBranches = branches;
           _allTeams = teams;
           _audienceType = types.isNotEmpty ? types.first : 'everyone';
+          _optionsLoading = false;
           // A sales-team-lead has exactly one team (their own) — pre-select it
           // so there's nothing extra to tap before sending.
           if (_audienceType == 'team' && teams.length == 1) {
             _selectedTeamIds.add(teams.first['id'].toString());
           }
         });
+      } else if (mounted) {
+        setState(() { _optionsLoading = false; _optionsFailed = true; });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() { _optionsLoading = false; _optionsFailed = true; });
+    }
     _loadRecipients();
   }
 
@@ -250,6 +262,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       animation: themeController,
       builder: (context, _) => Scaffold(
         backgroundColor: _bg,
+        drawer: const RoleBottomNav(),
         appBar: AppBar(
           backgroundColor: _primary,
           elevation: 0,
@@ -390,24 +403,107 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     );
   }
 
+  // A bottom sheet instead of a DropdownButton — the dropdown's overlay menu
+  // was unreliable on mobile (nested inside a scrolling composer card, it
+  // sometimes wouldn't open at all), and a bottom sheet doesn't depend on the
+  // button's on-screen position at all, so it always opens.
   Widget _audiencePicker() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10)),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _audienceType,
-          isExpanded: true,
-          // Nothing to pick from a single-option role (e.g. sales-team-lead
-          // only ever has "team") — still shown, just not interactive, so the
-          // field reads the same way across every composing role.
-          onChanged: _audienceTypes.length > 1 ? _onAudienceTypeChanged : null,
-          items: _audienceTypes
-              .map((t) => DropdownMenuItem(value: t, child: Text(_audienceTypeLabel[t] ?? t, style: TextStyle(color: _textDark, fontSize: 14.5))))
-              .toList(),
+    // Still fetching, or the fetch failed — surface that instead of a
+    // silently-disabled field that only ever reads "Everyone" either way,
+    // since both cases leave _audienceTypes at its single-item default.
+    if (_optionsLoading) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10)),
+        child: Row(
+          children: [
+            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _textLight)),
+            const SizedBox(width: 10),
+            Text('Loading who you can send to…', style: TextStyle(color: _textLight, fontSize: 13.5)),
+          ],
+        ),
+      );
+    }
+    if (_optionsFailed) {
+      return Material(
+        color: _bg,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: _loadOptions,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: Row(
+              children: [
+                Icon(Icons.refresh, size: 16, color: _primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text("Couldn't load — tap to retry", style: TextStyle(color: _primary, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    final enabled = _audienceTypes.length > 1;
+    return Material(
+      color: _bg,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        // Nothing to pick from a single-option role (e.g. sales-team-lead
+        // only ever has "team") — still shown, just not interactive, so the
+        // field reads the same way across every composing role.
+        onTap: enabled ? _showAudienceTypeSheet : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _audienceTypeLabel[_audienceType] ?? _audienceType,
+                  style: TextStyle(color: _textDark, fontSize: 14.5),
+                ),
+              ),
+              Icon(Icons.keyboard_arrow_down,
+                  color: enabled ? _textLight : _textLight.withOpacity(0.4)),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _showAudienceTypeSheet() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: _surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _audienceTypes.map((t) {
+            final isSelected = t == _audienceType;
+            return ListTile(
+              title: Text(
+                _audienceTypeLabel[t] ?? t,
+                style: TextStyle(
+                  color: isSelected ? _primary : _textDark,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                  fontSize: 15,
+                ),
+              ),
+              trailing: isSelected ? Icon(Icons.check, color: _primary) : null,
+              onTap: () => Navigator.pop(sheetContext, t),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+    if (selected != null && selected != _audienceType) {
+      _onAudienceTypeChanged(selected);
+    }
   }
 
   Widget _audienceChips(

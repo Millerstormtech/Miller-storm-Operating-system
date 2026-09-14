@@ -63,3 +63,13 @@ The universal process lives in the skill; this file holds the **project-specific
 - **Chat counts** (`unread-counts`, `mention-counts`) are per-group; seed a group with a read receipt + a group without one to exercise both branches; assert exact counts.
 - **Messages** GET returns the **newest 500** ascending; seed >500 to prove the slice.
 - Always assert **both layers**: the HTTP response AND the seeded data it should/shouldn't reflect. Plus an unauthenticated probe (expect 401) and a missing-required-param probe (expect 400).
+
+
+## Gotchas found 2026-09-13 (Course Builder delete smoke and lesson video investigation)
+- A login redirect_to that carries a query string is ignored: the admin landed on /admin/leaderboard. Navigate by clicking the sidebar, then use window.next.router.push with the path and query for deep links. It keeps the in-memory session.
+- Seeded sales users need featureToggles.trainingCenter set to true, or the course list API returns no courses for them.
+- Fill the login form only after the page has finished loading (waitForLoadState networkidle plus a short wait), and check the input values stuck. Filling too early sends empty fields and /api/login answers 400.
+- Never open a second tab while a lesson video is playing. Chrome moves the playing video into picture-in-picture, and every Vimeo player opened afterwards shows "Playing in picture-in-picture" and will not load. Close the page to reset.
+- Vimeo frames are scriptable from Playwright even though they are cross-origin: page.frames(), then frame.evaluate on the inner video element gives paused, currentTime, muted and getVideoPlaybackQuality, and lets you count waiting, stalled and seeking events. A plain page.setContent iframe of the same video is a clean baseline.
+- To prove a failure branch, page.route the endpoint to answer 500 and count the follow-up requests with page.on request.
+- An old next start can still be answering on port 6790 when you think a new one is up. Compare .next/BUILD_ID with the buildId in the served HTML before trusting any result.

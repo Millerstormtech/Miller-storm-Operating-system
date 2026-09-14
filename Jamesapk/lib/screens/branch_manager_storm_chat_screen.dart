@@ -180,12 +180,10 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/bm-training');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const BranchManagerBottomNav(active: 'stormchat'),
         body: SafeArea(
         child: Column(
           children: [
@@ -194,13 +192,27 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'StormChat',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: _textDark,
-                    ),
+                  Row(
+                    children: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: Icon(Icons.menu, color: _textDark),
+                          tooltip: 'Menu',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'StormChat',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: _textDark,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -235,7 +247,6 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
                       ? _buildEmptyState()
                       : _buildGroupsList(),
             ),
-            BranchManagerBottomNav(active: 'stormchat'),
           ],
         ),
       ),
