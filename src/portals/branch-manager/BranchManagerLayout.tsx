@@ -21,6 +21,7 @@ const BRANCH_MANAGER_VIEW_TOGGLE: Record<string, string> = {
   "my-profile": "profile",
   "user-management": "userManagement",
   "my-tasks": "taskTracker",
+  calendar: "calendar",
 };
 
 type BranchManagerViewId =
@@ -36,7 +37,8 @@ type BranchManagerViewId =
   | "user-management"
   | "my-tasks"
   | "rep-activity"
-  | "announcements";
+  | "announcements"
+  | "calendar";
 
 type BranchManagerLayoutProps = {
   children: React.ReactNode;

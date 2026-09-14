@@ -20,6 +20,7 @@ export const cLevelSidebarItems: { id: string; label: string; toggleKey?: string
   // No toggleKey, matching admin's own Rep Activity link (also un-togglable) —
   // this is a leadership-visibility page, not a per-user permission.
   { id: "rep-activity", label: "Rep Activity" },
+  { id: "calendar", label: "My Calendar", toggleKey: "calendar" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 

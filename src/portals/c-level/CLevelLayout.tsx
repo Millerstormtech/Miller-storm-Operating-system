@@ -21,6 +21,7 @@ const C_LEVEL_VIEW_TOGGLE: Record<string, string> = {
   "my-profile": "profile",
   "user-management": "userManagement",
   "my-tasks": "taskTracker",
+  calendar: "calendar",
 };
 
 type CLevelViewId =
@@ -36,7 +37,8 @@ type CLevelViewId =
   | "user-management"
   | "announcements"
   | "my-tasks"
-  | "rep-activity";
+  | "rep-activity"
+  | "calendar";
 
 type CLevelLayoutProps = {
   children: React.ReactNode;

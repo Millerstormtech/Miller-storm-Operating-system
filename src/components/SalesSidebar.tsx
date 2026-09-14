@@ -26,6 +26,7 @@ export const salesSidebarItems: { id: string; label: string; toggleKey?: string 
   // Opens the same Support ticket form as the top-bar button, pre-selected to
   // Draw Request — an action item, not a page (handled in handleNavigation).
   { id: "submit-draw-request", label: "Submit Draw Request" },
+  { id: "calendar", label: "My Calendar", toggleKey: "calendar" },
   { id: "profile", label: "Profile", toggleKey: "profile" },
 ];
 

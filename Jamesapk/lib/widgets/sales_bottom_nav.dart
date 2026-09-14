@@ -54,6 +54,8 @@ class SalesBottomNav extends StatelessWidget {
                       () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnnouncementsScreen(canCompose: false)))),
                   _actionItem(context, Icons.confirmation_number_outlined, 'Support',
                       () => Navigator.pushNamed(context, '/tickets')),
+                  _actionItem(context, Icons.calendar_month_outlined, 'My Calendar',
+                      () => Navigator.pushNamed(context, '/calendar')),
                   _item(context, Icons.person_outline, 'Profile', 'profile', '/profile'),
                 ],
               ),

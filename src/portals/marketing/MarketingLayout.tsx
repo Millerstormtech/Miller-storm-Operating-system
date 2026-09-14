@@ -7,7 +7,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 
-type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "rankings" | "course-leaderboard" | "storm-chat" | "team-structure" | "profile" | "my-tasks";
+type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "rankings" | "course-leaderboard" | "storm-chat" | "team-structure" | "profile" | "my-tasks" | "calendar";
 
 type MarketingLayoutProps = {
   children: React.ReactNode;
@@ -35,6 +35,7 @@ export function MarketingLayout({ children, currentView, pageTitle, pageSubtitle
     "team-structure": "teamStructure",
     profile: "profile",
     "my-tasks": "taskTracker",
+    calendar: "calendar",
   };
 
   useEffect(() => {

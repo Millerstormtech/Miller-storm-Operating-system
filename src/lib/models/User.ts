@@ -44,6 +44,24 @@ const webPageSchema = new Schema(
   { _id: false }
 );
 
+// This person's connected Google Calendar (Internal Workspace OAuth — see
+// src/lib/googleCalendar/client.ts). accessToken/expiryDate are refreshed in
+// place from refreshToken as needed; connected stays true until they disconnect
+// or Google revokes access, independent of whether the access token happens to
+// be expired right now.
+const googleCalendarSchema = new Schema(
+  {
+    connected: Boolean,
+    accessToken: String,
+    refreshToken: String,
+    // Unix ms when accessToken expires (Date.now() + expires_in*1000 at issue).
+    expiryDate: Number,
+    scope: String,
+    connectedAt: Date
+  },
+  { _id: false }
+);
+
 const userSchema = new Schema(
   {
     id: { type: String, required: true, unique: true },
@@ -110,7 +128,8 @@ const userSchema = new Schema(
     publicProfile: { type: publicProfileSchema, required: true },
     featureToggles: { type: Schema.Types.Mixed, required: true },
     acculynxUserId: { type: String, default: null, index: true },
-    fcmToken: { type: String, default: '' }
+    fcmToken: { type: String, default: '' },
+    googleCalendar: googleCalendarSchema
   },
   { timestamps: true }
 );

@@ -22,6 +22,7 @@ export const salesTeamLeadSidebarItems = [
   { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
   { id: "jays-ai-clone", label: "Jayi", toggleKey: "aiChat" },
   { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
+  { id: "calendar", label: "My Calendar", toggleKey: "calendar" },
   { id: "my-profile", label: "Profile", toggleKey: "profile" },
 ];
 

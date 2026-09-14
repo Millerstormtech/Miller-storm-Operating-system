@@ -227,3 +227,42 @@ export function requireAuth(handler: Handler, roles?: string[]): Handler {
     return handler(req, res);
   };
 }
+
+// ---------------------------------------------------------------------------
+// Short-lived, single-claim tokens — the same signed/HMAC shape as a session,
+// but binding only a user id with a caller-chosen (short) expiry. Used for
+// one-off handoffs where a full 365-day session token would be the wrong
+// shape, e.g. the Google Calendar connect link the mobile app opens in an
+// external browser (see pages/api/calendar/connect.ts): that browser has no
+// session cookie of its own, so this is what proves which user the resulting
+// OAuth callback is for, without inventing a separate one-time-token table.
+// ---------------------------------------------------------------------------
+
+export function signShortLived(userId: string, ttlSeconds: number): string {
+  const payload = { sub: userId, exp: Math.floor(Date.now() / 1000) + ttlSeconds };
+  const payloadB64 = b64url(JSON.stringify(payload));
+  return `${payloadB64}.${sign(payloadB64)}`;
+}
+
+/** Returns the user id, or null if missing/malformed/expired/tampered. */
+export function verifyShortLived(token: string): string | null {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [payloadB64, sig] = parts;
+
+  const expected = sign(payloadB64);
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+
+  try {
+    const payload = JSON.parse(
+      Buffer.from(payloadB64.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString()
+    ) as { sub?: string; exp?: number };
+    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
