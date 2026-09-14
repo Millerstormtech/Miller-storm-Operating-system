@@ -14,20 +14,20 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // cancelled the feature on 2026-08-05, so the nav entry was removed. The page
 // and its API still exist but nothing links to them; see the note in
 // pages/*/my-tasks.tsx before reviving or deleting them.
-export const salesSidebarItems: { id: string; label: string; toggleKey?: string }[] = [
-  { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
-  { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
-  { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
-  { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
-  { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
-  { id: "training", label: "Training Center", toggleKey: "training" },
-  { id: "aiChat", label: "Jayi", toggleKey: "aiChat" },
-  { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
+export const salesSidebarItems: { id: string; label: string; toggleKey?: string; href?: string }[] = [
+  { id: "dashboard", label: "My Dashboard", href: "/sales/dashboard", toggleKey: "dashboard" },
+  { id: "storm-chat", label: "StormChat", href: "/sales/storm-chat", toggleKey: "stormChat" },
+  { id: "course-leaderboard", label: "Course Leaderboard", href: "/sales/course-leaderboard", toggleKey: "trainingCenter" },
+  { id: "apps-tools", label: "Tools & Products", href: "/sales/apps-tools", toggleKey: "appsTools" },
+  { id: "rankings", label: "Sales Leaderboard", href: "/sales/rankings", toggleKey: "rankings" },
+  { id: "training", label: "Training Center", href: "/sales/training", toggleKey: "training" },
+  { id: "aiChat", label: "Jayi", href: "/sales/aiChat", toggleKey: "aiChat" },
+  { id: "team-structure", label: "Organization Chart", href: "/sales/team-structure", toggleKey: "teamStructure" },
   // Opens the same Support ticket form as the top-bar button, pre-selected to
   // Draw Request — an action item, not a page (handled in handleNavigation).
   { id: "submit-draw-request", label: "Submit Draw Request" },
-  { id: "calendar", label: "My Calendar", toggleKey: "calendar" },
-  { id: "profile", label: "Profile", toggleKey: "profile" },
+  { id: "calendar", label: "My Calendar", href: "/sales/calendar", toggleKey: "calendar" },
+  { id: "profile", label: "Profile", href: "/sales/profile", toggleKey: "profile" },
 ];
 
 const baseItems = salesSidebarItems;

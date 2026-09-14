@@ -5,17 +5,17 @@ import { useAuth } from "../contexts/AuthContext";
 import { useFeatureToggles } from "../hooks/useFeatureToggles";
 
 export const marketingSidebarItems = [
-  { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
-  { id: "assets", label: "Marketing Assets", toggleKey: "assets" },
-  { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
-  { id: "training", label: "Training Center", toggleKey: "training" },
-  { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
-  { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
-  { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
-  { id: "ai-chat", label: "Jayi", toggleKey: "aiAssistant" },
-  { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
-  { id: "calendar", label: "My Calendar", toggleKey: "calendar" },
-  { id: "profile", label: "Profile", toggleKey: "profile" },
+  { id: "dashboard", label: "My Dashboard", href: "/marketing/dashboard", toggleKey: "dashboard" },
+  { id: "assets", label: "Marketing Assets", href: "/marketing/assets", toggleKey: "assets" },
+  { id: "course-leaderboard", label: "Course Leaderboard", href: "/marketing/course-leaderboard", toggleKey: "trainingCenter" },
+  { id: "training", label: "Training Center", href: "/marketing/training", toggleKey: "training" },
+  { id: "apps-tools", label: "Tools & Products", href: "/marketing/apps-tools", toggleKey: "appsTools" },
+  { id: "rankings", label: "Sales Leaderboard", href: "/marketing/rankings", toggleKey: "rankings" },
+  { id: "storm-chat", label: "StormChat", href: "/marketing/storm-chat", toggleKey: "stormChat" },
+  { id: "ai-chat", label: "Jayi", href: "/marketing/ai-chat", toggleKey: "aiAssistant" },
+  { id: "team-structure", label: "Organization Chart", href: "/marketing/team-structure", toggleKey: "teamStructure" },
+  { id: "calendar", label: "My Calendar", href: "/marketing/calendar", toggleKey: "calendar" },
+  { id: "profile", label: "Profile", href: "/marketing/profile", toggleKey: "profile" },
 ];
 
 const baseItems = marketingSidebarItems;

@@ -179,6 +179,7 @@ body {
   background: transparent;
   color: var(--sb-text);
   text-align: center;
+  text-decoration: none;
   padding: 6px 8px;
   border-radius: 10px;
   font-size: 12px;

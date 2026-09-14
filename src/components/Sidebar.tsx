@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import Link from "next/link";
 
 export type SidebarItem = {
   id: string;
@@ -7,6 +8,12 @@ export type SidebarItem = {
   // Optional section this item belongs to. When it differs from the previous
   // item's group, a section header (+ divider) is rendered above it.
   group?: string;
+  // The page this item goes to. When set, the item renders as a real <a>
+  // (via next/link) so the browser's own "open in new tab"/"new window" and
+  // Ctrl/Cmd/middle-click all work, same as any other link. Left unset for
+  // items that don't navigate anywhere (e.g. Sales' "Submit Draw Request",
+  // which opens a form instead) — those stay a plain button.
+  href?: string;
 };
 
 type SidebarProps = {
@@ -296,21 +303,48 @@ export function Sidebar(props: SidebarProps) {
                   <div className="sidebar-group-label">{item.group}</div>
                 </>
               )}
-              <button
-                className={
-                  item.id === props.activeId ? "sidebar-item active" : "sidebar-item"
-                }
-                onClick={() => props.onSelect(item.id)}
-                aria-label={item.label}
-                data-label={item.label}
-              >
-                <span className="sidebar-nav-icon">
-                  {item.icon ?? collapsedIconMap[item.id] ?? (
-                    <span className="sidebar-fallback-icon">•</span>
-                  )}
-                </span>
-                <span className="sidebar-label">{item.label}</span>
-              </button>
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  className={
+                    item.id === props.activeId ? "sidebar-item active" : "sidebar-item"
+                  }
+                  // A plain click still goes through onSelect (some items, e.g.
+                  // "Training Center" clicked while already on it, need to run
+                  // extra logic alongside the navigation). Ctrl/Cmd/middle-click
+                  // and right-click are left alone so the browser's native
+                  // open-in-new-tab/window behaves normally.
+                  onClick={(e) => {
+                    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    props.onSelect(item.id);
+                  }}
+                  aria-label={item.label}
+                  data-label={item.label}
+                >
+                  <span className="sidebar-nav-icon">
+                    {item.icon ?? collapsedIconMap[item.id] ?? (
+                      <span className="sidebar-fallback-icon">•</span>
+                    )}
+                  </span>
+                  <span className="sidebar-label">{item.label}</span>
+                </Link>
+              ) : (
+                <button
+                  className={
+                    item.id === props.activeId ? "sidebar-item active" : "sidebar-item"
+                  }
+                  onClick={() => props.onSelect(item.id)}
+                  aria-label={item.label}
+                  data-label={item.label}
+                >
+                  <span className="sidebar-nav-icon">
+                    {item.icon ?? collapsedIconMap[item.id] ?? (
+                      <span className="sidebar-fallback-icon">•</span>
+                    )}
+                  </span>
+                  <span className="sidebar-label">{item.label}</span>
+                </button>
+              )}
             </div>
           );
         })}

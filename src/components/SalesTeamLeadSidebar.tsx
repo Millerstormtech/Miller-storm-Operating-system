@@ -14,16 +14,16 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // reach it is switched off behind SHOW_GOAL_LINK in MetricTile.tsx until My
 // Goals launches.
 export const salesTeamLeadSidebarItems = [
-  { id: "dashboard", label: "My Dashboard", toggleKey: "dashboard" },
-  { id: "storm-chat", label: "StormChat", toggleKey: "stormChat" },
-  { id: "course-leaderboard", label: "Course Leaderboard", toggleKey: "trainingCenter" },
-  { id: "apps-tools", label: "Tools & Products", toggleKey: "appsTools" },
-  { id: "rankings", label: "Sales Leaderboard", toggleKey: "rankings" },
-  { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
-  { id: "jays-ai-clone", label: "Jayi", toggleKey: "aiChat" },
-  { id: "team-structure", label: "Organization Chart", toggleKey: "teamStructure" },
-  { id: "calendar", label: "My Calendar", toggleKey: "calendar" },
-  { id: "my-profile", label: "Profile", toggleKey: "profile" },
+  { id: "dashboard", label: "My Dashboard", href: "/manager/dashboard", toggleKey: "dashboard" },
+  { id: "storm-chat", label: "StormChat", href: "/manager/storm-chat", toggleKey: "stormChat" },
+  { id: "course-leaderboard", label: "Course Leaderboard", href: "/manager/course-leaderboard", toggleKey: "trainingCenter" },
+  { id: "apps-tools", label: "Tools & Products", href: "/manager/apps-tools", toggleKey: "appsTools" },
+  { id: "rankings", label: "Sales Leaderboard", href: "/manager/rankings", toggleKey: "rankings" },
+  { id: "onlineTraining", label: "Training Center", href: "/manager/onlineTraining", toggleKey: "onlineTraining" },
+  { id: "jays-ai-clone", label: "Jayi", href: "/manager/jays-ai-clone", toggleKey: "aiChat" },
+  { id: "team-structure", label: "Organization Chart", href: "/manager/team-structure", toggleKey: "teamStructure" },
+  { id: "calendar", label: "My Calendar", href: "/manager/calendar", toggleKey: "calendar" },
+  { id: "my-profile", label: "Profile", href: "/manager/my-profile", toggleKey: "profile" },
 ];
 
 const baseItems = salesTeamLeadSidebarItems;
