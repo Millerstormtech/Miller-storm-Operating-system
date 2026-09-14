@@ -13,6 +13,22 @@ import { refreshAccessToken, listUpcomingEvents } from "../../../src/lib/googleC
 const EXPIRY_BUFFER_MS = 2 * 60 * 1000;
 const WINDOW_DAYS = 30;
 
+// Web's week-grid view passes its own timeMin/timeMax so it can page through
+// any week (past or future), not just the next 30 days. Mobile's simple list
+// calls this with neither and keeps the original "next 30 days" behavior.
+function parseRange(req: NextApiRequest): { timeMin: Date; timeMax: Date } | null {
+  const minParam = typeof req.query.timeMin === "string" ? req.query.timeMin : null;
+  const maxParam = typeof req.query.timeMax === "string" ? req.query.timeMax : null;
+  if (!minParam && !maxParam) {
+    const now = new Date();
+    return { timeMin: now, timeMax: new Date(now.getTime() + WINDOW_DAYS * 24 * 60 * 60 * 1000) };
+  }
+  const timeMin = new Date(minParam || Date.now());
+  const timeMax = new Date(maxParam || Date.now());
+  if (isNaN(timeMin.getTime()) || isNaN(timeMax.getTime()) || timeMax <= timeMin) return null;
+  return { timeMin, timeMax };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
   const auth = requireUser(req, res);
@@ -42,11 +58,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
     }
 
-    const now = new Date();
-    const until = new Date(now.getTime() + WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const range = parseRange(req);
+    if (!range) return res.status(400).json({ error: "Invalid time range" });
     const events = await listUpcomingEvents(accessToken, {
-      timeMin: now.toISOString(),
-      timeMax: until.toISOString(),
+      timeMin: range.timeMin.toISOString(),
+      timeMax: range.timeMax.toISOString(),
+      maxResults: 100,
     });
 
     res.setHeader("Cache-Control", "private, no-store");
