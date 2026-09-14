@@ -60,6 +60,8 @@ class CLevelBottomNav extends StatelessWidget {
                       () => Navigator.pushNamed(context, '/tickets')),
                   _actionItem(context, Icons.calendar_month_outlined, 'My Calendar',
                       () => Navigator.pushNamed(context, '/calendar')),
+                  _actionItem(context, Icons.bar_chart_outlined, 'Rep Activity',
+                      () => Navigator.pushNamed(context, '/rep-activity')),
                   _item(context, Icons.person_outline, 'Profile', 'profile', '/clevel-profile'),
                 ],
               ),

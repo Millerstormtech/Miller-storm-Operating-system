@@ -31,6 +31,7 @@ import 'screens/sales_team_lead_team_member_detail_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/ticket_screen.dart';
 import 'screens/calendar_screen.dart';
+import 'screens/rep_activity_screen.dart';
 import 'services/api_client.dart';
 import 'screens/apps_tools_items_screen.dart';
 import 'screens/marketing_rankings_screen.dart';
@@ -332,6 +333,8 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             return MaterialPageRoute(builder: (_) => const TicketScreen());
           case '/calendar':
             return MaterialPageRoute(builder: (_) => const CalendarScreen());
+          case '/rep-activity':
+            return MaterialPageRoute(builder: (_) => const RepActivityScreen());
           default:
             return MaterialPageRoute(builder: (_) => const SplashScreen());
         }
