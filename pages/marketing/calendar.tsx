@@ -8,7 +8,7 @@ const MarketingCalendar: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["marketing", "admin"]}>
       <MarketingLayout currentView="calendar">
-        <div style={{ padding: 24 }}>
+        <div style={{ padding: "0 24px 24px" }}>
           <MyCalendar />
         </div>
       </MarketingLayout>

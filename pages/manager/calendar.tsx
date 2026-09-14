@@ -8,7 +8,7 @@ const ManagerCalendar: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["sales-team-lead", "admin"]}>
       <SalesTeamLeadLayout currentView="calendar">
-        <div style={{ padding: 24 }}>
+        <div style={{ padding: "0 24px 24px" }}>
           <MyCalendar />
         </div>
       </SalesTeamLeadLayout>

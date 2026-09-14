@@ -8,7 +8,7 @@ const CLevelCalendarPage: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["c-level"]}>
       <CLevelLayout currentView="calendar">
-        <div style={{ padding: 24 }}>
+        <div style={{ padding: "0 24px 24px" }}>
           <MyCalendar />
         </div>
       </CLevelLayout>

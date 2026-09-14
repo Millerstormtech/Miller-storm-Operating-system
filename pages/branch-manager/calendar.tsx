@@ -8,7 +8,7 @@ const BranchManagerCalendarPage: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["branch-manager"]}>
       <BranchManagerLayout currentView="calendar">
-        <div style={{ padding: 24 }}>
+        <div style={{ padding: "0 24px 24px" }}>
           <MyCalendar />
         </div>
       </BranchManagerLayout>

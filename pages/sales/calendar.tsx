@@ -10,7 +10,7 @@ const Calendar: NextPage = () => {
   return (
     <ProtectedRoute allowedRoles={["sales", "sales-team-lead", "admin"]}>
       <SalesLayout currentView="calendar" userName={user?.name} userId={user?.id}>
-        <div style={{ padding: 24 }}>
+        <div style={{ padding: "0 24px 24px" }}>
           <MyCalendar />
         </div>
       </SalesLayout>
