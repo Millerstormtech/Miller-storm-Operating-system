@@ -7,7 +7,7 @@ import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { sendSupportTicketCreatedEmail } from "../../../src/lib/email";
 import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES, ownedTicketTypes } from "../../../src/lib/support/categories";
 import { computeSalesRows } from "../../../src/lib/leaderboard/compute";
-import { normName } from "../../../src/lib/leaderboard/identity";
+import { findSubmitterRow } from "../../../src/lib/leaderboard/identity";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -100,8 +100,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const end = new Date();
       const start = new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
       const rows = await computeSalesRows({ start, end });
-      const submitterKey = normName(name);
-      const rep = rows.find((r) => normName(r.name) === submitterKey);
+      // By the signed-in account first (auth.sub, never the body), name only as a
+      // fallback: account names like "james" never matched "James Williams".
+      const rep = findSubmitterRow(rows, { userId: auth.sub, name });
       const block = rep
         ? [
             "Sales rep — last 90 days:",

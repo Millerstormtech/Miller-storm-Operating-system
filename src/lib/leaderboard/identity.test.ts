@@ -1,7 +1,7 @@
 // src/lib/leaderboard/identity.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity.ts";
+import { normEmail, normName, normPhone, hasAcculynxAccount, findSubmitterRow } from "./identity.ts";
 
 test("normEmail lowercases + trims", () => {
   assert.equal(normEmail("  Alan.Bieberle@MillerStorm.com "), "alan.bieberle@millerstorm.com");
@@ -44,4 +44,31 @@ test("hasAcculynxAccount: empty sets -> false (fresh deploy, before first sync)"
 });
 test("hasAcculynxAccount: blank rep fields never match", () => {
   assert.equal(hasAcculynxAccount({ email: "", phone: "", nameKey: "" }, acctSets), false);
+});
+
+const boardRows = [
+  { repUserId: "u-james", name: "James Williams" },
+  { repUserId: null, name: "Kyle Casas" },
+  { repUserId: "u-alan", name: "Alan Bieberle" },
+];
+
+test("findSubmitterRow finds the rep by signed-in account even when the account name differs", () => {
+  assert.equal(findSubmitterRow(boardRows, { userId: "u-james", name: "james" })?.name, "James Williams");
+});
+
+test("findSubmitterRow: the account wins over a name that points at someone else", () => {
+  assert.equal(findSubmitterRow(boardRows, { userId: "u-alan", name: "James Williams" })?.name, "Alan Bieberle");
+});
+
+test("findSubmitterRow falls back to the name when the account links to no row", () => {
+  assert.equal(findSubmitterRow(boardRows, { userId: "u-kyle", name: "  kyle   CASAS " })?.name, "Kyle Casas");
+});
+
+test("findSubmitterRow: no account match and no name match -> undefined", () => {
+  assert.equal(findSubmitterRow(boardRows, { userId: "u-nobody", name: "james" }), undefined);
+  assert.equal(findSubmitterRow(boardRows, { userId: "", name: "" }), undefined);
+});
+
+test("findSubmitterRow never matches a row with no account to a missing userId", () => {
+  assert.equal(findSubmitterRow(boardRows, { userId: null, name: "" }), undefined);
 });

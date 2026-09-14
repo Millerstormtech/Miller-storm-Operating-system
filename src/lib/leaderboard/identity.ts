@@ -31,3 +31,20 @@ export function hasAcculynxAccount(
   if (rep.nameKey && sets.names.has(rep.nameKey)) return true;
   return false;
 }
+
+// The leaderboard row for the person submitting a request (Draw Request email).
+// Matched by their signed-in Miller Storm account first: a row's repUserId is set
+// when the rep's account email matches their sales records, which survives an
+// account name like "james" that never equals "James Williams". The display name
+// is only a fallback, for a rep whose account email does not link.
+export function findSubmitterRow<T extends { repUserId: string | null; name: string }>(
+  rows: readonly T[],
+  who: { userId?: string | null; name?: string }
+): T | undefined {
+  if (who.userId) {
+    const byAccount = rows.find((r) => r.repUserId != null && r.repUserId === who.userId);
+    if (byAccount) return byAccount;
+  }
+  const key = normName(who.name);
+  return key ? rows.find((r) => normName(r.name) === key) : undefined;
+}

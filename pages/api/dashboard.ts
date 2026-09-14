@@ -20,7 +20,7 @@ import { ScoringFactModel } from "../../src/lib/models/ScoringFact";
 import { RepCardKnockFactModel } from "../../src/lib/models/RepCardKnockFact";
 import { CertificateAwardModel } from "../../src/lib/models/CertificateAward";
 import { requireUser, allowMethods } from "../../src/lib/auth";
-import { getWindowRange } from "../../src/lib/acculynx/windows";
+import { getWindowRange, customRange, centralDateStr } from "../../src/lib/acculynx/windows";
 import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
 import { resolveTeam } from "../../src/lib/repcard/org-chart";
@@ -31,6 +31,7 @@ import { previousSlice } from "../../src/lib/scoreboard/periods";
 import { toSalesRow } from "../../src/lib/scoreboard/rows";
 import { normEmail } from "../../src/lib/leaderboard/identity";
 import { loadBoardData } from "../../src/lib/training/board-data";
+import { lowestKnocks, lastCompleteDays, LEADER_ROLES } from "../../src/lib/scoreboard/lowestKnocks";
 import {
   METRICS,
   topN,
@@ -143,6 +144,30 @@ async function loadNews(now: Date): Promise<Array<{ text: string; at: string }>>
   }));
 }
 
+/**
+ * Every RepCard rep's first and last day with a verified knock, keyed the way
+ * leaderboard rows are ("rc:<repcardUserId>"). Feeds the Lowest knocks card's
+ * new-rep rule and its tie-break (see lowestKnocks.ts).
+ *
+ * One grouped query over a dated collection with one small fact per rep per
+ * day. History reaches back only as far as the RepCard sync does (January 1 of
+ * the sync year), so in the first week of January every rep reads as new and
+ * the card stays empty until a full week of knocks exists. That is the rule
+ * working, not a bug.
+ */
+async function loadKnockSpans(): Promise<Map<string, { first: string; last: string }>> {
+  const rows = await RepCardKnockFactModel.aggregate([
+    { $match: { verifiedKnocks: { $gt: 0 } } },
+    { $group: { _id: "$repcardUserId", first: { $min: "$occurredAt" }, last: { $max: "$occurredAt" } } },
+  ]);
+  return new Map(
+    rows.map((r: any) => [
+      `rc:${r._id}`,
+      { first: centralDateStr(new Date(r.first)), last: centralDateStr(new Date(r.last)) },
+    ] as [string, { first: string; last: string }])
+  );
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
   const auth = requireUser(req, res);
@@ -175,15 +200,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const month = getWindowRange("month", now);
     const prevMonth = previousSlice("month", month.start, now);
 
+    const scope = resolveScope({ id: user.id, role: user.role, name: user.name });
+    // The Lowest knocks card is for managers only: a rep never sees colleagues
+    // named as the lowest, so its two extra queries are skipped for reps.
+    const lowWindow = scope.level === "self" ? null : lastCompleteDays(now);
+
     const shared = await loadSharedRosterData();
-    const [yearRaw, monthRaw, prevRaw, board] = await Promise.all([
+    const [yearRaw, monthRaw, prevRaw, board, lowRaw, knockSpans, leaderUsers] = await Promise.all([
       computeSalesRows(year, shared),
       computeSalesRows(month, shared),
       computeSalesRows(prevMonth, shared),
       loadBoardData(),
+      lowWindow ? computeSalesRows(customRange(lowWindow.from, lowWindow.to, now), shared) : Promise.resolve(null),
+      lowWindow ? loadKnockSpans() : Promise.resolve(null),
+      // Leadership accounts, so a branch manager the org chart does not list as a
+      // team lead is still never named on the Lowest Knocks card.
+      lowWindow
+        ? UserModel.find({ $or: [{ role: { $in: LEADER_ROLES } }, { roles: { $in: LEADER_ROLES } }] }).select("id").lean()
+        : Promise.resolve(null),
     ]);
+    const leaderIds = new Set<string>(((leaderUsers as any[]) || []).map((u) => String(u.id)));
 
-    const scope = resolveScope({ id: user.id, role: user.role, name: user.name });
     const yearRows = scopeRows(yearRaw.map(toSalesRow), scope);
     const monthRows = scopeRows(monthRaw.map(toSalesRow), scope);
     const prevRows = scopeRows(prevRaw.map(toSalesRow), scope);
@@ -203,10 +240,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         top: topN(monthRows, m as Metric, 3),
       };
     }
-    // Shown under the contracts card. Guarded because a month with no contracts
-    // would otherwise divide by zero and print Infinity next to real money.
-    const averageContract =
-      monthTotals.contracts > 0 ? Math.round(monthTotals.revenue / monthTotals.contracts) : null;
+    // Year-to-date average contract, shown on the headline card (Jay, 2026-09-11).
+    // The month-to-date average that used to sit under the Contracts card was
+    // removed on purpose (Youssef, 2026-09-13): Jay read it as the year figure.
+    // Null with no contracts yet, so the screen hides the line instead of
+    // dividing by zero and printing Infinity next to real money.
+    const yearAverageContract =
+      yearTotals.contracts > 0 ? Math.round(yearTotals.revenue / yearTotals.contracts) : null;
+
+    // Lowest knocks: the viewer's scope, last 7 complete days. Rows keep their
+    // leaderboard id so each name can link to that rep's row on the board.
+    const lowestKnocksCard =
+      lowWindow && lowRaw && knockSpans
+        ? {
+            from: lowWindow.from,
+            to: lowWindow.to,
+            reps: lowestKnocks(
+              scopeRows(
+                lowRaw.map((r) => ({
+                  ...toSalesRow(r),
+                  id: r.id,
+                  isLeader: r.isTeamLead || (r.repUserId != null && leaderIds.has(r.repUserId)),
+                  firstKnockDay: knockSpans.get(r.id)?.first ?? null,
+                  lastKnockDay: knockSpans.get(r.id)?.last ?? null,
+                })),
+                scope
+              ),
+              lowWindow
+            ),
+          }
+        : null;
 
     // The breakdown row: one level below whoever is looking.
     const kind = breakdownFor(scope.level);
@@ -267,16 +330,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // web never renders a rep's scope line), but the mobile board shows a
         // team chip, so the team name is carried here for that one use.
         team: resolveTeam(user.name) || "",
+        // The raw branch key (never a display label), so the dashboard's links
+        // can pre-filter the leaderboards to exactly this branch.
+        branch: scope.level === "branch" ? scope.branch || "" : "",
       },
-      hero: { revenue: yearTotals.revenue, contracts: yearTotals.contracts, year: now.getUTCFullYear() },
+      hero: {
+        revenue: yearTotals.revenue,
+        contracts: yearTotals.contracts,
+        year: now.getUTCFullYear(),
+        averageContract: yearAverageContract,
+      },
       cards,
-      averageContract,
       // Company-wide rank is meaningless for the company itself, so rankFor()
       // returns null there and the strip renders nothing.
       rank: rankFor(monthRaw.map(toSalesRow), scope),
       breakdown,
       training,
       news: scope.level === "company" ? await loadNews(now) : null,
+      lowestKnocks: lowestKnocksCard,
     });
   } catch (error) {
     console.error("[dashboard] Error:", error);
