@@ -301,53 +301,90 @@ class _RepActivityScreenState extends State<RepActivityScreen> {
     }
     final groups = courses.values.toList()..sort((a, b) => (b['total'] as double).compareTo(a['total'] as double));
 
-    return Container(
-      decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: groups.map((g) {
-          final gVideos = List<Map<String, dynamic>>.from(g['videos'] as List)
-            ..sort((a, b) => (_n(b['secondsWeb']) + _n(b['secondsMobile'])).compareTo(_n(a['secondsWeb']) + _n(a['secondsMobile'])));
-          final gQuizzes = List<Map<String, dynamic>>.from(g['quizzes'] as List)
-            ..sort((a, b) => (_n(b['secondsWeb']) + _n(b['secondsMobile'])).compareTo(_n(a['secondsWeb']) + _n(a['secondsMobile'])));
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(g['title'] as String, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _textDark)),
-                if (gVideos.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text('VIDEOS', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.4)),
-                  ...gVideos.map((v) => _lessonRow(v, 'Untitled video')),
-                ],
-                if (gQuizzes.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text('QUIZZES', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.4)),
-                  ...gQuizzes.map((q) => _lessonRow(q, 'Untitled quiz')),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: groups.map((g) {
+        final gVideos = List<Map<String, dynamic>>.from(g['videos'] as List)
+          ..sort((a, b) => (_n(b['secondsWeb']) + _n(b['secondsMobile'])).compareTo(_n(a['secondsWeb']) + _n(a['secondsMobile'])));
+        final gQuizzes = List<Map<String, dynamic>>.from(g['quizzes'] as List)
+          ..sort((a, b) => (_n(b['secondsWeb']) + _n(b['secondsMobile'])).compareTo(_n(a['secondsWeb']) + _n(a['secondsMobile'])));
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Course header — a coloured accent bar so it reads as its own
+              // block against the plain grey body below, in both themes.
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(color: _primary.withOpacity(0.14)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(g['title'] as String,
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _textDark)),
+                    ),
+                    Text(_fmtSeconds(g['total'] as double), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _primary)),
+                  ],
+                ),
+              ),
+              if (gVideos.isNotEmpty) ...[
+                _sectionLabel('Videos', Icons.play_circle_outline),
+                ...gVideos.asMap().entries.map((e) => _lessonRow(e.value, 'Untitled video', Icons.play_circle_outline, e.key == gVideos.length - 1 && gQuizzes.isEmpty)),
               ],
-            ),
-          );
-        }).toList(),
-      ),
+              if (gQuizzes.isNotEmpty) ...[
+                _sectionLabel('Quizzes', Icons.quiz_outlined),
+                ...gQuizzes.asMap().entries.map((e) => _lessonRow(e.value, 'Untitled quiz', Icons.quiz_outlined, e.key == gQuizzes.length - 1)),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
-  Widget _lessonRow(Map<String, dynamic> item, String untitled) {
+  Widget _sectionLabel(String label, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      child: Row(children: [
+        Icon(icon, size: 12, color: _textLight),
+        const SizedBox(width: 5),
+        Text(label.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _textLight, letterSpacing: 0.5)),
+      ]),
+    );
+  }
+
+  Widget _lessonRow(Map<String, dynamic> item, String untitled, IconData icon, bool isLast) {
     final title = (item['title'] ?? '').toString();
     final web = _n(item['secondsWeb']);
     final mobile = _n(item['secondsMobile']);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+    return Container(
+      padding: EdgeInsets.fromLTRB(12, 6, 12, isLast ? 10 : 6),
+      decoration: isLast ? null : BoxDecoration(border: Border(bottom: BorderSide(color: _border.withOpacity(0.5)))),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(child: Text(title.isEmpty ? untitled : title, style: TextStyle(fontSize: 12.5, color: _textDark))),
+          Icon(icon, size: 14, color: _textLight),
           const SizedBox(width: 8),
-          Text('W ${_fmtSeconds(web)} · A ${_fmtSeconds(mobile)} · ${_fmtSeconds(web + mobile)}',
-              style: TextStyle(fontSize: 11, color: _textLight)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title.isEmpty ? untitled : title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textDark)),
+                const SizedBox(height: 1),
+                Text('Web ${_fmtSeconds(web)} · Mobile ${_fmtSeconds(mobile)}', style: TextStyle(fontSize: 10.5, color: _textLight)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(999), border: Border.all(color: _border)),
+            child: Text(_fmtSeconds(web + mobile), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _textDark)),
+          ),
         ],
       ),
     );
