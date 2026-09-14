@@ -5,13 +5,17 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
+import '../services/dashboard_links.dart';
 import '../widgets/sales_bottom_nav.dart';
 import '../theme/app_theme.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
 // live from AccuLynx + RepCard via /api/leaderboard. Self-contained per panel.
 class RankingsScreen extends StatefulWidget {
-  const RankingsScreen({super.key});
+  // Set only when arriving from a dashboard "See all" link — pre-fills the
+  // period/sort/filter/focus once, then behaves exactly like a plain open.
+  final RankingsLinkArgs? linkArgs;
+  const RankingsScreen({super.key, this.linkArgs});
 
   @override
   State<RankingsScreen> createState() => _RankingsScreenState();
@@ -92,10 +96,85 @@ class _RankingsScreenState extends State<RankingsScreen> {
   bool _tourChecked = false;
   static const _tourSeenKey = 'tour_seen_sales_leaderboard_v1';
 
+  // A dashboard "See all" link's row to scroll to and outline, applied once
+  // the first fetch lands. _focusedRowId sticks afterward (the outline stays
+  // until the rep leaves the screen), mirroring the web board's behavior.
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _rowKeys = {};
+  String? _pendingFocusId;
+  String? _focusedRowId;
+
   @override
   void initState() {
     super.initState();
+    _applyLinkArgs();
     _init();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // Seeds the period/sort/filter/focus from a dashboard link, exactly once —
+  // a plain drawer open passes no linkArgs, so nothing here runs and every
+  // default stays what it already was.
+  void _applyLinkArgs() {
+    final args = widget.linkArgs;
+    if (args == null) return;
+    if (args.from != null && args.to != null) {
+      _period = 'custom';
+      _from = DateTime.tryParse(args.from!);
+      _to = DateTime.tryParse(args.to!);
+    } else if (args.window != null) {
+      _period = args.window!;
+    }
+    if (kSalesSorts.contains(args.sort)) _sortKey = args.sort;
+    _sortDesc = args.desc;
+    if ((args.branch ?? '').isNotEmpty) _branchSel.add(args.branch!);
+    if ((args.team ?? '').isNotEmpty) _teamSel.add(args.team!);
+    _pendingFocusId = args.focus;
+  }
+
+  // Resolves the pending focus ('me' or a specific row id) against the rows
+  // actually on screen right now (sorted + filtered), so "me" always means
+  // whichever row is currently the viewer's, and a missing rep quietly no-ops
+  // instead of throwing.
+  String? _resolveFocusRowId() {
+    final pending = _pendingFocusId;
+    if (pending == null) return null;
+    if (pending == 'me') {
+      if (_userId == null) return null;
+      for (final r in _visibleRows) {
+        if (r['repUserId']?.toString() == _userId) return (r['id'] ?? '').toString();
+      }
+      return null;
+    }
+    return pending;
+  }
+
+  // Scrolls to the focused row once it can find it. ListView.builder only
+  // builds items near the viewport, so a row far down the list has no
+  // GlobalKey context yet — this scans downward in small steps (forcing more
+  // items to build) until the row appears or it gives up after a bounded
+  // number of attempts, then fine-tunes with Scrollable.ensureVisible.
+  void _maybeScrollToFocus({int attempt = 0}) {
+    final targetId = _resolveFocusRowId();
+    if (targetId == null || targetId.isEmpty) return;
+    final ctx = _rowKeys[targetId]?.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(ctx, alignment: 0.35, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+      if (mounted) setState(() { _focusedRowId = targetId; _pendingFocusId = null; });
+      return;
+    }
+    if (attempt >= 25 || !_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
+    final next = (_scrollController.offset + 260).clamp(0.0, max);
+    _scrollController.jumpTo(next);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _maybeScrollToFocus(attempt: attempt + 1);
+    });
   }
 
   Future<void> _init() async {
@@ -132,6 +211,9 @@ class _RankingsScreenState extends State<RankingsScreen> {
           _ytdPodium = (data['ytdPodium'] as List?) ?? [];
           _loading = false;
         });
+        if (_pendingFocusId != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _maybeScrollToFocus());
+        }
       } else {
         setState(() => _loading = false);
       }
@@ -572,6 +654,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                       color: _primary,
                       onRefresh: _fetch,
                       child: ListView.builder(
+                        controller: _scrollController,
                         padding: const EdgeInsets.only(bottom: 14),
                         itemCount: headerWidgets.length +
                             (visible.isEmpty ? 1 : visible.length + 1),
@@ -974,13 +1057,22 @@ class _RankingsScreenState extends State<RankingsScreen> {
     final subtitle = [branch, _teamLabel(team)].where((s) => s.isNotEmpty).join(' · ');
 
     final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : null;
+    final id = (r['id'] ?? '').toString();
+    // Outlined when this is the row a dashboard link ("See all" on a named
+    // rep, e.g. Lowest Knocks) sent the viewer to find — sticks until they
+    // leave the screen, same as the web board.
+    final isFocused = id.isNotEmpty && id == _focusedRowId;
 
     return Container(
+      key: id.isNotEmpty ? _rowKeys.putIfAbsent(id, () => GlobalKey()) : null,
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isYou ? const Color(0xFFFFF1F1) : _white,
+        color: isFocused ? const Color(0xFFFFF1F1) : (isYou ? const Color(0xFFFFF1F1) : _white),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isYou ? _primary.withOpacity(0.4) : const Color(0xFFEEF0F3)),
+        border: Border.all(
+          color: isFocused ? _primary : (isYou ? _primary.withOpacity(0.4) : const Color(0xFFEEF0F3)),
+          width: isFocused ? 2 : 1,
+        ),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Padding(

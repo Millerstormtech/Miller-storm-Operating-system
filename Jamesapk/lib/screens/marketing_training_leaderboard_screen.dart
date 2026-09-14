@@ -6,13 +6,17 @@ import 'dart:math' as math;
 import '../services/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../services/dashboard_links.dart';
 import '../widgets/marketing_bottom_nav.dart';
 
 // Course Leaderboard — mirrors the web "Training Leaderboard": an Overall board
 // ranked across every course (rank tiers, badges, progress rings, Top 3 / Not
 // started sections) plus a By-Course view. Self-contained per panel.
 class MarketingTrainingLeaderboardScreen extends StatefulWidget {
-  const MarketingTrainingLeaderboardScreen({super.key});
+  // Set only when arriving from a dashboard "Training Center" See-all link —
+  // pre-fills the branch/team filter once, then behaves like a plain open.
+  final TrainingLinkArgs? linkArgs;
+  const MarketingTrainingLeaderboardScreen({super.key, this.linkArgs});
 
   @override
   State<MarketingTrainingLeaderboardScreen> createState() => _MarketingTrainingLeaderboardScreenState();
@@ -81,6 +85,11 @@ class _MarketingTrainingLeaderboardScreenState extends State<MarketingTrainingLe
   @override
   void initState() {
     super.initState();
+    final args = widget.linkArgs;
+    if (args != null) {
+      if ((args.branch ?? '').isNotEmpty) _branch = args.branch!;
+      if ((args.team ?? '').isNotEmpty) _team = args.team!;
+    }
     _init();
   }
 

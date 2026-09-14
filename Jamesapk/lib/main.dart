@@ -8,6 +8,7 @@ import 'services/firebase_messaging_service.dart';
 import 'theme/app_theme.dart';
 import 'services/course_category_order.dart';
 import 'services/activity_tracker.dart';
+import 'services/dashboard_links.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
@@ -234,7 +235,7 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
           case '/stormchat':
             return MaterialPageRoute(builder: (_) => const StormChatScreen());
           case '/rankings':
-            return MaterialPageRoute(builder: (_) => const RankingsScreen());
+            return MaterialPageRoute(builder: (_) => RankingsScreen(linkArgs: settings.arguments as RankingsLinkArgs?));
           case '/planner':
             return MaterialPageRoute(builder: (_) => const PlannerScreen());
           case '/courses':
@@ -242,7 +243,7 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
             final coursesTab = (coursesArgs != null && coursesArgs['tab'] == 'assigned') ? 2 : 0;
             return MaterialPageRoute(builder: (_) => CoursesScreen(initialTabIndex: coursesTab));
           case '/training-leaderboard':
-            return MaterialPageRoute(builder: (_) => const TrainingLeaderboardScreen());
+            return MaterialPageRoute(builder: (_) => TrainingLeaderboardScreen(linkArgs: settings.arguments as TrainingLinkArgs?));
           case '/apps-tools-items':
             return MaterialPageRoute(builder: (_) => const AppsToolsItemsScreen());
           case '/apps-tools-detail':
@@ -264,7 +265,7 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
           case '/manager-stormchat':
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadStormChatScreen());
           case '/manager-rankings':
-            return MaterialPageRoute(builder: (_) => const SalesTeamLeadRankingsScreen());
+            return MaterialPageRoute(builder: (_) => SalesTeamLeadRankingsScreen(linkArgs: settings.arguments as RankingsLinkArgs?));
           case '/manager-view-team':
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadViewTeamScreen());
           case '/manager-team-member-detail':
@@ -277,7 +278,7 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
           case '/manager-training':
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadTrainingScreen());
           case '/manager-training-leaderboard':
-            return MaterialPageRoute(builder: (_) => const SalesTeamLeadTrainingLeaderboardScreen());
+            return MaterialPageRoute(builder: (_) => SalesTeamLeadTrainingLeaderboardScreen(linkArgs: settings.arguments as TrainingLinkArgs?));
           case '/manager-profile':
             return MaterialPageRoute(builder: (_) => const SalesTeamLeadProfileScreen());
           case '/clevel-dashboard':
@@ -291,9 +292,9 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
           case '/clevel-apps-tools-detail':
             return MaterialPageRoute(builder: (_) => const CLevelAppsToolsDetailScreen(), settings: settings);
           case '/clevel-rankings':
-            return MaterialPageRoute(builder: (_) => const CLevelRankingsScreen());
+            return MaterialPageRoute(builder: (_) => CLevelRankingsScreen(linkArgs: settings.arguments as RankingsLinkArgs?));
           case '/clevel-training-leaderboard':
-            return MaterialPageRoute(builder: (_) => const CLevelTrainingLeaderboardScreen());
+            return MaterialPageRoute(builder: (_) => CLevelTrainingLeaderboardScreen(linkArgs: settings.arguments as TrainingLinkArgs?));
           case '/clevel-profile':
             return MaterialPageRoute(builder: (_) => const CLevelProfileScreen());
           case '/bm-dashboard':
@@ -307,13 +308,13 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
           case '/bm-apps-tools-detail':
             return MaterialPageRoute(builder: (_) => const BranchManagerAppsToolsDetailScreen(), settings: settings);
           case '/bm-rankings':
-            return MaterialPageRoute(builder: (_) => const BranchManagerRankingsScreen());
+            return MaterialPageRoute(builder: (_) => BranchManagerRankingsScreen(linkArgs: settings.arguments as RankingsLinkArgs?));
           case '/bm-training-leaderboard':
-            return MaterialPageRoute(builder: (_) => const BranchManagerTrainingLeaderboardScreen());
+            return MaterialPageRoute(builder: (_) => BranchManagerTrainingLeaderboardScreen(linkArgs: settings.arguments as TrainingLinkArgs?));
           case '/bm-profile':
             return MaterialPageRoute(builder: (_) => const BranchManagerProfileScreen());
           case '/marketing-rankings':
-            return MaterialPageRoute(builder: (_) => const MarketingRankingsScreen());
+            return MaterialPageRoute(builder: (_) => MarketingRankingsScreen(linkArgs: settings.arguments as RankingsLinkArgs?));
           case '/marketing-courses':
             return MaterialPageRoute(builder: (_) => const MarketingCoursesScreen());
           case '/marketing-stormchat':
@@ -323,7 +324,7 @@ class _MillerStormAppState extends State<MillerStormApp> with WidgetsBindingObse
           case '/marketing-profile':
             return MaterialPageRoute(builder: (_) => const MarketingProfileScreen());
           case '/marketing-training-leaderboard':
-            return MaterialPageRoute(builder: (_) => const MarketingTrainingLeaderboardScreen());
+            return MaterialPageRoute(builder: (_) => MarketingTrainingLeaderboardScreen(linkArgs: settings.arguments as TrainingLinkArgs?));
           case '/profile':
             return MaterialPageRoute(builder: (_) => const ProfileScreen());
           case '/tickets':
