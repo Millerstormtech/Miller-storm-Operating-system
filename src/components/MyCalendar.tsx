@@ -1,10 +1,10 @@
-// My Calendar: a Google-Calendar-style week grid of this person's events,
-// plus quick Today/Tomorrow/custom-range filters that switch to a simple
-// agenda list (a grid only makes sense for a single week — an arbitrary
-// range reads better as a day-by-day list). Read-only — this app never
-// creates or edits events, only draws them (see /api/calendar/events, and
-// src/lib/googleCalendar/client.ts for the OAuth + REST access). Zero-prop,
-// self-fetching, same shared-section shape as MyCertificates.tsx.
+// My Calendar: a Google-Calendar-style grid of this person's events. This
+// Week/Today/Tomorrow/Custom Range all render the SAME grid (day columns x
+// hourly rows) — just with a different set of day columns — never a plain
+// list. Read-only — this app never creates or edits events, only draws them
+// (see /api/calendar/events, and src/lib/googleCalendar/client.ts for the
+// OAuth + REST access). Zero-prop, self-fetching, same shared-section shape
+// as MyCertificates.tsx.
 import { useEffect, useMemo, useRef, useState } from "react";
 
 interface CalendarEventItem {
@@ -21,8 +21,9 @@ type FilterMode = "week" | "today" | "tomorrow" | "range";
 
 const HOUR_HEIGHT = 48; // px per hour row
 const MIN_EVENT_HEIGHT = 20; // px, so a 15-minute event is still readable
+const DAY_COL_WIDTH = 110; // px, minimum width per day column
+const GUTTER_WIDTH = 52; // px, the hour-label column
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const WEEKDAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function startOfDay(d: Date): Date {
@@ -44,9 +45,9 @@ function hourLabel(h: number): string {
   if (h === 12) return "12 PM";
   return h < 12 ? `${h} AM` : `${h - 12} PM`;
 }
-// yyyy-mm-dd in LOCAL time, for both <input type="date"> values and as a
-// day-bucket key — never toISOString(), which shifts to UTC and can land on
-// the wrong day near midnight.
+// yyyy-mm-dd in LOCAL time, for <input type="date"> values — never
+// toISOString(), which shifts to UTC and can land on the wrong day near
+// midnight.
 function toInputValue(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -55,18 +56,6 @@ function toInputValue(d: Date): string {
 function fromInputValue(v: string): Date {
   const [y, m, d] = v.split("-").map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
-}
-function fmtClock(d: Date): string {
-  const h = d.getHours() % 12 === 0 ? 12 : d.getHours() % 12;
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m} ${d.getHours() < 12 ? "AM" : "PM"}`;
-}
-function fmtEventTime(ev: CalendarEventItem): string {
-  if (ev.allDay) return "All day";
-  return `${fmtClock(new Date(ev.start))} – ${fmtClock(new Date(ev.end))}`;
-}
-function fmtDayHeading(d: Date): string {
-  return `${WEEKDAY_LABELS[d.getDay()]}, ${MONTH_LABELS[d.getMonth()]} ${d.getDate()}`;
 }
 
 type TimedEvent = CalendarEventItem & { _start: Date; _end: Date };
@@ -120,17 +109,36 @@ export function MyCalendar() {
   const [mode, setMode] = useState<FilterMode>("week");
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [rangeFrom, setRangeFrom] = useState(() => toInputValue(new Date()));
-  const [rangeTo, setRangeTo] = useState(() => toInputValue(new Date()));
+  const [rangeTo, setRangeTo] = useState(() => toInputValue(addDays(new Date(), 6)));
+  // What the grid actually shows for "range" mode — only updates on Apply,
+  // so the grid doesn't change while the user is still picking dates.
+  const [appliedRange, setAppliedRange] = useState(() => ({ from: startOfDay(new Date()), to: addDays(startOfDay(new Date()), 6) }));
   const gridRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
   const lastLoad = useRef<{ min: Date; max: Date }>({ min: weekStart, max: addDays(weekStart, 7) });
 
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const today = new Date();
+
+  // The day columns the grid shows, for whichever filter is active.
+  const days = useMemo(() => {
+    if (mode === "today") return [startOfDay(today)];
+    if (mode === "tomorrow") return [addDays(startOfDay(today), 1)];
+    if (mode === "range") {
+      const n = Math.round((appliedRange.to.getTime() - appliedRange.from.getTime()) / 86400000) + 1;
+      return Array.from({ length: Math.max(1, n) }, (_, i) => addDays(appliedRange.from, i));
+    }
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, weekStart, appliedRange]);
 
   function load(min: Date, max: Date) {
     lastLoad.current = { min, max };
     setLoadFailed(false);
+    // Clear the previous fetch's events right away — otherwise switching
+    // filters (e.g. This Week -> Tomorrow) briefly re-buckets the OLD events
+    // into the NEW filter's day columns before the new fetch resolves,
+    // flashing events that don't belong to the just-selected filter.
+    setEvents([]);
     fetch(`/api/calendar/events?timeMin=${encodeURIComponent(min.toISOString())}&timeMax=${encodeURIComponent(max.toISOString())}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((data) => {
@@ -140,9 +148,9 @@ export function MyCalendar() {
       .catch(() => setLoadFailed(true));
   }
 
-  // "This Week"/Today/Tomorrow fetch as soon as they're selected. Custom
-  // Range only fetches when Apply is clicked (below) — not on every
-  // keystroke in the date fields.
+  // This Week/Today/Tomorrow fetch as soon as they're selected. Custom Range
+  // only fetches when Apply is clicked (below) — not on every keystroke in
+  // the date fields.
   useEffect(() => {
     if (mode === "week") load(weekStart, addDays(weekStart, 7));
     else if (mode === "today") { const s = startOfDay(new Date()); load(s, addDays(s, 1)); }
@@ -153,22 +161,23 @@ export function MyCalendar() {
   function applyRange() {
     const a = fromInputValue(rangeFrom);
     const b = fromInputValue(rangeTo);
-    const min = a <= b ? a : b;
-    const max = addDays(a <= b ? b : a, 1);
+    const from = a <= b ? a : b;
+    const to = a <= b ? b : a;
+    setAppliedRange({ from, to });
     setMode("range");
-    load(min, max);
+    load(from, addDays(to, 1));
   }
 
   // Land on business hours instead of midnight, once, the first time the
-  // week grid actually renders.
+  // grid actually renders.
   useEffect(() => {
-    if (mode === "week" && connected && !hasScrolled.current && gridRef.current) {
+    if (connected && !hasScrolled.current && gridRef.current) {
       hasScrolled.current = true;
       const anchorHour = days.some((d) => sameDay(d, today)) ? Math.max(0, today.getHours() - 1) : 7;
       gridRef.current.scrollTop = anchorHour * HOUR_HEIGHT;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, mode]);
+  }, [connected]);
 
   async function disconnect() {
     setDisconnecting(true);
@@ -181,15 +190,14 @@ export function MyCalendar() {
     }
   }
 
-  // Bucket events per day-of-week column, for the week grid. All-day events
-  // render in a strip above the grid, placed on their start day only (no
-  // multi-day spanning bar — a deliberate simplification, not a gap). Timed
-  // events that cross midnight are clipped to their start day so they never
-  // bleed into the next column.
+  // Bucket events per visible day column. All-day events render in a strip
+  // above the grid, placed on their start day only (no multi-day spanning
+  // bar — a deliberate simplification, not a gap). Timed events that cross
+  // midnight are clipped to their start day so they never bleed into the
+  // next column.
   const { allDayByDay, timedByDay } = useMemo(() => {
-    const allDay: CalendarEventItem[][] = Array.from({ length: 7 }, () => []);
-    const timed: TimedEvent[][] = Array.from({ length: 7 }, () => []);
-    if (mode !== "week") return { allDayByDay: allDay, timedByDay: timed.map(layoutOverlaps) };
+    const allDay: CalendarEventItem[][] = days.map(() => []);
+    const timed: TimedEvent[][] = days.map(() => []);
     for (const ev of events) {
       if (ev.allDay) {
         const d = new Date(`${ev.start}T00:00:00`);
@@ -206,37 +214,20 @@ export function MyCalendar() {
       timed[idx].push({ ...ev, _start: start, _end: end });
     }
     return { allDayByDay: allDay, timedByDay: timed.map(layoutOverlaps) };
-  }, [events, days, mode]);
+  }, [events, days]);
 
-  // Today/Tomorrow/Custom Range render as a day-by-day agenda list instead —
-  // the events are already scoped to exactly the requested range by the API
-  // call above, this just groups and sorts them for display.
-  const agendaGroups = useMemo(() => {
-    if (mode === "week") return [];
-    const byDay = new Map<string, { date: Date; items: CalendarEventItem[] }>();
-    for (const ev of events) {
-      const d = ev.allDay ? new Date(`${ev.start}T00:00:00`) : new Date(ev.start);
-      const key = toInputValue(d);
-      if (!byDay.has(key)) byDay.set(key, { date: startOfDay(d), items: [] });
-      byDay.get(key)!.items.push(ev);
-    }
-    const groups = Array.from(byDay.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
-    for (const g of groups) {
-      g.items.sort((a, b) => {
-        if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
-        return new Date(a.start).getTime() - new Date(b.start).getTime();
-      });
-    }
-    return groups;
-  }, [events, mode]);
+  const rangeLabel = useMemo(() => {
+    const first = days[0];
+    const last = days[days.length - 1];
+    if (mode === "today") return `Today, ${MONTH_LABELS[first.getMonth()]} ${first.getDate()}`;
+    if (mode === "tomorrow") return `Tomorrow, ${MONTH_LABELS[first.getMonth()]} ${first.getDate()}`;
+    if (sameDay(first, last)) return `${MONTH_LABELS[first.getMonth()]} ${first.getDate()}, ${first.getFullYear()}`;
+    if (first.getMonth() === last.getMonth()) return `${MONTH_LABELS[first.getMonth()]} ${first.getFullYear()}`;
+    return `${MONTH_LABELS[first.getMonth()]} – ${MONTH_LABELS[last.getMonth()]} ${last.getFullYear()}`;
+  }, [days, mode]);
 
-  const monthLabel = useMemo(() => {
-    const last = days[6];
-    if (weekStart.getMonth() === last.getMonth()) return `${MONTH_LABELS[weekStart.getMonth()]} ${weekStart.getFullYear()}`;
-    return `${MONTH_LABELS[weekStart.getMonth()]} – ${MONTH_LABELS[last.getMonth()]} ${last.getFullYear()}`;
-  }, [days, weekStart]);
-
-  const agendaEmptyText = mode === "today" ? "No events today." : mode === "tomorrow" ? "No events tomorrow." : "No events in this range.";
+  const gridMinWidth = GUTTER_WIDTH + days.length * DAY_COL_WIDTH;
+  const hasAllDay = allDayByDay.some((l) => l.length > 0);
 
   return (
     <section className="cal-card" aria-labelledby="cal-title">
@@ -278,29 +269,33 @@ export function MyCalendar() {
             ) : null}
           </div>
 
-          {mode === "week" ? (
-            <>
-              <div className="cal-nav">
-                <div className="cal-nav-left">
+          <div className="cal-nav">
+            <div className="cal-nav-left">
+              {mode === "week" ? (
+                <>
                   <button type="button" className="cal-navbtn" onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</button>
                   <button type="button" className="cal-arrow" onClick={() => setWeekStart(addDays(weekStart, -7))} aria-label="Previous week">‹</button>
                   <button type="button" className="cal-arrow" onClick={() => setWeekStart(addDays(weekStart, 7))} aria-label="Next week">›</button>
-                  <span className="cal-month">{monthLabel}</span>
-                </div>
-              </div>
+                </>
+              ) : null}
+              <span className="cal-month">{rangeLabel}</span>
+            </div>
+          </div>
 
-              <div className="cal-week">
+          <div className="cal-week">
+            <div className="cal-week-scroll-x">
+              <div className="cal-week-inner" style={{ minWidth: gridMinWidth }}>
                 <div className="cal-week-head">
                   <div className="cal-gutter" />
                   {days.map((d, i) => (
                     <div key={i} className="cal-day-head">
-                      <span className="cal-day-name">{DAY_LABELS[i]}</span>
+                      <span className="cal-day-name">{DAY_LABELS[d.getDay()]}</span>
                       <span className={`cal-day-num${sameDay(d, today) ? " cal-day-num-today" : ""}`}>{d.getDate()}</span>
                     </div>
                   ))}
                 </div>
 
-                {allDayByDay.some((l) => l.length > 0) ? (
+                {hasAllDay ? (
                   <div className="cal-allday-row">
                     <div className="cal-gutter" />
                     {allDayByDay.map((list, i) => (
@@ -355,32 +350,8 @@ export function MyCalendar() {
                   </div>
                 </div>
               </div>
-            </>
-          ) : agendaGroups.length === 0 ? (
-            <p className="cal-note">{agendaEmptyText}</p>
-          ) : (
-            <div className="cal-agenda">
-              {agendaGroups.map((g) => (
-                <div key={toInputValue(g.date)} className="cal-agenda-group">
-                  <div className="cal-agenda-heading">{fmtDayHeading(g.date)}</div>
-                  <ul className="cal-list">
-                    {g.items.map((ev) => (
-                      <li key={ev.id} className="cal-row">
-                        <div className="cal-text">
-                          <span className="cal-name">{ev.title}</span>
-                          <span className="cal-meta">
-                            {fmtEventTime(ev)}
-                            {ev.location ? ` · ${ev.location}` : ""}
-                          </span>
-                        </div>
-                        <a className="cal-open" href={ev.htmlLink} target="_blank" rel="noopener noreferrer">Open</a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
             </div>
-          )}
+          </div>
         </>
       )}
 
@@ -435,7 +406,8 @@ export function MyCalendar() {
         .cal-month { font-size: 14.5px; font-weight: 800; color: var(--text-primary); margin-left: 4px; }
 
         .cal-week { border: 1px solid var(--border-default); border-radius: 12px; overflow: hidden; }
-        .cal-gutter { flex: 0 0 52px; }
+        .cal-week-scroll-x { overflow-x: auto; }
+        .cal-gutter { flex: 0 0 ${GUTTER_WIDTH}px; }
         .cal-week-head {
           display: flex; border-bottom: 1px solid var(--border-default); background: var(--surface-default);
         }
@@ -458,8 +430,8 @@ export function MyCalendar() {
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
 
-        .cal-grid-scroll { max-height: 480px; overflow-y: auto; overflow-x: auto; }
-        .cal-grid { display: flex; min-width: 640px; position: relative; }
+        .cal-grid-scroll { max-height: 480px; overflow-y: auto; }
+        .cal-grid { display: flex; position: relative; }
         .cal-gutter-hours { display: flex; flex-direction: column; }
         .cal-hour-label {
           font-size: 10.5px; color: var(--text-muted); text-align: right; padding-right: 8px;
@@ -474,24 +446,6 @@ export function MyCalendar() {
         }
         .cal-event-title { font-size: 11px; font-weight: 700; line-height: 1.3; }
         .cal-event:hover { opacity: 0.9; }
-
-        .cal-agenda { display: flex; flex-direction: column; gap: 18px; }
-        .cal-agenda-heading { font-size: 13px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
-        .cal-list { list-style: none; margin: 0; padding: 0; }
-        .cal-row {
-          display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
-          gap: 8px 16px; padding: 12px 0; border-top: 1px solid var(--border-default);
-        }
-        .cal-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 260px; }
-        .cal-name { font-size: 14.5px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
-        .cal-meta { font-size: 12.5px; color: var(--text-muted); }
-        .cal-open {
-          flex-shrink: 0; padding: 7px 15px; border-radius: 999px; cursor: pointer; text-decoration: none;
-          background: var(--surface-muted); color: var(--text-primary);
-          border: 1px solid var(--border-default); font-size: 12.5px; font-weight: 700;
-          transition: background 0.15s, border-color 0.15s;
-        }
-        .cal-open:hover { background: var(--surface-subtle); border-color: var(--border-strong); }
       `}</style>
     </section>
   );
