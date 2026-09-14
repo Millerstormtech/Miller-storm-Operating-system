@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
-import '../widgets/notification_bell.dart';
 import '../widgets/clevel_bottom_nav.dart';
 import '../theme/app_theme.dart';
 
@@ -491,6 +490,7 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
     ];
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const CLevelBottomNav(active: 'leaderboard'),
       body: SafeArea(
         child: Column(
           children: [
@@ -504,6 +504,16 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: Icon(Icons.menu, color: _textDark),
+                          tooltip: 'Menu',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,7 +523,6 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
                           ],
                         ),
                       ),
-                      if (_userId != null) NotificationBell(userId: _userId!),
                       const SizedBox(width: 4),
                       Showcase(
                         key: _kReplay,
@@ -597,7 +606,6 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
                       ),
                     ),
             ),
-            const CLevelBottomNav(active: 'leaderboard'),
           ],
         ),
       ),

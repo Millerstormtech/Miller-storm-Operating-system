@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
+import '../widgets/sales_bottom_nav.dart';
 
 class AppsToolsItemsScreen extends StatefulWidget {
   const AppsToolsItemsScreen({super.key});
@@ -163,12 +164,10 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/courses');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const SalesBottomNav(active: 'apps'),
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
@@ -259,157 +258,8 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
                             },
                           ),
           ),
-          _buildBottomNav(context),
         ],
       ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/sales-dashboard'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.dashboard_outlined, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('Dashboard', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/rankings'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.leaderboard_outlined, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('Sales', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/stormchat'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('StormChat', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.apps_outlined, color: _primary, size: 24),
-                      SizedBox(height: 4),
-                      Text('Tools', style: TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/courses'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.school_outlined, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('Training', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/profile'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.person_outline, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('Profile', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

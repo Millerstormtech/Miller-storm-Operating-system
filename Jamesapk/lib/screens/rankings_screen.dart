@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
-import '../widgets/notification_bell.dart';
+import '../widgets/sales_bottom_nav.dart';
 import '../theme/app_theme.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
@@ -491,6 +491,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
     ];
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const SalesBottomNav(active: 'leaderboard'),
       body: SafeArea(
         child: Column(
           children: [
@@ -504,6 +505,16 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: Icon(Icons.menu, color: _textDark),
+                          tooltip: 'Menu',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,7 +524,6 @@ class _RankingsScreenState extends State<RankingsScreen> {
                           ],
                         ),
                       ),
-                      if (_userId != null) NotificationBell(userId: _userId!),
                       const SizedBox(width: 4),
                       Showcase(
                         key: _kReplay,
@@ -597,7 +607,6 @@ class _RankingsScreenState extends State<RankingsScreen> {
                       ),
                     ),
             ),
-            _buildBottomNav(context),
           ],
         ),
       ),
@@ -1261,72 +1270,4 @@ class _RankingsScreenState extends State<RankingsScreen> {
         ),
       );
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(context, Icons.dashboard_outlined, 'Dashboard', false, '/sales-dashboard'),
-              _navItemActive(Icons.leaderboard_outlined, 'Sales'),
-              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/stormchat'),
-              _navItem(context, Icons.apps_outlined, 'Tools', false, '/apps-tools-items'),
-              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
-              _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          color: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: active ? _primary : _textPlaceholder, size: 24),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: TextStyle(fontSize: 10, color: active ? _primary : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(color: _primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(label,
-                style: const TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600),
-                maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
 }

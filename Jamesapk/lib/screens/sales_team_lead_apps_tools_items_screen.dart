@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
+import '../widgets/sales_team_lead_bottom_nav.dart';
 
 class SalesTeamLeadAppsToolsItemsScreen extends StatefulWidget {
   const SalesTeamLeadAppsToolsItemsScreen({super.key});
@@ -163,12 +164,10 @@ class _SalesTeamLeadAppsToolsItemsScreenState extends State<SalesTeamLeadAppsToo
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/manager-training');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const SalesTeamLeadBottomNav(active: 'apps'),
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
@@ -259,114 +258,8 @@ class _SalesTeamLeadAppsToolsItemsScreenState extends State<SalesTeamLeadAppsToo
                             },
                           ),
           ),
-          _buildBottomNav(context),
         ],
       ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.dashboard_outlined, 'Dashboard', false, '/manager-dashboard', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.leaderboard_outlined, 'Sales', false, '/manager-rankings', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat', context),
-              const SizedBox(width: 2),
-              _navItemActive(Icons.apps_outlined, 'Tools'),
-              const SizedBox(width: 2),
-              _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.school_outlined, 'Training', false, '/manager-training', context),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: AppColors.textPlaceholder,
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textPlaceholder,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: _primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: _primary,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }

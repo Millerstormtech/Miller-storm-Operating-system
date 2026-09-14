@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../theme/app_theme.dart';
+import '../widgets/marketing_bottom_nav.dart';
 
 class MarketingProfileScreen extends StatefulWidget {
   const MarketingProfileScreen({super.key});
@@ -457,12 +458,10 @@ class _MarketingProfileScreenState extends State<MarketingProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/marketing-courses');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const MarketingBottomNav(active: 'profile'),
       appBar: AppBar(
         backgroundColor: _primary,
         elevation: 0,
@@ -475,11 +474,6 @@ class _MarketingProfileScreenState extends State<MarketingProfileScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.confirmation_number_outlined, color: _white),
-            onPressed: () => Navigator.pushNamed(context, '/tickets'),
-            tooltip: 'Support',
-          ),
           AnimatedBuilder(
             animation: themeController,
             builder: (context, _) => IconButton(
@@ -495,116 +489,7 @@ class _MarketingProfileScreenState extends State<MarketingProfileScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _buildViewMode(),
-          ),
-          _buildBottomNav(context),
-        ],
-      ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.leaderboard_outlined, 'Sales', false, '/marketing-rankings', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/marketing-stormchat', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.apps_outlined, 'Tools', false, '/marketing-apps-tools-items', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.school_outlined, 'Training', false, '/marketing-courses', context),
-              const SizedBox(width: 2),
-              _navItemActive(Icons.person_outline, 'Profile'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: const Color(0xFF9CA3AF),
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF9CA3AF),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: _primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: _primary,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      body: _buildViewMode(),
       ),
     );
   }

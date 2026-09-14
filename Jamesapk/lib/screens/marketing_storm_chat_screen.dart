@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/marketing_bottom_nav.dart';
 import 'storm_chat_room_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -178,12 +179,10 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/marketing-courses');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const MarketingBottomNav(active: 'stormchat'),
         body: SafeArea(
           child: Column(
             children: [
@@ -193,13 +192,27 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'StormChat',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: _textDark,
-                      ),
+                    Row(
+                      children: [
+                        Builder(
+                          builder: (context) => IconButton(
+                            icon: Icon(Icons.menu, color: _textDark),
+                            tooltip: 'Menu',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'StormChat',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: _textDark,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 14),
                     Row(
@@ -235,8 +248,6 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
                         ? _buildEmptyState()
                         : _buildGroupsList(),
               ),
-              // Bottom Navigation
-              _buildBottomNav(context),
             ],
           ),
         ),
@@ -996,105 +1007,4 @@ class _MarketingStormChatScreenState extends State<MarketingStormChatScreen> {
     }
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(context, Icons.leaderboard_outlined, 'Sales', false, '/marketing-rankings'),
-              const SizedBox(width: 2),
-              _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.apps_outlined, 'Tools', false, '/marketing-apps-tools-items'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.school_outlined, 'Training', false, '/marketing-courses'),
-              const SizedBox(width: 2),
-              _navItem(context, Icons.person_outline, 'Profile', false, '/marketing-profile'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: _placeholder,
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: _placeholder,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFCB0002).withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: const Color(0xFFCB0002), size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Color(0xFFCB0002),
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

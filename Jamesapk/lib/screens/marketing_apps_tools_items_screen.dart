@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
+import '../widgets/marketing_bottom_nav.dart';
 
 class MarketingAppsToolsItemsScreen extends StatefulWidget {
   const MarketingAppsToolsItemsScreen({super.key});
@@ -163,12 +164,10 @@ class _MarketingAppsToolsItemsScreenState extends State<MarketingAppsToolsItemsS
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoStartTour(context));
     }
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/marketing-courses');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const MarketingBottomNav(active: 'apps'),
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
@@ -259,136 +258,8 @@ class _MarketingAppsToolsItemsScreenState extends State<MarketingAppsToolsItemsS
                             },
                           ),
           ),
-          _buildBottomNav(context),
         ],
       ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/marketing-rankings'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.leaderboard_outlined, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('Sales', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/marketing-stormchat'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('StormChat', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.apps_outlined, color: _primary, size: 24),
-                      SizedBox(height: 4),
-                      Text('Tools', style: TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/marketing-courses'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.school_outlined, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('Training', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/marketing-profile'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.person_outline, color: AppColors.textPlaceholder, size: 24),
-                        const SizedBox(height: 4),
-                        Text('Profile', style: TextStyle(fontSize: 10, color: AppColors.textPlaceholder), textAlign: TextAlign.center),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

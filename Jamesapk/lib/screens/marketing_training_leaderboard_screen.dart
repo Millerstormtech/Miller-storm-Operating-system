@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import '../services/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/marketing_bottom_nav.dart';
 
 // Course Leaderboard — mirrors the web "Training Leaderboard": an Overall board
 // ranked across every course (rank tiers, badges, progress rings, Top 3 / Not
@@ -232,13 +233,10 @@ class _MarketingTrainingLeaderboardScreenState extends State<MarketingTrainingLe
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const MarketingBottomNav(active: ''),
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: _textDark),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: Text('🏆 Course Leaderboard',
             style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700)),
       ),

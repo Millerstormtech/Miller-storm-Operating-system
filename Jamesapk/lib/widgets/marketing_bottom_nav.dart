@@ -7,21 +7,19 @@ import '../screens/announcements_screen.dart';
 import '../screens/jays_ai_clone_screen.dart';
 import '../screens/ai_clone_chat_screen.dart';
 
-/// Left slide-in navigation drawer for the Branch Manager panel — replaces
-/// the old bottom bar (same items, same routes), opened via a hamburger
-/// button each screen adds to its own header. Matches the web sidebar's
-/// role: a collapsible menu on the left, not pinned across the bottom.
+/// Left slide-in navigation drawer for the Marketing panel — replaces the old
+/// bottom bar (same items, same routes, same active-highlight logic), opened
+/// via a hamburger button each screen adds to its own header and closed by
+/// tapping an item, outside the drawer, or the system back gesture. Matches
+/// the web sidebar's role: a collapsible menu on the left, not pinned across
+/// the bottom.
 ///
-///   Dashboard · Sales · StormChat · Tools · Training ·
+///   Sales · StormChat · Tools · Training ·
 ///   Course Leaderboard · Jayi · Announcements · Support · Profile
-///
-/// Kept the class name BranchManagerBottomNav (not renamed to *Drawer) so
-/// every existing call site only needed its Scaffold slot changed
-/// (bottomNavigationBar -> drawer), not an import + class rename everywhere.
-class BranchManagerBottomNav extends StatelessWidget {
-  /// One of: 'dashboard', 'leaderboard', 'stormchat', 'apps', 'training', 'profile'.
+class MarketingBottomNav extends StatelessWidget {
+  /// One of: 'leaderboard', 'stormchat', 'apps', 'training', 'profile'.
   final String active;
-  const BranchManagerBottomNav({super.key, required this.active});
+  const MarketingBottomNav({super.key, required this.active});
 
   static const _primary = Color(0xFFCB0002);
 
@@ -44,19 +42,18 @@ class BranchManagerBottomNav extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  _item(context, Icons.dashboard_outlined, 'My Dashboard', 'dashboard', '/bm-dashboard'),
-                  _item(context, Icons.leaderboard_outlined, 'Sales Leaderboard', 'leaderboard', '/bm-rankings'),
-                  _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/bm-stormchat'),
-                  _item(context, Icons.apps_outlined, 'Apps & Tools', 'apps', '/bm-apps-tools-items'),
-                  _item(context, Icons.school_outlined, 'Training Center', 'training', '/bm-training'),
+                  _item(context, Icons.leaderboard_outlined, 'Sales Leaderboard', 'leaderboard', '/marketing-rankings'),
+                  _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/marketing-stormchat'),
+                  _item(context, Icons.apps_outlined, 'Apps & Tools', 'apps', '/marketing-apps-tools-items'),
+                  _item(context, Icons.school_outlined, 'Training Center', 'training', '/marketing-courses'),
                   _actionItem(context, Icons.emoji_events_outlined, 'Course Leaderboard',
-                      () => Navigator.pushNamed(context, '/bm-training-leaderboard')),
+                      () => Navigator.pushNamed(context, '/marketing-training-leaderboard')),
                   _actionItem(context, Icons.smart_toy_outlined, 'Jayi', () => _openJaysAi(context)),
                   _actionItem(context, Icons.campaign_outlined, 'Announcements',
-                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnnouncementsScreen(canCompose: true)))),
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnnouncementsScreen(canCompose: false)))),
                   _actionItem(context, Icons.confirmation_number_outlined, 'Support',
                       () => Navigator.pushNamed(context, '/tickets')),
-                  _item(context, Icons.person_outline, 'Profile', 'profile', '/bm-profile'),
+                  _item(context, Icons.person_outline, 'Profile', 'profile', '/marketing-profile'),
                 ],
               ),
             ),
@@ -80,9 +77,9 @@ class BranchManagerBottomNav extends StatelessWidget {
       selected: active,
       selectedTileColor: _primary.withOpacity(0.08),
       onTap: active
-          ? () => Navigator.pop(context)
+          ? () => Navigator.pop(context) // already here — just close the drawer
           : () {
-              Navigator.pop(context);
+              Navigator.pop(context); // close the drawer first
               Navigator.pushNamed(context, route); // push (not replace) so back returns here
             },
     );

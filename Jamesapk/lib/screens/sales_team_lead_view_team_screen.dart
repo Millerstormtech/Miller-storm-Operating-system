@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
 import '../theme/app_theme.dart';
+import '../widgets/sales_team_lead_bottom_nav.dart';
 import 'sales_team_lead_unlock_lesson_screen.dart';
 
 class SalesTeamLeadViewTeamScreen extends StatefulWidget {
@@ -114,6 +115,7 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const SalesTeamLeadBottomNav(active: 'view-team'),
       appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
@@ -159,7 +161,6 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
                 ),
               ],
             ),
-      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -331,68 +332,4 @@ class _SalesTeamLeadViewTeamScreenState extends State<SalesTeamLeadViewTeamScree
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.dashboard_outlined, 'Dashboard', '/manager-dashboard', context),
-              _navItem(Icons.leaderboard_outlined, 'Sales', '/manager-rankings', context),
-              _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat', context),
-              _navItem(Icons.apps_outlined, 'Tools', '/manager-apps-tools-items', context),
-              _navItemActive(Icons.group_outlined, 'View Team'),
-              _navItem(Icons.school_outlined, 'Training', '/manager-training', context),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, String route, BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => Navigator.pushReplacementNamed(context, route),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          color: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: _textPlaceholder, size: 24),
-              const SizedBox(height: 4),
-              Text(label, style: TextStyle(fontSize: 10, color: _textPlaceholder), maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(color: _primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600), maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
 }

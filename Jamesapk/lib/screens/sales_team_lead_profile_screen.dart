@@ -9,7 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../utils/role_labels.dart';
 import '../theme/app_theme.dart';
-import 'announcements_screen.dart';
+import '../widgets/sales_team_lead_bottom_nav.dart';
 
 class SalesTeamLeadProfileScreen extends StatefulWidget {
   const SalesTeamLeadProfileScreen({super.key});
@@ -414,12 +414,10 @@ class _SalesTeamLeadProfileScreenState extends State<SalesTeamLeadProfileScreen>
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/manager-training');
-        return false;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const SalesTeamLeadBottomNav(active: 'profile'),
         appBar: AppBar(
           backgroundColor: _primary,
           elevation: 0,
@@ -432,17 +430,6 @@ class _SalesTeamLeadProfileScreenState extends State<SalesTeamLeadProfileScreen>
             ),
           ),
           actions: [
-            IconButton(
-              icon: Icon(Icons.campaign_outlined, color: _white),
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const AnnouncementsScreen(canCompose: true))),
-              tooltip: 'Announcements',
-            ),
-            IconButton(
-              icon: Icon(Icons.confirmation_number_outlined, color: _white),
-              onPressed: () => Navigator.pushNamed(context, '/tickets'),
-              tooltip: 'Support',
-            ),
             AnimatedBuilder(
               animation: themeController,
               builder: (context, _) => IconButton(
@@ -458,117 +445,7 @@ class _SalesTeamLeadProfileScreenState extends State<SalesTeamLeadProfileScreen>
             ),
           ],
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: _buildViewMode(),
-            ),
-            _buildBottomNav(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.leaderboard_outlined, 'Sales', false, '/manager-rankings', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.apps_outlined, 'Tools', false, '/manager-apps-tools-items', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
-              const SizedBox(width: 2),
-              _navItem(Icons.school_outlined, 'Training', false, '/manager-training', context),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: const Color(0xFF9CA3AF),
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF9CA3AF),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: _primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: _primary,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+        body: _buildViewMode(),
       ),
     );
   }
