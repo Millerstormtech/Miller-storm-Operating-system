@@ -6,6 +6,7 @@ import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { isQuizResultPassing } from "../../../src/lib/quiz";
 import { stripAnswerKeyFromPages } from "../../../src/lib/training/answer-key";
 import { getOrCreateQuizPick } from "../../../src/lib/training/quiz-pick";
+import { newSinceFinished } from "../../../src/lib/training/new-since-finished";
 
 export default async function handler(
   req: NextApiRequest,
@@ -73,6 +74,9 @@ export default async function handler(
       let completedPages: string[] = [];
       let unlockedPages: string[] = [];
       let quizResultsOut: any[] = [];
+      // Lessons (and their quizzes) added after this user finished the course,
+      // so the phone tags them "New" by the same rule as the web.
+      let newPageIdsOut: string[] = [];
 
       if (userId) {
         try {
@@ -86,6 +90,7 @@ export default async function handler(
             completedPages = (userProgress.completedPages || []) as string[];
             unlockedPages = (userProgress.unlockedPages || []) as string[];
             quizResultsOut = userProgress.quizResults || [];
+            newPageIdsOut = newSinceFinished((course.pages || []) as any[], (course.folders || []) as any[], userProgress as any);
             const completedSet = new Set(userProgress.completedPages || []);
             const quizResults = (userProgress.quizResults || []) as any[];
             const completedCount = publishedPages.filter((p: any) =>
@@ -169,7 +174,8 @@ export default async function handler(
         progress,
         completedPages,
         unlockedPages,
-        quizResults: quizResultsOut
+        quizResults: quizResultsOut,
+        newPageIds: newPageIdsOut
       };
 
       console.log('📊 Progress:', progress);

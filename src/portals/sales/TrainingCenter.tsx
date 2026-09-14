@@ -17,6 +17,8 @@ import {
 } from "../../lib/training/video-position";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
+import { formatLessonLength, courseLengthLabel, timeLeftLabel } from "../../lib/training/lesson-length";
+import { newSinceFinished, newItemsLabel } from "../../lib/training/new-since-finished";
 import { courseModules } from "../../lib/training/modules";
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing } from "../../lib/quiz";
@@ -692,6 +694,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // "Continue where you left off" resume target (next unwatched lesson).
   const [courseCompletedMap, setCourseCompletedMap] = useState<Record<string, Set<string>>>({});
   const [courseUpdatedMap, setCourseUpdatedMap] = useState<Record<string, number>>({});
+  // Per course: lessons and quizzes added after this user finished it.
+  const [courseNewItems, setCourseNewItems] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!user || courses.length === 0) return;
@@ -707,6 +711,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
           const completedMap: Record<string, Set<string>> = {};
           const updatedMap: Record<string, number> = {};
+          const newItemsMap: Record<string, string[]> = {};
 
           courses.forEach(course => {
             const courseData = data[course.id] || {};
@@ -719,11 +724,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             );
             completedMap[course.id] = new Set<string>(courseData.completedPages || []);
             updatedMap[course.id] = courseData.updatedAt ? new Date(courseData.updatedAt).getTime() : 0;
+            newItemsMap[course.id] = newSinceFinished(course.pages || [], course.folders || [], courseData);
           });
 
           setCourseProgress(progressMap);
           setCourseCompletedMap(completedMap);
           setCourseUpdatedMap(updatedMap);
+          setCourseNewItems(newItemsMap);
         }
       } catch (err) {
         console.error('Failed to load progress:', err);
@@ -971,8 +978,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     >
                       {(() => {
                         const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-                        const statusText = progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
-                        const statusColor = progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
+                        const newLabel = newItemsLabel(course.pages ?? [], courseNewItems[course.id] || []);
+                        const statusText = newLabel ? "New lessons" : progress.isCompleted ? "Passed" : pct > 0 ? `${pct}% complete` : "Not started";
+                        const statusColor = newLabel ? "var(--brand-on-surface)" : progress.isCompleted ? "#3ea56a" : pct > 0 ? "#e01418" : "var(--text-muted)";
                         const mods = courseModules(course);
                         return (
                           <>
@@ -1001,7 +1009,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                             )}
                             {lessonCount(course) > 0 && (
                               <div className="training-card-lessons">
-                                {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}
+                                {lessonCount(course)} lesson{lessonCount(course) === 1 ? "" : "s"}{courseLengthLabel(course.pages ?? [], course.folders ?? []) ? ` · ${courseLengthLabel(course.pages ?? [], course.folders ?? [])}` : ""}{newItemsLabel(course.pages ?? [], courseNewItems[course.id] || []) ? ` · ${newItemsLabel(course.pages ?? [], courseNewItems[course.id] || [])}` : ""}
                               </div>
                             )}
                             <div className="training-card-progress-track">
@@ -1241,6 +1249,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
     const totalLessons = (selectedCourse.pages ?? []).filter(p => p.status === 'published').length;
     const totalSections = (selectedCourse.folders ?? []).length;
+    // Lessons and quizzes added to this course after the rep finished it.
+    const newIds = new Set(newSinceFinished(selectedCourse.pages ?? [], selectedCourse.folders ?? [], { courseCompleted, completedPages, quizResults: savedQuizResults }));
 
     // Mobile overview screen — shown before any lesson is selected
     const MobileOverview = () => (
@@ -1303,7 +1313,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         <div style={{ padding: '24px 16px 8px' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Course Content</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
-            {totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons
+            {totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons{(() => { const t = timeLeftLabel(selectedCourse.pages ?? [], completedPages, selectedCourse.folders ?? []); return t ? ` • ${t}` : ''; })()}
           </div>
         </div>
         {/* Lesson list */}
@@ -1333,7 +1343,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
                   <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                    {!unlocked && "🔒 "}{page.title}
+                    {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}{newIds.has(page.id) ? <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                   </span>
                 </div>
               </div>
@@ -1380,7 +1390,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} />
                         <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                          {!unlocked && "🔒 "}{page.title}
+                          {!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}{newIds.has(page.id) ? <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                         </span>
                       </div>
                     </div>
@@ -1967,7 +1977,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   >
                     <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                       <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>{newIds.has(page.id) ? <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                     </span>
                   </div>
                 );
@@ -2011,7 +2021,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         >
                           <span className="course-pages-item-title" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                             <LessonTick page={page} completedPages={completedPages} quizResults={savedQuizResults} size={16} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{!unlocked && "🔒 "}{page.title}{!page.isQuiz && formatLessonLength(page.durationSeconds) ? <span style={{ color: "var(--text-subtle)", fontWeight: 400 }}> · {formatLessonLength(page.durationSeconds)}</span> : null}</span>{newIds.has(page.id) ? <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: "var(--brand-on-surface)" }}>New</span> : null}
                           </span>
                         </div>
                       );

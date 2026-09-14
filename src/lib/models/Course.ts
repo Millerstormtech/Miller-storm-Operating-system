@@ -37,7 +37,12 @@ const coursePageSchema = new Schema(
     // silently break the Quiz Ace badge.
     isFinalTest: Boolean,
     quizQuestions: [quizQuestionSchema],
-    questionsToShow: Number
+    questionsToShow: Number,
+    // Video length in seconds, from Vimeo (2026-09-13). Shown to reps as
+    // "4 min" per lesson and "45 min left" per course. Filled in after each
+    // Course Builder save by src/lib/lessonDurations.ts; must stay in this
+    // schema or strict mode strips it on every save.
+    durationSeconds: Number
   },
   { _id: false }
 );

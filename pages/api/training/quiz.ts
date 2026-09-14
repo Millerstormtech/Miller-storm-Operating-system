@@ -8,6 +8,8 @@ import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { gradeQuizAttempt, toLearnerReview } from "../../../src/lib/training/quiz-grading";
+import { buildQuizAttempt } from "../../../src/lib/training/quiz-attempts";
+import { QuizAttemptModel } from "../../../src/lib/models/QuizAttempt";
 import { celebrateIfCourseCompleted } from "../../../src/lib/training/celebration";
 import { clearQuizPick } from "../../../src/lib/training/quiz-pick";
 
@@ -59,6 +61,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!visible) return res.status(404).json({ error: "Not found" });
 
   const grade = gradeQuizAttempt(page, answers);
+
+  // Every graded attempt is kept, pass or fail, so it is possible to see which
+  // questions confuse reps and how many tries a quiz takes. A failed write is
+  // logged, never surfaced: the rep's submit must not break over its history.
+  try {
+    await QuizAttemptModel.create(
+      buildQuizAttempt({ userId: auth.sub, role: auth.role, courseId, pageId, grade, submittedAt: new Date() })
+    );
+  } catch (e: any) {
+    console.error("[quiz] could not record the attempt:", e?.message);
+  }
 
   // This attempt is over either way — a pass locks in the result below; a
   // fail sends the rep to retry/relearn. Either way, the pinned question set

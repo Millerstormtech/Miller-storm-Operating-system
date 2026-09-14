@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../theme/app_theme.dart';
+import '../widgets/my_certificates_section.dart';
 import '../widgets/sales_bottom_nav.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -625,6 +626,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 2),
+            // Certificates earned, each saved or shared as a PDF (2026-09-13).
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: MyCertificatesSection(),
+            ),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(

@@ -149,6 +149,29 @@ module.exports = {
       out_file: '/var/www/millerstorm/logs/mongo-backup-out.log',
       merge_logs: true,
       time: true
+    },
+    {
+      // Daily nudge for reps who stall partway through a course, at NUDGE_HOUR
+      // (default 10:00) CENTRAL; the script reads America/Chicago explicitly.
+      // An HTTP client like the other crons: PORT must be the MAIN app's port
+      // (6790), and it POSTs to http://localhost:$PORT/api/training/nudges.
+      // Whether anything is sent is decided by TRAINING_NUDGE_MODE in the app's
+      // .env: off, dry (the default when unset: it logs who would be nudged and
+      // sends nothing) or on.
+      name: 'training-nudge',
+      script: 'scripts/training-nudge-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 6790
+      },
+      error_file: '/var/www/millerstorm/logs/training-nudge-err.log',
+      out_file: '/var/www/millerstorm/logs/training-nudge-out.log',
+      merge_logs: true,
+      time: true
     }
   ]
 };

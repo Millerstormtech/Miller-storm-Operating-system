@@ -1,16 +1,19 @@
-// The megaphone. Posts one sentence into the Storm Bot chat group and notifies
-// every member exactly like a normal group message. Knows nothing about courses,
-// claims or contracts: callers decide WHAT to say, this decides HOW it is said.
+// The megaphone. Posts one sentence into the Storm Bot chat group and pushes it
+// to members' phones. Knows nothing about courses, claims or contracts: callers
+// decide WHAT to say, this decides HOW it is said.
+//
+// It deliberately creates NO bell notifications. Once chat alerts started
+// reaching the bell (PR #70), Storm Bot's ~7 posts a day landed in all 70
+// members' bells and buried every alert meant for one person. The post stays in
+// the chat and the phone push stays. Decided by Youssef, 2026-09-13.
 //
 // Extracted from src/lib/training/celebration.ts so three event types share one
 // posting path. Change the group, the sender name, or a push bug here once.
 import ChatGroup from "../models/ChatGroup";
 import ChatMessage from "../models/ChatMessage";
-import { NotificationModel } from "../models/Notification";
 import { UserModel } from "../models/User";
 import { sendPushNotificationToMultiple } from "../firebase-admin";
 import { logToDb } from "../models/SystemLog";
-import { appIdsForMongoIds } from "../stormchat/appIds";
 
 // Main Chat 2026 (public, top-level, whole company), targeted by _id so renaming
 // the group never breaks this. Verified against production 2026-08-03.
@@ -38,30 +41,11 @@ export async function announce(text: string): Promise<boolean> {
       messageType: "text",
     });
 
-    // group.members hold Mongo _ids; the bot is not a member, so everyone gets notified.
+    // group.members hold Mongo _ids; the bot is not a member, so every member's
+    // phone gets the push.
     const memberIds: string[] = group.members || [];
     const title = `New message in ${group.name}`;
     const body = `Miller Storm: ${text.substring(0, 100)}`;
-    // Notification.userId is the app id the bell queries by, not the Mongo _id
-    // in group.members (see src/lib/stormchat/appIds.ts).
-    const memberAppIds = await appIdsForMongoIds(memberIds);
-    await Promise.all(
-      memberAppIds.map((memberAppId) =>
-        NotificationModel.create({
-          id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          userId: memberAppId,
-          type: "stormchat_message",
-          title,
-          message: body,
-          read: false,
-          metadata: {
-            groupId: CELEBRATION_GROUP_ID,
-            groupName: group.name,
-            messageId: msg._id,
-          },
-        })
-      )
-    );
 
     try {
       const tokenUsers: any[] = await UserModel.find({
