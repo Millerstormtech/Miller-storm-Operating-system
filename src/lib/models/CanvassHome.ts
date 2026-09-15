@@ -28,6 +28,14 @@ const canvassHomeSchema = new Schema(
     roofMaterial: { type: String, default: "" }, // Dallas only so far, from Dallas CAD
     // Storm days whose radar hail square covers this house, filled by scripts/canvass-hail-assign.ts.
     hail: { type: [{ date: String, inches: Number, _id: false }], default: [] },
+    // Filled by scripts/canvass-grade.ts from gradeHome(): the house's color and why.
+    grade: {
+      score: { type: Number, default: null },
+      color: { type: String, enum: ["green", "yellow", "orange", "red"], default: null },
+      forced: { type: String, enum: ["do-not-knock", "in-pipeline"], default: null },
+      reasons: { type: [{ text: String, points: Number, _id: false }], default: undefined },
+    },
+    gradedOn: { type: String, default: "" }, // the day the grade was worked out for, YYYY-MM-DD
     landUse: { type: String, default: "" }, // state land-use code, "A1", "E1"...
     landUseSource: { type: String, enum: ["state", "local", "district", "building"], default: null }, // how the home was recognized
     taxYear: { type: String, default: "" },
