@@ -41,6 +41,20 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86_400_000);
 }
 
+const TEXAS_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" });
+
+/**
+ * The calendar day in Texas (Central time) of a moment, as "YYYY-MM-DD". RepCard
+ * and AccuLynx send UTC, so a 10:30 pm knock would otherwise land on the next day.
+ * All our counties are on Central time. Null for a blank or broken timestamp.
+ */
+export function centralDay(moment: string | Date): string | null {
+  const ms = moment instanceof Date ? moment.getTime() : Date.parse(moment);
+  if (Number.isNaN(ms)) return null;
+  const part = (type: string) => TEXAS_DAY.formatToParts(ms).find((p) => p.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 /** "2026-05-04" becomes "4 May 2026", the form the house card shows. */
 export function formatDay(day: string): string {
   const [y, m, d] = parts(day);

@@ -45,5 +45,6 @@ export const KNOCK_RESULTS = {
   visibleDamage: "visible damage",
   notInterested: "not interested",
   renter: "renter",
-  inPipeline: ["inspected", "claim filed", "signed", "installed"],
+  // "invoiced" comes after installed on the live door list (seen 15 Sep 2026). Build default until Youssef confirms it.
+  inPipeline: ["inspected", "claim filed", "signed", "installed", "invoiced"],
 } as const;
