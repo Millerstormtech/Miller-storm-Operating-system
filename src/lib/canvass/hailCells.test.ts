@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseHailLine, hailCellKey } from "./hailCells";
+import { parseHailLine, hailCellKey, capSpikes } from "./hailCells";
 
 // Lines as written by scripts/canvass-hail/decode.py.
 const line = (over: Record<string, unknown> = {}) =>
@@ -61,5 +61,51 @@ describe("hailCellKey", () => {
 
   it("keeps four decimal places so neighboring squares never share a key", () => {
     expect(hailCellKey("2026-03-10", 32.755, -97.33)).toBe("2026-03-10|32.7550|-97.3300");
+  });
+});
+
+describe("capSpikes", () => {
+  // On 28 Apr 2026 the radar showed one 8.69 in square in the Panhandle whose
+  // neighbors read 4.81 in and below: a radar glitch, not hail. Squares are
+  // 0.01 degree apart, so neighbors sit 0.01 degree away in either direction.
+  const square = (lat: number, lon: number, inches: number, date = "2026-04-28") => ({
+    cellKey: hailCellKey(date, lat, lon),
+    stormDate: date,
+    location: { type: "Point" as const, coordinates: [lon, lat] as [number, number] },
+    mm: inches * 25.4,
+    inches,
+  });
+
+  it("brings a lone spike down to its biggest neighbor", () => {
+    const squares = [square(34.925, -102.125, 8.75), square(34.935, -102.125, 4.75), square(34.915, -102.135, 4.25)];
+    const result = capSpikes(squares);
+    expect(result[0].inches).toBe(4.75);
+    expect(result[0].mm).toBe(4.75 * 25.4);
+  });
+
+  it("leaves a real hail core alone when its neighbors are nearly as big", () => {
+    const squares = [square(33.535, -96.445, 4.5), square(33.545, -96.445, 4.5), square(33.525, -96.435, 4.25)];
+    expect(capSpikes(squares).map((s) => s.inches)).toEqual([4.5, 4.5, 4.25]);
+  });
+
+  it("treats an isolated big square as a glitch, since real big hail covers more than one square", () => {
+    const result = capSpikes([square(32.755, -97.335, 5)]);
+    expect(result[0].inches).toBe(0.75);
+    expect(result[0].mm).toBe(19.05);
+  });
+
+  it("keeps an isolated small square", () => {
+    expect(capSpikes([square(32.755, -97.335, 1.25)])[0].inches).toBe(1.25);
+  });
+
+  it("does not compare squares from different storm days", () => {
+    const squares = [square(34.925, -102.125, 5, "2026-04-28"), square(34.935, -102.125, 5, "2026-04-27")];
+    expect(capSpikes(squares).map((s) => s.inches)).toEqual([0.75, 0.75]);
+  });
+
+  it("does not change the squares it was given", () => {
+    const squares = [square(32.755, -97.335, 5)];
+    capSpikes(squares);
+    expect(squares[0].inches).toBe(5);
   });
 });

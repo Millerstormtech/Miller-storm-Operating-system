@@ -18,7 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import mongoose from "mongoose";
-import { parseHailLine } from "../src/lib/canvass/hailCells";
+import { parseHailLine, capSpikes, type HailCellRecord } from "../src/lib/canvass/hailCells";
 import { isLocalTestDatabase } from "../src/lib/canvass/dbGuard";
 import { CanvassHailCellModel } from "../src/lib/models/CanvassHailCell";
 
@@ -80,6 +80,8 @@ async function main() {
       batch = [];
     };
 
+    // One storm day at a time: read every square, bring radar glitches down, then write.
+    const squares: HailCellRecord[] = [];
     const reader = readline.createInterface({ input: fs.createReadStream(file, "utf8"), crlfDelay: Infinity });
     for await (const line of reader) {
       if (!line.trim()) continue;
@@ -89,6 +91,12 @@ async function main() {
         rejected++;
         continue;
       }
+      squares.push(cell);
+    }
+
+    const checked = capSpikes(squares);
+    const capped = checked.filter((cell, i) => cell.inches !== squares[i].inches).length;
+    for (const cell of checked) {
       kept++;
       biggest = Math.max(biggest, cell.inches);
       batch.push({ updateOne: { filter: { cellKey: cell.cellKey }, update: { $set: { ...cell, loadedAt } }, upsert: true } });
@@ -99,7 +107,10 @@ async function main() {
     totalKept += kept;
     totalRejected += rejected;
     if (lines > 0) {
-      console.log(`[hail] ${path.basename(file)}: ${lines} lines, ${kept} squares ${options.dryRun ? "counted" : "loaded"}, ${rejected} rejected, biggest ${biggest} in`);
+      console.log(
+        `[hail] ${path.basename(file)}: ${lines} lines, ${kept} squares ${options.dryRun ? "counted" : "loaded"}, ` +
+          `${capped} radar glitches brought down, ${rejected} rejected, biggest ${biggest} in`
+      );
     }
   }
 
