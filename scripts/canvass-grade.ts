@@ -1,7 +1,8 @@
 // scripts/canvass-grade.ts
 // Grades every Canvass Map house (plan T5.1): gathers its facts (year built,
 // owner, hail, the RepCard doors and AccuLynx jobs matched to it, its county's
-// quality flags) and stores gradeHome()'s score, color and reasons on the house.
+// quality flags, the latest AccuLynx signing next door) and stores gradeHome()'s
+// score, color and reasons on the house.
 //
 //   npx vite-node scripts/canvass-grade.ts
 //
@@ -12,14 +13,15 @@
 //   --allow-remote         required to write to anything but the local test database
 //   --dry-run              count only, write nothing
 //
-// Run after the house import, the hail step and the door and job matching. The
-// neighbour-signed bonus waits for AccuLynx signing dates, so it is off for now.
-// Prints counts only.
+// Run after the house import, the hail step, the door and job matching and the
+// signing dates (scripts/canvass-jobs-signed.ts). Prints counts only.
 
 import mongoose from "mongoose";
+import { GRADE } from "../src/lib/canvass/config";
 import { gradeHome, type Color } from "../src/lib/canvass/grade";
 import { homeFacts, type StoredDoor } from "../src/lib/canvass/facts";
-import { centralDay } from "../src/lib/canvass/dates";
+import { buildSigningIndex, latestSigningNear, type Signing } from "../src/lib/canvass/neighbours";
+import { centralDay, daysBetween } from "../src/lib/canvass/dates";
 import { isLocalTestDatabase } from "../src/lib/canvass/dbGuard";
 import { SERVICE_COUNTIES } from "../src/lib/canvass/counties";
 import { CanvassHomeModel } from "../src/lib/models/CanvassHome";
@@ -91,12 +93,35 @@ async function main() {
     list.push({ milestone: job.milestone ?? "" });
     jobsByHome.set(homeId, list);
   }
-  console.log(`[grade] grading for ${options.today}: ${doorsByHome.size} houses with RepCard doors, ${jobsByHome.size} houses with AccuLynx jobs`);
 
-  type Tally = Record<Color, number> & { homes: number; forced: number; knocked: number };
+  // AccuLynx signings, placed at the house each signed job matched, for the neighbour bonus.
+  const signedJobs = (await CanvassJobModel.find({ homeId: { $ne: null }, signedAt: { $ne: null } }, { homeId: 1, signedAt: 1 }).lean()) as Array<{
+    homeId: unknown;
+    signedAt: Date;
+  }>;
+  const signedHomeSpots = new Map<string, [number, number]>();
+  for (const home of (await CanvassHomeModel.find({ _id: { $in: signedJobs.map((job) => job.homeId) } }, { location: 1 }).lean()) as Array<{
+    _id: unknown;
+    location: { coordinates: [number, number] };
+  }>) {
+    signedHomeSpots.set(String(home._id), home.location.coordinates);
+  }
+  const signings: Signing[] = [];
+  for (const job of signedJobs) {
+    const spot = signedHomeSpots.get(String(job.homeId));
+    const day = centralDay(job.signedAt);
+    if (!spot || !day || day > options.today) continue;
+    signings.push({ homeId: String(job.homeId), lat: spot[1], lng: spot[0], day });
+  }
+  const signingIndex = buildSigningIndex(signings);
+  console.log(
+    `[grade] grading for ${options.today}: ${doorsByHome.size} houses with RepCard doors, ${jobsByHome.size} houses with AccuLynx jobs, ${signings.length} AccuLynx signings placed on houses`
+  );
+
+  type Tally = Record<Color, number> & { homes: number; forced: number; knocked: number; neighbourBonus: number };
   const tallies = new Map<string, Tally>();
   const tallyFor = (fips: string) => {
-    if (!tallies.has(fips)) tallies.set(fips, { homes: 0, green: 0, yellow: 0, orange: 0, red: 0, forced: 0, knocked: 0 });
+    if (!tallies.has(fips)) tallies.set(fips, { homes: 0, green: 0, yellow: 0, orange: 0, red: 0, forced: 0, knocked: 0, neighbourBonus: 0 });
     return tallies.get(fips)!;
   };
 
@@ -108,16 +133,19 @@ async function main() {
   };
 
   const filter = options.fips ? { fips: options.fips } : {};
-  const homeCursor = CanvassHomeModel.find(filter, { fips: 1, yearBuilt: 1, ownerLivesHere: 1, hail: 1 }).lean().cursor();
+  const homeCursor = CanvassHomeModel.find(filter, { fips: 1, location: 1, yearBuilt: 1, ownerLivesHere: 1, hail: 1 }).lean().cursor();
   let graded = 0;
   for await (const home of homeCursor as AsyncIterable<{
     _id: unknown;
     fips: string;
+    location: { coordinates: [number, number] };
     yearBuilt?: number | null;
     ownerLivesHere?: boolean | null;
     hail?: Array<{ date: string; inches: number }>;
   }>) {
     const homeId = String(home._id);
+    const [lng, lat] = home.location.coordinates;
+    const neighborSignedAt = latestSigningNear(signingIndex, { id: homeId, lat, lng }, GRADE.neighborSigned.radiusMeters);
     const facts = homeFacts({
       yearBuilt: home.yearBuilt ?? null,
       ownerLivesHere: home.ownerLivesHere ?? null,
@@ -125,7 +153,7 @@ async function main() {
       countyFlags: flagsByFips.get(home.fips) ?? [],
       doors: doorsByHome.get(homeId) ?? [],
       jobs: jobsByHome.get(homeId) ?? [],
-      neighborSignedAt: null,
+      neighborSignedAt,
     });
     const grade = gradeHome(facts, options.today);
     const tally = tallyFor(home.fips);
@@ -133,6 +161,7 @@ async function main() {
     tally[grade.color]++;
     if (grade.forced) tally.forced++;
     if (facts.knocks.length > 0) tally.knocked++;
+    if (neighborSignedAt && daysBetween(neighborSignedAt, options.today) <= GRADE.neighborSigned.withinDays) tally.neighbourBonus++;
     batch.push({ updateOne: { filter: { _id: home._id }, update: { $set: { grade, gradedOn: options.today } } } });
     graded++;
     if (batch.length >= BATCH_SIZE) await flush();
@@ -146,7 +175,7 @@ async function main() {
     if (!t) continue;
     console.log(
       `[grade] ${county.area} ${county.name}: ${t.homes} houses; green ${pct(t.green, t.homes)}, yellow ${pct(t.yellow, t.homes)}, ` +
-        `orange ${pct(t.orange, t.homes)}, red ${pct(t.red, t.homes)} (forced ${t.forced}); knocked by us ${t.knocked}`
+        `orange ${pct(t.orange, t.homes)}, red ${pct(t.red, t.homes)} (forced ${t.forced}); knocked by us ${t.knocked}; neighbour signed in 90 days ${t.neighbourBonus}`
     );
   }
   console.log(`[grade] done: ${graded} houses ${options.dryRun ? "counted" : "graded"} for ${options.today}`);
