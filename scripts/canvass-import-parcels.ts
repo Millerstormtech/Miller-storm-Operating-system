@@ -131,6 +131,7 @@ async function main() {
     const { done, value } = await source.read();
     if (done) break;
     parcelsRead++;
+    if (parcelsRead % 50000 === 0) console.log(`[parcels] ${parcelsRead} records read`);
 
     const fipsDigits = String(value.properties.FIPS ?? "").replace(/\D/g, "");
     const stats = statsFor(fipsDigits.length === 3 ? `48${fipsDigits}` : fipsDigits);
@@ -157,7 +158,6 @@ async function main() {
     } else {
       houses.set(key, piece);
     }
-    if (parcelsRead % 50000 === 0) console.log(`[parcels] ${parcelsRead} records read`);
   }
 
   // Pass 2: count and write the merged houses.
