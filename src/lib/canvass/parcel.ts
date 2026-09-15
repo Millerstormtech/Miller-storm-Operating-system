@@ -45,6 +45,25 @@ const PO_BOX_START = /^(P\.?\s?O\.?\s+BOX|POST OFFICE BOX)\b/i;
 /** The 5-digit ZIP at the very end of a full address line, if any. */
 const trailingZip = (fullAddress: string): string => fullAddress.match(/\b(\d{5})(?:-\d{4})?\s*$/)?.[1] ?? "";
 
+/** Texas ZIP codes: 75000 to 79999, plus 733xx (Austin) and 885xx (El Paso). */
+const TEXAS_ZIP = /^(7[5-9]\d{3}|733\d{2}|885\d{2})$/;
+
+/**
+ * The house's ZIP, or "" when the county's file does not really have one. In
+ * Parker, Wise and Hood the ZIP field holds the first five digits of a
+ * six-digit county code that ends the full address, not a ZIP; trusting it
+ * marked real owner-occupants as living elsewhere (Parker: property and
+ * mailing ZIPs agreed for 143 of 28,722 matching addresses).
+ */
+function houseZip(p: ParcelProperties): string {
+  const fullAddress = text(p.SITUS_ADDR);
+  const field = text(p.SITUS_ZIP).match(/\d{5}/)?.[0] ?? "";
+  const sixDigitCode = fullAddress.match(/\b(\d{6})\s*$/)?.[1];
+  if (field && TEXAS_ZIP.test(field) && !(sixDigitCode && sixDigitCode.startsWith(field))) return field;
+  const trailing = trailingZip(fullAddress);
+  return TEXAS_ZIP.test(trailing) ? trailing : "";
+}
+
 /**
  * The year built, or null. A property with several buildings lists several
  * years ("1995,1978"); the earliest is taken as the house itself, since
@@ -154,7 +173,7 @@ export function parcelToHome(p: ParcelProperties, geometry: PolygonGeometry | nu
   const fips = fipsDigits.length === 3 ? `48${fipsDigits}` : fipsDigits;
 
   const line = houseLine(p);
-  const zip = text(p.SITUS_ZIP).match(/\d{5}/)?.[0] ?? trailingZip(text(p.SITUS_ADDR));
+  const zip = houseZip(p);
   const mailZip = text(p.MAIL_ZIP).match(/\d{5}/)?.[0] ?? trailingZip(text(p.MAIL_ADDR));
 
   return {

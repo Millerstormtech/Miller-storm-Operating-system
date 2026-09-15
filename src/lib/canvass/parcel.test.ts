@@ -224,6 +224,21 @@ describe("parcelToHome", () => {
     expect(parcelToHome(parcel({ SITUS_ZIP: "" }), lot, THIS_YEAR)!.address.zip).toBe("79336");
   });
 
+  it("ignores a property ZIP field that is really the start of a six-digit county code (Parker, Wise, Hood)", () => {
+    const home = parcelToHome(
+      parcel({ SITUS_ZIP: "76087", SITUS_ADDR: "1402  EXAMPLE DR , , TX 760871", MAIL_ZIP: "76086" }),
+      lot,
+      THIS_YEAR,
+    )!;
+    expect(home.address.zip).toBe("");
+    expect(home.ownerLivesHere).toBe(true);
+  });
+
+  it("ignores a property ZIP field that is not a Texas ZIP code", () => {
+    const home = parcelToHome(parcel({ SITUS_ZIP: "12345", SITUS_ADDR: "1402  EXAMPLE DR , LEVELLAND, TX" }), lot, THIS_YEAR)!;
+    expect(home.address.zip).toBe("");
+  });
+
   it("leaves the ZIP blank when neither field has one", () => {
     const home = parcelToHome(parcel({ SITUS_ZIP: "", SITUS_ADDR: "1402  EXAMPLE DR , LEVELLAND, TX" }), lot, THIS_YEAR)!;
     expect(home.address.zip).toBe("");

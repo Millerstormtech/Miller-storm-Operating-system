@@ -11,6 +11,18 @@ describe("normalizeAddressLine", () => {
   it("collapses extra spaces and shortens directions", () => {
     expect(normalizeAddressLine("  901   North  Main   Street ")).toBe("901 N MAIN ST");
   });
+
+  it.each([
+    ["1402 County Road 1234", "1402 CR 1234"],
+    ["1402 County Rd 1234", "1402 CR 1234"],
+    ["500 Farm to Market Road 1187", "500 FM 1187"],
+    ["500 Farm Road 1187", "500 FM 1187"],
+    ["77 Private Road 5520", "77 PR 5520"],
+    ["10 US Highway 287", "10 US 287"],
+    ["12 State Highway 199", "12 SH 199"],
+  ])("writes the rural road %s as %s", (line, normalized) => {
+    expect(normalizeAddressLine(line)).toBe(normalized);
+  });
 });
 
 describe("addressKey", () => {
@@ -32,6 +44,10 @@ describe("addressKey", () => {
 
   it("is null when the line has no house number", () => {
     expect(addressKey("Example Dr", "76116")).toBeNull();
+  });
+
+  it("keeps the road number for county and farm roads, so two different roads never share a key", () => {
+    expect(addressKey("1402 County Road 1234", "76078")).toBe("1402|CR 1234|76078");
   });
 });
 
@@ -72,6 +88,14 @@ describe("ownerLivesHere", () => {
 
   it("is unknown when the mailing address has no house number", () => {
     expect(ownerLivesHere(house, { line: "Rural Route 2", zip: "76116" })).toBeNull();
+  });
+
+  it("matches a county road written two different ways (Wise County)", () => {
+    expect(ownerLivesHere({ line: "1402 CR 1234", zip: "" }, { line: "1402 County Road 1234", zip: "76078" })).toBe(true);
+  });
+
+  it("does not match two different county roads with the same house number", () => {
+    expect(ownerLivesHere({ line: "1402 CR 1234", zip: "" }, { line: "1402 CR 1235", zip: "76078" })).toBe(false);
   });
 
   it("is unknown when the house address has no number", () => {
