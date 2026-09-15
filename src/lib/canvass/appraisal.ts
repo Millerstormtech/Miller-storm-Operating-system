@@ -6,7 +6,7 @@
 //
 // Pure: no files, no database.
 
-export type YearBuiltSource = "dcad" | "wcad";
+export type YearBuiltSource = "dcad" | "wcad" | "prad";
 
 export type AppraisalFacts = { yearBuilt: number | null; roofMaterial?: string; homestead: boolean };
 

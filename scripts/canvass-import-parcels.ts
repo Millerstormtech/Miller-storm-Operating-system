@@ -5,16 +5,21 @@
 //   npx vite-node scripts/canvass-import-parcels.ts --folder D:/knock-planner/data/parcels/48219
 //
 // Options:
-//   --folder <path>   an extracted county zip (the importer finds the .shp inside)
-//   --source <name>   label for this import, default "txgio-2025"
-//   --uri <mongodb>   database, default mongodb://127.0.0.1:27017/millerstorm
-//   --allow-remote    required to write to any database not on this computer
-//   --dry-run         read and count only, write nothing
-//   --replace         delete the county's existing homes first, so homes a
-//                     stricter filter no longer accepts do not linger. This is
-//                     the BASE step: the appraisal-district fills (Dallas,
-//                     Williamson), hail, matching and grades must be re-run for
-//                     that county afterwards.
+//   --folder <path>            an extracted county zip (the importer finds the .shp inside)
+//   --source <name>            label for this import, default "txgio-2025"
+//   --district <file>          an appraisal district's one-line-per-property file
+//                              (for example from scripts/canvass-prad-prepare.ts). The
+//                              district then decides which parcels are houses and fills
+//                              year built, homestead and roof cover in the same pass.
+//   --district-source <label>  who made that file: dcad, wcad or prad (required with --district)
+//   --uri <mongodb>            database, default mongodb://127.0.0.1:27017/millerstorm
+//   --allow-remote             required to write to any database not on this computer
+//   --dry-run                  read and count only, write nothing
+//   --replace                  delete the county's existing homes first, so homes a
+//                              stricter filter no longer accepts do not linger. This is
+//                              the BASE step: the separate appraisal-district fills
+//                              (Dallas, Williamson), hail, matching and grades must be
+//                              re-run for that county afterwards.
 //
 // Safety: it refuses anything but the local test database unless --allow-remote
 // is given (src/lib/canvass/dbGuard.ts, which also refuses the SSH tunnel to the
@@ -40,12 +45,15 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import readline from "node:readline";
 import { createRequire } from "node:module";
 import mongoose from "mongoose";
 import { parcelToHome, mergeHomes, type HomeRecord, type HomePiece } from "../src/lib/canvass/parcel";
 import { outlineArea, type PolygonGeometry } from "../src/lib/canvass/geometry";
 import { coordinateSystemOf, geometryToLonLat, isInsideTexasBox, type CoordinateSystem } from "../src/lib/canvass/coordinates";
 import { chooseIdField, createIdConflictCounter, type IdField } from "../src/lib/canvass/propertyIds";
+import { appraisalUpdate, type AppraisalUpdate, type YearBuiltSource } from "../src/lib/canvass/appraisal";
+import { districtHomeCodes, type DistrictProperty } from "../src/lib/canvass/district";
 import { SERVICE_COUNTIES, isServiceCounty } from "../src/lib/canvass/counties";
 import { isLocalTestDatabase } from "../src/lib/canvass/dbGuard";
 import { countyFlags, suggestedStatus, type CountyStats } from "../src/lib/canvass/quality";
@@ -59,13 +67,25 @@ const shapefile: typeof import("shapefile") = createRequire(import.meta.url)("sh
 
 const BATCH_SIZE = 2000;
 const MAX_OUTSIDE_TEXAS_SHARE = 0.01;
+const DISTRICT_SOURCES: YearBuiltSource[] = ["dcad", "wcad", "prad"];
 
-type Options = { folder: string; source: string; uri: string; allowRemote: boolean; dryRun: boolean; replace: boolean };
+type Options = {
+  folder: string;
+  source: string;
+  district: string;
+  districtSource: YearBuiltSource | null;
+  uri: string;
+  allowRemote: boolean;
+  dryRun: boolean;
+  replace: boolean;
+};
 
 function parseArgs(argv: string[]): Options {
   const options: Options = {
     folder: "",
     source: "txgio-2025",
+    district: "",
+    districtSource: null,
     uri: "mongodb://127.0.0.1:27017/millerstorm",
     allowRemote: false,
     dryRun: false,
@@ -75,13 +95,19 @@ function parseArgs(argv: string[]): Options {
     const arg = argv[i];
     if (arg === "--folder") options.folder = argv[++i] ?? "";
     else if (arg === "--source") options.source = argv[++i] ?? options.source;
-    else if (arg === "--uri") options.uri = argv[++i] ?? options.uri;
+    else if (arg === "--district") options.district = argv[++i] ?? "";
+    else if (arg === "--district-source") {
+      const value = (argv[++i] ?? "") as YearBuiltSource;
+      if (!DISTRICT_SOURCES.includes(value)) throw new Error(`--district-source must be one of ${DISTRICT_SOURCES.join(", ")}`);
+      options.districtSource = value;
+    } else if (arg === "--uri") options.uri = argv[++i] ?? options.uri;
     else if (arg === "--allow-remote") options.allowRemote = true;
     else if (arg === "--dry-run") options.dryRun = true;
     else if (arg === "--replace") options.replace = true;
     else throw new Error(`Unknown option: ${arg}`);
   }
   if (!options.folder) throw new Error("--folder is required");
+  if (Boolean(options.district) !== Boolean(options.districtSource)) throw new Error("--district and --district-source go together");
   return options;
 }
 
@@ -111,6 +137,17 @@ function safeErrorText(error: unknown): string {
   return cut >= 0 ? `${message.slice(0, cut).trim()} (record details hidden)` : message;
 }
 
+async function loadDistrict(file: string): Promise<Map<string, DistrictProperty>> {
+  const properties = new Map<string, DistrictProperty>();
+  const reader = readline.createInterface({ input: fs.createReadStream(file, "utf8"), crlfDelay: Infinity });
+  for await (const line of reader) {
+    if (!line.trim()) continue;
+    const property = JSON.parse(line) as DistrictProperty;
+    if (property.propId) properties.set(property.propId, property);
+  }
+  return properties;
+}
+
 type RunStats = CountyStats & { parcelsRead: number; repeatedRecords: number; homesFromBuildingOnly: number; taxYear: string };
 
 function emptyStats(): RunStats {
@@ -128,15 +165,16 @@ function emptyStats(): RunStats {
 }
 
 /**
- * Year built is only written when this file has one, so a re-import of a county
- * whose state file lacks it (Dallas) never erases a year loaded from elsewhere.
+ * Year built is only written when this file (or the district file) has one, so a
+ * re-import of a county whose state file lacks it (Dallas) never erases a year
+ * loaded from elsewhere. `extra` carries what a district file filled in.
  */
-function upsertFor(home: HomeRecord, importedAt: Date) {
+function upsertFor(home: HomeRecord, importedAt: Date, extra: AppraisalUpdate = {}) {
   const { yearBuilt, ...rest } = home;
   const update =
     yearBuilt !== null
-      ? { $set: { ...rest, yearBuilt, yearBuiltSource: "txgio", importedAt } }
-      : { $set: { ...rest, importedAt }, $setOnInsert: { yearBuilt: null, yearBuiltSource: null } };
+      ? { $set: { ...rest, yearBuilt, yearBuiltSource: "txgio", ...extra, importedAt } }
+      : { $set: { ...rest, ...extra, importedAt }, $setOnInsert: { yearBuilt: null, yearBuiltSource: null } };
   return { updateOne: { filter: { fips: home.fips, propId: home.propId }, update, upsert: true } };
 }
 
@@ -151,6 +189,12 @@ async function main() {
   const prj = shp.replace(/\.shp$/i, ".prj");
   const system: CoordinateSystem = fs.existsSync(prj) ? coordinateSystemOf(fs.readFileSync(prj, "utf8")) : "lon-lat";
   if (system === "unknown") throw new Error(`Unsupported coordinate system in ${path.basename(prj)}; nothing was read, deleted or written`);
+
+  const district = options.district ? await loadDistrict(options.district) : null;
+  const districtHomes = district ? districtHomeCodes(district.values()) : undefined;
+  if (district && districtHomes) {
+    console.log(`[parcels] district file (${options.districtSource}): ${district.size} properties, ${districtHomes.size} homes by district code`);
+  }
 
   // Pass 0: which field identifies a property in this file.
   const idCounter = createIdConflictCounter();
@@ -198,7 +242,7 @@ async function main() {
         ? (value.geometry as PolygonGeometry)
         : null;
     const geometry = outline ? geometryToLonLat(outline, system) : null;
-    const home = parcelToHome(value.properties, geometry, thisYear, idField);
+    const home = parcelToHome(value.properties, geometry, thisYear, idField, districtHomes);
     if (!home) continue;
     if (!isServiceCounty(home.fips)) {
       skippedOtherCounty++;
@@ -230,6 +274,21 @@ async function main() {
     throw new Error(`${outsideTexas} of ${houses.size + outsideTexas} houses have a map point outside Texas; nothing was deleted or written`);
   }
 
+  // District facts (year built, homestead, roof cover) go onto the houses before counting.
+  const extras = new Map<string, AppraisalUpdate>();
+  if (district && options.districtSource) {
+    for (const [key, piece] of houses) {
+      const record = district.get(piece.home.propId);
+      if (!record) continue;
+      const update = appraisalUpdate({ yearBuilt: record.yearBuilt, roofMaterial: record.roofMaterial, homestead: record.homestead }, options.districtSource);
+      if (update.yearBuilt !== undefined) piece.home.yearBuilt = update.yearBuilt;
+      if (update.ownerLivesHere) piece.home.ownerLivesHere = true;
+      extras.set(key, update);
+    }
+    const unmatched = (districtHomes?.size ?? 0) - houses.size;
+    console.log(`[parcels] ${houses.size} houses from the district list; ${Math.max(0, unmatched)} district homes have no state-file parcel`);
+  }
+
   // Pass 2: count and write the merged houses.
   if (!options.dryRun) {
     await mongoose.connect(options.uri);
@@ -254,7 +313,7 @@ async function main() {
     batch = [];
   };
 
-  for (const { home } of houses.values()) {
+  for (const [key, { home }] of houses) {
     const stats = statsFor(home.fips);
     stats.homes++;
     if (home.landUseSource === "building") stats.homesFromBuildingOnly++;
@@ -266,7 +325,7 @@ async function main() {
       stats.withOwnerSignal++;
       if (home.ownerLivesHere) stats.ownerLivesHere++;
     }
-    batch.push(upsertFor(home, importedAt));
+    batch.push(upsertFor(home, importedAt, extras.get(key)));
     if (batch.length >= BATCH_SIZE) await flush();
   }
   await flush();
@@ -296,7 +355,8 @@ async function main() {
       importedAt,
     };
     if (!options.dryRun) {
-      await CanvassCountyQualityModel.updateOne({ fips, source: options.source }, { $set: row }, { upsert: true });
+      const addSource = options.districtSource ? { $addToSet: { extraSources: options.districtSource } } : {};
+      await CanvassCountyQualityModel.updateOne({ fips, source: options.source }, { $set: row, ...addSource }, { upsert: true });
     }
     const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)}%` : "n/a");
     console.log(
