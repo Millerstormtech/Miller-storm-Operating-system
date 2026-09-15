@@ -18,12 +18,19 @@
 // Safety: it refuses anything but the local test database unless --allow-remote
 // is given (src/lib/canvass/dbGuard.ts, which also refuses the SSH tunnel to the
 // live database), and it never reads MONGODB_URI.
-// It prints counts only, never owner names or addresses.
+// It prints counts only, never owner names or addresses, and hides record details
+// in database error messages.
 //
 // One property id can appear on several records (Hockley 2025: 101 ids, 189
 // extra records, same address and year built each time). Records are merged per
 // id before anything is written, so the quality counts describe the same houses
 // the map shows.
+//
+// Coordinates: the .prj beside the .shp names the coordinate system. 40 of our
+// 41 county files are longitude/latitude; Martin County's 2025 file is Web
+// Mercator and is converted. Any other system is refused before reading. Houses
+// whose point lands outside Texas are dropped, and if more than 1% do, the county
+// stops before anything is deleted or written.
 //
 // The state download site blocks scripts, so county zips are downloaded in a
 // browser and unzipped first (spec B3).
@@ -34,6 +41,7 @@ import { createRequire } from "node:module";
 import mongoose from "mongoose";
 import { parcelToHome, mergeHomes, type HomeRecord, type HomePiece } from "../src/lib/canvass/parcel";
 import { outlineArea, type PolygonGeometry } from "../src/lib/canvass/geometry";
+import { coordinateSystemOf, geometryToLonLat, isInsideTexasBox, type CoordinateSystem } from "../src/lib/canvass/coordinates";
 import { SERVICE_COUNTIES, isServiceCounty } from "../src/lib/canvass/counties";
 import { isLocalTestDatabase } from "../src/lib/canvass/dbGuard";
 import { countyFlags, suggestedStatus, type CountyStats } from "../src/lib/canvass/quality";
@@ -46,6 +54,7 @@ import { CanvassCountyQualityModel } from "../src/lib/models/CanvassCountyQualit
 const shapefile: typeof import("shapefile") = createRequire(import.meta.url)("shapefile");
 
 const BATCH_SIZE = 2000;
+const MAX_OUTSIDE_TEXAS_SHARE = 0.01;
 
 type Options = { folder: string; source: string; uri: string; allowRemote: boolean; dryRun: boolean; replace: boolean };
 
@@ -91,6 +100,13 @@ function findFile(dir: string, extension: string): string | null {
   return null;
 }
 
+/** MongoDB errors can quote a whole house record, owner name included. Logs keep counts only. */
+function safeErrorText(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const cut = message.indexOf("{");
+  return cut >= 0 ? `${message.slice(0, cut).trim()} (record details hidden)` : message;
+}
+
 type RunStats = CountyStats & { parcelsRead: number; repeatedRecords: number; homesFromBuildingOnly: number; taxYear: string };
 
 function emptyStats(): RunStats {
@@ -128,6 +144,9 @@ async function main() {
   if (!shp) throw new Error(`No .shp file found under ${options.folder}`);
   const cpg = findFile(options.folder, ".cpg");
   const encoding = cpg && /utf-?8/i.test(fs.readFileSync(cpg, "utf8")) ? "utf-8" : "windows-1252";
+  const prj = shp.replace(/\.shp$/i, ".prj");
+  const system: CoordinateSystem = fs.existsSync(prj) ? coordinateSystemOf(fs.readFileSync(prj, "utf8")) : "lon-lat";
+  if (system === "unknown") throw new Error(`Unsupported coordinate system in ${path.basename(prj)}; nothing was read, deleted or written`);
 
   const thisYear = new Date().getFullYear();
   const importedAt = new Date();
@@ -138,7 +157,7 @@ async function main() {
   };
 
   // Pass 1: read every record and merge repeats of the same property id.
-  console.log(`[parcels] reading ${path.basename(shp)} (${encoding})${options.dryRun ? " DRY RUN" : ""}`);
+  console.log(`[parcels] reading ${path.basename(shp)} (${encoding}, ${system})${options.dryRun ? " DRY RUN" : ""}`);
   const source = await shapefile.open(shp, undefined, { encoding });
   const houses = new Map<string, HomePiece>();
   let parcelsRead = 0;
@@ -154,10 +173,11 @@ async function main() {
     stats.parcelsRead++;
     if (!stats.taxYear) stats.taxYear = String(value.properties.TAX_YEAR ?? "").trim();
 
-    const geometry =
+    const outline =
       value.geometry && (value.geometry.type === "Polygon" || value.geometry.type === "MultiPolygon")
         ? (value.geometry as PolygonGeometry)
         : null;
+    const geometry = outline ? geometryToLonLat(outline, system) : null;
     const home = parcelToHome(value.properties, geometry, thisYear);
     if (!home) continue;
     if (!isServiceCounty(home.fips)) {
@@ -174,6 +194,20 @@ async function main() {
     } else {
       houses.set(key, piece);
     }
+  }
+
+  // A point outside Texas means a broken outline or a misread coordinate system.
+  // A few are dropped; more than 1% stops the county before anything is deleted.
+  let outsideTexas = 0;
+  for (const [key, { home }] of houses) {
+    if (!isInsideTexasBox(home.location.coordinates)) {
+      houses.delete(key);
+      outsideTexas++;
+    }
+  }
+  if (outsideTexas > 0) console.log(`[parcels] ${outsideTexas} houses dropped: map point outside Texas`);
+  if (outsideTexas > MAX_OUTSIDE_TEXAS_SHARE * (houses.size + outsideTexas)) {
+    throw new Error(`${outsideTexas} of ${houses.size + outsideTexas} houses have a map point outside Texas; nothing was deleted or written`);
   }
 
   // Pass 2: count and write the merged houses.
@@ -258,7 +292,7 @@ async function main() {
 }
 
 main().catch(async (error) => {
-  console.error("[parcels] FAILED:", error instanceof Error ? error.message : error);
+  console.error("[parcels] FAILED:", safeErrorText(error));
   await mongoose.disconnect().catch(() => {});
   process.exit(1);
 });
