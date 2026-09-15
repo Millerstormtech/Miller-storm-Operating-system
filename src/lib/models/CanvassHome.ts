@@ -25,6 +25,7 @@ const canvassHomeSchema = new Schema(
     yearBuiltSource: { type: String, enum: ["txgio", "dcad"], default: null },
     ownerLivesHere: { type: Boolean, default: null },
     landUse: { type: String, default: "" }, // state land-use code, "A1", "E1"...
+    landUseSource: { type: String, enum: ["state", "local", "building"], default: null }, // how the home was recognized
     taxYear: { type: String, default: "" },
     importedAt: { type: Date, required: true },
   },

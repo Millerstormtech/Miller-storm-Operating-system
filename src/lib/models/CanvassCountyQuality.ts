@@ -18,6 +18,7 @@ const canvassCountyQualitySchema = new Schema(
     builtBefore1990: { type: Number, default: 0 },
     withOwnerSignal: { type: Number, default: 0 },
     ownerLivesHere: { type: Number, default: 0 },
+    homesFromBuildingOnly: { type: Number, default: 0 }, // guessed from a building because the county has no usable codes
     flags: { type: [String], default: [] },
     suggestedStatus: { type: String, enum: ["live", "age-unknown", "review"], required: true },
     status: { type: String, enum: ["live", "age-unknown", "held-back"], default: null },

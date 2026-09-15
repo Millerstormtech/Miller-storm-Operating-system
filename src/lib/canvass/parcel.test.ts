@@ -74,6 +74,50 @@ describe("isHomeParcel", () => {
     expect(isHomeParcel(parcel({ STAT_LAND_: "E1", IMP_VALUE: "0", YEAR_BUILT: "" }), THIS_YEAR)).toBe(false);
   });
 
+  it("with no state code, uses a local code written like a state code (Johnson's \"A1 -\")", () => {
+    expect(isHomeParcel(parcel({ STAT_LAND_: "", LOC_LAND_U: "A1 -" }), THIS_YEAR)).toBe(true);
+  });
+
+  it("with no state code, a local commercial code is not a home, even with a building", () => {
+    expect(isHomeParcel(parcel({ STAT_LAND_: "", LOC_LAND_U: "F1 -" }), THIS_YEAR)).toBe(false);
+  });
+
+  it("with no state code, the local word RES marks a home, even without building details (Williamson's file)", () => {
+    expect(isHomeParcel(parcel({ STAT_LAND_: "", LOC_LAND_U: "RES", IMP_VALUE: "", YEAR_BUILT: "" }), THIS_YEAR)).toBe(true);
+  });
+
+  it("does not mistake a local code like Howard's \"SQ.75\" for a state code", () => {
+    expect(isHomeParcel(parcel({ STAT_LAND_: "", LOC_LAND_U: "SQ.75", IMP_VALUE: "0", YEAR_BUILT: "" }), THIS_YEAR)).toBe(false);
+  });
+
+  describe("with no codes at all, a building counts unless the owner is clearly not a household", () => {
+    const noCodes = (owner: string) => parcel({ STAT_LAND_: "", LOC_LAND_U: "", IMP_VALUE: "250000", OWNER_NAME: owner });
+
+    it.each([
+      ["FIRST SAMPLE BAPTIST CHURCH"],
+      ["CITY OF SAMPLETOWN"],
+      ["SAMPLETOWN ISD"],
+      ["SAMPLE COUNTY"],
+      ["STATE OF TEXAS"],
+      ["SAMPLE ELECTRIC COOPERATIVE INC"],
+      ["SAMPLE HOSPITAL DISTRICT"],
+      ["SAMPLE CEMETERY ASSOCIATION"],
+    ])("%s is not a home", (owner) => {
+      expect(isHomeParcel(noCodes(owner), THIS_YEAR)).toBe(false);
+    });
+
+    it.each([["SAMPLE OWNER"], ["SAMPLE FAMILY TRUST"], ["SAMPLE HOLDINGS LLC"], ["ESTATE OF SAMPLE OWNER"]])(
+      "%s still counts, since many rental houses are owned this way",
+      (owner) => {
+        expect(isHomeParcel(noCodes(owner), THIS_YEAR)).toBe(true);
+      },
+    );
+
+    it("an organization owner does not matter when a code says it is a home", () => {
+      expect(isHomeParcel(parcel({ STAT_LAND_: "A1", OWNER_NAME: "SAMPLE HOLDINGS CHURCH" }), THIS_YEAR)).toBe(true);
+    });
+  });
+
   it("with no land-use code, a building value makes it a home", () => {
     expect(isHomeParcel(parcel({ STAT_LAND_: "", IMP_VALUE: "150000", YEAR_BUILT: "" }), THIS_YEAR)).toBe(true);
   });
@@ -137,6 +181,22 @@ describe("parcelToHome", () => {
     expect(home.ownerLivesHere).toBe(true);
     expect(home.landUse).toBe("A1");
     expect(home.taxYear).toBe("2025");
+  });
+
+  it("records that the home was found by its state land-use code", () => {
+    expect(parcelToHome(parcel(), lot, THIS_YEAR)!.landUseSource).toBe("state");
+  });
+
+  it("records a home found by a local code, and stores the code in state form", () => {
+    const home = parcelToHome(parcel({ STAT_LAND_: "", LOC_LAND_U: "A1 -" }), lot, THIS_YEAR)!;
+    expect(home.landUseSource).toBe("local");
+    expect(home.landUse).toBe("A1");
+  });
+
+  it("records a home guessed from a building when a county has no usable codes", () => {
+    const home = parcelToHome(parcel({ STAT_LAND_: "", LOC_LAND_U: "SQ.75" }), lot, THIS_YEAR)!;
+    expect(home.landUseSource).toBe("building");
+    expect(home.landUse).toBe("");
   });
 
   it("marks an owner whose mail goes to another city as living elsewhere", () => {

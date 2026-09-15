@@ -17,6 +17,13 @@ import { representativePoint, type PolygonGeometry, type Position } from "./geom
 
 export type ParcelProperties = Record<string, unknown>;
 
+/**
+ * How a home was recognized: the state land-use code, the county's own local
+ * code, or only a building on a parcel in a county with no usable codes. The
+ * last is a guess, and the quality page says so.
+ */
+export type LandUseSource = "state" | "local" | "building";
+
 export type HomeRecord = {
   fips: string;
   propId: string;
@@ -25,8 +32,9 @@ export type HomeRecord = {
   ownerName: string;
   yearBuilt: number | null;
   ownerLivesHere: boolean | null;
-  /** The state land-use code as given, upper-cased ("A1", "E1"...). */
+  /** The land-use code in state form ("A1", "E1"...), or "" when the home was guessed from a building. */
   landUse: string;
+  landUseSource: LandUseSource;
   taxYear: string;
 };
 
@@ -57,18 +65,58 @@ function hasBuilding(p: ParcelProperties, thisYear: number): boolean {
   return buildingValue > 0 || yearBuiltFrom(p.YEAR_BUILT, thisYear) !== null;
 }
 
+/** A county's local code written like a state code: "A1 -" (Johnson), "A0", "L". */
+const STATE_STYLE_LOCAL_CODE = /^([A-Z]\d{0,2})(?:\s*-|\s|$)/;
+
+/** Local words that mean residential (Williamson's file uses RES). */
+const RESIDENTIAL_LOCAL_WORDS = new Set(["RES", "RESIDENTIAL"]);
+
 /**
- * Is this parcel a home? State land-use code A is residential. Code E is rural
- * land, which is how many houses on acreage are filed, so it counts when there
- * is a building on it. Counties that leave the code blank (Lubbock and Rockwall
- * in 2025) count when there is a building value or a year built.
+ * Owners that are clearly not a household. Only used where a county has no
+ * usable codes at all. LLCs, trusts and estates are NOT on this list, because
+ * many rental and family houses are owned that way.
  */
+const NOT_A_HOUSEHOLD =
+  /\b(CHURCH|BAPTIST|METHODIST|CATHOLIC|DIOCESE|MINISTRIES|TEMPLE|MOSQUE|SYNAGOGUE|ISD|SCHOOL|CITY OF|TOWN OF|VILLAGE OF|COUNTY|STATE OF|UNITED STATES|HOSPITAL|UNIVERSITY|COLLEGE|ELECTRIC|COOPERATIVE|CO-OP|UTILITY|UTILITIES|WATER SUPPLY|RAILROAD|RAILWAY|PIPELINE|CEMETERY|ASSOCIATION|ASSN|HOMEOWNERS|APARTMENTS|BANK|CREDIT UNION)\b/;
+
+/** The parcel's land-use code in state form, and where it came from, or no code. */
+function landUseOf(p: ParcelProperties): { code: string; source: "state" | "local" | null } {
+  const stateCode = text(p.STAT_LAND_).toUpperCase();
+  if (stateCode) return { code: stateCode, source: "state" };
+
+  const localCode = text(p.LOC_LAND_U).toUpperCase();
+  if (RESIDENTIAL_LOCAL_WORDS.has(localCode)) return { code: "A", source: "local" };
+  const stateStyle = localCode.match(STATE_STYLE_LOCAL_CODE);
+  if (stateStyle) return { code: stateStyle[1], source: "local" };
+
+  return { code: "", source: null };
+}
+
+/**
+ * Is this parcel a home, and how do we know?
+ *
+ * - Land-use code A (state, or the county's local code in state form, or the
+ *   local word RES) is residential.
+ * - Code E is rural land, which is how many houses on acreage are filed, so it
+ *   counts when there is a building on it.
+ * - Any other code is not a home.
+ * - With no usable code at all (Parker, Wise, Hood and others in 2025), a
+ *   building counts, unless the owner is clearly an organization such as a
+ *   church, a city or a school district.
+ */
+function homeDecision(p: ParcelProperties, thisYear: number): { isHome: boolean; landUse: string; source: LandUseSource | null } {
+  const { code, source } = landUseOf(p);
+  if (source) {
+    if (code.startsWith("A")) return { isHome: true, landUse: code, source };
+    if (code.startsWith("E")) return { isHome: hasBuilding(p, thisYear), landUse: code, source };
+    return { isHome: false, landUse: code, source };
+  }
+  const isHome = hasBuilding(p, thisYear) && !NOT_A_HOUSEHOLD.test(text(p.OWNER_NAME).toUpperCase());
+  return { isHome, landUse: "", source: isHome ? "building" : null };
+}
+
 export function isHomeParcel(p: ParcelProperties, thisYear: number): boolean {
-  const code = text(p.STAT_LAND_).toUpperCase();
-  if (code.startsWith("A")) return true;
-  if (code.startsWith("E")) return hasBuilding(p, thisYear);
-  if (code) return false;
-  return hasBuilding(p, thisYear);
+  return homeDecision(p, thisYear).isHome;
 }
 
 /** "1402 W MAIN ST" from the separate fields, or the full address up to its first comma. */
@@ -92,7 +140,9 @@ export function mailingLine(p: ParcelProperties): string {
 }
 
 export function parcelToHome(p: ParcelProperties, geometry: PolygonGeometry | null, thisYear: number): HomeRecord | null {
-  if (!geometry || !isHomeParcel(p, thisYear)) return null;
+  if (!geometry) return null;
+  const decision = homeDecision(p, thisYear);
+  if (!decision.isHome || !decision.source) return null;
 
   const propId = text(p.Prop_ID) || text(p.GEO_ID);
   if (!propId) return null;
@@ -115,7 +165,8 @@ export function parcelToHome(p: ParcelProperties, geometry: PolygonGeometry | nu
     ownerName: text(p.OWNER_NAME),
     yearBuilt: yearBuiltFrom(p.YEAR_BUILT, thisYear),
     ownerLivesHere: ownerLivesHere({ line, zip }, { line: mailingLine(p), zip: mailZip }),
-    landUse: text(p.STAT_LAND_).toUpperCase(),
+    landUse: decision.landUse,
+    landUseSource: decision.source,
     taxYear: text(p.TAX_YEAR),
   };
 }

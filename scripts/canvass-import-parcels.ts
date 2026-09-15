@@ -10,6 +10,10 @@
 //   --uri <mongodb>   database, default mongodb://127.0.0.1:27017/millerstorm
 //   --allow-remote    required to write to any database not on this computer
 //   --dry-run         read and count only, write nothing
+//   --replace         delete the county's existing homes first, so homes a
+//                     stricter filter no longer accepts do not linger. This is
+//                     the BASE step: the Dallas appraisal-district year built,
+//                     hail and grades must be re-run for that county afterwards.
 //
 // Safety: it refuses anything but the local test database unless --allow-remote
 // is given (src/lib/canvass/dbGuard.ts, which also refuses the SSH tunnel to the
@@ -43,7 +47,7 @@ const shapefile: typeof import("shapefile") = createRequire(import.meta.url)("sh
 
 const BATCH_SIZE = 2000;
 
-type Options = { folder: string; source: string; uri: string; allowRemote: boolean; dryRun: boolean };
+type Options = { folder: string; source: string; uri: string; allowRemote: boolean; dryRun: boolean; replace: boolean };
 
 function parseArgs(argv: string[]): Options {
   const options: Options = {
@@ -52,6 +56,7 @@ function parseArgs(argv: string[]): Options {
     uri: "mongodb://127.0.0.1:27017/millerstorm",
     allowRemote: false,
     dryRun: false,
+    replace: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -60,6 +65,7 @@ function parseArgs(argv: string[]): Options {
     else if (arg === "--uri") options.uri = argv[++i] ?? options.uri;
     else if (arg === "--allow-remote") options.allowRemote = true;
     else if (arg === "--dry-run") options.dryRun = true;
+    else if (arg === "--replace") options.replace = true;
     else throw new Error(`Unknown option: ${arg}`);
   }
   if (!options.folder) throw new Error("--folder is required");
@@ -85,10 +91,20 @@ function findFile(dir: string, extension: string): string | null {
   return null;
 }
 
-type RunStats = CountyStats & { parcelsRead: number; repeatedRecords: number; taxYear: string };
+type RunStats = CountyStats & { parcelsRead: number; repeatedRecords: number; homesFromBuildingOnly: number; taxYear: string };
 
 function emptyStats(): RunStats {
-  return { parcelsRead: 0, repeatedRecords: 0, homes: 0, withYearBuilt: 0, builtBefore1990: 0, withOwnerSignal: 0, ownerLivesHere: 0, taxYear: "" };
+  return {
+    parcelsRead: 0,
+    repeatedRecords: 0,
+    homes: 0,
+    withYearBuilt: 0,
+    builtBefore1990: 0,
+    withOwnerSignal: 0,
+    ownerLivesHere: 0,
+    homesFromBuildingOnly: 0,
+    taxYear: "",
+  };
 }
 
 /**
@@ -167,6 +183,14 @@ async function main() {
     await CanvassCountyQualityModel.createIndexes();
   }
 
+  if (options.replace && !options.dryRun) {
+    for (const fips of statsByFips.keys()) {
+      if (!isServiceCounty(fips)) continue;
+      const { deletedCount } = await CanvassHomeModel.deleteMany({ fips });
+      console.log(`[parcels] --replace: removed ${deletedCount} existing homes for ${fips}`);
+    }
+  }
+
   let written = 0;
   let batch: ReturnType<typeof upsertFor>[] = [];
   const flush = async () => {
@@ -179,6 +203,7 @@ async function main() {
   for (const { home } of houses.values()) {
     const stats = statsFor(home.fips);
     stats.homes++;
+    if (home.landUseSource === "building") stats.homesFromBuildingOnly++;
     if (home.yearBuilt !== null) {
       stats.withYearBuilt++;
       if (home.yearBuilt < 1990) stats.builtBefore1990++;
@@ -208,6 +233,7 @@ async function main() {
       builtBefore1990: stats.builtBefore1990,
       withOwnerSignal: stats.withOwnerSignal,
       ownerLivesHere: stats.ownerLivesHere,
+      homesFromBuildingOnly: stats.homesFromBuildingOnly,
       flags,
       suggestedStatus: suggestedStatus(flags),
       importedAt,
@@ -217,7 +243,8 @@ async function main() {
     }
     const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)}%` : "n/a");
     console.log(
-      `[parcels] ${county.name} (${fips}): ${stats.parcelsRead} records, ${stats.repeatedRecords} repeats merged, ${stats.homes} homes, ` +
+      `[parcels] ${county.name} (${fips}): ${stats.parcelsRead} records, ${stats.repeatedRecords} repeats merged, ${stats.homes} homes ` +
+        `(${stats.homesFromBuildingOnly} guessed from a building), ` +
         `year built ${pct(stats.withYearBuilt, stats.homes)}, built before 1990 ${pct(stats.builtBefore1990, stats.withYearBuilt)}, ` +
         `owner lives here ${pct(stats.ownerLivesHere, stats.withOwnerSignal)} of ${pct(stats.withOwnerSignal, stats.homes)} known, ` +
         `flags [${flags.join(", ")}], suggested ${row.suggestedStatus}`
