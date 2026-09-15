@@ -26,6 +26,10 @@ const canvassJobSchema = new Schema(
     milestoneAt: { type: Date, default: null },
     jobCreatedAt: { type: Date, default: null },
     jobModifiedAt: { type: Date, default: null },
+    // When the job reached Approved (a signed contract), read from its milestone history by
+    // scripts/canvass-jobs-signed.ts. signedCheckedAt is set even when it never reached Approved.
+    signedAt: { type: Date, default: null },
+    signedCheckedAt: { type: Date, default: null },
     tradeTypes: { type: [String], default: [] },
     workType: { type: String, default: "" },
     jobCategory: { type: String, default: "" },

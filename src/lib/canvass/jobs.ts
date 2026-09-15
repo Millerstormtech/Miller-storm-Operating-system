@@ -8,6 +8,8 @@
 //
 // Pure: no DB, no network.
 
+import { REVENUE_STAGE } from "../acculynx/config";
+
 export type JobRecord = {
   jobId: string;
   jobNumber: string;
@@ -63,4 +65,14 @@ export function mapJob(job: any, branch: string): JobRecord {
  */
 export function isOpenJob(job: Pick<JobRecord, "milestone">): boolean {
   return job.milestone !== "Cancelled";
+}
+
+/**
+ * When the job was signed: the date it reached Approved, the stage the sales
+ * leaderboard counts as a contract (REVENUE_STAGE in acculynx/config), read from
+ * AccuLynx GET /jobs/{id}/milestone-history. Null when it never got there.
+ */
+export function signedDateFrom(history: { items?: Array<{ name?: string; date?: string }> } | null | undefined): string | null {
+  const reached = (history?.items ?? []).find((item) => item?.name === REVENUE_STAGE);
+  return reached?.date ? reached.date : null;
 }

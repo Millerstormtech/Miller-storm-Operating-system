@@ -1,6 +1,6 @@
 // src/lib/canvass/jobs.test.ts
 import { describe, it, expect } from "vitest";
-import { mapJob, isOpenJob } from "./jobs";
+import { mapJob, isOpenJob, signedDateFrom } from "./jobs";
 
 // Shaped like one item of AccuLynx GET /jobs (field names checked 15 Sep 2026). Made-up values.
 function job(overrides: Record<string, unknown> = {}) {
@@ -109,5 +109,29 @@ describe("isOpenJob", () => {
 
   it("does not count a Cancelled job", () => {
     expect(isOpenJob(mapJob(job({ currentMilestone: "Cancelled" }), "DFW"))).toBe(false);
+  });
+});
+
+describe("signedDateFrom", () => {
+  // AccuLynx GET /jobs/{id}/milestone-history answers { items: [{ name, date }] },
+  // the same shape the leaderboard sync reads.
+  it("takes the day the job reached Approved, the stage the leaderboard counts as a signed contract", () => {
+    const history = {
+      items: [
+        { name: "Lead", date: "2026-03-01T15:00:00Z" },
+        { name: "Prospect", date: "2026-03-10T15:00:00Z" },
+        { name: "Approved", date: "2026-04-02T16:30:00Z" },
+      ],
+    };
+    expect(signedDateFrom(history)).toBe("2026-04-02T16:30:00Z");
+  });
+
+  it("is null for a job that never reached Approved", () => {
+    expect(signedDateFrom({ items: [{ name: "Lead", date: "2026-03-01T15:00:00Z" }] })).toBeNull();
+  });
+
+  it("is null for a missing or empty history", () => {
+    expect(signedDateFrom(null)).toBeNull();
+    expect(signedDateFrom({ items: [] })).toBeNull();
   });
 });
