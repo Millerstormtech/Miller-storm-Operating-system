@@ -225,6 +225,16 @@ describe("parcelToHome", () => {
     expect(parcelToHome(parcel({ Prop_ID: "1576.00000000", GEO_ID: "" }), lot, THIS_YEAR, "GEO_ID")).toBeNull();
   });
 
+  it("with an appraisal-district home list, a parcel the district lists is a home whatever the state file's code (Potter, Randall)", () => {
+    const home = parcelToHome(parcel({ STAT_LAND_: "S6910" }), lot, THIS_YEAR, "Prop_ID", new Map([["12345", "A"]]))!;
+    expect(home.landUse).toBe("A");
+    expect(home.landUseSource).toBe("district");
+  });
+
+  it("with an appraisal-district home list, a parcel the district does not list is not a home, even with code A1", () => {
+    expect(parcelToHome(parcel({ Prop_ID: "99999" }), lot, THIS_YEAR, "Prop_ID", new Map([["12345", "A"]]))).toBeNull();
+  });
+
   it("turns a three-digit county code into a full Texas FIPS code", () => {
     expect(parcelToHome(parcel({ FIPS: "219" }), lot, THIS_YEAR)!.fips).toBe("48219");
   });

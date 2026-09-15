@@ -20,10 +20,11 @@ export type ParcelProperties = Record<string, unknown>;
 
 /**
  * How a home was recognized: the state land-use code, the county's own local
- * code, or only a building on a parcel in a county with no usable codes. The
- * last is a guess, and the quality page says so.
+ * code, the county appraisal district's own records, or only a building on a
+ * parcel in a county with no usable codes. The last is a guess, and the quality
+ * page says so.
  */
-export type LandUseSource = "state" | "local" | "building";
+export type LandUseSource = "state" | "local" | "district" | "building";
 
 export type HomeRecord = {
   fips: string;
@@ -163,19 +164,27 @@ export function mailingLine(p: ParcelProperties): string {
  * `idField` is the field that identifies a property in this county's file,
  * chosen by propertyIds.ts. With GEO_ID chosen (Ector 2025), a record without a
  * GEO_ID has no property id, because its Prop_ID is a shared group code.
+ *
+ * `districtHomes`, when given, is the county appraisal district's list of homes
+ * (property id to state code, from district.ts). The district then decides which
+ * parcels are houses, for counties whose state file cannot (Potter, Randall).
  */
 export function parcelToHome(
   p: ParcelProperties,
   geometry: PolygonGeometry | null,
   thisYear: number,
   idField: IdField = "Prop_ID",
+  districtHomes?: ReadonlyMap<string, string>,
 ): HomeRecord | null {
   if (!geometry) return null;
-  const decision = homeDecision(p, thisYear);
-  if (!decision.isHome || !decision.source) return null;
-
   const propId = idField === "GEO_ID" ? text(p.GEO_ID) : text(p.Prop_ID) || text(p.GEO_ID);
   if (!propId) return null;
+
+  const districtCode = districtHomes?.get(propId);
+  const decision: { isHome: boolean; landUse: string; source: LandUseSource | null } = districtHomes
+    ? { isHome: districtCode !== undefined, landUse: districtCode ?? "", source: districtCode !== undefined ? "district" : null }
+    : homeDecision(p, thisYear);
+  if (!decision.isHome || !decision.source) return null;
 
   const point = representativePoint(geometry);
   if (!point) return null;

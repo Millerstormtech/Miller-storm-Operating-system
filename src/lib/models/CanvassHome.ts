@@ -29,7 +29,7 @@ const canvassHomeSchema = new Schema(
     // Storm days whose radar hail square covers this house, filled by scripts/canvass-hail-assign.ts.
     hail: { type: [{ date: String, inches: Number, _id: false }], default: [] },
     landUse: { type: String, default: "" }, // state land-use code, "A1", "E1"...
-    landUseSource: { type: String, enum: ["state", "local", "building"], default: null }, // how the home was recognized
+    landUseSource: { type: String, enum: ["state", "local", "district", "building"], default: null }, // how the home was recognized
     taxYear: { type: String, default: "" },
     importedAt: { type: Date, required: true },
   },
