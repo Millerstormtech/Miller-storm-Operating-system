@@ -1,5 +1,5 @@
 // src/lib/canvass/hail.ts
-// Hail sizes for the Knock Planner. The source is NOAA's MRMS "Maximum
+// Hail sizes for the Canvass Map. The source is NOAA's MRMS "Maximum
 // Estimated Size of Hail" radar product, which reports millimetres on a grid of
 // roughly one kilometre (spec A5).
 //

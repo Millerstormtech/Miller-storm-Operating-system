@@ -1,6 +1,6 @@
 // src/lib/canvass/parcel.ts
 // Turns one record from the Texas state property file (TxGIO Land Parcels) into
-// a Knock Planner house, or null when the parcel is not a home.
+// a Canvass Map house, or null when the parcel is not a home.
 //
 // Field names and layouts were checked on the 2025 Hockley County file on
 // 14 Sep 2026: the street type is sometimes its own field, the owner's mailing

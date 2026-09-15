@@ -1,6 +1,6 @@
 // scripts/canvass-import-parcels.ts
 // Loads one county's houses from the Texas state property file (TxGIO Land
-// Parcels) into the Knock Planner, and records that county's data-quality row.
+// Parcels) into the Canvass Map, and records that county's data-quality row.
 //
 //   npx vite-node scripts/canvass-import-parcels.ts --folder D:/knock-planner/data/parcels/48219
 //

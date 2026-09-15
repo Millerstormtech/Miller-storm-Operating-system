@@ -1,5 +1,5 @@
 // src/lib/canvass/grade.ts
-// How one house gets its Knock Planner color (spec A4).
+// How one house gets its Canvass Map color (spec A4).
 //
 // Pure: no DB, no React, no clock. The caller passes the house's facts and
 // today's date as "YYYY-MM-DD". The nightly recompute, the map API and the

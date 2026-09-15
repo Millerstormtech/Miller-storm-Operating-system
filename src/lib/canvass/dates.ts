@@ -1,5 +1,5 @@
 // src/lib/canvass/dates.ts
-// Calendar-day helpers for the Knock Planner. Days are plain "YYYY-MM-DD"
+// Calendar-day helpers for the Canvass Map. Days are plain "YYYY-MM-DD"
 // strings and nothing here reads the clock: the caller decides what "today" is,
 // the same convention as leaderboard/contractKing.ts.
 

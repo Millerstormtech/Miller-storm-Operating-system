@@ -1,5 +1,5 @@
 // src/lib/canvass/address.ts
-// Address helpers for the Knock Planner.
+// Address helpers for the Canvass Map.
 //
 // The main job is the "owner appears to live here" signal: the Texas property
 // file gives each house's address and the owner's mailing address, and when the

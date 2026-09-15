@@ -1,7 +1,7 @@
 // src/lib/models/CanvassHome.ts
 import { Schema, model, models } from "mongoose";
 
-// One house on the Knock Planner map, loaded from the Texas state property file
+// One house on the Canvass Map, loaded from the Texas state property file
 // by scripts/canvass-import-parcels.ts. Keyed by county FIPS + property id, so a
 // yearly re-import updates houses in place instead of duplicating them.
 //

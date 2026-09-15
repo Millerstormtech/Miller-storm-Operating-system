@@ -1,5 +1,5 @@
 // src/lib/canvass/counties.ts
-// The 41 counties the Knock Planner covers: every county containing a city on
+// The 41 counties the Canvass Map covers: every county containing a city on
 // docs/Cities & Regions - Sheet1.csv (confirmed by Youssef, 14 Sep 2026; spec
 // A10). A county is in when any listed city lies in it, even partly, which is
 // why Kaufman is here for the slice of Dallas and Mesquite inside it.

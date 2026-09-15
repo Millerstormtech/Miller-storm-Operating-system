@@ -1,5 +1,5 @@
 // src/lib/canvass/config.ts
-// Every number the Knock Planner grade uses, in one place (spec A4). Tuning the
+// Every number the Canvass Map grade uses, in one place (spec A4). Tuning the
 // grade after the backtest means changing this file and its tests, nothing else.
 
 export type GradeConfig = {

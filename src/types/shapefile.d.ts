@@ -1,5 +1,5 @@
 // Minimal types for the `shapefile` package, which ships none. Only what the
-// Knock Planner parcel importer uses (scripts/canvass-import-parcels.ts).
+// Canvass Map parcel importer uses (scripts/canvass-import-parcels.ts).
 declare module "shapefile" {
   export type Feature = {
     type: "Feature";
