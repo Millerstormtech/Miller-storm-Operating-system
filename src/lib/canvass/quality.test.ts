@@ -8,6 +8,17 @@ const collin: CountyStats = { homes: 319897, withYearBuilt: 317018, builtBefore1
 const dallasStateFile: CountyStats = { homes: 525712, withYearBuilt: 0, builtBefore1990: 0, withOwnerSignal: 525712, ownerLivesHere: 423724 };
 const hockley: CountyStats = { homes: 7263, withYearBuilt: 4837, builtBefore1990: 124, withOwnerSignal: 7263, ownerLivesHere: 3290 };
 const rockwall2023: CountyStats = { homes: 38721, withYearBuilt: 0, builtBefore1990: 0, withOwnerSignal: 38721, ownerLivesHere: 1665 };
+// Ector as loaded with Prop_ID on 15 Sep 2026: 71,977 of 75,947 records reused a
+// Prop_ID on a different address, and only 3,595 houses were left.
+const ectorWithPropId: CountyStats = {
+  homes: 3595,
+  withYearBuilt: 3548,
+  builtBefore1990: 3332,
+  withOwnerSignal: 3577,
+  ownerLivesHere: 3391,
+  records: 75947,
+  idConflicts: 71977,
+};
 
 describe("countyFlags and suggestedStatus on the measured counties", () => {
   it("Tarrant has no flags and can go live", () => {
@@ -32,6 +43,15 @@ describe("countyFlags and suggestedStatus on the measured counties", () => {
   it("Rockwall's 2023 file, where only 4% of owners seemed to live at home, needs a person to look", () => {
     expect(countyFlags(rockwall2023)).toEqual(["year-built-missing", "owner-signal-suspicious"]);
     expect(suggestedStatus(countyFlags(rockwall2023))).toBe("review");
+  });
+
+  it("Ector loaded with a Prop_ID that is really a group code needs a person to look", () => {
+    expect(countyFlags(ectorWithPropId)).toEqual(["ids-repeated"]);
+    expect(suggestedStatus(countyFlags(ectorWithPropId))).toBe("review");
+  });
+
+  it("Tarrant, where 5% of records reuse an id on another address, is not flagged", () => {
+    expect(countyFlags({ ...tarrant, records: 757171, idConflicts: 38365 })).toEqual([]);
   });
 });
 
@@ -74,5 +94,19 @@ describe("countyFlags thresholds", () => {
     const flags = countyFlags({ ...base, withOwnerSignal: 499, ownerLivesHere: 300 });
     expect(flags).toEqual(["owner-signal-missing"]);
     expect(suggestedStatus(flags)).toBe("live");
+  });
+
+  it("ids reused on other addresses for 20% of records are tolerated", () => {
+    expect(countyFlags({ ...base, records: 1000, idConflicts: 200 })).toEqual([]);
+  });
+
+  it("more than 20% need review", () => {
+    const flags = countyFlags({ ...base, records: 1000, idConflicts: 201 });
+    expect(flags).toEqual(["ids-repeated"]);
+    expect(suggestedStatus(flags)).toBe("review");
+  });
+
+  it("counts without record totals skip the id check", () => {
+    expect(countyFlags({ ...base, idConflicts: 900 })).toEqual([]);
   });
 });

@@ -16,6 +16,7 @@ const canvassCountyQualitySchema = new Schema(
     parcelsRead: { type: Number, default: 0 },
     repeatedRecords: { type: Number, default: 0 }, // records merged into another record with the same property id
     idField: { type: String, enum: ["Prop_ID", "GEO_ID"], default: "Prop_ID" }, // which state-file field identifies a property in this county
+    idConflicts: { type: Number, default: 0 }, // records whose chosen id field came back on a different address (src/lib/canvass/propertyIds.ts)
     homes: { type: Number, default: 0 },
     withYearBuilt: { type: Number, default: 0 },
     builtBefore1990: { type: Number, default: 0 },

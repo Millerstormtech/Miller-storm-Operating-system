@@ -216,6 +216,15 @@ describe("parcelToHome", () => {
     expect(parcelToHome(parcel({ Prop_ID: "", GEO_ID: "" }), lot, THIS_YEAR)).toBeNull();
   });
 
+  it("uses GEO_ID when the county's Prop_ID was found to be a shared group code (Ector 2025)", () => {
+    const home = parcelToHome(parcel({ Prop_ID: "1576.00000000", GEO_ID: "12345-00001-0000A" }), lot, THIS_YEAR, "GEO_ID")!;
+    expect(home.propId).toBe("12345-00001-0000A");
+  });
+
+  it("with GEO_ID chosen, a record without a GEO_ID has no property id", () => {
+    expect(parcelToHome(parcel({ Prop_ID: "1576.00000000", GEO_ID: "" }), lot, THIS_YEAR, "GEO_ID")).toBeNull();
+  });
+
   it("turns a three-digit county code into a full Texas FIPS code", () => {
     expect(parcelToHome(parcel({ FIPS: "219" }), lot, THIS_YEAR)!.fips).toBe("48219");
   });

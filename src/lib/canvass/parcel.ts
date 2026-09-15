@@ -14,6 +14,7 @@
 
 import { ownerLivesHere } from "./address";
 import { representativePoint, type PolygonGeometry, type Position } from "./geometry";
+import type { IdField } from "./propertyIds";
 
 export type ParcelProperties = Record<string, unknown>;
 
@@ -158,12 +159,22 @@ export function mailingLine(p: ParcelProperties): string {
   return (usable ?? candidates[0] ?? "").replace(/\s+/g, " ");
 }
 
-export function parcelToHome(p: ParcelProperties, geometry: PolygonGeometry | null, thisYear: number): HomeRecord | null {
+/**
+ * `idField` is the field that identifies a property in this county's file,
+ * chosen by propertyIds.ts. With GEO_ID chosen (Ector 2025), a record without a
+ * GEO_ID has no property id, because its Prop_ID is a shared group code.
+ */
+export function parcelToHome(
+  p: ParcelProperties,
+  geometry: PolygonGeometry | null,
+  thisYear: number,
+  idField: IdField = "Prop_ID",
+): HomeRecord | null {
   if (!geometry) return null;
   const decision = homeDecision(p, thisYear);
   if (!decision.isHome || !decision.source) return null;
 
-  const propId = text(p.Prop_ID) || text(p.GEO_ID);
+  const propId = idField === "GEO_ID" ? text(p.GEO_ID) : text(p.Prop_ID) || text(p.GEO_ID);
   if (!propId) return null;
 
   const point = representativePoint(geometry);

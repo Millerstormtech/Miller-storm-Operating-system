@@ -12,5 +12,12 @@ declare module "shapefile" {
     read(): Promise<{ done: boolean; value: Feature }>;
   };
 
+  /** Attribute rows only, read from the .dbf without the outlines. */
+  export type DbfSource = {
+    read(): Promise<{ done: boolean; value: Record<string, unknown> }>;
+  };
+
   export function open(shp: string, dbf?: string, options?: { encoding?: string }): Promise<Source>;
+
+  export function openDbf(dbf: string, options?: { encoding?: string }): Promise<DbfSource>;
 }

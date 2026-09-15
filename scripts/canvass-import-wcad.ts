@@ -144,7 +144,12 @@ async function main() {
       withOwnerSignal: await CanvassHomeModel.countDocuments({ fips: WILLIAMSON_FIPS, ownerLivesHere: { $ne: null } }),
       ownerLivesHere: await CanvassHomeModel.countDocuments({ fips: WILLIAMSON_FIPS, ownerLivesHere: true }),
     };
-    const flags = countyFlags(counts);
+    // Keep the base import's record and id counts, so a recount never drops an id flag.
+    const base = (await CanvassCountyQualityModel.findOne({ fips: WILLIAMSON_FIPS, source: "txgio-2025" }, { parcelsRead: 1, idConflicts: 1 }).lean()) as {
+      parcelsRead?: number;
+      idConflicts?: number;
+    } | null;
+    const flags = countyFlags({ ...counts, records: base?.parcelsRead, idConflicts: base?.idConflicts });
     await CanvassCountyQualityModel.updateOne(
       { fips: WILLIAMSON_FIPS, source: "txgio-2025" },
       { $set: { ...counts, flags, suggestedStatus: suggestedStatus(flags) }, $addToSet: { extraSources: options.source } }

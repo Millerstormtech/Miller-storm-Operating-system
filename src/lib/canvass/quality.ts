@@ -3,9 +3,11 @@
 //
 // The Texas property file is uneven. On 14 Sep 2026 Dallas and Rockwall had no
 // year built at all, Hockley's year built looked like an "effective" year that
-// resets after remodeling, and Rockwall's 2023 file broke the owner signal. This
-// module turns a county's counts into flags and a suggested status, so a gap
-// like that is caught on the admin quality page before reps see bad colors.
+// resets after remodeling, and Rockwall's 2023 file broke the owner signal. On
+// 15 Sep, Ector's Prop_ID turned out to be a group code that merged most of Odessa
+// into a few thousand houses. This module turns a county's counts into flags and
+// a suggested status, so a gap like that is caught on the admin quality page
+// before reps see bad colors.
 //
 // It only SUGGESTS. A county flagged for review is looked at by a person.
 //
@@ -22,6 +24,10 @@ export type CountyStats = {
   withOwnerSignal: number;
   /** Of those, how many are true. */
   ownerLivesHere: number;
+  /** Records read from the state file, when known. */
+  records?: number;
+  /** Records whose chosen id field came back on a different address (propertyIds.ts), when known. */
+  idConflicts?: number;
 };
 
 export type QualityFlag =
@@ -29,7 +35,8 @@ export type QualityFlag =
   | "year-built-missing"
   | "year-built-suspicious"
   | "owner-signal-missing"
-  | "owner-signal-suspicious";
+  | "owner-signal-suspicious"
+  | "ids-repeated";
 
 export type CountyStatus = "live" | "age-unknown" | "review";
 
@@ -46,6 +53,11 @@ export const QUALITY = {
   minOwnerSignalShare: 0.5,
   /** Outside this range of owners living at home, the address comparison has probably broken. */
   ownerLivesHereRange: { min: 0.3, max: 0.95 },
+  /**
+   * Above this share of records reusing the property id on a different address,
+   * the id is not a property id. Tarrant measured 5.1%; Ector's Prop_ID 94.8%.
+   */
+  maxIdConflictShare: 0.2,
 };
 
 export function countyFlags(stats: CountyStats): QualityFlag[] {
@@ -67,14 +79,17 @@ export function countyFlags(stats: CountyStats): QualityFlag[] {
     }
   }
 
+  if (stats.records && stats.idConflicts !== undefined && stats.idConflicts / stats.records > QUALITY.maxIdConflictShare) {
+    flags.push("ids-repeated");
+  }
+
   return flags;
 }
 
 /** Anything suspicious needs a person; missing year built alone just means "Age unknown". */
 export function suggestedStatus(flags: readonly QualityFlag[]): CountyStatus {
-  if (flags.includes("no-homes") || flags.includes("year-built-suspicious") || flags.includes("owner-signal-suspicious")) {
-    return "review";
-  }
+  const needsPerson: QualityFlag[] = ["no-homes", "year-built-suspicious", "owner-signal-suspicious", "ids-repeated"];
+  if (flags.some((flag) => needsPerson.includes(flag))) return "review";
   if (flags.includes("year-built-missing")) return "age-unknown";
   return "live";
 }

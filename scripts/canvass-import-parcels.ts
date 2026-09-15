@@ -12,8 +12,9 @@
 //   --dry-run         read and count only, write nothing
 //   --replace         delete the county's existing homes first, so homes a
 //                     stricter filter no longer accepts do not linger. This is
-//                     the BASE step: the Dallas appraisal-district year built,
-//                     hail and grades must be re-run for that county afterwards.
+//                     the BASE step: the appraisal-district fills (Dallas,
+//                     Williamson), hail, matching and grades must be re-run for
+//                     that county afterwards.
 //
 // Safety: it refuses anything but the local test database unless --allow-remote
 // is given (src/lib/canvass/dbGuard.ts, which also refuses the SSH tunnel to the
@@ -21,10 +22,12 @@
 // It prints counts only, never owner names or addresses, and hides record details
 // in database error messages.
 //
-// One property id can appear on several records (Hockley 2025: 101 ids, 189
-// extra records, same address and year built each time). Records are merged per
-// id before anything is written, so the quality counts describe the same houses
-// the map shows.
+// Property ids: a first pass over the attribute file measures how often Prop_ID
+// and GEO_ID come back on a different address, and src/lib/canvass/propertyIds.ts
+// picks the field that really identifies a property (Ector's 2025 Prop_ID is a
+// group code). Records with the same id are then merged before anything is written
+// (Hockley 2025: 101 ids, 189 extra records, same address each time), so the
+// quality counts describe the same houses the map shows.
 //
 // Coordinates: the .prj beside the .shp names the coordinate system. 40 of our
 // 41 county files are longitude/latitude; Martin County's 2025 file is Web
@@ -42,6 +45,7 @@ import mongoose from "mongoose";
 import { parcelToHome, mergeHomes, type HomeRecord, type HomePiece } from "../src/lib/canvass/parcel";
 import { outlineArea, type PolygonGeometry } from "../src/lib/canvass/geometry";
 import { coordinateSystemOf, geometryToLonLat, isInsideTexasBox, type CoordinateSystem } from "../src/lib/canvass/coordinates";
+import { chooseIdField, createIdConflictCounter, type IdField } from "../src/lib/canvass/propertyIds";
 import { SERVICE_COUNTIES, isServiceCounty } from "../src/lib/canvass/counties";
 import { isLocalTestDatabase } from "../src/lib/canvass/dbGuard";
 import { countyFlags, suggestedStatus, type CountyStats } from "../src/lib/canvass/quality";
@@ -148,6 +152,22 @@ async function main() {
   const system: CoordinateSystem = fs.existsSync(prj) ? coordinateSystemOf(fs.readFileSync(prj, "utf8")) : "lon-lat";
   if (system === "unknown") throw new Error(`Unsupported coordinate system in ${path.basename(prj)}; nothing was read, deleted or written`);
 
+  // Pass 0: which field identifies a property in this file.
+  const idCounter = createIdConflictCounter();
+  const attributes = await shapefile.openDbf(shp.replace(/\.shp$/i, ".dbf"), { encoding });
+  for (;;) {
+    const { done, value } = await attributes.read();
+    if (done) break;
+    idCounter.add({ propId: String(value.Prop_ID ?? ""), geoId: String(value.GEO_ID ?? ""), address: String(value.SITUS_ADDR ?? "") });
+  }
+  const idCounts = idCounter.counts();
+  const idField: IdField = chooseIdField(idCounts);
+  const idConflicts = idField === "GEO_ID" ? idCounts.geoIdConflicts : idCounts.propIdConflicts;
+  console.log(
+    `[parcels] property id field: ${idField} (reused on another address: Prop_ID ${idCounts.propIdConflicts} of ${idCounts.propIdValues}, ` +
+      `GEO_ID ${idCounts.geoIdConflicts} of ${idCounts.geoIdValues})`
+  );
+
   const thisYear = new Date().getFullYear();
   const importedAt = new Date();
   const statsByFips = new Map<string, RunStats>();
@@ -178,7 +198,7 @@ async function main() {
         ? (value.geometry as PolygonGeometry)
         : null;
     const geometry = outline ? geometryToLonLat(outline, system) : null;
-    const home = parcelToHome(value.properties, geometry, thisYear);
+    const home = parcelToHome(value.properties, geometry, thisYear, idField);
     if (!home) continue;
     if (!isServiceCounty(home.fips)) {
       skippedOtherCounty++;
@@ -254,7 +274,7 @@ async function main() {
   for (const [fips, stats] of statsByFips) {
     const county = SERVICE_COUNTIES.find((c) => c.fips === fips);
     if (!county) continue;
-    const flags = countyFlags(stats);
+    const flags = countyFlags({ ...stats, records: stats.parcelsRead, idConflicts });
     const row = {
       fips,
       county: county.name,
@@ -262,6 +282,9 @@ async function main() {
       source: options.source,
       taxYear: stats.taxYear,
       parcelsRead: stats.parcelsRead,
+      repeatedRecords: stats.repeatedRecords,
+      idField,
+      idConflicts,
       homes: stats.homes,
       withYearBuilt: stats.withYearBuilt,
       builtBefore1990: stats.builtBefore1990,
@@ -277,7 +300,7 @@ async function main() {
     }
     const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)}%` : "n/a");
     console.log(
-      `[parcels] ${county.name} (${fips}): ${stats.parcelsRead} records, ${stats.repeatedRecords} repeats merged, ${stats.homes} homes ` +
+      `[parcels] ${county.name} (${fips}): ${stats.parcelsRead} records, id ${idField}, ${stats.repeatedRecords} repeats merged, ${stats.homes} homes ` +
         `(${stats.homesFromBuildingOnly} guessed from a building), ` +
         `year built ${pct(stats.withYearBuilt, stats.homes)}, built before 1990 ${pct(stats.builtBefore1990, stats.withYearBuilt)}, ` +
         `owner lives here ${pct(stats.ownerLivesHere, stats.withOwnerSignal)} of ${pct(stats.withOwnerSignal, stats.homes)} known, ` +
