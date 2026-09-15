@@ -11,8 +11,9 @@
 //   --allow-remote    required to write to any database not on this computer
 //   --dry-run         read and count only, write nothing
 //
-// Safety: it refuses a non-local database unless --allow-remote is given, and it
-// never reads MONGODB_URI, so the live database in .env cannot be hit by accident.
+// Safety: it refuses anything but the local test database unless --allow-remote
+// is given (src/lib/canvass/dbGuard.ts, which also refuses the SSH tunnel to the
+// live database), and it never reads MONGODB_URI.
 // It prints counts only, never owner names or addresses.
 //
 // One property id can appear on several records (Hockley 2025: 101 ids, 189
@@ -30,6 +31,7 @@ import mongoose from "mongoose";
 import { parcelToHome, mergeHomes, type HomeRecord, type HomePiece } from "../src/lib/canvass/parcel";
 import { outlineArea, type PolygonGeometry } from "../src/lib/canvass/geometry";
 import { SERVICE_COUNTIES, isServiceCounty } from "../src/lib/canvass/counties";
+import { isLocalTestDatabase } from "../src/lib/canvass/dbGuard";
 import { countyFlags, suggestedStatus, type CountyStats } from "../src/lib/canvass/quality";
 import { CanvassHomeModel } from "../src/lib/models/CanvassHome";
 import { CanvassCountyQualityModel } from "../src/lib/models/CanvassCountyQuality";
@@ -65,10 +67,8 @@ function parseArgs(argv: string[]): Options {
 }
 
 function assertLocalUnlessAllowed(uri: string, allowRemote: boolean): void {
-  const hosts = uri.replace(/^mongodb(\+srv)?:\/\//, "").split("/")[0].split("@").pop() ?? "";
-  const local = hosts.split(",").every((host) => /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host));
-  if (!local && !allowRemote) {
-    throw new Error("Refusing to write to a database that is not on this computer. Pass --allow-remote only when approved.");
+  if (!isLocalTestDatabase(uri) && !allowRemote) {
+    throw new Error("Refusing to write to anything but the local test database. Pass --allow-remote only when approved.");
   }
 }
 
