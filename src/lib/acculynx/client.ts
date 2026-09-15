@@ -93,6 +93,13 @@ export function createClient(apiKey: string) {
     return out;
   }
 
+  // One page (25) of ALL jobs in AccuLynx's default order, with the location's total
+  // job count. Used by the Canvass Map job backfill, which pages with pageStartIndex.
+  async function fetchAllJobsPage(pageStartIndex: number): Promise<{ items: any[]; count: number }> {
+    const page = await get("/jobs", { pageSize: JOBS_PAGE, pageStartIndex });
+    return { items: page?.items ?? [], count: Number(page?.count ?? 0) };
+  }
+
   const fetchMilestoneHistory = (jobId: string) => get(`/jobs/${jobId}/milestone-history`);
   const fetchRepresentatives = (jobId: string) => get(`/jobs/${jobId}/representatives`);
   const fetchFinancials = (jobId: string) => get(`/jobs/${jobId}/financials`);
@@ -125,6 +132,7 @@ export function createClient(apiKey: string) {
   return {
     fetchCompanySettings,
     fetchJobsModifiedSince,
+    fetchAllJobsPage,
     fetchMilestoneHistory,
     fetchRepresentatives,
     fetchFinancials,

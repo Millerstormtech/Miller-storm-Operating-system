@@ -70,7 +70,19 @@ export function createClient(apiKey: string) {
     return j?.result ?? [];
   }
 
-  return { fetchUsers, fetchLeaderboards };
+  // One page of doors (RepCard "customers"): result.data, 100 per page in ascending id
+  // order, with result.totalPages and result.totalCount. Used by the Canvass Map door import.
+  async function fetchCustomersPage(page: number): Promise<{ data: any[]; totalPages: number; totalCount: number }> {
+    const j = await get("/customers", { page });
+    const res = j?.result ?? {};
+    return {
+      data: Array.isArray(res.data) ? res.data : [],
+      totalPages: Number(res.totalPages ?? 0),
+      totalCount: Number(res.totalCount ?? 0),
+    };
+  }
+
+  return { fetchUsers, fetchLeaderboards, fetchCustomersPage };
 }
 
 export type RepCardClient = ReturnType<typeof createClient>;
