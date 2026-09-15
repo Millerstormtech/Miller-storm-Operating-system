@@ -217,8 +217,8 @@ describe("gradeHome: our knock history", () => {
 });
 
 describe("gradeHome: always red", () => {
-  // "Invoiced" comes after Installed on the live door list (seen 15 Sep 2026); build default until Youssef confirms.
-  it.each(["Inspected", "Claim Filed", "Signed", "Installed", "Invoiced"])(
+  // "Invoiced", "Install Complete" and "Estimate in Hand" are on the live door list (15 Sep 2026); build defaults until Youssef confirms.
+  it.each(["Inspected", "Claim Filed", "Signed", "Installed", "Invoiced", "Install Complete", "Estimate in Hand"])(
     "a %s result means we are already working with this house",
     (status) => {
       const g = gradeHome(home({ yearBuilt: 1980, ownerLivesHere: true, knocks: [{ status, at: "2026-03-02" }] }), TODAY);

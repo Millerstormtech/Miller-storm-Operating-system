@@ -1,6 +1,7 @@
 // scripts/canvass-hail-assign.ts
 // Gives every Canvass Map house the storm days whose radar hail square covers
-// it, from the squares loaded by scripts/canvass-hail-load.ts.
+// it, from the squares loaded by scripts/canvass-hail-load.ts, after taking out
+// fixed radar false echoes (src/lib/canvass/hailClutter.ts).
 //
 //   npx vite-node scripts/canvass-hail-assign.ts
 //
@@ -12,12 +13,14 @@
 //   --dry-run                                count only, write nothing
 //
 // Re-runnable: it first removes the house hail it is about to recompute (all of
-// it, or only the requested days). Houses are matched to squares one small area
-// at a time, so a storm across half of Texas never loads every house at once.
+// it, or only the requested days). False-echo squares are found from ALL loaded
+// days, whatever --from and --to say. Houses are matched to squares one small
+// area at a time, so a storm across half of Texas never loads every house at once.
 // Run after the house import: a --replace house reload erases hail.
 
 import mongoose from "mongoose";
-import { assignHail } from "../src/lib/canvass/hailAssign";
+import { assignHail, type HailSquare } from "../src/lib/canvass/hailAssign";
+import { clutterSquares, replaceClutter } from "../src/lib/canvass/hailClutter";
 import { isLocalTestDatabase } from "../src/lib/canvass/dbGuard";
 import { CanvassHomeModel } from "../src/lib/models/CanvassHome";
 import { CanvassHailCellModel } from "../src/lib/models/CanvassHailCell";
@@ -56,12 +59,26 @@ function tileBox(tile: string) {
   return { type: "Polygon", coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]] };
 }
 
+type StoredCell = { location: { coordinates: [number, number] }; inches: number; stormDate?: string };
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (!isLocalTestDatabase(options.uri) && !options.allowRemote) {
     throw new Error("Refusing to write to anything but the local test database. Pass --allow-remote only when approved.");
   }
   await mongoose.connect(options.uri);
+
+  // False-echo squares, from every loaded day.
+  async function* history() {
+    const cursor = CanvassHailCellModel.find({ inches: { $gte: 1 } }, { location: 1, inches: 1 }).lean().cursor();
+    for await (const cell of cursor as AsyncIterable<StoredCell>) {
+      yield { lat: cell.location.coordinates[1], lon: cell.location.coordinates[0], inches: cell.inches };
+    }
+  }
+  const historyList: Array<{ lat: number; lon: number; inches: number }> = [];
+  for await (const entry of history()) historyList.push(entry);
+  const clutter = clutterSquares(historyList);
+  console.log(`[hail-assign] ${clutter.size} false-echo squares found in ${historyList.length} loaded readings of 1 in or more`);
 
   const dayFilter: Record<string, unknown> = { inches: { $gte: options.minInches } };
   if (options.from) dayFilter.stormDate = { $gte: options.from, $lte: options.to };
@@ -75,18 +92,24 @@ async function main() {
   }
 
   let totalEvents = 0;
+  let replaced = 0;
+  let dropped = 0;
   const housesWithHail = new Set<string>();
   for (const day of days) {
-    const squares = (await CanvassHailCellModel.find({ stormDate: day, inches: { $gte: options.minInches } }, { location: 1, inches: 1 }).lean()) as Array<{
-      location: { coordinates: [number, number] };
-      inches: number;
-    }>;
-    const byTile = new Map<string, Array<{ stormDate: string; lat: number; lon: number; inches: number }>>();
-    for (const s of squares) {
-      const [lon, lat] = s.location.coordinates;
-      const tile = tileOf(lat, lon);
+    // Every loaded square of the day: neighbours below --min-inches still inform a false-echo square.
+    const stored = (await CanvassHailCellModel.find({ stormDate: day }, { location: 1, inches: 1 }).lean()) as StoredCell[];
+    const raw: HailSquare[] = stored.map((cell) => ({ stormDate: day, lat: cell.location.coordinates[1], lon: cell.location.coordinates[0], inches: cell.inches }));
+    const cleaned = replaceClutter(raw, clutter);
+    dropped += raw.length - cleaned.length;
+    const rawInches = new Map(raw.map((square) => [`${square.lat}|${square.lon}`, square.inches]));
+    replaced += cleaned.filter((square) => rawInches.get(`${square.lat}|${square.lon}`) !== square.inches).length;
+
+    const byTile = new Map<string, HailSquare[]>();
+    for (const square of cleaned) {
+      if (square.inches < options.minInches) continue;
+      const tile = tileOf(square.lat, square.lon);
       if (!byTile.has(tile)) byTile.set(tile, []);
-      byTile.get(tile)!.push({ stormDate: day, lat, lon, inches: s.inches });
+      byTile.get(tile)!.push(square);
     }
 
     let dayEvents = 0;
@@ -104,7 +127,7 @@ async function main() {
       }>;
       // Tile edges fall on hail-square edges (0.25 degree is 25 squares), so a
       // house and the square over it always share a tile. Houses the padded box
-      // catches from a neighboring tile are left for that tile.
+      // catches from a neighbouring tile are left for that tile.
       const spots = found
         .map((h) => ({ id: String(h._id), lat: h.location.coordinates[1], lon: h.location.coordinates[0] }))
         .filter((spot) => tileOf(spot.lat, spot.lon) === tile);
@@ -118,11 +141,12 @@ async function main() {
     }
     await flush();
     totalEvents += dayEvents;
-    if (dayEvents > 0) console.log(`[hail-assign] ${day}: ${squares.length} squares, ${dayEvents} houses hit`);
+    if (dayEvents > 0) console.log(`[hail-assign] ${day}: ${cleaned.length} squares after false-echo cleaning, ${dayEvents} houses hit`);
   }
 
   console.log(
-    `[hail-assign] done: ${days.length} storm days, ${totalEvents} house-storm pairs ${options.dryRun ? "counted" : "written"}, ${housesWithHail.size} houses with hail of ${options.minInches} in or more`
+    `[hail-assign] done: ${days.length} storm days; false-echo readings replaced ${replaced}, dropped ${dropped}; ` +
+      `${totalEvents} house-storm pairs ${options.dryRun ? "counted" : "written"}, ${housesWithHail.size} houses with hail of ${options.minInches} in or more`
   );
   await mongoose.disconnect();
 }
