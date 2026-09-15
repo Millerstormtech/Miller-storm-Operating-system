@@ -32,6 +32,7 @@ const canvassJobSchema = new Schema(
     // The house this job sits on, when one is close enough (set by the matching step).
     homeId: { type: Schema.Types.ObjectId, default: null },
     matchMeters: { type: Number, default: null },
+    matchMethod: { type: String, enum: ["address", "distance"], default: null }, // same number and street, or nearest house
     loadedAt: { type: Date, required: true },
   },
   { timestamps: true }

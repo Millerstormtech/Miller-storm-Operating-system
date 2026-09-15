@@ -1,11 +1,17 @@
 // src/lib/canvass/match.ts
-// Matching a RepCard door or an AccuLynx job to the house it belongs to, by map
-// position (spec B3: the nearest home within 30 m).
+// Matching a RepCard door or an AccuLynx job to the house it belongs to.
 //
-// The database does the heavy lifting with a geospatial query; this is the one
-// definition of "nearest" that the importers, the backtest and the tests share.
+// Spec B3 said "the nearest home within 30 m". Refined 15 Sep 2026: both systems
+// give an address with the position, and the nearest parcel center can be the
+// neighbor's on a deep or oddly shaped lot, so a house with the same number and
+// street nearby wins first.
+//
+// The database finds the nearby houses with a geospatial query; this is the one
+// definition of the match that the importers, the backtest and the tests share.
 //
 // Pure: no DB, no network.
+
+import { addressKey } from "./address";
 
 export type Point = { lat: number; lng: number };
 
@@ -38,4 +44,30 @@ export function nearestWithin<T extends Point>(target: Point, candidates: readon
     }
   }
   return best;
+}
+
+export const MATCH = {
+  /** How far a house with the same number and street may be. */
+  addressSearchMeters: 250,
+  /** How far the nearest house may be when no address matches. */
+  maxMeters: 30,
+};
+
+export type HomeCandidate = Point & { id: string; addressLine: string };
+export type HomeMatch = { homeId: string; meters: number; method: "address" | "distance" };
+
+/**
+ * The house a door or job belongs to: the nearest house within 250 m with the same
+ * house number and street (direction words, street types and rural road spellings
+ * ignored); otherwise the nearest house within 30 m; otherwise null.
+ */
+export function matchToHome(target: Point & { addressLine: string }, candidates: readonly HomeCandidate[], limits = MATCH): HomeMatch | null {
+  const key = addressKey(target.addressLine, "");
+  if (key) {
+    const sameAddress = candidates.filter((home) => addressKey(home.addressLine, "") === key);
+    const home = nearestWithin(target, sameAddress, limits.addressSearchMeters);
+    if (home) return { homeId: home.id, meters: distanceMeters(target, home), method: "address" };
+  }
+  const nearest = nearestWithin(target, candidates, limits.maxMeters);
+  return nearest ? { homeId: nearest.id, meters: distanceMeters(target, nearest), method: "distance" } : null;
 }

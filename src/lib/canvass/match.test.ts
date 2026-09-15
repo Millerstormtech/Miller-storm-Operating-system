@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { distanceMeters, nearestWithin } from "./match";
+import { distanceMeters, matchToHome, nearestWithin } from "./match";
 
 describe("distanceMeters", () => {
   it("is zero for the same point", () => {
@@ -50,5 +50,63 @@ describe("nearestWithin", () => {
 
   it("returns null for an empty list", () => {
     expect(nearestWithin(door, [], 30)).toBeNull();
+  });
+});
+
+describe("matchToHome", () => {
+  // Made-up addresses around one Fort Worth point.
+  const door = { lat: 32.75, lng: -97.33, addressLine: "1402 N Example Street" };
+  const neighbor = { id: "neighbor", lat: 32.75005, lng: -97.33, addressLine: "1404 EXAMPLE ST" }; // about 6 m
+  const sameAddress = { id: "same-address", lat: 32.7502, lng: -97.33, addressLine: "1402 EXAMPLE ST" }; // about 22 m
+
+  it("picks the house with the same number and street over a closer neighbor", () => {
+    const match = matchToHome(door, [neighbor, sameAddress]);
+    expect(match).toMatchObject({ homeId: "same-address", method: "address" });
+    expect(match!.meters).toBeGreaterThan(21);
+    expect(match!.meters).toBeLessThan(23);
+  });
+
+  it("falls back to the nearest house within 30 m when no address matches", () => {
+    expect(matchToHome({ ...door, addressLine: "1500 OTHER RD" }, [neighbor, sameAddress])).toMatchObject({
+      homeId: "neighbor",
+      method: "distance",
+    });
+  });
+
+  it("returns null when no address matches and nothing is within 30 m", () => {
+    const far = { id: "far", lat: 32.7505, lng: -97.33, addressLine: "1500 OTHER RD" }; // about 56 m
+    expect(matchToHome(door, [far])).toBeNull();
+  });
+
+  it("does not take a same-address house farther than 250 m", () => {
+    const tooFar = { ...sameAddress, id: "too-far", lat: 32.753 }; // about 333 m
+    expect(matchToHome(door, [tooFar])).toBeNull();
+  });
+
+  it("takes the nearer of two houses with the same number and street", () => {
+    const farther = { ...sameAddress, id: "farther-same", lat: 32.751 }; // about 111 m
+    expect(matchToHome(door, [farther, sameAddress])?.homeId).toBe("same-address");
+  });
+
+  it("uses distance only when the door's address has no house number", () => {
+    expect(matchToHome({ ...door, addressLine: "EXAMPLE ST" }, [neighbor, sameAddress])).toMatchObject({
+      homeId: "neighbor",
+      method: "distance",
+    });
+  });
+
+  it("never matches a house with a blank address by address", () => {
+    const blank = { id: "blank", lat: 32.75005, lng: -97.33, addressLine: "" };
+    expect(matchToHome(door, [blank])).toMatchObject({ homeId: "blank", method: "distance" });
+  });
+
+  it("matches a rural road written two ways", () => {
+    const ruralDoor = { lat: 32.75, lng: -97.33, addressLine: "1234 County Road 5" };
+    const ruralHouse = { id: "rural", lat: 32.7509, lng: -97.33, addressLine: "1234 CR 5" }; // about 100 m
+    expect(matchToHome(ruralDoor, [ruralHouse])).toMatchObject({ homeId: "rural", method: "address" });
+  });
+
+  it("returns null for an empty list", () => {
+    expect(matchToHome(door, [])).toBeNull();
   });
 });
