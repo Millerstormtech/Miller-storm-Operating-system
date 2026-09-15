@@ -1,5 +1,6 @@
 // scripts/canvass-backtest.ts
-// The Checkpoint 2 backtest (plan T5.2, spec A6). Read-only.
+// The Checkpoint 2 backtest (plan T5.2, spec A6). Read-only, apart from creating
+// the ZIP index its random sample needs.
 //
 // For every AccuLynx job signed in the last 12 months and matched to a house, the
 // house is graded as of 30 days before signing, using only what we would have known
@@ -64,6 +65,8 @@ type HouseDoc = {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   await mongoose.connect(options.uri);
+  // The only write: the ZIP index that keeps the same-ZIP random sample from scanning every house per ZIP.
+  await CanvassHomeModel.createIndexes();
 
   const flagsByFips = new Map<string, string[]>();
   for (const row of (await CanvassCountyQualityModel.find({ source: "txgio-2025" }, { fips: 1, flags: 1 }).lean()) as Array<{ fips: string; flags?: string[] }>) {

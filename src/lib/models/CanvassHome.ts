@@ -46,5 +46,6 @@ const canvassHomeSchema = new Schema(
 
 canvassHomeSchema.index({ fips: 1, propId: 1 }, { unique: true });
 canvassHomeSchema.index({ location: "2dsphere" });
+canvassHomeSchema.index({ "address.zip": 1 }); // the backtest's same-ZIP random sample
 
 export const CanvassHomeModel = models.CanvassHome || model("CanvassHome", canvassHomeSchema, "canvass_homes");
