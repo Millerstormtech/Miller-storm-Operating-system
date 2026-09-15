@@ -6,7 +6,8 @@
 //
 // Pure: no files, no database.
 
-export type YearBuiltSource = "dcad" | "wcad" | "prad";
+/** Dallas, Williamson, Potter-Randall, Johnson, Hood and Midland appraisal districts. */
+export type YearBuiltSource = "dcad" | "wcad" | "prad" | "jcad" | "hcad" | "mcad";
 
 export type AppraisalFacts = { yearBuilt: number | null; roofMaterial?: string; homestead: boolean };
 

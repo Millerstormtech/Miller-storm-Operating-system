@@ -11,7 +11,7 @@
 //                              (for example from scripts/canvass-prad-prepare.ts). The
 //                              district then decides which parcels are houses and fills
 //                              year built, homestead and roof cover in the same pass.
-//   --district-source <label>  who made that file: dcad, wcad or prad (required with --district)
+//   --district-source <label>  who made that file: dcad, wcad, prad, jcad, hcad or mcad (required with --district)
 //   --uri <mongodb>            database, default mongodb://127.0.0.1:27017/millerstorm
 //   --allow-remote             required to write to any database not on this computer
 //   --dry-run                  read and count only, write nothing
@@ -67,7 +67,7 @@ const shapefile: typeof import("shapefile") = createRequire(import.meta.url)("sh
 
 const BATCH_SIZE = 2000;
 const MAX_OUTSIDE_TEXAS_SHARE = 0.01;
-const DISTRICT_SOURCES: YearBuiltSource[] = ["dcad", "wcad", "prad"];
+const DISTRICT_SOURCES: YearBuiltSource[] = ["dcad", "wcad", "prad", "jcad", "hcad", "mcad"];
 
 type Options = {
   folder: string;
