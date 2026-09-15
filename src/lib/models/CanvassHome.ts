@@ -24,6 +24,8 @@ const canvassHomeSchema = new Schema(
     yearBuilt: { type: Number, default: null },
     yearBuiltSource: { type: String, enum: ["txgio", "dcad"], default: null },
     ownerLivesHere: { type: Boolean, default: null },
+    ownerSignalSource: { type: String, enum: ["address", "homestead"], default: null }, // null means the address comparison
+    roofMaterial: { type: String, default: "" }, // Dallas only so far, from Dallas CAD
     landUse: { type: String, default: "" }, // state land-use code, "A1", "E1"...
     landUseSource: { type: String, enum: ["state", "local", "building"], default: null }, // how the home was recognized
     taxYear: { type: String, default: "" },

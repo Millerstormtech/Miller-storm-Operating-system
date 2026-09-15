@@ -11,6 +11,7 @@ const canvassCountyQualitySchema = new Schema(
     county: { type: String, default: "" },
     area: { type: String, default: "" }, // FW, RR, Lubbock, CC
     source: { type: String, required: true }, // e.g. "txgio-2025"
+    extraSources: { type: [String], default: [] }, // fill-ins applied after the base import, e.g. "dcad-2026"
     taxYear: { type: String, default: "" },
     parcelsRead: { type: Number, default: 0 },
     homes: { type: Number, default: 0 },
