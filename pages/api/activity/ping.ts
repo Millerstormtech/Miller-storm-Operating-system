@@ -25,6 +25,15 @@ function clampSeconds(v: unknown): number {
   return Math.min(Math.round(n), 600);
 }
 
+// Every video/quiz touched since the last flush comes in as an array so that
+// switching lessons within one flush window doesn't drop the others. Older
+// app builds still send a single `video`/`quiz` object — accept both shapes.
+function normalizeItems(raw: unknown): any[] {
+  if (Array.isArray(raw)) return raw.filter((it) => it && typeof it === "object");
+  if (raw && typeof raw === "object") return [raw];
+  return [];
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -39,10 +48,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const body = req.body || {};
   const platform = body.platform === "mobile" ? "mobile" : "web";
   const appSeconds = clampSeconds(body.appSeconds);
-  const video = body.video && typeof body.video === "object" ? body.video : null;
-  const quiz = body.quiz && typeof body.quiz === "object" ? body.quiz : null;
-  const videoSecs = video ? clampSeconds(video.seconds) : 0;
-  const quizSecs = quiz ? clampSeconds(quiz.seconds) : 0;
+  const videos = normalizeItems(body.videos ?? body.video);
+  const quizzes = normalizeItems(body.quizzes ?? body.quiz);
+  const videoSecs = videos.reduce((sum, v) => sum + clampSeconds(v.seconds), 0);
+  const quizSecs = quizzes.reduce((sum, q) => sum + clampSeconds(q.seconds), 0);
 
   // Nothing to record — don't touch the DB.
   if (appSeconds === 0 && videoSecs === 0 && quizSecs === 0) {
@@ -92,8 +101,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    await addLessonTime("videos", video, videoSecs);
-    await addLessonTime("quizzes", quiz, quizSecs);
+    for (const v of videos) await addLessonTime("videos", v, clampSeconds(v.seconds));
+    for (const q of quizzes) await addLessonTime("quizzes", q, clampSeconds(q.seconds));
 
     res.status(200).json({ success: true });
     return;
