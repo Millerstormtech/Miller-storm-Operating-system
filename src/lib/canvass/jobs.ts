@@ -9,6 +9,8 @@
 // Pure: no DB, no network.
 
 import { REVENUE_STAGE } from "../acculynx/config";
+import { GRADE, type GradeConfig } from "./config";
+import { monthsBefore } from "./dates";
 
 export type JobRecord = {
   jobId: string;
@@ -60,11 +62,37 @@ export function mapJob(job: any, branch: string): JobRecord {
 }
 
 /**
- * Spec A4: a house is already ours when it has "an open (not cancelled) AccuLynx
- * job". Closed counts too: that roof was done by us.
+ * Spec A4: a job counts as ours while it is not cancelled. Used for reporting
+ * counts. For "should this house be red", use jobBlocksKnocking below, which
+ * also lets an old finished job expire.
  */
 export function isOpenJob(job: Pick<JobRecord, "milestone">): boolean {
   return job.milestone !== "Cancelled";
+}
+
+/**
+ * Does this job keep the house red today?
+ *
+ * Cancelled never blocks. Closed means we already replaced that roof, so it
+ * blocks only for config.closedJobBlocksYears (Youssef, 16 Sep 2026): after a
+ * new storm an old customer is a fair door again. Every other stage is live
+ * work and blocks with no time limit.
+ *
+ * A Closed job with no date is treated as recent, so a missing date can never
+ * release a house by accident.
+ */
+export function jobBlocksKnocking(
+  job: Pick<JobRecord, "milestone" | "milestoneAt">,
+  today: string,
+  config: GradeConfig = GRADE
+): boolean {
+  if (job.milestone === "Cancelled") return false;
+  if (job.milestone !== "Closed") return true;
+  if (!job.milestoneAt) return true;
+  const closedOn = job.milestoneAt.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(closedOn)) return true;
+  // Days sort correctly as text, so "on or after the cut-off" is a string compare.
+  return closedOn >= monthsBefore(today, config.closedJobBlocksYears * 12);
 }
 
 /**

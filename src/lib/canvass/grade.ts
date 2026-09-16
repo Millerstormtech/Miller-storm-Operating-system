@@ -23,8 +23,12 @@ export type HomeFacts = {
   hail: HailEvent[];
   /** Every RepCard knock at this house, in any order. */
   knocks: Knock[];
-  /** An AccuLynx job at this address that is not cancelled. */
-  openAccuLynxJob: boolean;
+  /**
+   * The stage of an AccuLynx job at this address that still blocks knocking
+   * ("Approved", "Closed"...), or null. See jobBlocksKnocking in jobs.ts: a
+   * finished job stops blocking once it is old enough.
+   */
+  blockingJobStage: string | null;
   /** The most recent day a nearby house (not this one) signed with us, or null. */
   neighborSignedAt: string | null;
 };
@@ -136,9 +140,9 @@ export function gradeHome(facts: HomeFacts, today: string, config: GradeConfig =
   } else if (pipeline) {
     forced = "in-pipeline";
     forcedReason = { text: `Already working with us: ${tidy(pipeline.status)} on ${formatDay(pipeline.at)}`, points: 0 };
-  } else if (facts.openAccuLynxJob) {
+  } else if (facts.blockingJobStage) {
     forced = "in-pipeline";
-    forcedReason = { text: "Open AccuLynx job at this address", points: 0 };
+    forcedReason = { text: `Miller Storm job in AccuLynx: ${tidy(facts.blockingJobStage)}`, points: 0 };
   }
 
   return {

@@ -85,12 +85,14 @@ async function main() {
     doorsByHome.set(homeId, list);
   }
 
-  const jobsByHome = new Map<string, Array<{ milestone: string }>>();
-  const jobCursor = CanvassJobModel.find({ homeId: { $ne: null } }, { homeId: 1, milestone: 1 }).lean().cursor();
-  for await (const job of jobCursor as AsyncIterable<{ homeId: unknown; milestone?: string }>) {
+  // milestoneAt comes too: a finished job stops keeping the house red after
+  // GRADE.closedJobBlocksYears (jobBlocksKnocking in canvass/jobs.ts).
+  const jobsByHome = new Map<string, Array<{ milestone: string; milestoneAt: string | null }>>();
+  const jobCursor = CanvassJobModel.find({ homeId: { $ne: null } }, { homeId: 1, milestone: 1, milestoneAt: 1 }).lean().cursor();
+  for await (const job of jobCursor as AsyncIterable<{ homeId: unknown; milestone?: string; milestoneAt?: Date | null }>) {
     const homeId = String(job.homeId);
     const list = jobsByHome.get(homeId) ?? [];
-    list.push({ milestone: job.milestone ?? "" });
+    list.push({ milestone: job.milestone ?? "", milestoneAt: job.milestoneAt ? job.milestoneAt.toISOString() : null });
     jobsByHome.set(homeId, list);
   }
 
@@ -154,7 +156,7 @@ async function main() {
       doors: doorsByHome.get(homeId) ?? [],
       jobs: jobsByHome.get(homeId) ?? [],
       neighborSignedAt,
-    });
+    }, options.today);
     const grade = gradeHome(facts, options.today);
     const tally = tallyFor(home.fips);
     tally.homes++;

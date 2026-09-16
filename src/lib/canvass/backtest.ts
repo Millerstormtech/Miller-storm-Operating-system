@@ -16,7 +16,7 @@ export function asOfFacts(facts: HomeFacts, asOf: string): HomeFacts {
     ...facts,
     hail: facts.hail.filter((storm) => storm.date <= asOf),
     knocks: [],
-    openAccuLynxJob: false,
+    blockingJobStage: null,
     neighborSignedAt: null,
   };
 }

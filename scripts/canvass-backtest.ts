@@ -131,7 +131,7 @@ async function main() {
         doors: [],
         jobs: [],
         neighborSignedAt: null,
-      }),
+      }, asOf),
       asOf
     );
 

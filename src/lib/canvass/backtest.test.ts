@@ -18,7 +18,7 @@ const facts = (over: Partial<HomeFacts> = {}): HomeFacts => ({
     { date: "2026-06-01", inches: 2.0 },
   ],
   knocks: [{ status: "Signed", at: "2026-05-01" }],
-  openAccuLynxJob: true,
+  blockingJobStage: "Approved",
   neighborSignedAt: "2026-04-01",
   ...over,
 });
@@ -31,7 +31,7 @@ describe("asOfFacts", () => {
       ownerLivesHere: true,
       hail: [{ date: "2026-01-10", inches: 1.5 }],
       knocks: [],
-      openAccuLynxJob: false,
+      blockingJobStage: null,
       neighborSignedAt: null,
     });
   });

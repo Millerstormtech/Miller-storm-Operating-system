@@ -2,6 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { homeFacts, knocksForGrade, type StoredDoor } from "./facts";
 
+const TODAY = "2026-09-16";
+
 // A door as stored after the RepCard import, times as UTC timestamps.
 const door = (over: Partial<StoredDoor> = {}): StoredDoor => ({
   status: "Not Interested",
@@ -45,30 +47,30 @@ describe("homeFacts", () => {
   };
 
   it("passes the house's own facts through", () => {
-    expect(homeFacts(base)).toEqual({
+    expect(homeFacts(base, TODAY)).toEqual({
       yearBuilt: 1998,
       yearBuiltReliable: true,
       ownerLivesHere: true,
       hail: [{ date: "2026-05-04", inches: 1.75 }],
       knocks: [],
-      openAccuLynxJob: false,
+      blockingJobStage: null,
       neighborSignedAt: null,
     });
   });
 
   it("does not trust year built in a county flagged for suspicious years (Hockley)", () => {
-    expect(homeFacts({ ...base, countyFlags: ["year-built-suspicious"] }).yearBuiltReliable).toBe(false);
+    expect(homeFacts({ ...base, countyFlags: ["year-built-suspicious"] }, TODAY).yearBuiltReliable).toBe(false);
   });
 
   it("marks an AccuLynx job at the house that is not cancelled, Closed included", () => {
-    expect(homeFacts({ ...base, jobs: [{ milestone: "Cancelled" }, { milestone: "Closed" }] }).openAccuLynxJob).toBe(true);
+    expect(homeFacts({ ...base, jobs: [{ milestone: "Cancelled" }, { milestone: "Closed", milestoneAt: "2025-06-01T12:00:00Z" }] }, TODAY).blockingJobStage).toBe("Closed");
   });
 
   it("ignores cancelled AccuLynx jobs", () => {
-    expect(homeFacts({ ...base, jobs: [{ milestone: "Cancelled" }] }).openAccuLynxJob).toBe(false);
+    expect(homeFacts({ ...base, jobs: [{ milestone: "Cancelled" }] }, TODAY).blockingJobStage).toBeNull();
   });
 
   it("brings in the knocks of the doors matched to the house", () => {
-    expect(homeFacts({ ...base, doors: [door()] }).knocks).toEqual([{ status: "Not Interested", at: "2026-04-01" }]);
+    expect(homeFacts({ ...base, doors: [door()] }, TODAY).knocks).toEqual([{ status: "Not Interested", at: "2026-04-01" }]);
   });
 });

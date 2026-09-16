@@ -11,7 +11,7 @@ const home = (over: Partial<HomeFacts> = {}): HomeFacts => ({
   ownerLivesHere: null,
   hail: [],
   knocks: [],
-  openAccuLynxJob: false,
+  blockingJobStage: null,
   neighborSignedAt: null,
   ...over,
 });
@@ -229,10 +229,10 @@ describe("gradeHome: always red", () => {
   );
 
   it("an open AccuLynx job means we are already working with this house", () => {
-    const g = gradeHome(home({ yearBuilt: 1980, openAccuLynxJob: true }), TODAY);
+    const g = gradeHome(home({ yearBuilt: 1980, blockingJobStage: "Approved" }), TODAY);
     expect(g.color).toBe("red");
     expect(g.forced).toBe("in-pipeline");
-    expect(g.reasons[0]).toEqual({ text: "Open AccuLynx job at this address", points: 0 });
+    expect(g.reasons[0]).toEqual({ text: "Miller Storm job in AccuLynx: Approved", points: 0 });
   });
 
   it("Do Not Knock wins over already working with us, and is explained first", () => {
@@ -250,7 +250,7 @@ describe("gradeHome: always red", () => {
   });
 
   it("still reports the points behind a forced red, so the backtest can use them", () => {
-    const g = gradeHome(home({ yearBuilt: 1980, ownerLivesHere: true, openAccuLynxJob: true }), TODAY);
+    const g = gradeHome(home({ yearBuilt: 1980, ownerLivesHere: true, blockingJobStage: "Approved" }), TODAY);
     expect(g.score).toBe(30);
     expect(g.color).toBe("red");
   });

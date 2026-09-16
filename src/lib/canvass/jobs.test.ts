@@ -1,6 +1,7 @@
 // src/lib/canvass/jobs.test.ts
 import { describe, it, expect } from "vitest";
-import { mapJob, isOpenJob, signedDateFrom } from "./jobs";
+import { mapJob, isOpenJob, jobBlocksKnocking, signedDateFrom } from "./jobs";
+import { GRADE } from "./config";
 
 // Shaped like one item of AccuLynx GET /jobs (field names checked 15 Sep 2026). Made-up values.
 function job(overrides: Record<string, unknown> = {}) {
@@ -109,6 +110,47 @@ describe("isOpenJob", () => {
 
   it("does not count a Cancelled job", () => {
     expect(isOpenJob(mapJob(job({ currentMilestone: "Cancelled" }), "DFW"))).toBe(false);
+  });
+});
+
+describe("jobBlocksKnocking", () => {
+  const TODAY = "2026-09-16";
+
+  it("blocks for every live stage, with no time limit", () => {
+    for (const milestone of ["Lead", "Prospect", "Approved", "Completed", "Invoiced"]) {
+      // Dated far in the past on purpose: only Closed jobs ever expire.
+      expect(jobBlocksKnocking({ milestone, milestoneAt: "2015-01-01T00:00:00Z" }, TODAY)).toBe(true);
+    }
+  });
+
+  it("never blocks for a cancelled job", () => {
+    expect(jobBlocksKnocking({ milestone: "Cancelled", milestoneAt: "2026-09-15T00:00:00Z" }, TODAY)).toBe(false);
+  });
+
+  it("blocks a roof we finished inside the five years", () => {
+    expect(jobBlocksKnocking({ milestone: "Closed", milestoneAt: "2024-03-02T10:00:00Z" }, TODAY)).toBe(true);
+  });
+
+  it("releases a roof we finished more than five years ago, so a new storm can be knocked", () => {
+    expect(jobBlocksKnocking({ milestone: "Closed", milestoneAt: "2021-01-05T10:00:00Z" }, TODAY)).toBe(false);
+  });
+
+  it("treats the five-year day itself as still blocking, and the day before it as released", () => {
+    expect(jobBlocksKnocking({ milestone: "Closed", milestoneAt: "2021-09-16T00:00:00Z" }, TODAY)).toBe(true);
+    expect(jobBlocksKnocking({ milestone: "Closed", milestoneAt: "2021-09-15T00:00:00Z" }, TODAY)).toBe(false);
+  });
+
+  it("keeps blocking when a finished job has no date or a broken one, so nothing is released by accident", () => {
+    expect(jobBlocksKnocking({ milestone: "Closed", milestoneAt: null }, TODAY)).toBe(true);
+    expect(jobBlocksKnocking({ milestone: "Closed", milestoneAt: "" }, TODAY)).toBe(true);
+    expect(jobBlocksKnocking({ milestone: "Closed", milestoneAt: "not a date" }, TODAY)).toBe(true);
+  });
+
+  it("follows the config, so the rule can be retuned in one place", () => {
+    const tenYears = { ...GRADE, closedJobBlocksYears: 10 };
+    const job = { milestone: "Closed", milestoneAt: "2021-01-05T10:00:00Z" };
+    expect(jobBlocksKnocking(job, TODAY)).toBe(false);
+    expect(jobBlocksKnocking(job, TODAY, tenYears)).toBe(true);
   });
 });
 
