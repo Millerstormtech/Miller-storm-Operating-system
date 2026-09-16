@@ -24,6 +24,13 @@ export type CountyStats = {
   withOwnerSignal: number;
   /** Of those, how many are true. */
   ownerLivesHere: number;
+  /**
+   * Of those, how many come from a homestead exemption rather than from
+   * comparing the mailing address with the house address. A homestead can only
+   * ever say "yes, the owner lives here", never "no", so a county carried
+   * entirely by homesteads reads 100% by arithmetic, not by fault.
+   */
+  withHomesteadSignal?: number;
   /** Records read from the state file, when known. */
   records?: number;
   /** Records whose chosen id field came back on a different address (propertyIds.ts), when known. */
@@ -36,6 +43,7 @@ export type QualityFlag =
   | "year-built-suspicious"
   | "owner-signal-missing"
   | "owner-signal-suspicious"
+  | "owner-signal-homestead-only"
   | "ids-repeated";
 
 export type CountyStatus = "live" | "age-unknown" | "review";
@@ -53,6 +61,14 @@ export const QUALITY = {
   minOwnerSignalShare: 0.5,
   /** Outside this range of owners living at home, the address comparison has probably broken. */
   ownerLivesHereRange: { min: 0.3, max: 0.95 },
+  /**
+   * At or above this share of the owner signal coming from homesteads, the
+   * county has no working address comparison, so a high "lives here" share is
+   * expected rather than broken. Travis measured 222,136 of 222,225 (99.96%)
+   * on 16 Sep 2026, because its state-file houses carry a street number on only
+   * about a tenth of records.
+   */
+  minHomesteadOnlyShare: 0.98,
   /**
    * Above this share of records reusing the property id on a different address,
    * the id is not a property id. Tarrant measured 5.1%; Ector's Prop_ID 94.8%.
@@ -74,7 +90,12 @@ export function countyFlags(stats: CountyStats): QualityFlag[] {
     flags.push("owner-signal-missing");
   } else {
     const share = stats.ownerLivesHere / stats.withOwnerSignal;
-    if (share < QUALITY.ownerLivesHereRange.min || share > QUALITY.ownerLivesHereRange.max) {
+    const homesteadShare = (stats.withHomesteadSignal ?? 0) / stats.withOwnerSignal;
+    const homesteadOnly = homesteadShare >= QUALITY.minHomesteadOnlyShare;
+    if (homesteadOnly && share > QUALITY.ownerLivesHereRange.max) {
+      // Expected, not broken: the county is graded, it just cannot spot renters.
+      flags.push("owner-signal-homestead-only");
+    } else if (share < QUALITY.ownerLivesHereRange.min || share > QUALITY.ownerLivesHereRange.max) {
       flags.push("owner-signal-suspicious");
     }
   }
@@ -86,7 +107,11 @@ export function countyFlags(stats: CountyStats): QualityFlag[] {
   return flags;
 }
 
-/** Anything suspicious needs a person; missing year built alone just means "Age unknown". */
+/**
+ * Anything suspicious needs a person; missing year built alone just means
+ * "Age unknown". A homestead-only owner signal is a known limitation, not a
+ * fault, so it does not send the county for review.
+ */
 export function suggestedStatus(flags: readonly QualityFlag[]): CountyStatus {
   const needsPerson: QualityFlag[] = ["no-homes", "year-built-suspicious", "owner-signal-suspicious", "ids-repeated"];
   if (flags.some((flag) => needsPerson.includes(flag))) return "review";

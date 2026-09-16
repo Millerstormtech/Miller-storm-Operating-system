@@ -160,6 +160,7 @@ function emptyStats(): RunStats {
     builtBefore1990: 0,
     withOwnerSignal: 0,
     ownerLivesHere: 0,
+    withHomesteadSignal: 0,
     homesFromBuildingOnly: 0,
     taxYear: "",
   };
@@ -325,6 +326,11 @@ async function main() {
     if (home.ownerLivesHere !== null) {
       stats.withOwnerSignal++;
       if (home.ownerLivesHere) stats.ownerLivesHere++;
+      // Where the signal came from: a homestead can only ever say "lives here",
+      // so a county carried entirely by homesteads reads 100% by arithmetic.
+      if (extras.get(key)?.ownerSignalSource === "homestead") {
+        stats.withHomesteadSignal = (stats.withHomesteadSignal ?? 0) + 1;
+      }
     }
     batch.push(upsertFor(home, importedAt, extras.get(key)));
     if (batch.length >= BATCH_SIZE) await flush();
@@ -350,6 +356,7 @@ async function main() {
       builtBefore1990: stats.builtBefore1990,
       withOwnerSignal: stats.withOwnerSignal,
       ownerLivesHere: stats.ownerLivesHere,
+      withHomesteadSignal: stats.withHomesteadSignal,
       homesFromBuildingOnly: stats.homesFromBuildingOnly,
       flags,
       suggestedStatus: suggestedStatus(flags),

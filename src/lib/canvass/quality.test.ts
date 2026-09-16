@@ -55,6 +55,65 @@ describe("countyFlags and suggestedStatus on the measured counties", () => {
   });
 });
 
+describe("a homestead-only owner signal", () => {
+  // Travis, 16 Sep 2026: its state-file houses carry a street number on only about
+  // a tenth of records, so the address comparison never runs and every owner
+  // signal comes from a homestead exemption. A homestead can only say "lives
+  // here", so the share reads 100% by arithmetic. Measured: 222,136 of 222,225.
+  const travis: CountyStats = {
+    homes: 301873,
+    withYearBuilt: 298854,
+    builtBefore1990: 119843,
+    withOwnerSignal: 222225,
+    ownerLivesHere: 222140,
+    withHomesteadSignal: 222136,
+  };
+
+  it("is called out as homestead-only, not as broken data", () => {
+    const flags = countyFlags(travis);
+    expect(flags).toContain("owner-signal-homestead-only");
+    expect(flags).not.toContain("owner-signal-suspicious");
+  });
+
+  it("does not send the county for review, because the county still grades", () => {
+    expect(suggestedStatus(countyFlags(travis))).not.toBe("review");
+  });
+
+  it("still calls a genuinely broken address comparison suspicious", () => {
+    // The same impossible 100%, but the signal came from addresses, not homesteads.
+    const byAddress: CountyStats = { ...travis, withHomesteadSignal: 0 };
+    const flags = countyFlags(byAddress);
+    expect(flags).toContain("owner-signal-suspicious");
+    expect(flags).not.toContain("owner-signal-homestead-only");
+    expect(suggestedStatus(flags)).toBe("review");
+  });
+
+  it("still flags a mostly-homestead county that reads impossibly LOW", () => {
+    // Below the range is never explained by homesteads, so it stays suspicious.
+    expect(countyFlags({ ...travis, ownerLivesHere: 20000 })).toContain("owner-signal-suspicious");
+  });
+
+  it("leaves a county with a working address comparison alone", () => {
+    // Ellis, 16 Sep 2026: 60,715 of 72,098 live here, 53,766 of them by homestead.
+    const ellis: CountyStats = {
+      homes: 74644,
+      withYearBuilt: 70389,
+      builtBefore1990: 20342,
+      withOwnerSignal: 72098,
+      ownerLivesHere: 60715,
+      withHomesteadSignal: 53766,
+    };
+    expect(countyFlags(ellis)).toEqual([]);
+    expect(suggestedStatus(countyFlags(ellis))).toBe("live");
+  });
+
+  it("treats a county with no homestead count at all as address-based, as before", () => {
+    // Older quality rows have no withHomesteadSignal; they must keep their old verdict.
+    const { withHomesteadSignal, ...noCount } = travis;
+    expect(countyFlags(noCount)).toContain("owner-signal-suspicious");
+  });
+});
+
 describe("countyFlags thresholds", () => {
   const base: CountyStats = { homes: 1000, withYearBuilt: 1000, builtBefore1990: 500, withOwnerSignal: 1000, ownerLivesHere: 600 };
 
