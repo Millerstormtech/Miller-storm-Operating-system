@@ -8,10 +8,11 @@
 //   --folder <path>            an extracted county zip (the importer finds the .shp inside)
 //   --source <name>            label for this import, default "txgio-2025"
 //   --district <file>          an appraisal district's one-line-per-property file
-//                              (for example from scripts/canvass-prad-prepare.ts). The
+//                              (for example from scripts/canvass-pacs-prepare.ts). The
 //                              district then decides which parcels are houses and fills
 //                              year built, homestead and roof cover in the same pass.
-//   --district-source <label>  who made that file: dcad, wcad, prad, jcad, hcad or mcad (required with --district)
+//   --district-source <label>  who made that file: dcad, wcad, prad, jcad, hcad, mcad,
+//                              ecad (Ellis), tcad (Travis) or hays (required with --district)
 //   --uri <mongodb>            database, default mongodb://127.0.0.1:27017/millerstorm
 //   --allow-remote             required to write to any database not on this computer
 //   --dry-run                  read and count only, write nothing
@@ -67,7 +68,7 @@ const shapefile: typeof import("shapefile") = createRequire(import.meta.url)("sh
 
 const BATCH_SIZE = 2000;
 const MAX_OUTSIDE_TEXAS_SHARE = 0.01;
-const DISTRICT_SOURCES: YearBuiltSource[] = ["dcad", "wcad", "prad", "jcad", "hcad", "mcad"];
+const DISTRICT_SOURCES: YearBuiltSource[] = ["dcad", "wcad", "prad", "jcad", "hcad", "mcad", "ecad", "tcad", "hays"];
 
 type Options = {
   folder: string;

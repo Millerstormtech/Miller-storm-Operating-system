@@ -1,19 +1,29 @@
-// scripts/canvass-prad-prepare.ts
-// Turns one county's Potter-Randall Appraisal District 2026 PACS export (the
-// extracted fixed-width TXT files) into one line per property for the Canvass Map:
+// scripts/canvass-pacs-prepare.ts
+// Turns one county's PACS "Legacy 8.0.33" appraisal export (the extracted
+// fixed-width TXT files) into one line per property for the Canvass Map:
 // property id, state code, homestead, year built of the house, roof cover.
 //
-//   npx vite-node scripts/canvass-prad-prepare.ts --dir D:/knock-planner/data/prad/2026/potter
+// Three districts publish this same layout, so one script covers them all; only
+// the building-part code for "the house itself" differs (see pacsDistrict.ts):
+//
+//   npx vite-node scripts/canvass-pacs-prepare.ts --district prad --dir D:/knock-planner/data/prad/2026/potter
+//   npx vite-node scripts/canvass-pacs-prepare.ts --district ecad --dir D:/knock-planner/data/ellis
+//   npx vite-node scripts/canvass-pacs-prepare.ts --district tcad --dir D:/knock-planner/data/tcad/pacs
 //
 // Options:
-//   --dir <folder>   the extracted *_APPRAISAL_INFO.TXT, *_IMPROVEMENT_DETAIL.TXT and
-//                    *_IMPROVEMENT_DETAIL_ATTR.TXT files for one county
-//   --out <file>     default <dir>/district-properties.jsonl
+//   --district <prad|ecad|tcad>  whose export this is; decides the house code
+//   --dir <folder>               the extracted property, improvement-detail and
+//                                improvement-attribute files for one county
+//   --out <file>                 default <dir>/district-properties.jsonl
 //
-// The output feeds scripts/canvass-import-parcels.ts --district, which lets PRAD
-// decide which parcels are houses. Only ids, codes, years and roof covers are
-// read; the owner names and addresses in the property file are never read.
-// Prints counts only.
+// The two file naming styles both work: Potter-Randall and Ellis ship
+// *_APPRAISAL_INFO.TXT / *_IMPROVEMENT_DETAIL.TXT / *_IMPROVEMENT_DETAIL_ATTR.TXT,
+// Travis ships the shorter PROP.TXT / IMP_DET.TXT / IMP_ATR.TXT.
+//
+// The output feeds scripts/canvass-import-parcels.ts --district, which lets the
+// district decide which parcels are houses. Only ids, codes, years and roof
+// covers are read; the owner names and addresses in the property file are never
+// read. Prints counts only.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -21,30 +31,43 @@ import readline from "node:readline";
 import { earliestYearBuilt } from "../src/lib/canvass/appraisal";
 import { isDistrictHome, type DistrictProperty } from "../src/lib/canvass/district";
 import { mergeOwnerLines, pacsPropId, readImprovementAttributeRow, readImprovementDetailRow, readPropRow } from "../src/lib/canvass/pacs";
-import { isPradMainArea, roofCoverLabel } from "../src/lib/canvass/prad";
+import { isMainArea, roofCoverLabel, type PacsDistrict } from "../src/lib/canvass/pacsDistrict";
 
-type Options = { dir: string; out: string };
+type Options = { district: PacsDistrict; dir: string; out: string };
+
+const DISTRICTS: readonly PacsDistrict[] = ["prad", "ecad", "tcad"];
 
 function parseArgs(argv: string[]): Options {
-  const options: Options = { dir: "", out: "" };
+  const options: Options = { district: "prad", dir: "", out: "" };
+  let district = "";
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === "--dir") options.dir = argv[++i] ?? "";
+    if (arg === "--district") district = argv[++i] ?? "";
+    else if (arg === "--dir") options.dir = argv[++i] ?? "";
     else if (arg === "--out") options.out = argv[++i] ?? "";
     else throw new Error(`Unknown option: ${arg}`);
   }
+  if (!district) throw new Error(`--district is required, one of: ${DISTRICTS.join(", ")}`);
+  if (!DISTRICTS.includes(district as PacsDistrict)) throw new Error(`Unknown district "${district}". Use one of: ${DISTRICTS.join(", ")}`);
+  options.district = district as PacsDistrict;
   if (!options.dir) throw new Error("--dir is required");
   if (!options.out) options.out = path.join(options.dir, "district-properties.jsonl");
   return options;
 }
 
-function findFile(dir: string, suffix: string): string {
-  const name = fs.readdirSync(dir).find((file) => file.toUpperCase().endsWith(suffix));
-  if (!name) throw new Error(`No *${suffix} in ${dir}`);
-  return path.join(dir, name);
+/** The first file whose name ends with any of `suffixes`, or "" when `optional`. */
+function findFile(dir: string, suffixes: readonly string[], optional = false): string {
+  const names = fs.readdirSync(dir);
+  for (const suffix of suffixes) {
+    const name = names.find((file) => file.toUpperCase().endsWith(suffix));
+    if (name) return path.join(dir, name);
+  }
+  if (optional) return "";
+  throw new Error(`No ${suffixes.join(" or ")} in ${dir}`);
 }
 
 async function eachLine(file: string, onLine: (line: string) => void): Promise<number> {
+  if (!file) return 0;
   const reader = readline.createInterface({ input: fs.createReadStream(file, "latin1"), crlfDelay: Infinity });
   let lines = 0;
   for await (const line of reader) {
@@ -62,7 +85,7 @@ async function main() {
   // One line per owner, with supplements: merge to one per property.
   type Line = { supNum: string; homestead: boolean; stateCode: string };
   const properties = new Map<string, Line>();
-  const propertyLines = await eachLine(findFile(options.dir, "_APPRAISAL_INFO.TXT"), (line) => {
+  const propertyLines = await eachLine(findFile(options.dir, ["_APPRAISAL_INFO.TXT", "PROP.TXT"]), (line) => {
     const row = readPropRow(line);
     const propId = pacsPropId(row.propId);
     if (!propId) return;
@@ -72,17 +95,18 @@ async function main() {
   });
 
   const years = new Map<string, string[]>();
-  const detailLines = await eachLine(findFile(options.dir, "_IMPROVEMENT_DETAIL.TXT"), (line) => {
+  const detailLines = await eachLine(findFile(options.dir, ["_IMPROVEMENT_DETAIL.TXT", "IMP_DET.TXT"]), (line) => {
     const row = readImprovementDetailRow(line);
-    if (!isPradMainArea(row.typeCode)) return;
+    if (!isMainArea(options.district, row.typeCode)) return;
     const propId = pacsPropId(row.propId);
     const list = years.get(propId) ?? [];
     list.push(row.yearBuilt);
     years.set(propId, list);
   });
 
+  // Not every district fills in a roof cover; Ellis has the file but no such rows.
   const roofs = new Map<string, string>();
-  const attributeLines = await eachLine(findFile(options.dir, "_IMPROVEMENT_DETAIL_ATTR.TXT"), (line) => {
+  const attributeLines = await eachLine(findFile(options.dir, ["_IMPROVEMENT_DETAIL_ATTR.TXT", "IMP_ATR.TXT"], true), (line) => {
     const row = readImprovementAttributeRow(line);
     if (row.description.toUpperCase() !== "ROOF COVER") return;
     const propId = pacsPropId(row.propId);
@@ -113,18 +137,19 @@ async function main() {
   await new Promise<void>((resolve, reject) => out.end((error?: Error | null) => (error ? reject(error) : resolve())));
   fs.renameSync(`${options.out}.part`, options.out);
 
+  const tag = `[pacs:${options.district}]`;
   const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)}%` : "n/a");
   console.log(
-    `[prad] ${path.basename(options.dir)}: ${propertyLines} property lines, ${detailLines} building parts, ${attributeLines} attributes; ` +
+    `${tag} ${path.basename(options.dir)}: ${propertyLines} property lines, ${detailLines} building parts, ${attributeLines} attributes; ` +
       `${properties.size} properties written to ${path.basename(options.out)}`
   );
   console.log(
-    `[prad] homes by district code ${homes}: year built ${withYear} (${pct(withYear, homes)}), homestead ${withHomestead} (${pct(withHomestead, homes)}), ` +
+    `${tag} homes by district code ${homes}: year built ${withYear} (${pct(withYear, homes)}), homestead ${withHomestead} (${pct(withHomestead, homes)}), ` +
       `roof cover ${withRoof} (${pct(withRoof, homes)})`
   );
 }
 
 main().catch((error) => {
-  console.error("[prad] FAILED:", error instanceof Error ? error.message : error);
+  console.error("[pacs] FAILED:", error instanceof Error ? error.message : error);
   process.exit(1);
 });

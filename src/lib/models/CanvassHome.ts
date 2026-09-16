@@ -22,7 +22,7 @@ const canvassHomeSchema = new Schema(
     },
     ownerName: { type: String, default: "" },
     yearBuilt: { type: Number, default: null },
-    yearBuiltSource: { type: String, enum: ["txgio", "dcad", "wcad", "prad", "jcad", "hcad", "mcad"], default: null },
+    yearBuiltSource: { type: String, enum: ["txgio", "dcad", "wcad", "prad", "jcad", "hcad", "mcad", "ecad", "tcad", "hays"], default: null },
     ownerLivesHere: { type: Boolean, default: null },
     ownerSignalSource: { type: String, enum: ["address", "homestead"], default: null }, // null means the address comparison
     roofMaterial: { type: String, default: "" }, // Dallas only so far, from Dallas CAD

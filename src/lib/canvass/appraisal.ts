@@ -6,8 +6,13 @@
 //
 // Pure: no files, no database.
 
-/** Dallas, Williamson, Potter-Randall, Johnson, Hood and Midland appraisal districts. */
-export type YearBuiltSource = "dcad" | "wcad" | "prad" | "jcad" | "hcad" | "mcad";
+/**
+ * The appraisal districts we fill houses from. Note "hcad" is HOOD county, not
+ * Hays: Hays is "hays".
+ * dcad Dallas, wcad Williamson, prad Potter-Randall, jcad Johnson, hcad Hood,
+ * mcad Midland, ecad Ellis, tcad Travis, hays Hays.
+ */
+export type YearBuiltSource = "dcad" | "wcad" | "prad" | "jcad" | "hcad" | "mcad" | "ecad" | "tcad" | "hays";
 
 export type AppraisalFacts = { yearBuilt: number | null; roofMaterial?: string; homestead: boolean };
 
