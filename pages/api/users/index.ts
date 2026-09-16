@@ -49,7 +49,7 @@ async function handler(
     // team-picker screens on mobile slow. Opt-in, so other callers are unchanged.
     const lite = req.query.lite === "1" || req.query.lite === "true";
     const usersQuery = UserModel.find(query);
-    if (lite) usersQuery.select("id name email role managerId headshotUrl deleted suspended");
+    if (lite) usersQuery.select("id name email role managerId headshotUrl deleted suspended testAccount");
     const users = await usersQuery.lean();
     const sanitized = users.map(({ passwordHash, ...rest }) => rest);
     res.status(200).json(sanitized);

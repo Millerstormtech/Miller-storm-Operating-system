@@ -5,6 +5,7 @@ import { NotificationModel } from "../../src/lib/models/Notification";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { sendPushNotificationToMultiple } from "../../src/lib/firebase-admin";
 import { resolveAudience, isResolveError, type TeamLeadCandidate } from "../../src/lib/announcements/audience";
+import { BRANCHES } from "../../src/lib/repcard/branches";
 
 // Company-wide (or scoped) announcements.
 //
@@ -94,26 +95,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // branch values, which may differ in case.
   const callerBranchesNorm = callerBranchesRaw.map(norm);
 
-  // Every distinct branch name in use, from EITHER field — matches the same
-  // fuzzy "territory OR branches" convention branchGroup.ts already uses for
-  // StormChat branch groups, so "which branches exist" agrees everywhere.
+  // The fixed, canonical branch list — the SAME constant User Management's own
+  // branch picker assigns from (TERRITORY_OPTIONS there, BRANCHES here). This
+  // used to be UserModel.distinct("territory"/"branches"), which surfaced every
+  // stale or legacy string ever stored on a user record (old branch names,
+  // typos, even one row with several branch names concatenated into a single
+  // value) as if each were a real, pickable branch — a growing list that could
+  // never shrink even after User Management stopped assigning those values.
   async function allBranches(): Promise<string[]> {
-    const [territories, branchLists] = await Promise.all([
-      UserModel.distinct("territory", { deleted: { $ne: true } }),
-      UserModel.distinct("branches", { deleted: { $ne: true } }),
-    ]);
-    const set = new Set<string>();
-    for (const t of territories) if (t) set.add(String(t).trim());
-    for (const b of branchLists) if (b) set.add(String(b).trim());
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    return [...BRANCHES].sort((a, b) => a.localeCompare(b));
   }
 
   // Every sales-team-lead, each carrying the branch(es) their OWN record
   // carries — used both to list "teams" and to check whether a given team
   // lead falls inside a branch-manager's branch(es).
   async function allTeamLeads(): Promise<TeamLeadCandidate[]> {
+    // Developer accounts (testAccount: true) are excluded from this PICKER —
+    // same convention User Management's own team-lead picker follows — but
+    // they still receive announcements normally once a real team is chosen,
+    // so they can test the app as an ordinary user would.
     const leads = (await UserModel.find(
-      { role: "sales-team-lead", deleted: { $ne: true } },
+      { role: "sales-team-lead", deleted: { $ne: true }, testAccount: { $ne: true } },
       { id: 1, name: 1, territory: 1, branches: 1 }
     ).lean()) as any[];
     return leads.map((l) => ({
