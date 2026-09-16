@@ -106,19 +106,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return [...BRANCHES].sort((a, b) => a.localeCompare(b));
   }
 
-  // Every sales-team-lead, each carrying the branch(es) their OWN record
-  // carries — used both to list "teams" and to check whether a given team
-  // lead falls inside a branch-manager's branch(es).
+  // Every "team", each carrying the branch(es) their OWN record carries — used
+  // both to list "teams" and to check whether a given team falls inside a
+  // branch-manager's branch(es).
+  //
+  // A team is either a real sales-team-lead, OR a branch manager who runs a
+  // team directly (has sales reps reporting straight to them) — the exact same
+  // rule the org chart uses to draw that branch manager as a second,
+  // Sales-Team-Lead-styled card (see TeamStructure.tsx's leadNodesFor). Without
+  // this, that team exists on the org chart but has no way to be messaged here
+  // at all — not by an admin, and not even by the branch manager themselves
+  // wanting to message just their own direct reports.
   async function allTeamLeads(): Promise<TeamLeadCandidate[]> {
     // Developer accounts (testAccount: true) are excluded from this PICKER —
     // same convention User Management's own team-lead picker follows — but
     // they still receive announcements normally once a real team is chosen,
     // so they can test the app as an ordinary user would.
-    const leads = (await UserModel.find(
-      { role: "sales-team-lead", deleted: { $ne: true }, testAccount: { $ne: true } },
-      { id: 1, name: 1, territory: 1, branches: 1 }
-    ).lean()) as any[];
-    return leads.map((l) => ({
+    const [leads, branchManagers] = await Promise.all([
+      UserModel.find(
+        { role: "sales-team-lead", deleted: { $ne: true }, testAccount: { $ne: true } },
+        { id: 1, name: 1, territory: 1, branches: 1 }
+      ).lean(),
+      UserModel.find(
+        { role: "branch-manager", deleted: { $ne: true }, testAccount: { $ne: true } },
+        { id: 1, name: 1, territory: 1, branches: 1 }
+      ).lean(),
+    ]) as any[][];
+
+    const directReportCounts = branchManagers.length
+      ? await UserModel.aggregate([
+          {
+            $match: {
+              role: "sales",
+              deleted: { $ne: true },
+              testAccount: { $ne: true },
+              managerId: { $in: branchManagers.map((b: any) => b.id) },
+            },
+          },
+          { $group: { _id: "$managerId" } },
+        ])
+      : [];
+    const runsTeamDirectly = new Set(directReportCounts.map((d: any) => d._id));
+    const bmLeads = branchManagers.filter((b: any) => runsTeamDirectly.has(b.id));
+
+    return [...leads, ...bmLeads].map((l: any) => ({
       id: l.id,
       name: l.name || l.id,
       branches: Array.from(new Set([l.territory, ...(l.branches || [])].filter(Boolean).map(norm))),
