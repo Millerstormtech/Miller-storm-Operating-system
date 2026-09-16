@@ -1,5 +1,7 @@
 // src/components/LeaderboardBoard.tsx
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { WinMoment } from "./Celebration";
+import { shouldCelebrateRankMove, rankMoveCopy } from "../lib/scoreboard/rankMoves";
 import { useRouter } from "next/router";
 import { BRANCHES, BRANCH_ORDER } from "../lib/repcard/branches";
 import { parseSalesLink } from "../lib/scoreboard/links";
@@ -54,6 +56,30 @@ const COLUMNS: { key: SortKey; label: string; short: string; type: ColType }[] =
   { key: "won", label: "Contracts", short: "Contracts", type: "num" },
   { key: "revenue", label: "Contract Amount", short: "Amount", type: "money" },
 ];
+
+/** Places moved since last week, drawn beside a rank. Nothing is drawn for a
+ *  rep who did not move, or who had no rank to move from: an arrow that is
+ *  always there stops meaning anything. */
+function RankMove({ delta }: { delta?: number | null }): JSX.Element | null {
+  if (typeof delta !== "number" || delta === 0) return null;
+  const up = delta > 0;
+  return (
+    <span
+      title={`${up ? "Up" : "Down"} ${Math.abs(delta)} since last week`}
+      style={{
+        display: "block",
+        fontSize: 11,
+        fontWeight: 700,
+        lineHeight: 1.1,
+        marginTop: 2,
+        fontVariantNumeric: "tabular-nums",
+        color: up ? "var(--trend-up)" : "var(--trend-down)",
+      }}
+    >
+      {up ? "▲" : "▼"}{Math.abs(delta)}
+    </span>
+  );
+}
 
 export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) {
   const [window, setWindow] = useState<Window>("month");
@@ -112,6 +138,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const [repSearch, setRepSearch] = useState("");
   // Custom date range is tucked behind a toggle so the period pills stay clean.
   const [showCustom, setShowCustom] = useState(false);
+  // What the up and down arrows describe, straight from the endpoint.
+  const [rankMoves, setRankMoves] = useState<{ week: string; month: string; basis: string } | null>(null);
+  const [moment, setMoment] = useState<{ mark: string; title: string; line: string } | null>(null);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -120,6 +149,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       if (res.ok) {
         const data = await res.json();
         setRows(data.leaderboard ?? []);
+        setRankMoves(data.rankMoves ?? null);
         setContractKing(data.contractKing ?? null);
         setYtdPodium(data.ytdPodium ?? []);
         // Echo the resolved range into the From/To boxes (fills them for quick views).
@@ -131,6 +161,26 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   }, []);
 
   useEffect(() => { if (query) load(query); }, [query, load]);
+
+  // The arrows mean one thing: places moved in THIS MONTH's company race by
+  // Contract Amount. Any other period, sort or filter is a different standing,
+  // so the column is hidden rather than mislabelled.
+  const showRankMoves =
+    !!rankMoves && !isCustom && window === "month" && sortKey === "revenue" && sortDir === "desc" &&
+    branchSel.size === 0 && teamSel.size === 0;
+
+  // A rep who climbed gets told once a week, whatever view they opened.
+  useEffect(() => {
+    if (!rankMoves || !currentUserId || rows.length === 0) return;
+    const mine = rows.find((r: any) => r.repUserId === currentUserId);
+    if (!mine) return;
+    const key = "ms-rank-seen";
+    let seen: string | null = null;
+    try { seen = localStorage.getItem(key); } catch { seen = null; }
+    if (!shouldCelebrateRankMove(mine.rankDelta, seen, rankMoves.week)) return;
+    try { localStorage.setItem(key, rankMoves.week); } catch { /* storage unavailable */ }
+    setMoment(rankMoveCopy(mine.rankDelta as number, mine.rank));
+  }, [rows, rankMoves, currentUserId]);
 
   // Follow the app-wide light/dark theme (the header toggle sets data-theme on
   // <html>). Mirror it into state so styled-jsx can restyle via a class, and
@@ -405,6 +455,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
   return (
     <div className={`sl sl--${theme}`} ref={rootRef}>
+      {moment && <WinMoment mark={moment.mark} title={moment.title} line={moment.line} onClose={() => setMoment(null)} />}
       <GuidedTour tour={SALES_LEADERBOARD_TOUR} ready={!loading} />
 
       {/* Title, inside the board — like the mockup. The period pills now live in
@@ -690,7 +741,10 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                 const isYou = currentUserId && r.repUserId === currentUserId;
                 return (
                   <tr key={r.id} data-row-id={r.id} className={`sl__row${i === 0 ? " sl__row--top" : ""}${isYou ? " sl__row--you" : ""}${r.id === highlightId ? " sl__row--focus" : ""}`}>
-                    <td className={`sl__rank${i === 0 ? " sl__rank--gold" : ""}`}>{i + 1}</td>
+                    <td className={`sl__rank${i === 0 ? " sl__rank--gold" : ""}`}>
+                      {i + 1}
+                      {showRankMoves ? <RankMove delta={r.rankDelta} /> : null}
+                    </td>
                     <td className="sl__rep">
                       <span className="sl__rep-inner">
                         {/* Stripped: RepAvatar falls back to the name's first character
@@ -794,7 +848,10 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             return (
               <div key={r.id} data-row-id={r.id} className={`sl__card${i === 0 ? " sl__card--top" : ""}${isYou ? " sl__card--you" : ""}${r.id === highlightId ? " sl__card--focus" : ""}`}>
                 <div className="sl__card-head">
-                  <div className={`sl__card-rank${i === 0 ? " sl__rank--gold" : ""}`}>{medal || i + 1}</div>
+                  <div className={`sl__card-rank${i === 0 ? " sl__rank--gold" : ""}`}>
+                    {medal || i + 1}
+                    {showRankMoves ? <RankMove delta={r.rankDelta} /> : null}
+                  </div>
                   <RepAvatar name={stripFormerMarker(r.name)} url={r.headshotUrl} size={44} fontSize={18} />
                   <div className="sl__card-id">
                     <div className="sl__card-name">
