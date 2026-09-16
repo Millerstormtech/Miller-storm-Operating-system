@@ -37,6 +37,43 @@ export function readPropRow(line: string): PacsProperty {
   };
 }
 
+export type PacsAddresses = {
+  /** The house itself: "1402 W MAIN ST", plus its city and ZIP. */
+  situs: { line: string; city: string; zip: string };
+  /** Where the owner's post goes. Used only to work out whether they live at the house. */
+  mailing: { line: string; zip: string };
+};
+
+/**
+ * The house address and the owner's mailing address from one APPRAISAL_INFO /
+ * PROP.TXT line. Positions come from the district's own published layout
+ * document, Legacy8.0.33-AppraisalExportLayout (Travis, read 16 Sep 2026).
+ *
+ * Needed because some counties' state parcel file has almost no addresses:
+ * only 16.5% of Travis houses got one from the state file, which leaves a rep
+ * looking at a pin with no address and stops the owner check from ever running.
+ *
+ * The owner's NAME is deliberately still not read. The mailing address is used
+ * to decide "does the owner live here" and is not stored on the house.
+ */
+export function readPropAddresses(line: string): PacsAddresses {
+  const number = fixedField(line, 4460, 4474); // situs_num
+  const prefix = fixedField(line, 1040, 1049); // situs_street_prefx
+  const street = fixedField(line, 1050, 1099); // situs_street
+  const suffix = fixedField(line, 1100, 1109); // situs_street_suffix
+  return {
+    situs: {
+      line: [number, prefix, street, suffix].filter(Boolean).join(" ").replace(/\s+/g, " "),
+      city: fixedField(line, 1110, 1139), // situs_city
+      zip: fixedField(line, 1140, 1149).slice(0, 5), // situs_zip, "78704-1234" trimmed to the ZIP
+    },
+    mailing: {
+      line: fixedField(line, 694, 753).replace(/\s+/g, " "), // py_addr_line1
+      zip: fixedField(line, 979, 983), // py_addr_zip (ZIP only)
+    },
+  };
+}
+
 /** The export zero-pads ids to 12 digits ("000000120275"); the state file's Prop_ID has no padding. */
 export function pacsPropId(raw: string): string {
   return raw.trim().replace(/^0+/, "");

@@ -278,6 +278,8 @@ async function main() {
 
   // District facts (year built, homestead, roof cover) go onto the houses before counting.
   const extras = new Map<string, AppraisalUpdate>();
+  let districtAddresses = 0;
+  let districtOwnerVerdicts = 0;
   if (district && options.districtSource) {
     for (const [key, piece] of houses) {
       const record = district.get(piece.home.propId);
@@ -285,10 +287,25 @@ async function main() {
       const update = appraisalUpdate({ yearBuilt: record.yearBuilt, roofMaterial: record.roofMaterial, homestead: record.homestead }, options.districtSource);
       if (update.yearBuilt !== undefined) piece.home.yearBuilt = update.yearBuilt;
       if (update.ownerLivesHere) piece.home.ownerLivesHere = true;
+      // Where the STATE file has no address, the district's own one fills the gap,
+      // so a rep never sees a pin it cannot name (Travis: 16.5% -> effectively all).
+      if (!piece.home.address.line && record.address?.line) {
+        piece.home.address = { line: record.address.line, city: record.address.city, zip: record.address.zip };
+        districtAddresses++;
+      }
+      // Same for the owner check: a homestead only ever says "yes", so without this
+      // a county with no state-file addresses can never see a rental.
+      if (piece.home.ownerLivesHere === null && record.ownerLivesHere !== undefined && record.ownerLivesHere !== null) {
+        piece.home.ownerLivesHere = record.ownerLivesHere;
+        districtOwnerVerdicts++;
+      }
       extras.set(key, update);
     }
     const unmatched = (districtHomes?.size ?? 0) - houses.size;
     console.log(`[parcels] ${houses.size} houses from the district list; ${Math.max(0, unmatched)} district homes have no state-file parcel`);
+    if (districtAddresses || districtOwnerVerdicts) {
+      console.log(`[parcels] filled from the district where the state file was blank: ${districtAddresses} addresses, ${districtOwnerVerdicts} owner checks`);
+    }
   }
 
   // Pass 2: count and write the merged houses.

@@ -1,6 +1,6 @@
 // src/lib/canvass/pacs.test.ts
 import { describe, it, expect } from "vitest";
-import { fixedField, mergeOwnerLines, pacsPropId, readImprovementAttributeRow, readImprovementDetailRow, readPropRow } from "./pacs";
+import { fixedField, mergeOwnerLines, pacsPropId, readImprovementAttributeRow, readImprovementDetailRow, readPropAddresses, readPropRow } from "./pacs";
 
 // Made-up rows laid out like the PACS "Legacy 8.0.33" appraisal export used by
 // Potter-Randall AD and Travis CAD (layout checked 15 Sep 2026). Positions are
@@ -129,5 +129,68 @@ describe("mergeOwnerLines", () => {
 
   it("for two owners on the same supplement, counts a homestead if either line has one", () => {
     expect(mergeOwnerLines({ supNum: "0", homestead: false }, { supNum: "0", homestead: true })).toEqual({ supNum: "0", homestead: true });
+  });
+});
+
+describe("readPropAddresses", () => {
+  // Positions from the districts' own Legacy8.0.33 layout document. Built here
+  // by placing each field at its documented spot, so a wrong position fails.
+  function propLine(fields: Record<number, string>): string {
+    let line = " ".repeat(6000);
+    for (const [startText, value] of Object.entries(fields)) {
+      const start = Number(startText);
+      line = line.slice(0, start - 1) + value + line.slice(start - 1 + value.length);
+    }
+    return line;
+  }
+
+  const travisLike = propLine({
+    694: "7008 DESTINY HILLS DR", // py_addr_line1, the owner's post
+    874: "AUSTIN", // py_addr_city
+    979: "78738", // py_addr_zip
+    1040: "S", // situs_street_prefx
+    1050: "LAMAR BLVD", // situs_street
+    1100: "", // situs_street_suffix
+    1110: "AUSTIN", // situs_city
+    1140: "78704", // situs_zip
+    4460: "1109", // situs_num
+  });
+
+  it("builds the house address from its separate number, prefix, street and suffix", () => {
+    const { situs } = readPropAddresses(travisLike);
+    expect(situs.line).toBe("1109 S LAMAR BLVD");
+    expect(situs.city).toBe("AUSTIN");
+    expect(situs.zip).toBe("78704");
+  });
+
+  it("reads the owner's mailing line and ZIP, which decide whether they live there", () => {
+    const { mailing } = readPropAddresses(travisLike);
+    expect(mailing.line).toBe("7008 DESTINY HILLS DR");
+    expect(mailing.zip).toBe("78738");
+  });
+
+  it("keeps the house ZIP to five digits, so a ZIP+4 still compares", () => {
+    const line = propLine({ 4460: "1109", 1050: "LAMAR BLVD", 1140: "78704-1234" });
+    expect(readPropAddresses(line).situs.zip).toBe("78704");
+  });
+
+  it("leaves out the pieces a property does not have, with no double spaces", () => {
+    const line = propLine({ 4460: "1402", 1050: "MAIN", 1100: "ST" });
+    expect(readPropAddresses(line).situs.line).toBe("1402 MAIN ST");
+  });
+
+  it("gives empty strings for a property with no address at all", () => {
+    const { situs, mailing } = readPropAddresses(propLine({}));
+    expect(situs.line).toBe("");
+    expect(situs.city).toBe("");
+    expect(mailing.line).toBe("");
+  });
+
+  it("does not read the owner's NAME, which sits before the mailing address", () => {
+    // py_addr_line1 starts at 694; anything earlier (the owner name block) is untouched.
+    const line = propLine({ 100: "JANE HOMEOWNER", 694: "12 ELM ST" });
+    const { mailing } = readPropAddresses(line);
+    expect(mailing.line).toBe("12 ELM ST");
+    expect(JSON.stringify(readPropAddresses(line))).not.toContain("JANE");
   });
 });

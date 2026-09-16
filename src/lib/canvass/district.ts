@@ -14,6 +14,18 @@ export type DistrictProperty = {
   homestead: boolean;
   yearBuilt: number | null;
   roofMaterial: string;
+  /**
+   * The house's own address as the district holds it. Used only where the state
+   * parcel file has none: Travis carries a street address on 16.5% of its
+   * houses, Travis CAD on 100%.
+   */
+  address?: { line: string; city: string; zip: string };
+  /**
+   * Whether the owner's post goes to the house, worked out from the district's
+   * own situs and mailing addresses. Null when it cannot be told. Only used
+   * where the state file could not tell either.
+   */
+  ownerLivesHere?: boolean | null;
 };
 
 /**

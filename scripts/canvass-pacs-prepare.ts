@@ -30,7 +30,8 @@ import path from "node:path";
 import readline from "node:readline";
 import { earliestYearBuilt } from "../src/lib/canvass/appraisal";
 import { isDistrictHome, type DistrictProperty } from "../src/lib/canvass/district";
-import { mergeOwnerLines, pacsPropId, readImprovementAttributeRow, readImprovementDetailRow, readPropRow } from "../src/lib/canvass/pacs";
+import { mergeOwnerLines, pacsPropId, readImprovementAttributeRow, readImprovementDetailRow, readPropAddresses, readPropRow } from "../src/lib/canvass/pacs";
+import { ownerLivesHere } from "../src/lib/canvass/address";
 import { isMainArea, roofCoverLabel, type PacsDistrict } from "../src/lib/canvass/pacsDistrict";
 
 type Options = { district: PacsDistrict; dir: string; out: string };
@@ -83,13 +84,30 @@ async function main() {
   const thisYear = new Date().getFullYear();
 
   // One line per owner, with supplements: merge to one per property.
-  type Line = { supNum: string; homestead: boolean; stateCode: string };
+  type Line = {
+    supNum: string;
+    homestead: boolean;
+    stateCode: string;
+    address: { line: string; city: string; zip: string };
+    ownerLivesHere: boolean | null;
+  };
   const properties = new Map<string, Line>();
   const propertyLines = await eachLine(findFile(options.dir, ["_APPRAISAL_INFO.TXT", "PROP.TXT"]), (line) => {
     const row = readPropRow(line);
     const propId = pacsPropId(row.propId);
     if (!propId) return;
-    const current: Line = { supNum: row.supNum, homestead: row.homestead, stateCode: row.improvementStateCode || row.landStateCode };
+    const addresses = readPropAddresses(line);
+    const current: Line = {
+      supNum: row.supNum,
+      homestead: row.homestead,
+      stateCode: row.improvementStateCode || row.landStateCode,
+      address: addresses.situs,
+      // The mailing address is compared here and then dropped; it is never stored.
+      ownerLivesHere: ownerLivesHere(
+        { line: addresses.situs.line, zip: addresses.situs.zip },
+        { line: addresses.mailing.line, zip: addresses.mailing.zip }
+      ),
+    };
     const existing = properties.get(propId);
     properties.set(propId, existing ? mergeOwnerLines(existing, current) : current);
   });
@@ -119,6 +137,8 @@ async function main() {
   let withYear = 0;
   let withHomestead = 0;
   let withRoof = 0;
+  let withAddress = 0;
+  let withOwnerVerdict = 0;
   for (const [propId, line] of properties) {
     const property: DistrictProperty = {
       propId,
@@ -126,6 +146,8 @@ async function main() {
       homestead: line.homestead,
       yearBuilt: earliestYearBuilt(years.get(propId) ?? [], thisYear),
       roofMaterial: roofs.get(propId) ?? "",
+      address: line.address,
+      ownerLivesHere: line.ownerLivesHere,
     };
     out.write(`${JSON.stringify(property)}\n`);
     if (!isDistrictHome(property.stateCode, property.yearBuilt)) continue;
@@ -133,6 +155,8 @@ async function main() {
     if (property.yearBuilt !== null) withYear++;
     if (property.homestead) withHomestead++;
     if (property.roofMaterial) withRoof++;
+    if (property.address?.line) withAddress++;
+    if (property.ownerLivesHere !== null) withOwnerVerdict++;
   }
   await new Promise<void>((resolve, reject) => out.end((error?: Error | null) => (error ? reject(error) : resolve())));
   fs.renameSync(`${options.out}.part`, options.out);
@@ -147,6 +171,7 @@ async function main() {
     `${tag} homes by district code ${homes}: year built ${withYear} (${pct(withYear, homes)}), homestead ${withHomestead} (${pct(withHomestead, homes)}), ` +
       `roof cover ${withRoof} (${pct(withRoof, homes)})`
   );
+  console.log(`${tag} district's own address on ${withAddress} (${pct(withAddress, homes)}), owner check answered for ${withOwnerVerdict} (${pct(withOwnerVerdict, homes)})`);
 }
 
 main().catch((error) => {
