@@ -32,6 +32,7 @@ import { toSalesRow } from "../../src/lib/scoreboard/rows";
 import { normEmail } from "../../src/lib/leaderboard/identity";
 import { loadBoardData } from "../../src/lib/training/board-data";
 import { lowestKnocks, lastCompleteDays, LEADER_ROLES } from "../../src/lib/scoreboard/lowestKnocks";
+import { MonthlyKingAnnouncementModel } from "../../src/lib/models/MonthlyKingAnnouncement";
 import {
   METRICS,
   topN,
@@ -206,7 +207,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const lowWindow = scope.level === "self" ? null : lastCompleteDays(now);
 
     const shared = await loadSharedRosterData();
-    const [yearRaw, monthRaw, prevRaw, board, lowRaw, knockSpans, leaderUsers] = await Promise.all([
+    const [yearRaw, monthRaw, prevRaw, board, lowRaw, knockSpans, leaderUsers, crowningRow] = await Promise.all([
       computeSalesRows(year, shared),
       computeSalesRows(month, shared),
       computeSalesRows(prevMonth, shared),
@@ -218,8 +219,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       lowWindow
         ? UserModel.find({ $or: [{ role: { $in: LEADER_ROLES } }, { roles: { $in: LEADER_ROLES } }] }).select("id").lean()
         : Promise.resolve(null),
+      // The crowning that actually happened: one row per month, written by the
+      // 1st-of-month cron. The live crown on the leaderboard is a race still
+      // being run, so it is NOT what gets celebrated.
+      MonthlyKingAnnouncementModel.findOne({}, { month: 1, repId: 1, repName: 1, revenue: 1 })
+        .sort({ month: -1 })
+        .lean(),
     ]);
     const leaderIds = new Set<string>(((leaderUsers as any[]) || []).map((u) => String(u.id)));
+
+    // Was the viewer the one crowned? The announcement stores a leaderboard row
+    // id ("rc:123"), never an account, so only the server can answer this.
+    const crowned = crowningRow as { month?: string; repId?: string; repName?: string; revenue?: number } | null;
+    const crowning = crowned && crowned.month
+      ? {
+          month: String(crowned.month),
+          repName: String(crowned.repName || ""),
+          revenue: Number(crowned.revenue) || 0,
+          isViewer: yearRaw.some((r) => r.id === crowned.repId && r.repUserId === user.id),
+        }
+      : null;
 
     const yearRows = scopeRows(yearRaw.map(toSalesRow), scope);
     const monthRows = scopeRows(monthRaw.map(toSalesRow), scope);
@@ -348,6 +367,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       training,
       news: scope.level === "company" ? await loadNews(now) : null,
       lowestKnocks: lowestKnocksCard,
+      crowning,
     });
   } catch (error) {
     console.error("[dashboard] Error:", error);

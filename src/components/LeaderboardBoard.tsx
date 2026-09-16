@@ -1089,6 +1089,28 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__card-stat { text-align: center; }
         .sl__card-stat-val { font-size: 15px; font-weight: 800; color: var(--text); }
         .sl__card-stat-lbl { font-size: 11px; color: var(--subtle); margin-top: 2px; }
+
+        /* Motion. The plate and its places arrive rather than blinking into
+           existence; every rule here is an ENTRANCE, nothing loops, and a
+           viewer whose system asks for reduced motion gets none of it. */
+        @media (prefers-reduced-motion: no-preference) {
+          .sl__podium { animation: sl-plate-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+          .sl__pod { animation: sl-pod-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+          .sl__podium-row .sl__pod:nth-child(1) { animation-delay: 140ms; }
+          .sl__podium-row .sl__pod:nth-child(2) { animation-delay: 230ms; }
+          .sl__podium-row .sl__pod:nth-child(3) { animation-delay: 320ms; }
+          .sl__king { position: relative; overflow: hidden; animation: sl-king-in 520ms cubic-bezier(0.22, 1, 0.36, 1) 400ms both; }
+          /* One gold sweep across the crown bar as it lands, then never again. */
+          .sl__king::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 45%; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255, 214, 92, 0.28), transparent); animation: sl-king-shine 1150ms ease-out 950ms both; }
+          /* The row someone was sent to: one flash, so the eye lands on it. */
+          .sl__row--focus { animation: sl-focus-flash 1500ms ease-out both; }
+          .sl__card--focus { animation: sl-focus-flash 1500ms ease-out both; }
+        }
+        @keyframes sl-plate-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        @keyframes sl-pod-rise { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
+        @keyframes sl-king-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+        @keyframes sl-king-shine { from { left: -60%; } to { left: 115%; } }
+        @keyframes sl-focus-flash { from { background-color: var(--th-active); } to { background-color: var(--you); } }
       `}</style>
     </div>
   );
