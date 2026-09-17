@@ -163,14 +163,12 @@ export function TicketTable() {
     } catch {} finally { setUploading(false); }
   };
 
-  // Every configured category (Billing, Draw Request, …) ALWAYS shows up, even
-  // with zero tickets of that type yet, PLUS any legacy type actually present
-  // among the tickets this viewer can see (bug/feature/other) — so nothing
-  // pickable in the "who does this go to" dropdown is ever missing here.
-  const typeOptions = Array.from(
-    new Set([...SUPPORT_CATEGORIES.map((c) => c.key), ...tickets.map((t) => t.type)])
-  )
-    .map((key) => ({ key, label: supportTypeLabel(key) }))
+  // Exactly the 4 real categories a ticket can be raised under today (Billing,
+  // Draw Request, Miller Storm Tech, MSRR Tools Issue) — same list as the
+  // "Reason" dropdown when raising a ticket. Legacy types (bug/feature/other)
+  // are deliberately left out of this filter; they aren't a choice anymore.
+  const typeOptions = SUPPORT_CATEGORIES
+    .map((c) => ({ key: c.key, label: c.label }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
   // A ticket's creation date as the viewer's own local calendar day (YYYY-MM-DD)
