@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { renderTemplate } from "./emailTemplates";
 import { getEmailTemplate } from "./emailTemplatesServer";
 import { roleDisplayName } from "./roleLabels";
+import { formatTicketNumber } from "./support/ticketNumberFormat";
 
 type EmailOptions = {
   to: string;
@@ -283,6 +284,7 @@ export async function sendSupportTicketCreatedEmail(params: {
   userEmail: string;
   type: string;
   note: string;
+  ticketNumber: number;
 }) {
   const tmpl = await getEmailTemplate("supportTicketCreated");
   if (tmpl.status === "draft") { console.log("[Email] supportTicketCreated is draft — skipping"); return; }
@@ -292,6 +294,7 @@ export async function sendSupportTicketCreatedEmail(params: {
     "{{userEmail}}": params.userEmail,
     "{{type}}": params.type,
     "{{note}}": params.note,
+    "{{ticketNumber}}": formatTicketNumber(params.ticketNumber),
   });
   return sendEmail({ to: params.adminEmail, subject, html, text });
 }
@@ -307,6 +310,7 @@ export async function sendTicketReplyEmail(params: {
   mediaUrl?: string;
   mediaType?: string;  // 'image' | 'video'
   forRaiser: boolean;  // true → email to the raiser; false → to a handler
+  ticketNumber: number;
 }) {
   const tmpl = await getEmailTemplate("ticketReply");
   if (tmpl.status === "draft") { console.log("[Email] ticketReply is draft — skipping"); return; }
@@ -327,6 +331,7 @@ export async function sendTicketReplyEmail(params: {
     "{{type}}": params.type,
     "{{senderName}}": params.senderName,
     "{{message}}": message,
+    "{{ticketNumber}}": formatTicketNumber(params.ticketNumber),
   });
   return sendEmail({ to: params.to, subject, html, text });
 }
@@ -344,6 +349,7 @@ export async function sendTicketStatusEmail(params: {
   email: string;
   type: string;
   adminNote?: string;
+  ticketNumber: number;
 }) {
   const key = TICKET_STATUS_TEMPLATE[params.status];
   if (!key) return; // no email for "open"
@@ -353,6 +359,7 @@ export async function sendTicketStatusEmail(params: {
     "{{name}}": params.name,
     "{{type}}": params.type,
     "{{adminNote}}": params.adminNote || "",
+    "{{ticketNumber}}": formatTicketNumber(params.ticketNumber),
   });
   return sendEmail({ to: params.email, subject, html, text });
 }

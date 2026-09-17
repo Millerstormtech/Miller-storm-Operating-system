@@ -8,6 +8,7 @@ import { sendSupportTicketCreatedEmail } from "../../../src/lib/email";
 import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES, ownedTicketTypes } from "../../../src/lib/support/categories";
 import { computeSalesRows } from "../../../src/lib/leaderboard/compute";
 import { findSubmitterRow } from "../../../src/lib/leaderboard/identity";
+import { ticketNumberFor, ticketNumbers } from "../../../src/lib/support/ticketNumber";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -47,8 +48,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(200).json({ openCount });
       return;
     }
-    const tickets = await TicketModel.find(scope).sort({ createdAt: -1 }).lean();
-    res.status(200).json(tickets);
+    const [tickets, numbers] = await Promise.all([
+      TicketModel.find(scope).sort({ createdAt: -1 }).lean(),
+      ticketNumbers(),
+    ]);
+    const withNumbers = (tickets as any[]).map((t) => ({ ...t, number: numbers.get(t.id) ?? null }));
+    res.status(200).json(withNumbers);
     return;
   }
 
@@ -124,6 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { role: "admin", deleted: { $ne: true } },
       { id: 1, name: 1, email: 1 }
     ).lean();
+    const ticketNumber = await ticketNumberFor((ticket as any).createdAt);
 
     // Email goes to this category's addresses PLUS every admin (admins always
     // receive all tickets), deduped so a shared address isn't emailed twice.
@@ -142,6 +148,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           userEmail: email,
           type: typeLabel,
           note: emailNote,
+          ticketNumber,
         }).catch((e) => console.error("[ticket] email failed:", e?.message || e))
       ),
       // In-app bell notification for every admin.
