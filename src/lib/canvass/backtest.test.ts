@@ -1,13 +1,14 @@
 // src/lib/canvass/backtest.test.ts
 import { describe, it, expect } from "vitest";
-import { asOfFacts, liftSummary, pickRandom } from "./backtest";
+import { asOfFacts, isGoodDoor, isGoodOrMaybeDoor, liftSummary, pickRandom } from "./backtest";
 import type { HomeFacts } from "./grade";
 
 // Spec A6: grade each house signed in the last 12 months using only what we would
 // have known 30 days before signing (hail up to then, age, owner; our own knocks
 // left out, since they would give the answer away), and compare with random houses
-// in the same ZIP codes. Pass: signed houses at least twice as likely to be green
-// or yellow.
+// in the same ZIP codes. Pass: signed houses at least twice as likely to be a
+// GOOD door. Since 17 Sep 2026 (Youssef, Checkpoint 2 option A) that means green
+// only: measured, yellow houses signed at the same rate as random ones.
 
 const facts = (over: Partial<HomeFacts> = {}): HomeFacts => ({
   yearBuilt: 1998,
@@ -84,5 +85,30 @@ describe("pickRandom", () => {
     const picked = pickRandom(houses.slice(0, 3), 10, 42);
     expect(picked).toHaveLength(3);
     expect(new Set(picked).size).toBe(3);
+  });
+});
+
+describe("isGoodDoor", () => {
+  // Youssef, 17 Sep 2026: the map's promise is green. Yellow is "worth a look".
+  it("counts green only", () => {
+    expect(isGoodDoor("green")).toBe(true);
+    expect(isGoodDoor("yellow")).toBe(false);
+    expect(isGoodDoor("orange")).toBe(false);
+    expect(isGoodDoor("red")).toBe(false);
+  });
+
+  it("keeps the old green-or-yellow reading available for comparison, never for the verdict", () => {
+    expect(isGoodOrMaybeDoor("green")).toBe(true);
+    expect(isGoodOrMaybeDoor("yellow")).toBe(true);
+    expect(isGoodOrMaybeDoor("orange")).toBe(false);
+    expect(isGoodOrMaybeDoor("red")).toBe(false);
+  });
+
+  it("the bar itself did not move: it is still twice as likely", () => {
+    // 46.0% of signed houses green vs 23.7% of random ones, the 16 Sep 2026 measurement.
+    const measured = liftSummary({ signedGood: 362, signedTotal: 787, randomGood: 1865, randomTotal: 7870 });
+    expect(measured.lift).toBe(1.94);
+    expect(measured.passes).toBe(false); // a hair under, and it is reported that way
+    expect(liftSummary({ signedGood: 400, signedTotal: 787, randomGood: 1865, randomTotal: 7870 }).passes).toBe(true);
   });
 });

@@ -21,10 +21,35 @@ export function asOfFacts(facts: HomeFacts, asOf: string): HomeFacts {
   };
 }
 
+import type { Color } from "./grade";
+
+/**
+ * Which colour counts as "the map pointed a rep here".
+ *
+ * GREEN ONLY, decided by Youssef on 17 Sep 2026 (Checkpoint 2, option A).
+ * Measured on 787 signed houses against 7,870 random ones: green was 1.94x
+ * more common among signed houses, yellow was 1.01x, the same as a random
+ * house. So yellow is told to reps as "worth a look", not as a promise, and
+ * the backtest judges the promise. The old reading (green or yellow) is still
+ * printed for information so the two can be compared.
+ *
+ * PARKED, option B: retune so yellow means something (drop the 1 in hail band,
+ * stop paying for house age, lean on hail size and owner occupancy). The best
+ * combination tried reached 1.84x on green-or-yellow. Only if A is not enough.
+ */
+export function isGoodDoor(color: Color): boolean {
+  return color === "green";
+}
+
+/** The reading before 17 Sep 2026, kept for comparison only. */
+export function isGoodOrMaybeDoor(color: Color): boolean {
+  return color === "green" || color === "yellow";
+}
+
 export type LiftCounts = { signedGood: number; signedTotal: number; randomGood: number; randomTotal: number };
 export type Lift = { signedShare: number; randomShare: number; lift: number | null; passes: boolean };
 
-/** Spec A6: signed houses must be at least twice as likely to be green or yellow as random houses nearby. */
+/** Spec A6: signed houses must be at least twice as likely to be a good door (isGoodDoor) as random houses nearby. */
 export const PASS_LIFT = 2;
 
 export function liftSummary(counts: LiftCounts): Lift {

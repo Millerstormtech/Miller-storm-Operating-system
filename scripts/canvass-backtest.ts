@@ -27,7 +27,7 @@ import { GRADE, type GradeConfig } from "../src/lib/canvass/config";
 import { gradeHome, type HomeFacts } from "../src/lib/canvass/grade";
 import { homeFacts } from "../src/lib/canvass/facts";
 import { biggestHailInWindow } from "../src/lib/canvass/hail";
-import { asOfFacts, liftSummary, pickRandom } from "../src/lib/canvass/backtest";
+import { asOfFacts, isGoodDoor, isGoodOrMaybeDoor, liftSummary, pickRandom } from "../src/lib/canvass/backtest";
 import { centralDay, monthsBefore } from "../src/lib/canvass/dates";
 import { areaForCounty } from "../src/lib/canvass/counties";
 import { CanvassHomeModel } from "../src/lib/models/CanvassHome";
@@ -160,18 +160,22 @@ async function main() {
   for (const months of HAIL_WINDOWS) {
     const counts = emptyCounts();
     const byArea = new Map<string, Counts>();
+    const oldReading = emptyCounts();
     for (const row of graded({ ...GRADE, hailLookbackMonths: months })) {
-      const good = row.grade.color === "green" || row.grade.color === "yellow";
+      const good = isGoodDoor(row.grade.color); // green only (Youssef, 17 Sep 2026)
       add(counts, row.signed, good);
+      add(oldReading, row.signed, isGoodOrMaybeDoor(row.grade.color));
       const areaCounts = byArea.get(row.area) ?? emptyCounts();
       add(areaCounts, row.signed, good);
       byArea.set(row.area, areaCounts);
     }
     const overall = liftSummary(counts);
+    const before = liftSummary(oldReading);
     const label = months === GRADE.hailLookbackMonths ? "DECIDING RESULT" : "for information";
     console.log(
-      `[backtest] hail window ${months} months (${label}): signed houses green or yellow ${pct(overall.signedShare)} of ${counts.signedTotal}; ` +
-        `random houses ${pct(overall.randomShare)} of ${counts.randomTotal}; lift ${overall.lift ?? "n/a"}; ${overall.passes ? "PASSES" : "does not pass"} the 2x bar`
+      `[backtest] hail window ${months} months (${label}): signed houses green ${pct(overall.signedShare)} of ${counts.signedTotal}; ` +
+        `random houses ${pct(overall.randomShare)} of ${counts.randomTotal}; lift ${overall.lift ?? "n/a"}; ${overall.passes ? "PASSES" : "does not pass"} the 2x bar` +
+        ` (green or yellow, the reading before 17 Sep: lift ${before.lift ?? "n/a"})`
     );
     for (const [area, areaCounts] of byArea) {
       const lift = liftSummary(areaCounts);
@@ -225,14 +229,14 @@ async function main() {
       const goodCounts = emptyCounts();
       const greenCounts = emptyCounts();
       for (const row of graded(config)) {
-        add(goodCounts, row.signed, row.grade.color === "green" || row.grade.color === "yellow");
-        add(greenCounts, row.signed, row.grade.color === "green");
+        add(goodCounts, row.signed, isGoodOrMaybeDoor(row.grade.color));
+        add(greenCounts, row.signed, isGoodDoor(row.grade.color));
       }
       const good = liftSummary(goodCounts);
       const green = liftSummary(greenCounts);
       console.log(
-        `[explain] ${name}: green or yellow signed ${pct(good.signedShare)} vs random ${pct(good.randomShare)} (lift ${good.lift ?? "n/a"}); ` +
-          `green only signed ${pct(green.signedShare)} vs random ${pct(green.randomShare)} (lift ${green.lift ?? "n/a"})`
+        `[explain] ${name}: green (deciding) signed ${pct(green.signedShare)} vs random ${pct(green.randomShare)} (lift ${green.lift ?? "n/a"}); ` +
+          `green or yellow signed ${pct(good.signedShare)} vs random ${pct(good.randomShare)} (lift ${good.lift ?? "n/a"})`
       );
     }
   }
