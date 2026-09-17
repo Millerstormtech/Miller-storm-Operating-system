@@ -126,7 +126,8 @@ async function main() {
   const roofs = new Map<string, string>();
   const attributeLines = await eachLine(findFile(options.dir, ["_IMPROVEMENT_DETAIL_ATTR.TXT", "IMP_ATR.TXT"], true), (line) => {
     const row = readImprovementAttributeRow(line);
-    if (row.description.toUpperCase() !== "ROOF COVER") return;
+    // Potter-Randall writes "ROOF COVER", Travis "ROOF COVERING" (341,118 parts, review 17 Sep 2026).
+    if (!row.description.toUpperCase().startsWith("ROOF COVER")) return;
     const propId = pacsPropId(row.propId);
     const label = roofCoverLabel(row.code);
     if (label && !roofs.has(propId)) roofs.set(propId, label);

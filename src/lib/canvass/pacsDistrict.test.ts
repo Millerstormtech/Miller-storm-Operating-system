@@ -51,6 +51,13 @@ describe("roofCoverLabel", () => {
     expect(roofCoverLabel("CONCRETE T")).toBe("CONCRETE TILE");
   });
 
+  it("reads Travis CAD's own spellings too", () => {
+    expect(roofCoverLabel("COMPOSITION")).toBe("COMPOSITION SHINGLES");
+    expect(roofCoverLabel("WOOD SHINGL")).toBe("WOOD SHINGLES");
+    expect(roofCoverLabel("METAL")).toBe("METAL");
+    expect(roofCoverLabel("TILE")).toBe("TILE");
+  });
+
   it("keeps covers that already fit, in capitals", () => {
     expect(roofCoverLabel("METAL")).toBe("METAL");
     expect(roofCoverLabel("Clay Tile")).toBe("CLAY TILE");

@@ -22,6 +22,7 @@ const canvassCountyQualitySchema = new Schema(
     builtBefore1990: { type: Number, default: 0 },
     withOwnerSignal: { type: Number, default: 0 },
     ownerLivesHere: { type: Number, default: 0 },
+    withHomesteadSignal: { type: Number, default: 0 }, // of withOwnerSignal, how many came from a homestead exemption (quality.ts)
     homesFromBuildingOnly: { type: Number, default: 0 }, // guessed from a building because the county has no usable codes
     // Written by scripts/canvass-match.ts. "Nearby unmatched" = no house matched, but a loaded house of this county is within 2 km.
     doorsMatched: { type: Number, default: 0 },

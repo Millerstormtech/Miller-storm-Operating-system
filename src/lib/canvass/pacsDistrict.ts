@@ -40,6 +40,9 @@ const ROOF_COVER_LABELS: Record<string, string> = {
   "WOOD SHAKE": "WOOD SHAKES",
   "BUILT-UP S": "BUILT-UP",
   "CONCRETE T": "CONCRETE TILE",
+  // Travis CAD's spellings (17 Sep 2026): COMPOSITION 288,355, METAL 27,271, TILE 14,086, BUILT-UP 9,384, WOOD SHINGLE 1,445.
+  COMPOSITION: "COMPOSITION SHINGLES",
+  "WOOD SHINGL": "WOOD SHINGLES",
 };
 
 /** A readable roof cover in capitals, or "" for NONE and blanks. */

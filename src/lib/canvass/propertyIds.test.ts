@@ -62,7 +62,7 @@ describe("createIdConflictCounter", () => {
     counter.add({ propId: "1576", geoId: "A-2", address: "102 MAIN ST" }); // Prop_ID reused on another address
     counter.add({ propId: "1577", geoId: "A-1", address: "100  main st" }); // GEO_ID repeat on the same address, spacing aside
     counter.add({ propId: "", geoId: "A-3", address: "104 MAIN ST" });
-    expect(counter.counts()).toEqual({ records: 4, propIdValues: 3, propIdConflicts: 1, geoIdValues: 4, geoIdConflicts: 0 });
+    expect(counter.counts()).toEqual({ records: 4, recordsWithId: 4, propIdValues: 3, propIdConflicts: 1, geoIdValues: 4, geoIdConflicts: 0 });
   });
 
   it("does not count a repeat when either address is blank", () => {
@@ -79,5 +79,51 @@ describe("createIdConflictCounter", () => {
     counter.add({ propId: "1", geoId: "Y", address: "2 A ST" });
     expect(counter.counts().propIdConflicts).toBe(1);
     expect(counter.counts().geoIdConflicts).toBe(0);
+  });
+});
+
+describe("placeholders and street-less addresses (the Travis false alarm, review 17 Sep 2026)", () => {
+  // Travis CAD's state file: the id "0" on half the records, and ", TX 78704"
+  // style addresses (state and ZIP only) on most of the rest. The old counter
+  // called that 32.7% conflicts; the real share is 0.45%.
+  const travisLike = () => {
+    const counter = createIdConflictCounter();
+    for (let i = 0; i < 100; i++) counter.add({ propId: "0", geoId: "0", address: i % 2 ? ", TX 78704" : ", TX 78746" });
+    for (let i = 0; i < 100; i++) counter.add({ propId: `${1000 + i}`, geoId: `${1000 + i}`, address: i % 3 ? ", TX 78704" : `${i} ELM ST, AUSTIN, TX 78704` });
+    counter.add({ propId: "1001", geoId: "1001", address: ", TX 78746" }); // the same real id again, street-less: proves nothing
+    return counter;
+  };
+
+  it("does not count the placeholder id as an id, nor its records as filled", () => {
+    const counts = travisLike().counts();
+    expect(counts.records).toBe(201);
+    expect(counts.recordsWithId).toBe(101);
+    expect(counts.propIdValues).toBe(101);
+  });
+
+  it("does not count a repeat when the address is only a state and ZIP", () => {
+    const counts = travisLike().counts();
+    expect(counts.propIdConflicts).toBe(0);
+    expect(counts.geoIdConflicts).toBe(0);
+    expect(chooseIdField(counts)).toBe("Prop_ID");
+  });
+
+  it("still counts a real conflict between two numbered addresses", () => {
+    const counter = travisLike();
+    counter.add({ propId: "1000", geoId: "1000", address: "999 OTHER RD, AUSTIN, TX 78704" }); // 1000 was "0 ELM ST"
+    expect(counter.counts().propIdConflicts).toBe(1);
+  });
+
+  it("still catches a group code (Ector) when the addresses are real", () => {
+    const counter = createIdConflictCounter();
+    for (let i = 0; i < 100; i++) counter.add({ propId: "GROUP7", geoId: `${i}`, address: `${i} MAIN ST, ODESSA, TX 79761` });
+    const counts = counter.counts();
+    expect(counts.propIdConflicts / counts.propIdValues).toBeGreaterThan(0.9);
+    expect(chooseIdField(counts)).toBe("GEO_ID");
+  });
+
+  it("judges 'filled' against records that carry a real id, so a placeholder-heavy file keeps Prop_ID", () => {
+    // 60% placeholders: Prop_ID is on only 40% of all records but on 100% of the real ones.
+    expect(chooseIdField({ records: 100, recordsWithId: 40, propIdValues: 40, propIdConflicts: 0, geoIdValues: 40, geoIdConflicts: 0 })).toBe("Prop_ID");
   });
 });

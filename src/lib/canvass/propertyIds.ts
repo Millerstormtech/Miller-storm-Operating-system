@@ -15,6 +15,14 @@ export type IdField = "Prop_ID" | "GEO_ID";
 
 export type IdFieldCounts = {
   records: number;
+  /**
+   * Records carrying a real id in either field. Travis CAD's state file puts
+   * the placeholder "0" on 429,701 of 834,936 records (utility lines, business
+   * personal property, exempt accounts drawn as pseudo-parcels; review 17 Sep
+   * 2026); those records can never be houses and must not make a good id field
+   * look half-empty. Older counts may lack this; `records` is used then.
+   */
+  recordsWithId?: number;
   propIdValues: number;
   /** Records whose Prop_ID was already seen on a different address. */
   propIdConflicts: number;
@@ -33,7 +41,8 @@ export const ID_RULES = {
 const share = (part: number, whole: number) => (whole > 0 ? part / whole : 0);
 
 export function chooseIdField(counts: IdFieldCounts): IdField {
-  const filled = (values: number) => counts.records > 0 && values / counts.records >= ID_RULES.minFilledShare;
+  const denominator = counts.recordsWithId ?? counts.records;
+  const filled = (values: number) => denominator > 0 && values / denominator >= ID_RULES.minFilledShare;
   const prop = share(counts.propIdConflicts, counts.propIdValues);
   const geo = share(counts.geoIdConflicts, counts.geoIdValues);
   if (filled(counts.propIdValues) && prop <= ID_RULES.maxConflictShare) return "Prop_ID";
@@ -43,12 +52,24 @@ export function chooseIdField(counts: IdFieldCounts): IdField {
   return "Prop_ID";
 }
 
-const normalizeAddress = (address: string) => address.toUpperCase().replace(/\s+/g, " ").replace(/\s*,\s*/g, ",").trim();
+/**
+ * The address as compared, or "" when it cannot tell two properties apart: a
+ * line with nothing before its first comma is only a state and ZIP (Travis
+ * writes ", TX 78704" on 613,696 records), which proves nothing about which
+ * property an id belongs to.
+ */
+const normalizeAddress = (address: string) => {
+  const line = address.toUpperCase().replace(/\s+/g, " ").replace(/\s*,\s*/g, ",").trim();
+  return line.split(",")[0].trim() ? line : "";
+};
+
+/** An id made only of zeros is a placeholder, not an id. */
+const realId = (id: string): string => (/^0*$/.test(id.trim()) ? "" : id.trim());
 
 /** Counts, record by record, how often each id field comes back on a different address. */
 export function createIdConflictCounter() {
   const firstAddress = { prop: new Map<string, string>(), geo: new Map<string, string>() };
-  const counts: IdFieldCounts = { records: 0, propIdValues: 0, propIdConflicts: 0, geoIdValues: 0, geoIdConflicts: 0 };
+  const counts: IdFieldCounts = { records: 0, recordsWithId: 0, propIdValues: 0, propIdConflicts: 0, geoIdValues: 0, geoIdConflicts: 0 };
 
   /** True when this id was seen before on another address. A blank address proves nothing. */
   const isConflict = (seen: Map<string, string>, id: string, address: string): boolean => {
@@ -65,8 +86,9 @@ export function createIdConflictCounter() {
     add(record: { propId: string; geoId: string; address: string }) {
       counts.records++;
       const address = normalizeAddress(record.address);
-      const propId = record.propId.trim();
-      const geoId = record.geoId.trim();
+      const propId = realId(record.propId);
+      const geoId = realId(record.geoId);
+      if (propId || geoId) counts.recordsWithId = (counts.recordsWithId ?? 0) + 1;
       if (propId) {
         counts.propIdValues++;
         if (isConflict(firstAddress.prop, propId, address)) counts.propIdConflicts++;

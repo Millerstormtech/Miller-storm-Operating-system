@@ -287,11 +287,18 @@ async function main() {
       const update = appraisalUpdate({ yearBuilt: record.yearBuilt, roofMaterial: record.roofMaterial, homestead: record.homestead }, options.districtSource);
       if (update.yearBuilt !== undefined) piece.home.yearBuilt = update.yearBuilt;
       if (update.ownerLivesHere) piece.home.ownerLivesHere = true;
-      // Where the STATE file has no address, the district's own one fills the gap,
-      // so a rep never sees a pin it cannot name (Travis: 16.5% -> effectively all).
-      if (!piece.home.address.line && record.address?.line) {
-        piece.home.address = { line: record.address.line, city: record.address.city, zip: record.address.zip };
-        districtAddresses++;
+      // The district's own numbered street line wins over the state file's. The
+      // Travis review (17 Sep 2026) found the state line was an owner's office, a
+      // PO Box or a neighbour's number on 10,442 houses (3.5%) while the district's
+      // situs was right on every one; the state line is kept only when the district
+      // has no house number to offer.
+      if (record.address?.line && (/^\d/.test(record.address.line) || !piece.home.address.line)) {
+        if (record.address.line !== piece.home.address.line) districtAddresses++;
+        piece.home.address = {
+          line: record.address.line,
+          city: record.address.city || piece.home.address.city,
+          zip: record.address.zip || piece.home.address.zip,
+        };
       }
       // Same for the owner check: a homestead only ever says "yes", so without this
       // a county with no state-file addresses can never see a rental.
