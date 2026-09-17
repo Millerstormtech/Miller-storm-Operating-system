@@ -191,3 +191,50 @@ export function toClusters(rows: readonly ClusterRow[], bbox: Bbox, cells: numbe
     }))
     .sort((a, b) => b.count - a.count);
 }
+
+// ---- The hail layer (spec B5: GET /api/canvass/hail?since=&bbox=) ----
+
+/** The most radar squares one request draws. A city view in a big storm season stays well under this. */
+export const HAIL_CELLS_LIMIT = 20000;
+
+export type HailQuery = { bbox: Bbox; since: string };
+
+export type ParsedHailQuery = { ok: true; query: HailQuery } | { ok: false; error: string };
+
+/** The hail layer needs the same checked view as the dots, plus the first storm day to show. */
+export function parseHailQuery(raw: Record<string, unknown>): ParsedHailQuery {
+  const view = parseHomesQuery({ bbox: raw.bbox });
+  if (!view.ok) return view;
+  const since = first(raw.since).trim();
+  if (!since || !isValidDay(since)) return { ok: false, error: "since must be a day like 2026-05-01" };
+  return { ok: true, query: { bbox: view.query.bbox, since } };
+}
+
+/** The MongoDB filter for canvass_hail_cells: squares of 1 in or more (the grade's smallest band) in the view since the day. */
+export function hailCellsFilter(query: HailQuery): Record<string, unknown> {
+  const { bbox } = query;
+  return {
+    location: {
+      $geoWithin: {
+        $box: [
+          [bbox.west, bbox.south],
+          [bbox.east, bbox.north],
+        ],
+      },
+    },
+    stormDate: { $gte: query.since },
+    inches: { $gte: 1 },
+  };
+}
+
+/** The fields the layer needs, and nothing else. */
+export const HAIL_CELLS_PROJECTION = { _id: 0, stormDate: 1, location: 1, inches: 1 } as const;
+
+export type HailCellRow = { stormDate: string; location: { coordinates: [number, number] }; inches: number };
+
+/** One radar square as the layer draws it. */
+export type MapHailCell = { date: string; lat: number; lng: number; inches: number };
+
+export function toMapHailCells(rows: readonly HailCellRow[]): MapHailCell[] {
+  return rows.map((row) => ({ date: row.stormDate, lng: row.location.coordinates[0], lat: row.location.coordinates[1], inches: row.inches }));
+}

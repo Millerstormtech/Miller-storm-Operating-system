@@ -13,6 +13,10 @@ import {
   toClusters,
   toMapHomes,
   type HomeRow,
+  HAIL_CELLS_LIMIT,
+  hailCellsFilter,
+  parseHailQuery,
+  toMapHailCells,
 } from "./query";
 import type { Color } from "./grade";
 
@@ -234,5 +238,37 @@ describe("clusters", () => {
 
   it("the cap is 3,000 houses, as the spec promises the phone", () => {
     expect(HOMES_LIMIT).toBe(3000);
+  });
+});
+
+describe("the hail layer request", () => {
+  it("needs the same checked view as the dots, plus a real first day", () => {
+    const parsed = parseHailQuery({ bbox: FW, since: "2026-05-01" });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.query.bbox.north).toBe(32.75);
+    expect(parsed.query.since).toBe("2026-05-01");
+  });
+
+  it("refuses a bad view, a missing day and a made-up day", () => {
+    expect(parseHailQuery({ bbox: "-99,31,-97,33", since: "2026-05-01" }).ok).toBe(false);
+    expect(parseHailQuery({ bbox: FW }).ok).toBe(false);
+    expect(parseHailQuery({ bbox: FW, since: "2026-02-30" }).ok).toBe(false);
+  });
+
+  it("asks for squares of 1 in or more inside the view since the day", () => {
+    const parsed = parseHailQuery({ bbox: FW, since: "2026-05-01" });
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(hailCellsFilter(parsed.query)).toEqual({
+      location: { $geoWithin: { $box: [[-97.45, 32.72], [-97.42, 32.75]] } },
+      stormDate: { $gte: "2026-05-01" },
+      inches: { $gte: 1 },
+    });
+  });
+
+  it("turns rows into squares with a day, a position and a size, and nothing else", () => {
+    const cells = toMapHailCells([{ stormDate: "2026-05-04", location: { coordinates: [-97.43, 32.73] }, inches: 1.75 }]);
+    expect(cells).toEqual([{ date: "2026-05-04", lat: 32.73, lng: -97.43, inches: 1.75 }]);
+    expect(HAIL_CELLS_LIMIT).toBeGreaterThan(0);
   });
 });
