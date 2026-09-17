@@ -9,7 +9,6 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // an admin can hide any page for this user from User Management.
 export const branchManagerSidebarItems: { id: string; label: string; toggleKey?: string; href?: string }[] = [
   { id: "dashboard", label: "My Dashboard", href: "/branch-manager/dashboard", toggleKey: "dashboard" },
-  { id: "canvass-map", label: "Canvass Map", href: "/branch-manager/canvass-map", toggleKey: "canvassMap" },
   { id: "storm-chat", label: "StormChat", href: "/branch-manager/storm-chat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", href: "/branch-manager/course-leaderboard", toggleKey: "trainingCenter" },
   { id: "user-management", label: "User Management", href: "/branch-manager/user-management", toggleKey: "userManagement" },

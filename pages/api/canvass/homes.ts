@@ -22,8 +22,13 @@ import { HOMES_LIMIT, HOMES_PROJECTION, clustersPipeline, homesFilter, parseHome
 import { latestKnockDayByHome, type CardDoor } from "../../../src/lib/canvass/card";
 import { centralDay } from "../../../src/lib/canvass/dates";
 
-/** Every role that can open the map (spec A2, decided 15 Sep 2026: not marketing). */
-export const CANVASS_ROLES = ["sales", "sales-team-lead", "branch-manager", "c-level", "admin"];
+/**
+ * Who may use the map right now. Youssef, 17 Sep 2026: admin and C-Level only for
+ * the first look; the pilot widens to sales, team leads and branch managers later
+ * (spec A2 lists all five, not marketing). Widening is this line plus the three
+ * role pages and sidebar entries removed in the same commit.
+ */
+export const CANVASS_ROLES = ["admin", "c-level"];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
