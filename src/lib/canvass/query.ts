@@ -23,6 +23,32 @@ export const COLORS: readonly Color[] = ["green", "yellow", "orange", "red"];
 /** West, south, east, north edges of the map view, in degrees. */
 export type Bbox = { west: number; south: number; east: number; north: number };
 
+/**
+ * The map view as the geographic filter MongoDB can serve from the 2dsphere
+ * index: a GeoJSON polygon. NOT $box: that legacy form needs a 2d index, and
+ * with only the 2dsphere index present it scanned all 3.78 million houses
+ * (6.4 s for one neighbourhood, measured 17 Sep 2026).
+ */
+export function viewWithin(bbox: Bbox): Record<string, unknown> {
+  const { west, south, east, north } = bbox;
+  return {
+    $geoWithin: {
+      $geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [west, south],
+            [east, south],
+            [east, north],
+            [west, north],
+            [west, south],
+          ],
+        ],
+      },
+    },
+  };
+}
+
 export type HomesQuery = {
   bbox: Bbox;
   /** Which colours to show. Always at least one. */
@@ -98,16 +124,8 @@ export function parseHomesQuery(raw: Record<string, unknown>): ParsedHomesQuery 
  * with no colour yet would have nothing to show.
  */
 export function homesFilter(query: HomesQuery): Record<string, unknown> {
-  const { bbox } = query;
   const filter: Record<string, unknown> = {
-    location: {
-      $geoWithin: {
-        $box: [
-          [bbox.west, bbox.south],
-          [bbox.east, bbox.north],
-        ],
-      },
-    },
+    location: viewWithin(query.bbox),
     "grade.color": query.colors.length === COLORS.length ? { $in: [...COLORS] } : { $in: query.colors },
   };
   if (query.hailSince) filter.hail = { $elemMatch: { date: { $gte: query.hailSince }, inches: { $gte: 1 } } };
@@ -212,16 +230,8 @@ export function parseHailQuery(raw: Record<string, unknown>): ParsedHailQuery {
 
 /** The MongoDB filter for canvass_hail_cells: squares of 1 in or more (the grade's smallest band) in the view since the day. */
 export function hailCellsFilter(query: HailQuery): Record<string, unknown> {
-  const { bbox } = query;
   return {
-    location: {
-      $geoWithin: {
-        $box: [
-          [bbox.west, bbox.south],
-          [bbox.east, bbox.north],
-        ],
-      },
-    },
+    location: viewWithin(query.bbox),
     stormDate: { $gte: query.since },
     inches: { $gte: 1 },
   };

@@ -17,6 +17,7 @@ import {
   hailCellsFilter,
   parseHailQuery,
   toMapHailCells,
+  viewWithin,
 } from "./query";
 import type { Color } from "./grade";
 
@@ -111,6 +112,18 @@ describe("parseHomesQuery", () => {
   });
 });
 
+describe("viewWithin", () => {
+  it("is a closed GeoJSON polygon, the form the 2dsphere index serves, never the legacy $box", () => {
+    const within = viewWithin({ west: -97.45, south: 32.72, east: -97.42, north: 32.75 }) as { $geoWithin: { $geometry: { type: string; coordinates: number[][][] }; $box?: unknown } };
+    expect(within.$geoWithin.$box).toBeUndefined();
+    expect(within.$geoWithin.$geometry.type).toBe("Polygon");
+    const ring = within.$geoWithin.$geometry.coordinates[0];
+    expect(ring).toHaveLength(5);
+    expect(ring[0]).toEqual(ring[4]); // closed
+    expect(ring).toEqual([[-97.45, 32.72], [-97.42, 32.72], [-97.42, 32.75], [-97.45, 32.75], [-97.45, 32.72]]);
+  });
+});
+
 describe("isValidDay", () => {
   it("knows a real day from a badly shaped or impossible one", () => {
     expect(isValidDay("2026-05-01")).toBe(true);
@@ -131,14 +144,7 @@ describe("homesFilter", () => {
 
   it("draws only graded houses inside the view", () => {
     const filter = homesFilter(query());
-    expect(filter.location).toEqual({
-      $geoWithin: {
-        $box: [
-          [-97.45, 32.72],
-          [-97.42, 32.75],
-        ],
-      },
-    });
+    expect(filter.location).toEqual(viewWithin({ west: -97.45, south: 32.72, east: -97.42, north: 32.75 }));
     expect(filter["grade.color"]).toEqual({ $in: ["green", "yellow", "orange", "red"] });
     expect(filter.hail).toBeUndefined();
     expect(filter.ownerLivesHere).toBeUndefined();
@@ -260,7 +266,7 @@ describe("the hail layer request", () => {
     const parsed = parseHailQuery({ bbox: FW, since: "2026-05-01" });
     if (!parsed.ok) throw new Error(parsed.error);
     expect(hailCellsFilter(parsed.query)).toEqual({
-      location: { $geoWithin: { $box: [[-97.45, 32.72], [-97.42, 32.75]] } },
+      location: viewWithin(parsed.query.bbox),
       stormDate: { $gte: "2026-05-01" },
       inches: { $gte: 1 },
     });
