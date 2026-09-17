@@ -92,6 +92,11 @@ describe("houseCard", () => {
     ]);
   });
 
+  it("drops RepCard's former-rep marker from a knocking rep's name", () => {
+    const doors = [door({ knocks: [{ at: "2025-09-25T16:00:00Z", status: "Not Home", rep: "❌ Caleb Christensen" }], statusChanges: [], status: "", statusAt: null })];
+    expect(houseCard(home(), doors, []).knocks[0]).toEqual({ day: "2025-09-25", status: "Not Home", rep: "Caleb Christensen" });
+  });
+
   it("shows at most the last five knocks", () => {
     const knocks = Array.from({ length: 8 }, (_, i) => ({ at: `2026-0${(i % 8) + 1}-10T16:00:00Z`, status: `Visit ${i + 1}`, rep: "R" }));
     const card = houseCard(home(), [door({ knocks, statusChanges: [], status: "", statusAt: null })], []);

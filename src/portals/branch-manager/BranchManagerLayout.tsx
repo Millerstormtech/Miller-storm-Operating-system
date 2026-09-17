@@ -11,6 +11,7 @@ import { useFeatureGate } from "../../hooks/useFeatureGate";
 // User Management is also blocked when opened directly by URL.
 const BRANCH_MANAGER_VIEW_TOGGLE: Record<string, string> = {
   dashboard: "dashboard",
+  "canvass-map": "canvassMap",
   "storm-chat": "stormChat",
   "course-leaderboard": "trainingCenter",
   "team-structure": "teamStructure",
@@ -25,6 +26,7 @@ const BRANCH_MANAGER_VIEW_TOGGLE: Record<string, string> = {
 };
 
 type BranchManagerViewId =
+  | "canvass-map"
   | "dashboard"
   | "storm-chat"
   | "course-leaderboard"

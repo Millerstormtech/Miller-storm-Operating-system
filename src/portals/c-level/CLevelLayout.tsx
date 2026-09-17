@@ -11,6 +11,7 @@ import { useFeatureGate } from "../../hooks/useFeatureGate";
 // User Management is also blocked when opened directly by URL.
 const C_LEVEL_VIEW_TOGGLE: Record<string, string> = {
   dashboard: "dashboard",
+  "canvass-map": "canvassMap",
   "course-leaderboard": "trainingCenter",
   "team-structure": "teamStructure",
   "apps-tools": "appsTools",
@@ -25,6 +26,7 @@ const C_LEVEL_VIEW_TOGGLE: Record<string, string> = {
 };
 
 type CLevelViewId =
+  | "canvass-map"
   | "dashboard"
   | "storm-chat"
   | "course-leaderboard"

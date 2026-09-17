@@ -15,6 +15,7 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // Goals launches.
 export const salesTeamLeadSidebarItems = [
   { id: "dashboard", label: "My Dashboard", href: "/manager/dashboard", toggleKey: "dashboard" },
+  { id: "canvass-map", label: "Canvass Map", href: "/manager/canvass-map", toggleKey: "canvassMap" },
   { id: "storm-chat", label: "StormChat", href: "/manager/storm-chat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", href: "/manager/course-leaderboard", toggleKey: "trainingCenter" },
   { id: "apps-tools", label: "Tools & Products", href: "/manager/apps-tools", toggleKey: "appsTools" },

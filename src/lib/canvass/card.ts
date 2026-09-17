@@ -12,6 +12,7 @@
 import type { Color } from "./grade";
 import { doorEvents, type DoorEvent } from "./doors";
 import { centralDay } from "./dates";
+import { stripFormerMarker } from "../leaderboard/formerRep";
 
 /** A RepCard door as stored, with the house it sits on. Times may be Dates (from the database) or strings. */
 export type CardDoor = {
@@ -100,7 +101,9 @@ export function houseCard(home: CardHome, doors: readonly CardDoor[], jobs: read
     if (String(door.homeId) !== id) continue;
     for (const event of eventsOf(door)) {
       const day = centralDay(event.at);
-      if (day) events.push({ day, status: event.status, rep: event.rep });
+      // RepCard writes its former-rep marker into the name; on a house card the
+      // rep is simply who knocked, so the marker comes off (the leaderboard does the same).
+      if (day) events.push({ day, status: event.status, rep: stripFormerMarker(event.rep) });
     }
   }
   events.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
