@@ -12,6 +12,10 @@
 //   --allow-remote     say so on purpose when the target is the live database (through the SSH tunnel)
 //   --replace          drop the target's canvass_* collections first; without it the copy refuses a
 //                      target that already holds any canvass rows
+//   --resume           carry on after a dropped connection: each collection continues above the
+//                      highest _id already on the target (rows are copied in _id order), so nothing
+//                      is copied twice and nothing is dropped. The count check at the end still
+//                      decides; a mismatch means a --replace reload.
 //   --limit <n>        copy at most n rows per collection (a rehearsal)
 //   --dry-run          count only, write nothing
 //
@@ -32,21 +36,23 @@ const COLLECTIONS = ["canvass_county_quality", "canvass_homes", "canvass_hail_ce
 const MODELS = [CanvassCountyQualityModel, CanvassHomeModel, CanvassHailCellModel, CanvassDoorModel, CanvassJobModel, CanvassGridCellModel];
 const BATCH = 2000;
 
-type Options = { from: string; to: string; allowRemote: boolean; replace: boolean; limit: number | null; dryRun: boolean };
+type Options = { from: string; to: string; allowRemote: boolean; replace: boolean; resume: boolean; limit: number | null; dryRun: boolean };
 
 function parseArgs(argv: string[]): Options {
-  const options: Options = { from: "mongodb://127.0.0.1:27017/millerstorm", to: "", allowRemote: false, replace: false, limit: null, dryRun: false };
+  const options: Options = { from: "mongodb://127.0.0.1:27017/millerstorm", to: "", allowRemote: false, replace: false, resume: false, limit: null, dryRun: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--from") options.from = argv[++i] ?? options.from;
     else if (arg === "--to") options.to = argv[++i] ?? "";
     else if (arg === "--allow-remote") options.allowRemote = true;
     else if (arg === "--replace") options.replace = true;
+    else if (arg === "--resume") options.resume = true;
     else if (arg === "--limit") options.limit = Number(argv[++i]);
     else if (arg === "--dry-run") options.dryRun = true;
     else throw new Error(`Unknown option: ${arg}`);
   }
   if (!options.to) throw new Error("--to is required");
+  if (options.replace && options.resume) throw new Error("--replace and --resume do not go together");
   if (options.limit !== null && (!Number.isInteger(options.limit) || options.limit <= 0)) throw new Error("--limit must be a whole number above 0");
   return options;
 }
@@ -70,13 +76,13 @@ async function main() {
   const to = target.db();
   console.log(`[copy] from database "${from.databaseName}" to database "${to.databaseName}" (${databaseOf(options.to)})${options.dryRun ? " DRY RUN" : ""}${options.limit ? ` limit ${options.limit} per collection` : ""}`);
 
-  // Refuse to pile onto rows that are already there unless told to replace them.
+  // Refuse to pile onto rows that are already there unless told to replace them, or to resume.
   const existing = await Promise.all(COLLECTIONS.map(async (name) => ({ name, count: await to.collection(name).estimatedDocumentCount() })));
   const present = existing.filter((c) => c.count > 0);
-  if (present.length > 0 && !options.replace) {
-    throw new Error(`The target already holds ${present.map((c) => `${c.name} (${c.count})`).join(", ")}. Pass --replace to drop and reload them.`);
+  if (present.length > 0 && !options.replace && !options.resume) {
+    throw new Error(`The target already holds ${present.map((c) => `${c.name} (${c.count})`).join(", ")}. Pass --replace to drop and reload them, or --resume to carry on.`);
   }
-  if (present.length > 0 && !options.dryRun) {
+  if (present.length > 0 && options.replace && !options.dryRun) {
     for (const c of present) {
       await to.collection(c.name).drop();
       console.log(`[copy] dropped ${c.name} (${c.count} rows) on the target`);
@@ -84,12 +90,25 @@ async function main() {
   }
 
   const started = Date.now();
+  const expected = new Map<string, number>();
   for (const name of COLLECTIONS) {
     const total = await from.collection(name).countDocuments();
-    const want = options.limit ? Math.min(options.limit, total) : total;
+    // Resuming: carry on above the highest _id the target already holds.
+    let after: unknown = null;
+    let already = 0;
+    if (options.resume) {
+      const last = await to.collection(name).find({}, { projection: { _id: 1 } }).sort({ _id: -1 }).limit(1).next();
+      after = last ? last._id : null;
+      already = after ? await to.collection(name).countDocuments() : 0;
+      if (after) console.log(`[copy] ${name}: target already holds ${already} rows, resuming above the highest _id`);
+    }
+    const filter = after ? { _id: { $gt: after } } : {};
+    const remaining = after ? await from.collection(name).countDocuments(filter as Document) : total;
+    const want = options.limit ? Math.min(options.limit, remaining) : remaining;
+    expected.set(name, options.limit ? already + want : total);
     let copied = 0;
     if (!options.dryRun) {
-      const cursor = from.collection(name).find({}, { limit: options.limit ?? undefined });
+      const cursor = from.collection(name).find(filter as Document, { sort: { _id: 1 }, limit: options.limit ?? undefined });
       let batch: Document[] = [];
       for await (const doc of cursor) {
         batch.push(doc);
@@ -117,7 +136,7 @@ async function main() {
 
     let mismatch = 0;
     for (const name of COLLECTIONS) {
-      const a = options.limit ? Math.min(options.limit, await from.collection(name).countDocuments()) : await from.collection(name).countDocuments();
+      const a = expected.get(name) ?? 0;
       const b = await to.collection(name).countDocuments();
       if (a !== b) mismatch++;
       console.log(`[copy] check ${name}: expected ${a}, target has ${b}${a === b ? "" : "  <-- MISMATCH"}`);
