@@ -4,7 +4,7 @@
 // colours were worked out for.
 //
 //   GET /api/canvass/status
-//   -> { hail: { lastStormDay, loadedAt }, doors: { loadedAt }, jobs: { loadedAt }, parcels: { importedAt }, gradedOn }
+//   -> { hail: { lastStormDay, loadedAt }, doors: { loadedAt }, jobs: { loadedAt }, parcels: { importedAt }, gradedOn, grid: { builtAt } }
 //
 // Every value is a date or null; nothing here can name a person.
 
@@ -15,6 +15,7 @@ import { CanvassHomeModel } from "../../../src/lib/models/CanvassHome";
 import { CanvassDoorModel } from "../../../src/lib/models/CanvassDoor";
 import { CanvassJobModel } from "../../../src/lib/models/CanvassJob";
 import { CanvassHailCellModel } from "../../../src/lib/models/CanvassHailCell";
+import { CanvassGridCellModel } from "../../../src/lib/models/CanvassGridCell";
 import { CANVASS_ROLES } from "./homes";
 
 /** The newest value of one field in a collection, or null when the collection is empty. */
@@ -29,13 +30,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!auth) return;
 
   await connectMongo();
-  const [lastStormDay, hailLoadedAt, doorsLoadedAt, jobsLoadedAt, parcelsImportedAt, gradedOn] = await Promise.all([
+  const [lastStormDay, hailLoadedAt, doorsLoadedAt, jobsLoadedAt, parcelsImportedAt, gradedOn, gridBuiltAt] = await Promise.all([
     newest<string>(CanvassHailCellModel, "stormDate"),
     newest<Date>(CanvassHailCellModel, "loadedAt"),
     newest<Date>(CanvassDoorModel, "loadedAt"),
     newest<Date>(CanvassJobModel, "loadedAt"),
     newest<Date>(CanvassHomeModel, "importedAt"),
     newest<string>(CanvassHomeModel, "gradedOn"),
+    newest<Date>(CanvassGridCellModel, "builtAt"),
   ]);
 
   return res.status(200).json({
@@ -44,5 +46,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     jobs: { loadedAt: jobsLoadedAt },
     parcels: { importedAt: parcelsImportedAt },
     gradedOn: gradedOn || null,
+    grid: { builtAt: gridBuiltAt },
   });
 }

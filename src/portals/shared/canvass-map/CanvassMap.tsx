@@ -134,7 +134,9 @@ export function CanvassMap() {
   const hint = tooWide
     ? "Zoom in to see houses."
     : tooMany
-      ? "Shaded areas show where the houses are. Zoom in to see each one."
+      ? filters.ownerOnly || filters.hailSince
+        ? "Shaded areas show where the houses are. Zoom in to see each one; the owner and hail filters apply once you do."
+        : "Shaded areas show where the houses are. Zoom in to see each one."
       : loading
         ? "Loading..."
         : homes.length === 0 && view

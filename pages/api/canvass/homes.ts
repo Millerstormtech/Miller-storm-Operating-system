@@ -20,6 +20,8 @@ import { CanvassHomeModel } from "../../../src/lib/models/CanvassHome";
 import { CanvassDoorModel } from "../../../src/lib/models/CanvassDoor";
 import { HOMES_LIMIT, HOMES_PROJECTION, clustersPipeline, homesFilter, parseHomesQuery, toClusters, toMapHomes, type ClusterRow, type HomeRow } from "../../../src/lib/canvass/query";
 import { latestKnockDayByHome, type CardDoor } from "../../../src/lib/canvass/card";
+import { clustersFromGrid, gridCellsFilter, type GridCell } from "../../../src/lib/canvass/grid";
+import { CanvassGridCellModel } from "../../../src/lib/models/CanvassGridCell";
 import { centralDay } from "../../../src/lib/canvass/dates";
 
 /**
@@ -59,9 +61,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .lean()) as HomeRow[];
 
   if (rows.length > HOMES_LIMIT) {
+    // The zoomed-out view sums the nightly pre-count (scripts/canvass-grid.ts): a
+    // few thousand squares instead of a million houses. The pre-count knows each
+    // square's colours but not each house's hail or owner, so those two filters
+    // apply only once the rep zooms in to the dots.
+    const squares = (await CanvassGridCellModel.find(gridCellsFilter(query.bbox), { _id: 0, col: 1, row: 1, count: 1, green: 1, yellow: 1, orange: 1, red: 1 }).lean()) as GridCell[];
+    if (squares.length > 0) {
+      return res.status(200).json({ asOf, tooMany: true, clusters: clustersFromGrid(squares, query.bbox, query.colors), countedFrom: "grid" });
+    }
+    // No pre-count yet (a fresh database): count the houses live, slowly but correctly.
     // query.ts stays free of Mongoose types, so the plain stages are typed here, at the one call.
     const cells = (await CanvassHomeModel.aggregate(clustersPipeline(query) as unknown as PipelineStage[])) as ClusterRow[];
-    return res.status(200).json({ asOf, tooMany: true, clusters: toClusters(cells, query.bbox) });
+    return res.status(200).json({ asOf, tooMany: true, clusters: toClusters(cells, query.bbox), countedFrom: "houses" });
   }
 
   const doors = (await CanvassDoorModel.find(
