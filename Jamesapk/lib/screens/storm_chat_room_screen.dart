@@ -1200,49 +1200,51 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
-  /// Returns true if [utc] falls inside US Eastern Daylight Time
-  /// (second Sunday of March 07:00 UTC → first Sunday of November 06:00 UTC).
-  bool _isUsEasternDst(DateTime utc) {
+  /// Returns true if [utc] falls inside US Central Daylight Time
+  /// (second Sunday of March 08:00 UTC → first Sunday of November 07:00 UTC).
+  /// Miller Storm is a Texas company — Central, not Eastern, is the zone every
+  /// chat timestamp should display in.
+  bool _isUsCentralDst(DateTime utc) {
     final year = utc.year;
-    // Second Sunday of March (DST begins at 02:00 EST = 07:00 UTC).
+    // Second Sunday of March (DST begins at 02:00 CST = 08:00 UTC).
     final firstSundayMarch =
         1 + ((7 - DateTime.utc(year, 3, 1).weekday) % 7);
     final dstStart =
-        DateTime.utc(year, 3, firstSundayMarch + 7, 7);
-    // First Sunday of November (DST ends at 02:00 EDT = 06:00 UTC).
+        DateTime.utc(year, 3, firstSundayMarch + 7, 8);
+    // First Sunday of November (DST ends at 02:00 CDT = 07:00 UTC).
     final firstSundayNov =
         1 + ((7 - DateTime.utc(year, 11, 1).weekday) % 7);
-    final dstEnd = DateTime.utc(year, 11, firstSundayNov, 6);
+    final dstEnd = DateTime.utc(year, 11, firstSundayNov, 7);
     return utc.isAfter(dstStart) && utc.isBefore(dstEnd);
   }
 
-  /// Convert any timestamp to US Eastern time (EDT/EST, DST-aware).
-  DateTime _toEastern(DateTime date) {
+  /// Convert any timestamp to US Central time (CDT/CST, DST-aware).
+  DateTime _toCentral(DateTime date) {
     final utc = date.toUtc();
-    final offset = _isUsEasternDst(utc) ? 4 : 5; // EDT = UTC-4, EST = UTC-5
+    final offset = _isUsCentralDst(utc) ? 5 : 6; // CDT = UTC-5, CST = UTC-6
     return utc.subtract(Duration(hours: offset));
   }
 
   String _formatTime(String dateStr) {
-    final etDate = _toEastern(DateTime.parse(dateStr));
-    final period = etDate.hour >= 12 ? 'PM' : 'AM';
-    var hour12 = etDate.hour % 12;
+    final ctDate = _toCentral(DateTime.parse(dateStr));
+    final period = ctDate.hour >= 12 ? 'PM' : 'AM';
+    var hour12 = ctDate.hour % 12;
     if (hour12 == 0) hour12 = 12;
-    final minute = etDate.minute.toString().padLeft(2, '0');
+    final minute = ctDate.minute.toString().padLeft(2, '0');
     return '$hour12:$minute $period';
   }
 
   String _formatDate(String dateStr) {
-    final etDate = _toEastern(DateTime.parse(dateStr));
-    final nowEt = _toEastern(DateTime.now());
-    final today = DateTime(nowEt.year, nowEt.month, nowEt.day);
+    final ctDate = _toCentral(DateTime.parse(dateStr));
+    final nowCt = _toCentral(DateTime.now());
+    final today = DateTime(nowCt.year, nowCt.month, nowCt.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(etDate.year, etDate.month, etDate.day);
+    final messageDate = DateTime(ctDate.year, ctDate.month, ctDate.day);
 
     if (messageDate == today) return 'Today';
     if (messageDate == yesterday) return 'Yesterday';
 
-    return '${etDate.day}/${etDate.month}/${etDate.year}';
+    return '${ctDate.day}/${ctDate.month}/${ctDate.year}';
   }
 
   @override

@@ -7,6 +7,7 @@ import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { sendTicketStatusEmail, sendTicketReplyEmail } from "../../../src/lib/email";
 import { sendPushNotification } from "../../../src/lib/firebase-admin";
 import { ownedTicketTypes, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel } from "../../../src/lib/support/categories";
+import { ticketNumberFor } from "../../../src/lib/support/ticketNumber";
 
 const STATUS_MSG: Record<string, { title: string; message: string }> = {
   approved: { title: "Ticket Approved ✅", message: "Your ticket has been approved by our team." },
@@ -53,9 +54,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     const ticket = await TicketModel.findOne({ id }).lean() as any;
     if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
-    if (!isAdmin && ticket.userId !== auth.sub && !ownsType(ticket.type)) {
+    const isStaff = isAdmin || ownsType(ticket.type);
+    if (!isStaff && ticket.userId !== auth.sub) {
       res.status(403).json({ error: "Forbidden" });
       return;
+    }
+    // A staff member opening someone else's ticket counts as having seen the
+    // conversation — clears the "pending" badge even without a reply. Skipped
+    // for the raiser viewing their own ticket (they aren't staff for it).
+    if (isStaff && ticket.userId !== auth.sub) {
+      ticket.staffSeenAt = new Date();
+      await TicketModel.updateOne({ id }, { $set: { staffSeenAt: ticket.staffSeenAt } });
     }
     res.status(200).json(ticket);
     return;
@@ -103,6 +112,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mediaType,
       createdAt: new Date(),
     } as any);
+    // A staff reply obviously means they've seen the thread — keep this in
+    // sync with the GET handler's "opening it counts as seen" rule.
+    if (isStaff) (ticket as any).staffSeenAt = new Date();
+
+    // The raiser writing again on a "completed" ticket means it wasn't
+    // actually done — reopen it to "in_progress" automatically instead of
+    // leaving a green "Completed" chip sitting on an active conversation.
+    if (!isStaff && ticket.status === "completed") {
+      ticket.status = "in_progress";
+    }
     await ticket.save();
 
     // A short preview for notifications (photo/video when there's no caption).
@@ -111,6 +130,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Notify the OTHER side about the new reply.
     try {
       const typeLabel = supportTypeLabel(ticket.type);
+      const ticketNumber = await ticketNumberFor((ticket as any).createdAt);
       if (isStaff) {
         // Staff (admin or the type's owner) replied → notify the raiser (bell +
         // push + email), so they know a question/answer is waiting.
@@ -130,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         }
         if (ticket.email) {
-          await sendTicketReplyEmail({ to: ticket.email, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: true }).catch(() => {});
+          await sendTicketReplyEmail({ to: ticket.email, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: true, ticketNumber }).catch(() => {});
         }
       } else {
         // Raiser replied → notify every admin (bell + push) so a handler sees it.
@@ -160,7 +180,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const ownerEmails = SUPPORT_CATEGORY_BY_KEY[ticket.type]?.emails || [];
         const recipients = Array.from(new Set([...ownerEmails, ...adminEmails].filter(Boolean).map((e) => e.toLowerCase())));
         await Promise.all(recipients.map((to) =>
-          sendTicketReplyEmail({ to, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: false }).catch(() => {})
+          sendTicketReplyEmail({ to, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: false, ticketNumber }).catch(() => {})
         ));
       }
     } catch (e: any) {
@@ -205,6 +225,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         email: ticket.email,
         type: TYPE_LABEL[ticket.type] || ticket.type,
         adminNote: ticket.adminNote,
+        ticketNumber: await ticketNumberFor((ticket as any).createdAt),
       });
     } catch (e: any) {
       console.error("[ticket] status email failed:", e?.message || e);

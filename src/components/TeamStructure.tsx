@@ -257,6 +257,16 @@ export function TeamStructure() {
       .map((bm) => ({ branchManager: bm, leadNodes: leadNodesFor(bm).map(keepLead).filter(Boolean) as LeadNode[] }))
       .filter(({ branchManager, leadNodes }) => match(branchManager) || leadNodes.length > 0);
 
+    // A branch manager who directly runs a team is drawn as a SECOND card in the
+    // chart, styled and labeled as a Sales Team Lead (leadNodesFor's "asTeamLead"
+    // node, right above). The "Sales Team Leads" summary pill must count that
+    // extra card too, or it undercounts exactly the number of branch managers
+    // who run a team — the chart shows one more team-lead card than the pill
+    // claims for each one.
+    const branchManagersActingAsLeads = branchManagerList.filter(
+      (bm) => (repsByManager.get(bm.id) || []).length > 0
+    ).length;
+
     const orphanLeads = orphanLeadList
       .map((tl) => ({ manager: tl, reps: (repsByManager.get(tl.id) || []).filter(match), self: match(tl) }))
       .filter(({ self, reps }) => self || reps.length > 0);
@@ -272,7 +282,7 @@ export function TeamStructure() {
         cLevel: cLevelList.length,
         branchManagers: branchManagerList.length,
         admins: adminList.length,
-        managers: teamLeadList.length,
+        managers: teamLeadList.length + branchManagersActingAsLeads,
         sales: sales.length,
         marketing: marketingList.length,
       },

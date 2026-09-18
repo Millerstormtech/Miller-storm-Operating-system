@@ -608,29 +608,33 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     }
   }
 
+  // Always render in Central time, regardless of the viewer's own time zone —
+  // letting the Intl API do the UTC->Central conversion (via timeZone) means it
+  // follows CDT/CST automatically, unlike a hardcoded UTC-5 offset. Reading the
+  // adjusted instant back with local getters (the previous approach) applied
+  // the viewer's own time zone on TOP of that fixed offset, double-converting
+  // for anyone not already on UTC.
   function formatTime(date: Date) {
-    // Convert UTC to CT (UTC-5:00 for CDT - Central Daylight Time)
     const d = new Date(date);
-    const utcTime = d.getTime();
-    const ctTime = new Date(utcTime - (5 * 60 * 60 * 1000));
-    const hours = ctTime.getHours().toString().padStart(2, '0');
-    const minutes = ctTime.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    return d.toLocaleTimeString('en-US', {
+      timeZone: 'America/Chicago',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
   }
 
   function formatDate(date: Date) {
-    // Convert UTC to CT (UTC-5:00 for CDT - Central Daylight Time)
     const d = new Date(date);
-    const utcTime = d.getTime();
-    const ctDate = new Date(utcTime - (5 * 60 * 60 * 1000));
+    const centralDateKey = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); // YYYY-MM-DD
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (ctDate.toDateString() === today.toDateString()) return 'Today';
-    if (ctDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    
-    return ctDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (centralDateKey(d) === centralDateKey(today)) return 'Today';
+    if (centralDateKey(d) === centralDateKey(yesterday)) return 'Yesterday';
+
+    return d.toLocaleDateString('en-GB', { timeZone: 'America/Chicago', day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   function renderTextWithLinks(text: string, textColor: string) {

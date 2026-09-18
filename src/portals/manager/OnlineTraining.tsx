@@ -434,9 +434,11 @@ export function ManagerOnlineTrainingPage(props: {
         .then(data => {
           console.log('Sales users loaded:', data);
           // Company-wide list = only sales reps + managers (no admin, no C-Level,
-          // and never the current user themselves).
+          // and never the current user themselves). Developer accounts
+          // (testAccount: true) are hidden from this picker, same convention
+          // as User Management's own team list.
           setSalesUsers((data || []).filter((u: any) =>
-            (u.role === 'sales' || u.role === 'sales-team-lead') && u.id !== props.currentUser.id
+            (u.role === 'sales' || u.role === 'sales-team-lead') && u.id !== props.currentUser.id && !u.testAccount
           ));
         })
         .catch(err => console.error('Failed to load sales users:', err));

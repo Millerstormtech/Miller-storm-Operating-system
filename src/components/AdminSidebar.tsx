@@ -24,6 +24,12 @@ export const adminSidebarItems: { id: string; label: string; toggleKey?: string;
 
 const allSidebarItems = adminSidebarItems;
 
+// The page an item opens: its own `path`, else /admin/<id in kebab-case>.
+function hrefFor(item: { id: string; path?: string }): string {
+  if (item.path) return item.path;
+  return `/admin/${item.id === "dashboard" ? "dashboard" : item.id.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
+}
+
 type AdminSidebarProps = {
   activeId: string;
   isCollapsed?: boolean;
@@ -41,12 +47,7 @@ export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse, onLogout
     : allSidebarItems;
 
   function handleNavigation(id: string) {
-    const item = allSidebarItems.find(i => i.id === id);
-    if (item?.path) {
-      router.push(item.path);
-      return;
-    }
-    router.push(`/admin/${id === "dashboard" ? "dashboard" : id.replace(/([A-Z])/g, "-$1").toLowerCase()}`);
+    router.push(hrefFor(allSidebarItems.find(i => i.id === id) ?? { id }));
   }
 
   return (
@@ -58,7 +59,9 @@ export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse, onLogout
           <SidebarBrand />
         </div>
       }
-      items={sidebarItems}
+      // An href makes each item a real link (see Sidebar.tsx), so right-click
+      // "Open link in new tab" and Ctrl/middle-click work as in the other portals.
+      items={sidebarItems.map((item) => ({ ...item, href: hrefFor(item) }))}
       activeId={activeId}
       onSelect={handleNavigation}
       isCollapsed={isCollapsed}

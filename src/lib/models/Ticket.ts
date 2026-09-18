@@ -45,6 +45,11 @@ const ticketSchema = new Schema(
     adminNote: { type: String, default: "" },
     // Back-and-forth conversation between the raiser and the handler/admin.
     messages: { type: [ticketMessageSchema], default: [] },
+    // The last time any staff member (admin or the type's owner) opened this
+    // ticket's conversation — set in pages/api/tickets/[id].ts's GET handler.
+    // Drives the "pending" badge: a raiser message newer than this still counts
+    // as unseen; anything at or before it doesn't, even without a reply.
+    staffSeenAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

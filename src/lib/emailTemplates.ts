@@ -242,11 +242,12 @@ Review and approve or reject this request here:
     variables: ["{{adminName}}", "{{name}}", "{{email}}", "{{role}}", "{{reviewUrl}}"],
   },
   supportTicketCreated: {
-    subject: "New Support Ticket — {{type}}",
+    subject: "New Support Ticket {{ticketNumber}} — {{type}}",
     body: `Hi {{adminName}},
 
 A new support ticket has just been raised.
 
+- Ticket: {{ticketNumber}}
 - From: {{userName}}
 - Email: {{userEmail}}
 - Type: {{type}}
@@ -255,12 +256,13 @@ A new support ticket has just been raised.
 Please review and action it in the Admin Portal → Tickets.
 
 © 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{adminName}}", "{{userName}}", "{{userEmail}}", "{{type}}", "{{note}}"],
+    variables: ["{{adminName}}", "{{userName}}", "{{userEmail}}", "{{type}}", "{{note}}", "{{ticketNumber}}"],
   },
   ticketReply: {
-    subject: "New reply on a support ticket — {{type}}",
+    subject: "New reply on ticket {{ticketNumber}} — {{type}}",
     body: `{{intro}}
 
+- Ticket: {{ticketNumber}}
 - Ticket type: {{type}}
 - From: {{senderName}}
 
@@ -270,53 +272,53 @@ Message:
 Open the app to view the full conversation and reply.
 
 © 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{intro}}", "{{type}}", "{{senderName}}", "{{message}}"],
+    variables: ["{{intro}}", "{{type}}", "{{senderName}}", "{{message}}", "{{ticketNumber}}"],
   },
   ticketApproved: {
-    subject: "Your ticket has been approved ✅",
+    subject: "Your ticket {{ticketNumber}} has been approved ✅",
     body: `Hi {{name}},
 
-Good news — your {{type}} ticket has been approved by our team. We'll begin working on it soon.
+Good news — your {{type}} ticket ({{ticketNumber}}) has been approved by our team. We'll begin working on it soon.
 
 Thank you for helping us improve Miller Storm OS.
 
 © 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{type}}"],
+    variables: ["{{name}}", "{{type}}", "{{ticketNumber}}"],
   },
   ticketInProgress: {
-    subject: "Your ticket is now in progress 🔧",
+    subject: "Your ticket {{ticketNumber}} is now in progress 🔧",
     body: `Hi {{name}},
 
-Your {{type}} ticket is now in progress. Our team is actively working on it and we'll let you know as soon as it's done.
+Your {{type}} ticket ({{ticketNumber}}) is now in progress. Our team is actively working on it and we'll let you know as soon as it's done.
 
 Thank you for your patience.
 
 © 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{type}}"],
+    variables: ["{{name}}", "{{type}}", "{{ticketNumber}}"],
   },
   ticketCompleted: {
-    subject: "Your ticket has been completed 🎉",
+    subject: "Your ticket {{ticketNumber}} has been completed 🎉",
     body: `Hi {{name}},
 
-Your {{type}} ticket has been completed successfully. Please check further and let us know if anything else is needed.
+Your {{type}} ticket ({{ticketNumber}}) has been completed successfully. Please check further and let us know if anything else is needed.
 
 Thank you!
 
 © 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{type}}"],
+    variables: ["{{name}}", "{{type}}", "{{ticketNumber}}"],
   },
   ticketRejected: {
-    subject: "Update on your ticket",
+    subject: "Update on your ticket {{ticketNumber}}",
     body: `Hi {{name}},
 
-After review, your {{type}} ticket could not be approved at this time.
+After review, your {{type}} ticket ({{ticketNumber}}) could not be approved at this time.
 
 {{adminNote}}
 
 Thank you for your feedback — please feel free to raise another ticket anytime.
 
 © 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{type}}", "{{adminNote}}"],
+    variables: ["{{name}}", "{{type}}", "{{adminNote}}", "{{ticketNumber}}"],
   },
 };
 

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { STATUS_LABEL, STATUS_COLOR } from "../../components/TicketButton";
-import { supportTypeLabel, supportFieldLines } from "../../lib/support/categories";
+import { supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES } from "../../lib/support/categories";
+import { formatTicketNumber } from "../../lib/support/ticketNumberFormat";
 import { useAuth } from "../../contexts/AuthContext";
 
 type TicketMessage = {
@@ -17,6 +18,7 @@ type TicketMessage = {
 
 type Ticket = {
   id: string;
+  number?: number | null;
   userId: string;
   name: string;
   email: string;
@@ -28,20 +30,35 @@ type Ticket = {
   adminNote?: string;
   messages?: TicketMessage[];
   createdAt?: string;
+  staffSeenAt?: string | null;
 };
 
 const STATUS_OPTIONS = ["open", "approved", "in_progress", "completed", "rejected"];
 
-// Messages from the raiser that staff hasn't answered yet — i.e. the trailing
-// run of non-staff messages. Once staff replies, the run (and the badge) resets.
+// Messages from the raiser staff hasn't SEEN yet — opening the conversation
+// (pages/api/tickets/[id].ts's GET) or replying to it both count as seeing it,
+// even with no reply sent. A message from the raiser after that still counts
+// as pending again, same as before.
 function pendingFromUser(t: Ticket): number {
   const msgs = t.messages ?? [];
+  const seenAt = t.staffSeenAt ? new Date(t.staffSeenAt).getTime() : 0;
   let n = 0;
   for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i].fromStaff) break;
+    const m = msgs[i];
+    if (m.fromStaff) break;
+    const at = m.createdAt ? new Date(m.createdAt).getTime() : Infinity;
+    if (at <= seenAt) break;
     n++;
   }
   return n;
+}
+
+// When the conversation last moved — the newest message's timestamp, from
+// either side. null when nobody has said anything yet (the original request
+// doesn't count as a "message").
+function lastMessageAt(t: Ticket): string | null {
+  const msgs = t.messages ?? [];
+  return msgs.length ? msgs[msgs.length - 1].createdAt ?? null : null;
 }
 
 export function TicketTable() {
@@ -54,6 +71,9 @@ export function TicketTable() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState(""); // "" = any date, else "YYYY-MM-DD"
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
   // Which ticket's conversation is expanded, the reply draft for it, and whether
   // a reply is in flight.
@@ -61,6 +81,23 @@ export function TicketTable() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Opening a ticket's conversation marks it seen server-side (GET on
+  // /api/tickets/[id] records staffSeenAt for anyone other than the raiser),
+  // which is what clears the "pending" badge — no reply required. Merge the
+  // response in rather than just trusting the click, since the server is the
+  // one deciding whether this viewer actually counts as staff for it.
+  const openTicket = async (id: string) => {
+    setOpenId(id);
+    setDraft("");
+    try {
+      const res = await fetch(`/api/tickets/${id}`);
+      if (res.ok) {
+        const updated = await res.json();
+        setTickets((prev) => prev.map((t) => (t.id === id ? { ...updated, number: t.number } : t)));
+      }
+    } catch {}
+  };
 
   const load = async () => {
     try {
@@ -81,7 +118,9 @@ export function TicketTable() {
       });
       if (res.ok) {
         const updated = await res.json();
-        setTickets((prev) => prev.map((t) => (t.id === id ? updated : t)));
+        // /api/tickets/[id] doesn't carry `number` (only the list endpoint
+        // computes it) — keep the one already on screen instead of losing it.
+        setTickets((prev) => prev.map((t) => (t.id === id ? { ...updated, number: t.number } : t)));
       }
     } catch {} finally { setUpdating(null); }
   };
@@ -94,7 +133,7 @@ export function TicketTable() {
     });
     if (res.ok) {
       const updated = await res.json();
-      setTickets((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      setTickets((prev) => prev.map((t) => (t.id === id ? { ...updated, number: t.number } : t)));
       return true;
     }
     return false;
@@ -124,32 +163,94 @@ export function TicketTable() {
     } catch {} finally { setUploading(false); }
   };
 
-  const filtered = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
+  // Exactly the 4 real categories a ticket can be raised under today (Billing,
+  // Draw Request, Miller Storm Tech, MSRR Tools Issue) — same list as the
+  // "Reason" dropdown when raising a ticket. Legacy types (bug/feature/other)
+  // are deliberately left out of this filter; they aren't a choice anymore.
+  const typeOptions = SUPPORT_CATEGORIES
+    .map((c) => ({ key: c.key, label: c.label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  // A ticket's creation date as the viewer's own local calendar day (YYYY-MM-DD)
+  // — matches what the DATE column already shows via toLocaleDateString(), so
+  // picking a day in the date filter lines up with what's on screen.
+  const dateKey = (d?: string) => (d ? new Date(d).toLocaleDateString("en-CA") : "");
+
+  const byStatus = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
+  const byDate = !dateFilter ? byStatus : byStatus.filter((t) => dateKey(t.createdAt) === dateFilter);
+  const byType = typeFilter === "all" ? byDate : byDate.filter((t) => t.type === typeFilter);
+  // Search by ticket number (MS-001, ms-1, or just 1), name, email, or type —
+  // the same fields visible in the table, so anything you can read you can find.
+  const q = search.trim().toLowerCase();
+  const filtered = !q
+    ? byType
+    : byType.filter((t) =>
+        (t.number ? formatTicketNumber(t.number).toLowerCase() : "").includes(q) ||
+        t.name?.toLowerCase().includes(q) ||
+        t.email?.toLowerCase().includes(q) ||
+        supportTypeLabel(t.type).toLowerCase().includes(q) ||
+        t.note?.toLowerCase().includes(q)
+      );
   // Tickets waiting on a staff reply float to the top so nothing gets missed.
   const rows = [...filtered].sort((a, b) => (pendingFromUser(b) > 0 ? 1 : 0) - (pendingFromUser(a) > 0 ? 1 : 0));
 
   return (
     <div style={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 16, padding: 24, boxShadow: "0 10px 24px rgba(15,23,42,0.06)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
         <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-subtle)", color: "var(--text-primary)", fontWeight: 600 }}>
           <option value="all">All statuses</option>
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
+        <input
+          type="date"
+          value={dateFilter}
+          onChange={(e) => setDateFilter(e.target.value)}
+          title="Filter by date raised"
+          style={{ padding: "8px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-subtle)", color: "var(--text-primary)", fontWeight: 600 }}
+        />
+        {dateFilter && (
+          <button
+            type="button"
+            onClick={() => setDateFilter("")}
+            title="Clear date filter"
+            style={{ padding: "8px 10px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: 13, background: "var(--surface-subtle)", color: "var(--text-muted)", cursor: "pointer" }}
+          >
+            Clear date
+          </button>
+        )}
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-subtle)", color: "var(--text-primary)", fontWeight: 600 }}>
+          <option value="all">All types</option>
+          {typeOptions.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+        </select>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by ticket # (MS-001), name, email, or type…"
+          style={{ flex: "1 1 260px", maxWidth: 360, padding: "8px 14px", borderRadius: 10, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-subtle)", color: "var(--text-primary)", outline: "none" }}
+        />
       </div>
 
       {loading ? (
         <p style={{ color: "var(--text-muted)" }}>Loading tickets…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: "var(--text-subtle)" }}>No tickets{filter !== "all" ? ` with status "${STATUS_LABEL[filter]}"` : ""}.</p>
+        <p style={{ color: "var(--text-subtle)" }}>
+          No tickets
+          {filter !== "all" ? ` with status "${STATUS_LABEL[filter]}"` : ""}
+          {dateFilter ? ` on ${dateFilter}` : ""}
+          {typeFilter !== "all" ? ` of type "${supportTypeLabel(typeFilter)}"` : ""}
+          {q ? ` matching "${search.trim()}"` : ""}.
+        </p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ background: "var(--surface-subtle)", textAlign: "left" }}>
+                <th style={th}>Ticket No.</th>
                 <th style={th}>User</th>
                 <th style={th}>Type</th>
                 <th style={th}>Details</th>
                 <th style={th}>Date</th>
+                <th style={th}>Last Update</th>
                 <th style={th}>Status</th>
                 <th style={th}>Update</th>
                 <th style={th}>Chat</th>
@@ -164,6 +265,9 @@ export function TicketTable() {
                 return (
                   <Fragment key={t.id}>
                     <tr style={{ borderTop: "1px solid var(--border-default)" }}>
+                      <td style={{ ...td, color: "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        {t.number ? formatTicketNumber(t.number) : "—"}
+                      </td>
                       <td style={td}>
                         <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{t.name}</div>
                         <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t.email}</div>
@@ -178,6 +282,12 @@ export function TicketTable() {
                       </td>
                       <td style={{ ...td, whiteSpace: "nowrap", color: "var(--text-muted)", fontSize: 12 }}>
                         {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}
+                      </td>
+                      <td style={{ ...td, whiteSpace: "nowrap", color: "var(--text-muted)", fontSize: 12 }}>
+                        {(() => {
+                          const last = lastMessageAt(t);
+                          return last ? new Date(last).toLocaleDateString() : "—";
+                        })()}
                       </td>
                       <td style={td}>
                         <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -197,7 +307,7 @@ export function TicketTable() {
                       <td style={td}>
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                           <button
-                            onClick={() => { setOpenId(open ? null : t.id); setDraft(""); }}
+                            onClick={() => { if (open) { setOpenId(null); } else { openTicket(t.id); } }}
                             style={{ padding: "6px 12px", borderRadius: 999, border: pending > 0 && !open ? "1px solid #CB0002" : "1px solid var(--border-default)", background: open ? "#CB0002" : "var(--surface-subtle)", color: open ? "var(--text-inverse)" : "var(--text-primary)", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
                           >
                             💬 {count > 0 ? count : ""}
@@ -213,7 +323,7 @@ export function TicketTable() {
                     </tr>
                     {open && (
                       <tr>
-                        <td colSpan={7} style={{ padding: 0, background: "var(--surface-subtle)" }}>
+                        <td colSpan={9} style={{ padding: 0, background: "var(--surface-subtle)" }}>
                           <Conversation
                             ticket={t}
                             myId={myId}
