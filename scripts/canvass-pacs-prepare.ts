@@ -1,0 +1,181 @@
+// scripts/canvass-pacs-prepare.ts
+// Turns one county's PACS "Legacy 8.0.33" appraisal export (the extracted
+// fixed-width TXT files) into one line per property for the Canvass Map:
+// property id, state code, homestead, year built of the house, roof cover.
+//
+// Three districts publish this same layout, so one script covers them all; only
+// the building-part code for "the house itself" differs (see pacsDistrict.ts):
+//
+//   npx vite-node scripts/canvass-pacs-prepare.ts --district prad --dir D:/knock-planner/data/prad/2026/potter
+//   npx vite-node scripts/canvass-pacs-prepare.ts --district ecad --dir D:/knock-planner/data/ellis
+//   npx vite-node scripts/canvass-pacs-prepare.ts --district tcad --dir D:/knock-planner/data/tcad/pacs
+//
+// Options:
+//   --district <prad|ecad|tcad>  whose export this is; decides the house code
+//   --dir <folder>               the extracted property, improvement-detail and
+//                                improvement-attribute files for one county
+//   --out <file>                 default <dir>/district-properties.jsonl
+//
+// The two file naming styles both work: Potter-Randall and Ellis ship
+// *_APPRAISAL_INFO.TXT / *_IMPROVEMENT_DETAIL.TXT / *_IMPROVEMENT_DETAIL_ATTR.TXT,
+// Travis ships the shorter PROP.TXT / IMP_DET.TXT / IMP_ATR.TXT.
+//
+// The output feeds scripts/canvass-import-parcels.ts --district, which lets the
+// district decide which parcels are houses. Only ids, codes, years and roof
+// covers are read; the owner names and addresses in the property file are never
+// read. Prints counts only.
+
+import fs from "node:fs";
+import path from "node:path";
+import readline from "node:readline";
+import { earliestYearBuilt } from "../src/lib/canvass/appraisal";
+import { isDistrictHome, type DistrictProperty } from "../src/lib/canvass/district";
+import { mergeOwnerLines, pacsPropId, readImprovementAttributeRow, readImprovementDetailRow, readPropAddresses, readPropRow } from "../src/lib/canvass/pacs";
+import { ownerLivesHere } from "../src/lib/canvass/address";
+import { isMainArea, roofCoverLabel, type PacsDistrict } from "../src/lib/canvass/pacsDistrict";
+
+type Options = { district: PacsDistrict; dir: string; out: string };
+
+const DISTRICTS: readonly PacsDistrict[] = ["prad", "ecad", "tcad"];
+
+function parseArgs(argv: string[]): Options {
+  const options: Options = { district: "prad", dir: "", out: "" };
+  let district = "";
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--district") district = argv[++i] ?? "";
+    else if (arg === "--dir") options.dir = argv[++i] ?? "";
+    else if (arg === "--out") options.out = argv[++i] ?? "";
+    else throw new Error(`Unknown option: ${arg}`);
+  }
+  if (!district) throw new Error(`--district is required, one of: ${DISTRICTS.join(", ")}`);
+  if (!DISTRICTS.includes(district as PacsDistrict)) throw new Error(`Unknown district "${district}". Use one of: ${DISTRICTS.join(", ")}`);
+  options.district = district as PacsDistrict;
+  if (!options.dir) throw new Error("--dir is required");
+  if (!options.out) options.out = path.join(options.dir, "district-properties.jsonl");
+  return options;
+}
+
+/** The first file whose name ends with any of `suffixes`, or "" when `optional`. */
+function findFile(dir: string, suffixes: readonly string[], optional = false): string {
+  const names = fs.readdirSync(dir);
+  for (const suffix of suffixes) {
+    const name = names.find((file) => file.toUpperCase().endsWith(suffix));
+    if (name) return path.join(dir, name);
+  }
+  if (optional) return "";
+  throw new Error(`No ${suffixes.join(" or ")} in ${dir}`);
+}
+
+async function eachLine(file: string, onLine: (line: string) => void): Promise<number> {
+  if (!file) return 0;
+  const reader = readline.createInterface({ input: fs.createReadStream(file, "latin1"), crlfDelay: Infinity });
+  let lines = 0;
+  for await (const line of reader) {
+    if (!line.trim()) continue;
+    lines++;
+    onLine(line);
+  }
+  return lines;
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const thisYear = new Date().getFullYear();
+
+  // One line per owner, with supplements: merge to one per property.
+  type Line = {
+    supNum: string;
+    homestead: boolean;
+    stateCode: string;
+    address: { line: string; city: string; zip: string };
+    ownerLivesHere: boolean | null;
+  };
+  const properties = new Map<string, Line>();
+  const propertyLines = await eachLine(findFile(options.dir, ["_APPRAISAL_INFO.TXT", "PROP.TXT"]), (line) => {
+    const row = readPropRow(line);
+    const propId = pacsPropId(row.propId);
+    if (!propId) return;
+    const addresses = readPropAddresses(line);
+    const current: Line = {
+      supNum: row.supNum,
+      homestead: row.homestead,
+      stateCode: row.improvementStateCode || row.landStateCode,
+      address: addresses.situs,
+      // The mailing address is compared here and then dropped; it is never stored.
+      ownerLivesHere: ownerLivesHere(
+        { line: addresses.situs.line, zip: addresses.situs.zip },
+        { line: addresses.mailing.line, zip: addresses.mailing.zip }
+      ),
+    };
+    const existing = properties.get(propId);
+    properties.set(propId, existing ? mergeOwnerLines(existing, current) : current);
+  });
+
+  const years = new Map<string, string[]>();
+  const detailLines = await eachLine(findFile(options.dir, ["_IMPROVEMENT_DETAIL.TXT", "IMP_DET.TXT"]), (line) => {
+    const row = readImprovementDetailRow(line);
+    if (!isMainArea(options.district, row.typeCode)) return;
+    const propId = pacsPropId(row.propId);
+    const list = years.get(propId) ?? [];
+    list.push(row.yearBuilt);
+    years.set(propId, list);
+  });
+
+  // Not every district fills in a roof cover; Ellis has the file but no such rows.
+  const roofs = new Map<string, string>();
+  const attributeLines = await eachLine(findFile(options.dir, ["_IMPROVEMENT_DETAIL_ATTR.TXT", "IMP_ATR.TXT"], true), (line) => {
+    const row = readImprovementAttributeRow(line);
+    // Potter-Randall writes "ROOF COVER", Travis "ROOF COVERING" (341,118 parts, review 17 Sep 2026).
+    if (!row.description.toUpperCase().startsWith("ROOF COVER")) return;
+    const propId = pacsPropId(row.propId);
+    const label = roofCoverLabel(row.code);
+    if (label && !roofs.has(propId)) roofs.set(propId, label);
+  });
+
+  const out = fs.createWriteStream(`${options.out}.part`, { encoding: "utf8" });
+  let homes = 0;
+  let withYear = 0;
+  let withHomestead = 0;
+  let withRoof = 0;
+  let withAddress = 0;
+  let withOwnerVerdict = 0;
+  for (const [propId, line] of properties) {
+    const property: DistrictProperty = {
+      propId,
+      stateCode: line.stateCode,
+      homestead: line.homestead,
+      yearBuilt: earliestYearBuilt(years.get(propId) ?? [], thisYear),
+      roofMaterial: roofs.get(propId) ?? "",
+      address: line.address,
+      ownerLivesHere: line.ownerLivesHere,
+    };
+    out.write(`${JSON.stringify(property)}\n`);
+    if (!isDistrictHome(property.stateCode, property.yearBuilt)) continue;
+    homes++;
+    if (property.yearBuilt !== null) withYear++;
+    if (property.homestead) withHomestead++;
+    if (property.roofMaterial) withRoof++;
+    if (property.address?.line) withAddress++;
+    if (property.ownerLivesHere !== null) withOwnerVerdict++;
+  }
+  await new Promise<void>((resolve, reject) => out.end((error?: Error | null) => (error ? reject(error) : resolve())));
+  fs.renameSync(`${options.out}.part`, options.out);
+
+  const tag = `[pacs:${options.district}]`;
+  const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)}%` : "n/a");
+  console.log(
+    `${tag} ${path.basename(options.dir)}: ${propertyLines} property lines, ${detailLines} building parts, ${attributeLines} attributes; ` +
+      `${properties.size} properties written to ${path.basename(options.out)}`
+  );
+  console.log(
+    `${tag} homes by district code ${homes}: year built ${withYear} (${pct(withYear, homes)}), homestead ${withHomestead} (${pct(withHomestead, homes)}), ` +
+      `roof cover ${withRoof} (${pct(withRoof, homes)})`
+  );
+  console.log(`${tag} district's own address on ${withAddress} (${pct(withAddress, homes)}), owner check answered for ${withOwnerVerdict} (${pct(withOwnerVerdict, homes)})`);
+}
+
+main().catch((error) => {
+  console.error("[pacs] FAILED:", error instanceof Error ? error.message : error);
+  process.exit(1);
+});

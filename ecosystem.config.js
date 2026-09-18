@@ -194,6 +194,31 @@ module.exports = {
       out_file: '/var/www/millerstorm/logs/calendar-reminders-out.log',
       merge_logs: true,
       time: true
+    },
+    {
+      // Daily refresh of the Canvass Map at CANVASS_HOUR (default 08:00) CENTRAL:
+      // new hail days from NOAA, every RepCard door, every AccuLynx job and its
+      // signing date, then the matching, the house colours and the zoomed-out
+      // pre-count. NOT an HTTP client like the crons above: the refresh takes
+      // about half an hour and downloads radar files, so the timer runs
+      // scripts/canvass-daily.ts directly (with the repo's vite-node) against
+      // MONGODB_URI from .env. Needs the hail reader at /opt/kp-hail (or
+      // CANVASS_PYTHON) and writes the decoded days under
+      // /var/www/millerstorm-data/hail (or CANVASS_HAIL_DIR), outside the app
+      // dir. A failed step emails SYNC_ALERT_EMAIL, like the sync crons.
+      name: 'canvass-daily',
+      script: 'scripts/canvass-daily-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/millerstorm/logs/canvass-daily-err.log',
+      out_file: '/var/www/millerstorm/logs/canvass-daily-out.log',
+      merge_logs: true,
+      time: true
     }
   ]
 };

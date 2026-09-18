@@ -43,6 +43,8 @@ export default defineConfig({
       "src/lib/leaderboard/formerRep.test.ts",
       "src/lib/leaderboard/roster.test.ts",
       "src/lib/design/**/*.test.ts",
+      // Canvass Map: house grading rules, pure like the scoreboard modules.
+      "src/lib/canvass/**/*.test.ts",
     ],
     environment: "node",
   },

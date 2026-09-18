@@ -7,6 +7,7 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // `path` items navigate to that exact route (used for the per-role dashboards
 // which live outside /admin). Items without `path` navigate to /admin/<id>.
 export const adminSidebarItems: { id: string; label: string; toggleKey?: string; path?: string; group?: string }[] = [
+  { id: "canvassMap", label: "Canvass Map", toggleKey: "canvassMap", group: "Compete" },
   { id: "leaderboard", label: "Sales Leaderboard", toggleKey: "leaderboard", group: "Compete" },
   { id: "trainingExecutive", label: "Course Leaderboard", toggleKey: "trainingCenter", group: "Compete" },
   { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining", group: "Learn" },

@@ -54,7 +54,16 @@ async function main() {
   const client = new MongoClient(uri);
   await client.connect();
   const db = client.db("millerstorm");
-  const collections = (await db.listCollections().toArray()).map((c) => c.name).sort();
+  // The Canvass Map's collections are left out on purpose: about 3.3 GB of
+  // houses, hail squares and pre-counts rebuilt from public files and from
+  // RepCard and AccuLynx (which are backed up at their source), against 70 MB
+  // for everything else. Backing them up nightly would grow each backup by
+  // 40x for data we can regenerate. Set BACKUP_INCLUDE_CANVASS=1 to include them.
+  const includeCanvass = process.env.BACKUP_INCLUDE_CANVASS === "1";
+  const collections = (await db.listCollections().toArray())
+    .map((c) => c.name)
+    .filter((name) => includeCanvass || !name.startsWith("canvass_"))
+    .sort();
 
   const summary = [];
   for (const name of collections) {
