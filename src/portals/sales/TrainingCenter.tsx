@@ -26,6 +26,7 @@ import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/qu
 import { GuidedTour } from "../shared/guided-tour/GuidedTour";
 import { TRAINING_CENTER_TOUR } from "../shared/guided-tour/definitions/trainingCenter";
 import { TRAINING_COURSE_TOUR } from "../shared/guided-tour/definitions/trainingCourse";
+import { ConfettiBurst, WinMoment } from "../../components/Celebration";
 
 // Order pages to match the folder-grouped sidebar display: non-folder pages
 // first, then each folder's pages (in folder order), then any orphaned pages.
@@ -176,6 +177,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [quizAttempts, setQuizAttempts] = useState<Record<string, number>>({});
   const [quizModal, setQuizModal] = useState<{ mode: 'retry' | 'relearn'; pageId: string; pct: number; prevLessonId: string | null } | null>(null);
   const [courseCompleted, setCourseCompleted] = useState(false);
+  // Celebrations. quizWin counts passes so a repeat pass fires the confetti
+  // again (the burst is keyed on it); win holds the bigger "you earned it" card.
+  const [quizWin, setQuizWin] = useState(0);
+  const [win, setWin] = useState<{ mark: string; title: string; line: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'courses' | 'myPlaylists' | 'assignedPlaylists'>('courses');
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
   const [playlistName, setPlaylistName] = useState('');
@@ -787,6 +792,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
   return (
     <>
+      {/* Celebrations sit above every layout so a burst is never clipped by a
+          scrolling panel. Both clean themselves up. */}
+      {quizWin > 0 && <ConfettiBurst key={quizWin} />}
+      {win && <WinMoment mark={win.mark} title={win.title} line={win.line} onClose={() => setWin(null)} />}
+
       {/* Share Modal - Render at top level */}
       <ShareModal
         isOpen={isShareModalOpen}
@@ -1453,6 +1463,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         setQuizSubmitted(true);
 
         if (result.passed) {
+          setQuizWin(n => n + 1);
           // The server already stored the pass; mirror it locally so the lesson
           // tick turns green without refetching the course.
           const newResult = { pageId: activePage.id, answers: selectedAnswers, score: result.score, passed: true, submittedAt: new Date() };
@@ -1537,6 +1548,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     const handleCompleteCourse = () => {
       if (!user || !selectedCourse) return;
       setCourseCompleted(true);
+      setWin({ mark: "🏆", title: "Course complete", line: selectedCourse.title });
 
       let newCompleted = completedPages;
       if (activePage && !activePage.isQuiz) {

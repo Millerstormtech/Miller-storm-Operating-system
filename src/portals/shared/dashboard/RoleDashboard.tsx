@@ -4,6 +4,15 @@ import { fmtMoney, fmtCount, trendLabel } from "../../../lib/scoreboard/display"
 import type { Dir } from "../../../lib/scoreboard/metrics";
 import type { ScopeLevel } from "../../../lib/scoreboard/types";
 import { stripFormerMarker } from "../../../lib/leaderboard/formerRep";
+import { WinMoment } from "../../../components/Celebration";
+import {
+  shouldCelebrateCrowning,
+  crowningCopy,
+  contractsGained,
+  contractCopy,
+  type Crowning,
+  type MomentCopy,
+} from "../../../lib/scoreboard/crowning";
 import {
   METRICS,
   type Metric,
@@ -77,6 +86,7 @@ interface DashboardPayload {
   };
   news: Array<{ text: string; at: string }> | null;
   lowestKnocks: LowestKnocksPayload | null;
+  crowning: Crowning | null;
 }
 
 const METRIC_TITLE: Record<Metric, string> = {
@@ -176,10 +186,19 @@ function CardHead(props: { title: string; sub: string; href?: string }): JSX.Ele
   );
 }
 
+// The fill grows from zero on first paint instead of snapping to its value.
+// The easing lives in .ms-bar__fill (styles.css), not inline, so it can be
+// switched off for a viewer whose system asks for reduced motion.
 function Bar(props: { pct: number }): JSX.Element {
+  const target = Math.max(0, Math.min(100, props.pct));
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setWidth(target));
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
   return (
     <div style={{ height: 3, borderRadius: 2, background: "var(--surface-muted)", marginTop: 4, overflow: "hidden" }}>
-      <div style={{ height: "100%", width: `${Math.max(0, Math.min(100, props.pct))}%`, background: "var(--brand-fill)", borderRadius: 2 }} />
+      <div className="ms-bar__fill" style={{ height: "100%", width: `${width}%`, background: "var(--brand-fill)", borderRadius: 2 }} />
     </div>
   );
 }
@@ -419,6 +438,7 @@ export function RoleDashboard(): JSX.Element {
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [moment, setMoment] = useState<MomentCopy | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -443,6 +463,32 @@ export function RoleDashboard(): JSX.Element {
       cancelled = true;
     };
   }, []);
+
+  // Two moments, decided by src/lib/scoreboard/crowning.ts. What has already
+  // been seen is remembered per browser (localStorage), the same place the
+  // theme and the autoplay choice live: nobody should be crowned twice, and a
+  // private window simply sees the moment once more. Reading it can throw
+  // outright in some privacy modes, so every touch is guarded.
+  useEffect(() => {
+    if (!data) return;
+    const read = (key: string): string | null => { try { return localStorage.getItem(key); } catch { return null; } };
+    const write = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch { /* storage unavailable */ } };
+
+    if (shouldCelebrateCrowning(data.crowning, read("ms-crowning-seen"))) {
+      write("ms-crowning-seen", data.crowning!.month);
+      setMoment(crowningCopy(data.crowning!));
+      return;
+    }
+
+    // A rep's own contracts going up since they last looked. Leaders are left
+    // out: their hero number is the whole branch, so it would fire all day.
+    if (data.scope.level !== "self") return;
+    const key = `ms-hero-contracts:${data.scope.viewer}`;
+    const stored = read(key);
+    const gained = contractsGained(stored === null ? null : Number(stored), data.hero.contracts);
+    write(key, String(data.hero.contracts));
+    if (gained > 0) setMoment(contractCopy(gained, data.hero.contracts));
+  }, [data]);
 
   if (loading) {
     return (
@@ -482,6 +528,8 @@ export function RoleDashboard(): JSX.Element {
 
   return (
     <div>
+      {moment && <WinMoment mark={moment.mark} title={moment.title} line={moment.line} onClose={() => setMoment(null)} />}
+
       {/* Headline: the year, always, whatever the cards below are showing. */}
       <div style={{ ...CARD, marginBottom: 11 }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 26, flexWrap: "wrap" }}>

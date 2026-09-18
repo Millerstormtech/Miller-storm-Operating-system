@@ -6,6 +6,8 @@ import { UserModel } from "../../src/lib/models/User";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, customRange, centralDateStr } from "../../src/lib/acculynx/windows";
+import { SalesRankSnapshotModel } from "../../src/lib/models/SalesRankSnapshot";
+import { weekStartMonday, weekKey, monthKey, rankDeltas } from "../../src/lib/scoreboard/rankMoves";
 import type { Window } from "../../src/lib/acculynx/windows";
 import { pickContractKing, pickYtdPodium, kingMonthLabel } from "../../src/lib/leaderboard/contractKing";
 import { courseStats, isRankedUser, RANKED_ROLES } from "../../src/lib/training/scoring";
@@ -115,7 +117,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { start, end } = isCustom ? customRange(fromQ, toQ) : getWindowRange(w);
 
   const rows = await computeSalesRows({ start, end });
-  const leaderboard = rows.map((r, i) => ({ rank: i + 1, ...r }));
 
   // Contract King: the CURRENT CALENDAR MONTH's top rep by Contract Amount.
   // Deliberately its own month window rather than the selected period, so a Year
@@ -129,6 +130,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       filed: m.filed, lead: m.leadsCreated, verifiedKnocks: m.verifiedKnocks,
     }))
   );
+  // Rank movement. The standing photographed is always the same one (month to
+  // date, whole company, by Contract Amount) whatever period is being viewed, so
+  // the arrows mean one thing only. The photograph is taken on the week's first
+  // board load; the arrows compare it with the newest earlier week OF THE SAME
+  // MONTH, because the monthly race restarts at zero on the 1st.
+  const weekOf = weekStartMonday(new Date());
+  const raceMonth = monthKey(centralDateStr(monthRange.start));
+  const standing = kingSource.map((r, i) => ({ id: r.id, rank: i + 1, revenue: r.revenue }));
+  let moves = new Map<string, number | null>();
+  try {
+    if (standing.length && !(await SalesRankSnapshotModel.exists({ weekOf }))) {
+      // ordered:false so a rep already written by a racing first-load cannot
+      // stop the rest being stored.
+      await SalesRankSnapshotModel.insertMany(
+        standing.map((s) => ({ weekOf, month: raceMonth, repId: s.id, rank: s.rank, revenue: s.revenue })),
+        { ordered: false }
+      ).catch(() => {});
+    }
+    const earlier: any = await SalesRankSnapshotModel.findOne({ weekOf: { $lt: weekOf }, month: raceMonth })
+      .sort({ weekOf: -1 })
+      .select("weekOf")
+      .lean();
+    if (earlier) {
+      const previous: any[] = await SalesRankSnapshotModel.find({ weekOf: earlier.weekOf, month: raceMonth })
+        .select("repId rank")
+        .lean();
+      moves = rankDeltas(standing, previous.map((r) => ({ repId: String(r.repId), rank: Number(r.rank) })));
+    }
+  } catch (e) {
+    // A board that cannot remember last week is still a working board.
+    console.error("[leaderboard] rank snapshot failed:", e);
+  }
+  const leaderboard = rows.map((r, i) => ({ rank: i + 1, rankDelta: moves.get(r.id) ?? null, ...r }));
+
   const kingRow = king ? kingSource.find((m) => m.id === king.id) : null;
   const contractKing = king
     ? {
@@ -161,5 +196,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     leaderboard,
     contractKing,
     ytdPodium,
+    // What the arrows mean, so the screen can label them and show them only on
+    // the view they describe.
+    rankMoves: { week: weekKey(weekOf), month: raceMonth, basis: "month-revenue" },
   });
 }
