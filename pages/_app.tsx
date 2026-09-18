@@ -7,6 +7,7 @@ import { NewCoursePopup } from "../src/components/NewCoursePopup";
 import { ActivityBeacon } from "../src/components/ActivityBeacon";
 import "../src/tokens.css";
 import "../src/styles.css";
+import "maplibre-gl/dist/maplibre-gl.css"; // the Canvass Map (src/portals/shared/canvass-map)
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   // Register the PWA service worker (installability + offline + push). This is
