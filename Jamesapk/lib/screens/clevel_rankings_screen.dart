@@ -7,6 +7,8 @@ import 'package:showcaseview/showcaseview.dart';
 import '../services/api_client.dart';
 import '../services/dashboard_links.dart';
 import '../widgets/clevel_bottom_nav.dart';
+import '../widgets/celebration.dart';
+import '../services/rank_moves.dart';
 import '../theme/app_theme.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
@@ -84,6 +86,23 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
   bool _loading = true;
   // 'leaderboard' (the live board) or 'dashboard' (the web-style Scoreboard).
   String? _userId;
+
+  // Which week/month the rankDelta on each row describes (PR #77). Null until
+  // the server has a same-month prior week to compare against.
+  RankMoves? _rankMoves;
+  MomentCopy? _rankMoment;
+
+  // The arrows describe ONE specific race — month-to-date, whole company, by
+  // Contract Amount, descending — the board's default view. Any other period,
+  // sort, or filter and the comparison is against a different set of rows, so
+  // the arrows hide rather than describe a race that isn't the one on screen.
+  bool get _showRankMoves =>
+      _rankMoves != null &&
+      _period == 'month' &&
+      _sortKey == 'revenue' &&
+      _sortDesc &&
+      _branchSel.isEmpty &&
+      _teamSel.isEmpty;
 
   // Rep multi-select filter (deferred apply, like web): the committed set that
   // filters the table. The in-panel draft + search live inside the sheet.
@@ -209,11 +228,13 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
           _rows = (data['leaderboard'] as List?) ?? [];
           _contractKing = (data['contractKing'] as Map?)?.cast<String, dynamic>();
           _ytdPodium = (data['ytdPodium'] as List?) ?? [];
+          _rankMoves = RankMoves.fromJson(data['rankMoves'] as Map?);
           _loading = false;
         });
         if (_pendingFocusId != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) => _maybeScrollToFocus());
         }
+        _maybeCelebrateRankMove();
       } else {
         setState(() => _loading = false);
       }
@@ -552,8 +573,50 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
     // builder's context sits UNDER ShowCaseWidget, so ShowCaseWidget.of() works.
     return ShowCaseWidget(
       blurValue: 0.4,
-      builder: (context) => _buildScaffold(context),
+      builder: (context) => Stack(
+        children: [
+          _buildScaffold(context),
+          if (_rankMoment != null)
+            Positioned.fill(
+              child: WinMoment(
+                mark: _rankMoment!.mark,
+                title: _rankMoment!.title,
+                line: _rankMoment!.line,
+                onClose: () => setState(() => _rankMoment = null),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+
+  // A rep who climbed is told once that week, whatever view they opened —
+  // independent of whether the ▲/▼ arrows are even showing on this view (see
+  // _showRankMoves). Port of LeaderboardBoard.tsx's rank-move effect.
+  Future<void> _maybeCelebrateRankMove() async {
+    final moves = _rankMoves;
+    if (moves == null || _userId == null || _rows.isEmpty) return;
+    Map? mine;
+    int fallbackRank = 0;
+    for (int i = 0; i < _rows.length; i++) {
+      final r = _rows[i] as Map;
+      if (r['repUserId']?.toString() == _userId) { mine = r; fallbackRank = i + 1; break; }
+    }
+    if (mine == null) return;
+    final deltaRaw = mine['rankDelta'];
+    final delta = deltaRaw is int ? deltaRaw : (deltaRaw is num ? deltaRaw.toInt() : null);
+    SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+    final seen = prefs.getString('ms-rank-seen');
+    if (!shouldCelebrateRankMove(delta, seen, moves.week)) return;
+    try { await prefs.setString('ms-rank-seen', moves.week); } catch (_) {}
+    final rankRaw = mine['rank'];
+    final rank = rankRaw is int ? rankRaw : (rankRaw is num ? rankRaw.toInt() : fallbackRank);
+    if (mounted) setState(() => _rankMoment = rankMoveCopy(delta!, rank));
   }
 
   Widget _buildScaffold(BuildContext context) {
@@ -567,9 +630,11 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
     // view (as list headers) so they scroll away with the rows instead
     // of staying pinned under the filters.
     final headerWidgets = <Widget>[
-      if (_ytdPodium.isNotEmpty) _ytdPodiumCard(),
-      if (_contractKing != null) _contractKingBanner(),
-      if (visible.isNotEmpty) _buildTotalsStats(),
+      if (_ytdPodium.isNotEmpty) EntranceFade(child: _ytdPodiumCard()),
+      if (_contractKing != null)
+        EntranceFade(delay: const Duration(milliseconds: 150), child: _contractKingBanner()),
+      if (visible.isNotEmpty)
+        EntranceFade(delay: const Duration(milliseconds: 250), child: _buildTotalsStats()),
     ];
     return Scaffold(
       backgroundColor: _bg,
@@ -1058,12 +1123,18 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
 
     final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : null;
     final id = (r['id'] ?? '').toString();
+    // Rank-change arrow: only meaningful on the one race the arrows describe
+    // (see _showRankMoves) — any other period/sort/filter and it hides rather
+    // than mislabel a different standing.
+    final rankDeltaRaw = r['rankDelta'];
+    final rankDelta = rankDeltaRaw is int ? rankDeltaRaw : (rankDeltaRaw is num ? rankDeltaRaw.toInt() : null);
+    final showArrow = _showRankMoves && rankDelta != null && rankDelta != 0;
     // Outlined when this is the row a dashboard link ("See all" on a named
     // rep, e.g. Lowest Knocks) sent the viewer to find — sticks until they
     // leave the screen, same as the web board.
     final isFocused = id.isNotEmpty && id == _focusedRowId;
 
-    return Container(
+    final container = Container(
       key: id.isNotEmpty ? _rowKeys.putIfAbsent(id, () => GlobalKey()) : null,
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -1083,11 +1154,36 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
               children: [
                 SizedBox(
                   width: 34,
-                  child: medal != null
-                      ? Text(medal, style: const TextStyle(fontSize: 24), textAlign: TextAlign.center)
-                      : Text('$rank',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _textLight)),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      medal != null
+                          ? Text(medal, style: const TextStyle(fontSize: 24), textAlign: TextAlign.center)
+                          : Text('$rank',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _textLight)),
+                      if (showArrow) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              rankDelta > 0 ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                              size: 16,
+                              color: rankDelta > 0 ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                            ),
+                            Text(
+                              '${rankDelta.abs()}',
+                              style: TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.w800,
+                                color: rankDelta > 0 ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -1156,6 +1252,29 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+
+    // A row arriving via a dashboard "See all" link flashes once so the eye
+    // lands on it — the static outline above sticks, this fades out on top of
+    // it. Keyed so Flutter reuses the same State (and never replays) across
+    // rebuilds once it has already flashed for this row.
+    if (!isFocused) return container;
+    return FlashOnce(
+      key: ValueKey('flash-$id'),
+      from: const Color(0xFFFFE082),
+      to: Colors.transparent,
+      builder: (context, color) => Stack(
+        children: [
+          container,
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1247,7 +1366,10 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
               style: TextStyle(color: _textLight, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
           const SizedBox(height: 12),
           for (int i = 0; i < podium.length; i++) ...[
-            _ytdRow(podium[i] as Map, placeColors),
+            EntranceFade(
+              delay: Duration(milliseconds: 90 * i),
+              child: _ytdRow(podium[i] as Map, placeColors),
+            ),
             if (i != podium.length - 1) const SizedBox(height: 12),
           ],
         ],

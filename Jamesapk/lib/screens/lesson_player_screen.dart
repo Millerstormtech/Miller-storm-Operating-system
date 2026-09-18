@@ -14,6 +14,7 @@ import 'package:showcaseview/showcaseview.dart';
 import '../services/auth_service.dart';
 import '../services/activity_tracker.dart';
 import '../theme/app_theme.dart';
+import '../widgets/celebration.dart';
 
 /// Order pages to match the folder-grouped module list, exactly like the web:
 /// non-folder pages first, then each folder's pages (in folder order, keeping
@@ -111,6 +112,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
   Map<String, int> _selectedAnswers = {};
   bool _quizSubmitted = false;
   Map<String, dynamic>? _quizScore;
+  // Celebrations (PR #77): bumping the counter re-fires a fresh confetti burst
+  // (its key changes) on every pass, retakes included, same as the web
+  // version. The completion card is a single nullable moment, cleared on close.
+  int _quizWinCounter = 0;
+  Map<String, String>? _completionMoment;
   List<dynamic> _savedQuizResults = [];
   // Quiz gating: the question order/subset (per user / per attempt) and the
   // failed-attempt counter (1st fail -> try again, 2nd fail -> relearn).
@@ -893,8 +899,9 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     }
 
     // Passed: the server has ALREADY stored the result (no /api/progress/save
-    // for quizzes any more). Just unlock the Next button.
-    if (mounted) setState(() { _quizFailed = false; _canGoNext = true; });
+    // for quizzes any more). Just unlock the Next button, and fire a confetti
+    // burst — every pass, retakes included, same as the web version.
+    if (mounted) setState(() { _quizFailed = false; _canGoNext = true; _quizWinCounter++; });
   }
 
   // Build questionId -> (rep's answer correct?) from the server's `review`
@@ -1149,15 +1156,19 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           ),
         );
       } else {
-        // Last lesson - go back to course detail with a result to trigger refresh
-        Navigator.pop(context, true);
-        final message = widget.playlistModules != null ? '🎉 Playlist completed!' : '🎉 Course completed!';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.green,
-          ),
-        );
+        // Last lesson — show the completion celebration first (PR #77; web
+        // showed nothing here before, this app already showed a plain
+        // SnackBar), and only pop back to the course detail once it's
+        // dismissed, so the moment has the screen to itself.
+        final isPlaylist = widget.playlistModules != null;
+        if (mounted) {
+          setState(() {
+            _completionMoment = {
+              'title': isPlaylist ? 'Playlist complete' : 'Course complete',
+              'line': widget.courseTitle,
+            };
+          });
+        }
       }
     } catch (e) {
       print('❌ Error marking lesson complete: $e');
@@ -1876,7 +1887,30 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     // Wrap in ShowCaseWidget so the in-lesson tour can spotlight elements.
     return ShowCaseWidget(
       blurValue: 0.4,
-      builder: (context) => _buildInner(context),
+      builder: (context) => Stack(
+        children: [
+          _buildInner(context),
+          // Quiz-pass confetti (PR #77) — a fresh burst on every pass since the
+          // key (the counter) changes each time, retakes included.
+          if (_quizWinCounter > 0)
+            Positioned.fill(child: ConfettiBurst(key: ValueKey(_quizWinCounter))),
+          // Course/playlist completion card. Web showed nothing here before;
+          // this closes to the pop that used to fire immediately, so the
+          // moment gets the screen to itself before handing back control.
+          if (_completionMoment != null)
+            Positioned.fill(
+              child: WinMoment(
+                mark: '🏆',
+                title: _completionMoment!['title']!,
+                line: _completionMoment!['line']!,
+                onClose: () {
+                  setState(() => _completionMoment = null);
+                  Navigator.pop(context, true);
+                },
+              ),
+            ),
+        ],
+      ),
     );
   }
 

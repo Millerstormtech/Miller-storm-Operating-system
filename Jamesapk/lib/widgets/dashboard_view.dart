@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/api_client.dart';
 import '../services/dashboard_links.dart';
+import '../services/crowning.dart';
 import 'notification_bell.dart';
+import 'celebration.dart';
 
 /// The role dashboard board (PR #67, mobile). ONE widget for every role — the
 /// server (`GET /api/dashboard`) decides scope and returns everything in display
@@ -36,6 +38,12 @@ class _DashboardViewState extends State<DashboardView> {
   String? _userId;
   final GlobalKey<NotificationBellState> _bellKey = GlobalKey<NotificationBellState>();
 
+  // The one celebration on screen right now, if any — crowning ceremony or
+  // "your contracts rose", never both at once. Port of RoleDashboard.tsx's
+  // moment effect: crowning takes priority, and only a rep (scope "self")
+  // ever gets the contracts moment (a leader's number is the whole branch).
+  MomentCopy? _moment;
+
   @override
   void initState() {
     super.initState();
@@ -64,12 +72,15 @@ class _DashboardViewState extends State<DashboardView> {
       final res = await api.get(Uri.parse('https://millerstorm.tech/api/dashboard'));
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);
+        Map<String, dynamic>? data;
         if (decoded is Map && decoded['dashboard'] != null) {
-          setState(() { _data = Map<String, dynamic>.from(decoded['dashboard'] as Map); _loading = false; });
-          return;
+          data = Map<String, dynamic>.from(decoded['dashboard'] as Map);
+        } else if (decoded is Map && decoded['hero'] != null) {
+          data = Map<String, dynamic>.from(decoded);
         }
-        if (decoded is Map && decoded['hero'] != null) {
-          setState(() { _data = Map<String, dynamic>.from(decoded); _loading = false; });
+        if (data != null) {
+          setState(() { _data = data; _loading = false; });
+          _computeMoment(data);
           return;
         }
         setState(() { _error = true; _loading = false; });
@@ -81,6 +92,38 @@ class _DashboardViewState extends State<DashboardView> {
       // "nobody sold anything", a worse claim than "this didn't load".
       if (mounted) setState(() { _error = true; _loading = false; });
     }
+  }
+
+  // Port of RoleDashboard.tsx's celebration effect. "Seen" state lives in
+  // SharedPreferences (the mobile equivalent of localStorage) — device-scoped,
+  // wrapped so a read/write failure never breaks the dashboard.
+  Future<void> _computeMoment(Map<String, dynamic> data) async {
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+
+    final crowning = Crowning.fromJson(data['crowning'] as Map?);
+    final seenMonth = prefs.getString('ms-crowning-seen');
+    if (shouldCelebrateCrowning(crowning, seenMonth)) {
+      try { await prefs.setString('ms-crowning-seen', crowning!.month); } catch (_) {}
+      if (mounted) setState(() => _moment = crowningCopy(crowning!));
+      return; // crowning takes priority; contracts-risen is skipped this run
+    }
+
+    final scope = (data['scope'] as Map?) ?? const {};
+    if ((scope['level'] ?? '') != 'self') return; // leaders excluded
+    final viewer = (scope['viewer'] ?? '').toString();
+    final hero = (data['hero'] as Map?) ?? const {};
+    final contracts = (hero['contracts'] is num) ? hero['contracts'] as num : num.tryParse('${hero['contracts']}') ?? 0;
+    final key = 'ms-hero-contracts:$viewer';
+    final stored = prefs.getString(key);
+    final previous = stored == null ? null : num.tryParse(stored);
+    final gained = contractsGained(previous, contracts);
+    try { await prefs.setString(key, '$contracts'); } catch (_) {}
+    if (gained > 0 && mounted) setState(() => _moment = contractCopy(gained, contracts));
   }
 
   // ---- formatting -----------------------------------------------------------
@@ -106,7 +149,20 @@ class _DashboardViewState extends State<DashboardView> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: _primary));
     if (_error) return _errorState();
-    return RefreshIndicator(color: _primary, onRefresh: _fetch, child: _board());
+    return Stack(
+      children: [
+        RefreshIndicator(color: _primary, onRefresh: _fetch, child: _board()),
+        if (_moment != null)
+          Positioned.fill(
+            child: WinMoment(
+              mark: _moment!.mark,
+              title: _moment!.title,
+              line: _moment!.line,
+              onClose: () => setState(() => _moment = null),
+            ),
+          ),
+      ],
+    );
   }
 
   Widget _errorState() {
@@ -580,31 +636,16 @@ class _DashboardViewState extends State<DashboardView> {
             ],
           ),
           const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: fraction.clamp(0.0, 1.0),
-              minHeight: 4,
-              backgroundColor: AppColors.border.withOpacity(0.5),
-              valueColor: const AlwaysStoppedAnimation<Color>(_primary),
-            ),
-          ),
+          GrowingBar(pct: fraction.clamp(0.0, 1.0) * 100, height: 4),
         ],
       ),
     );
   }
 
   // A slim bar (no name row) used by the rep's "Best month" slot and by the
-  // training credentials.
-  Widget _miniBar(double fraction) => ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: LinearProgressIndicator(
-          value: fraction.clamp(0.0, 1.0),
-          minHeight: 4,
-          backgroundColor: AppColors.border.withOpacity(0.5),
-          valueColor: const AlwaysStoppedAnimation<Color>(_primary),
-        ),
-      );
+  // training credentials. Grows into place once on first build instead of
+  // snapping to its value (PR #77).
+  Widget _miniBar(double fraction) => GrowingBar(pct: fraction.clamp(0.0, 1.0) * 100, height: 4);
 
   // The rep's own best finished month, shown where a manager's card shows the
   // top-3 podium — matches the web MetricCard's showBest branch.
