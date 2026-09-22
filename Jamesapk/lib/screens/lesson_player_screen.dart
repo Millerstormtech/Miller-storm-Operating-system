@@ -1070,45 +1070,36 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     }
   }
 
+  // Was fire-and-forget: the "Next" button unlocked locally (see the
+  // VideoEndChannel handler above) the instant a video neared its end,
+  // completely independent of whether this save actually reached the server
+  // — a single transient network hiccup at that exact moment silently left
+  // the video never recorded as watched, while the quiz right after it (a
+  // separate, explicit, user-confirmed action) went through fine. That's
+  // exactly the "quiz has a checkmark, its video doesn't" reports (Preston
+  // Taylor, Brighton Jenkins — Sept 2026). Now retries a few times, and tells
+  // the rep outright if it still couldn't save, instead of pretending it did.
   Future<void> _markLessonComplete() async {
     if (_lesson == null || _lesson!['isQuiz'] == true) return;
-    try {
-      final user = await AuthService.getStoredUser();
-      final userId = user?['id'] ?? '';
-      final response = await api.post(
-        Uri.parse('https://millerstorm.tech/api/progress/save'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userId': userId,
-          'courseId': widget.courseId,
-          'pageId': _lesson!['id'],
-        }),
+    final lessonTitle = _lesson!['title'];
+    final ok = await _saveLessonCompleteWithRetry();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Couldn\'t save "$lessonTitle" as watched — check your connection and reopen it.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+        ),
       );
-      if (response.statusCode == 200 && mounted) {
-        final data = jsonDecode(response.body);
-        if (data['progress'] != null) {
-          setState(() {
-            _completedCount = data['progress']['completedLessons'] ?? _completedCount;
-            _totalCount = data['progress']['totalLessons'] ?? _totalCount;
-            _progressPercent = data['progress']['progressPercent'] ?? _progressPercent;
-          });
-        }
-      }
-      print('✅ Lesson marked complete (stay on screen): ${_lesson!['title']}');
-    } catch (e) {
-      print('❌ Error marking lesson complete: $e');
     }
   }
 
-  Future<void> _markCompleteAndNext() async {
-    if (_lesson == null) return;
-    
-    try {
-      final user = await AuthService.getStoredUser();
-      final userId = user?['id'] ?? '';
-      
-      // Only mark lesson pages as complete (not quizzes)
-      if (_lesson!['isQuiz'] != true) {
+  Future<bool> _saveLessonCompleteWithRetry({int attempts = 3}) async {
+    for (int i = 0; i < attempts; i++) {
+      try {
+        final user = await AuthService.getStoredUser();
+        final userId = user?['id'] ?? '';
         final response = await api.post(
           Uri.parse('https://millerstorm.tech/api/progress/save'),
           headers: {'Content-Type': 'application/json'},
@@ -1118,21 +1109,51 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             'pageId': _lesson!['id'],
           }),
         );
-        
         if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (data['progress'] != null) {
-            setState(() {
-              _completedCount = data['progress']['completedLessons'] ?? _completedCount;
-              _totalCount = data['progress']['totalLessons'] ?? _totalCount;
-              _progressPercent = data['progress']['progressPercent'] ?? _progressPercent;
-            });
+          if (mounted) {
+            final data = jsonDecode(response.body);
+            if (data['progress'] != null) {
+              setState(() {
+                _completedCount = data['progress']['completedLessons'] ?? _completedCount;
+                _totalCount = data['progress']['totalLessons'] ?? _totalCount;
+                _progressPercent = data['progress']['progressPercent'] ?? _progressPercent;
+              });
+            }
           }
+          print('✅ Lesson marked complete (stay on screen): ${_lesson!['title']}');
+          return true;
         }
-        
-        print('✅ Lesson marked as complete: ${_lesson!['title']}');
+        print('❌ Mark-complete attempt ${i + 1} got status ${response.statusCode}');
+      } catch (e) {
+        print('❌ Error marking lesson complete (attempt ${i + 1}): $e');
       }
-      
+      if (i < attempts - 1) await Future.delayed(Duration(milliseconds: 800 * (i + 1)));
+    }
+    return false;
+  }
+
+  Future<void> _markCompleteAndNext() async {
+    if (_lesson == null) return;
+
+    try {
+      // Only mark lesson pages as complete (not quizzes). Same retrying save
+      // as _markLessonComplete — this was its own separate fire-and-forget
+      // POST before, doubling the ways this specific write could silently fail.
+      if (_lesson!['isQuiz'] != true) {
+        final lessonTitle = _lesson!['title'];
+        final ok = await _saveLessonCompleteWithRetry();
+        if (!ok && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Couldn\'t save "$lessonTitle" as watched — check your connection and reopen it.'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+
       // Navigate to next lesson if available
       if (_currentLessonIndex < _allLessons.length - 1) {
         final nextLesson = _allLessons[_currentLessonIndex + 1];

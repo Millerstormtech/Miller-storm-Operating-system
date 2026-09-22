@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { appConfirm } from "../../lib/appDialogs";
+import { appConfirm, notify } from "../../lib/appDialogs";
+import { saveProgressWithRetry } from "../../lib/training/saveProgress";
 import { useRouter } from "next/router";
 import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
@@ -550,15 +551,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         [selectedCourse.id]: computeItemProgress(currentPages, newCompleted, savedQuizResults, prev[selectedCourse.id]?.isCompleted),
       }));
       if (user) {
-        fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            courseId: selectedCourse.id,
-            completedPages: Array.from(newCompleted)
-          })
-        }).catch(() => {});
+        saveProgressWithRetry({
+          userId: user.id,
+          courseId: selectedCourse.id,
+          completedPages: Array.from(newCompleted)
+        }).then((ok) => {
+          if (!ok) notify(`Couldn't save "${currentPage.title}" as watched — check your connection and reopen it.`, "error");
+        });
       }
     }
 
@@ -644,15 +643,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         }));
 
         if (user) {
-          fetch('/api/progress', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: user.id,
-              courseId: selectedCourse.id,
-              completedPages: Array.from(newCompleted)
-            })
-          }).catch(() => {});
+          saveProgressWithRetry({
+            userId: user.id,
+            courseId: selectedCourse.id,
+            completedPages: Array.from(newCompleted)
+          }).then((ok) => {
+            if (!ok) notify("Couldn't save your progress — check your connection and reopen this lesson.", "error");
+          });
         }
       }
     }, 1200);
@@ -1429,11 +1426,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           [selectedCourse.id]: computeItemProgress(pages, newCompleted, savedQuizResults, prev[selectedCourse.id]?.isCompleted),
         }));
 
-        fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
-        }).catch(err => console.error("Failed to save progress:", err));
+        saveProgressWithRetry({ userId: user.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
+          .then((ok) => {
+            if (!ok) notify(`Couldn't save "${activePage.title}" as watched — check your connection and reopen it.`, "error");
+          });
       }
 
       if (currentIndex < pages.length - 1) {
@@ -1562,16 +1558,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         [selectedCourse.id]: computeItemProgress(pages, newCompleted, savedQuizResults, true),
       }));
 
-      fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          courseId: selectedCourse.id,
-          completedPages: Array.from(newCompleted),
-          courseCompleted: true
-        })
-      }).catch(err => console.error("Failed to complete course:", err));
+      saveProgressWithRetry({
+        userId: user.id,
+        courseId: selectedCourse.id,
+        completedPages: Array.from(newCompleted),
+        courseCompleted: true
+      }).then((ok) => {
+        if (!ok) notify("Couldn't save your course completion — check your connection and revisit the last lesson.", "error");
+      });
     };
 
     return (
