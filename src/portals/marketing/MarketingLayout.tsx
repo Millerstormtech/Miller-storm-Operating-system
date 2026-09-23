@@ -7,7 +7,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 
-type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "rankings" | "course-leaderboard" | "storm-chat" | "team-structure" | "profile" | "my-tasks" | "calendar";
+type MarketingViewId = "dashboard" | "assets" | "approvals" | "socialMetrics" | "training" | "apps-tools" | "ai-chat" | "rankings" | "course-leaderboard" | "storm-chat" | "team-structure" | "profile" | "my-tasks" | "calendar" | "docs-sops";
 
 type MarketingLayoutProps = {
   children: React.ReactNode;

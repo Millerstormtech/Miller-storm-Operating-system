@@ -38,7 +38,8 @@ type BranchManagerViewId =
   | "my-tasks"
   | "rep-activity"
   | "announcements"
-  | "calendar";
+  | "calendar"
+  | "docs-sops";
 
 type BranchManagerLayoutProps = {
   children: React.ReactNode;

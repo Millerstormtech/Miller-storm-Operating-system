@@ -22,6 +22,7 @@ export const cLevelSidebarItems: { id: string; label: string; toggleKey?: string
   // this is a leadership-visibility page, not a per-user permission.
   { id: "rep-activity", label: "Rep Activity", href: "/c-level/rep-activity" },
   { id: "calendar", label: "My Calendar", href: "/c-level/calendar", toggleKey: "calendar" },
+  { id: "docs-sops", label: "Docs & SOPs", href: "/c-level/docs-sops" },
   { id: "my-profile", label: "Profile", href: "/c-level/my-profile", toggleKey: "profile" },
 ];
 

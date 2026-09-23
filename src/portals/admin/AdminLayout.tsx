@@ -35,7 +35,8 @@ type AdminViewId =
   | "teamStructure"
   | "tickets"
   | "announcements"
-  | "calendar";
+  | "calendar"
+  | "docs-sops";
 
 type AdminLayoutProps = {
   children: React.ReactNode;

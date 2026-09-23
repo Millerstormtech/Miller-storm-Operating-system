@@ -23,6 +23,7 @@ export const salesTeamLeadSidebarItems = [
   { id: "jays-ai-clone", label: "Jayi", href: "/manager/jays-ai-clone", toggleKey: "aiChat" },
   { id: "team-structure", label: "Organization Chart", href: "/manager/team-structure", toggleKey: "teamStructure" },
   { id: "calendar", label: "My Calendar", href: "/manager/calendar", toggleKey: "calendar" },
+  { id: "docs-sops", label: "Docs & SOPs", href: "/manager/docs-sops" },
   { id: "my-profile", label: "Profile", href: "/manager/my-profile", toggleKey: "profile" },
 ];
 
@@ -40,7 +41,7 @@ export function SalesTeamLeadSidebar({ activeId, isCollapsed, onToggleCollapse }
   const featureToggles = useFeatureToggles(user?.id);
 
   const sidebarItems = featureToggles
-    ? baseItems.filter(item => featureToggles[item.toggleKey] !== false)
+    ? baseItems.filter(item => !item.toggleKey || featureToggles[item.toggleKey] !== false)
     : baseItems;
 
   function handleNavigation(id: string) {

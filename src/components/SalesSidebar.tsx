@@ -27,6 +27,7 @@ export const salesSidebarItems: { id: string; label: string; toggleKey?: string;
   // Draw Request — an action item, not a page (handled in handleNavigation).
   { id: "submit-draw-request", label: "Submit Draw Request" },
   { id: "calendar", label: "My Calendar", href: "/sales/calendar", toggleKey: "calendar" },
+  { id: "docs-sops", label: "Docs & SOPs", href: "/sales/docs-sops" },
   { id: "profile", label: "Profile", href: "/sales/profile", toggleKey: "profile" },
 ];
 

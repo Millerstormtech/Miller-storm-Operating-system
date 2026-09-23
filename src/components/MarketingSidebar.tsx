@@ -15,6 +15,7 @@ export const marketingSidebarItems = [
   { id: "ai-chat", label: "Jayi", href: "/marketing/ai-chat", toggleKey: "aiAssistant" },
   { id: "team-structure", label: "Organization Chart", href: "/marketing/team-structure", toggleKey: "teamStructure" },
   { id: "calendar", label: "My Calendar", href: "/marketing/calendar", toggleKey: "calendar" },
+  { id: "docs-sops", label: "Docs & SOPs", href: "/marketing/docs-sops" },
   { id: "profile", label: "Profile", href: "/marketing/profile", toggleKey: "profile" },
 ];
 
@@ -32,7 +33,7 @@ export function MarketingSidebar({ activeId, isCollapsed, onToggleCollapse }: Ma
   const featureToggles = useFeatureToggles(user?.id);
 
   const sidebarItems = featureToggles
-    ? baseItems.filter(item => featureToggles[item.toggleKey] !== false)
+    ? baseItems.filter(item => !item.toggleKey || featureToggles[item.toggleKey] !== false)
     : baseItems;
 
   function handleNavigation(id: string) {

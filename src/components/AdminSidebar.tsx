@@ -19,6 +19,7 @@ export const adminSidebarItems: { id: string; label: string; toggleKey?: string;
   { id: "appsTools", label: "Tools & Products", toggleKey: "appsTools", group: "Manage" },
   { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig", group: "Manage" },
   { id: "calendar", label: "Calendar", group: "Manage" },
+  { id: "docs-sops", label: "Docs & SOPs", group: "Manage" },
   { id: "repActivity", label: "Rep Activity", path: "/admin/rep-activity", group: "Manage" },
   { id: "myProfile", label: "Profile", path: "/admin/my-profile", group: "Manage" },
 ];

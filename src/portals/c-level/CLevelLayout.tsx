@@ -40,7 +40,8 @@ type CLevelViewId =
   | "announcements"
   | "my-tasks"
   | "rep-activity"
-  | "calendar";
+  | "calendar"
+  | "docs-sops";
 
 type CLevelLayoutProps = {
   children: React.ReactNode;

@@ -16,8 +16,11 @@ google-services.json
 .DS_Store
 tsconfig.tsbuildinfo
 
-# Local-only product/planning docs (kept off GitHub on purpose)
-docs/
+# Local-only product/planning docs (kept off GitHub on purpose). Anchored to
+# the repo root — an unanchored "docs/" also matched any directory named
+# "docs" anywhere in the tree (pages/api/docs/, src/portals/shared/docs/),
+# silently swallowing real application code, not just local planning notes.
+/docs/
 
 # Quiz answer-balancing tooling. Kept local because its input is docs/quizzes/,
 # which is already gitignored — the scripts are useless without it.
@@ -38,3 +41,7 @@ scripts/dev/
 
 # Brainstorming visual-companion scratch files
 .superpowers/
+
+# Docs & SOPs library uploads — deliberately outside /public (see
+# pages/api/docs/), never committed.
+private-uploads/

@@ -21,6 +21,7 @@ export const branchManagerSidebarItems: { id: string; label: string; toggleKey?:
   // this is a leadership-visibility page, not a per-user permission.
   { id: "rep-activity", label: "Rep Activity", href: "/branch-manager/rep-activity" },
   { id: "calendar", label: "My Calendar", href: "/branch-manager/calendar", toggleKey: "calendar" },
+  { id: "docs-sops", label: "Docs & SOPs", href: "/branch-manager/docs-sops" },
   { id: "my-profile", label: "Profile", href: "/branch-manager/my-profile", toggleKey: "profile" },
 ];
 
