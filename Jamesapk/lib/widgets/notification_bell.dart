@@ -41,6 +41,18 @@ class NotificationBellState extends State<NotificationBell> {
     });
   }
 
+  // GET only ever returns unread notifications (matches the web bell), so
+  // marking them all read simply empties the list — same "seen -> gone" feel
+  // as tapping one, just for everything at once.
+  Future<void> _markAllAsRead() async {
+    setState(() {
+      _notifications = [];
+      _unreadCount = 0;
+    });
+    await ns.NotificationService.markAllAsRead();
+    if (mounted) _fetchNotifications();
+  }
+
   Future<void> _handleNotificationTap(ns.Notification notification) async {
     // Close the notification popup FIRST so the destination screen isn't pushed
     // behind the open menu (that's why tapping used to do "nothing").
@@ -152,14 +164,34 @@ class NotificationBellState extends State<NotificationBell> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  child: Text(
-                    'Notifications',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Notifications',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (_notifications.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).pop(); // close the popup menu first
+                            _markAllAsRead();
+                          },
+                          child: const Text(
+                            'Mark all as read',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFCB0002),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 const Divider(height: 1),

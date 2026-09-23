@@ -72,7 +72,18 @@ export default async function handler(
   }
 
   if (req.method === "PUT") {
-    const { id } = req.body;
+    const { id, all } = req.body;
+    // "Mark all as read" — always the CALLER's own unread notifications, never
+    // a client-supplied userId, same self-only convention as the GET above.
+    if (all === true) {
+      await NotificationModel.updateMany({ userId: auth.sub, read: false }, { read: true });
+      res.status(200).json({ success: true });
+      return;
+    }
+    if (!id) {
+      res.status(400).json({ error: "id or all is required" });
+      return;
+    }
     await NotificationModel.updateOne({ id }, { read: true });
     res.status(200).json({ success: true });
     return;

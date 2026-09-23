@@ -83,6 +83,21 @@ class NotificationService {
     }
   }
 
+  // Marks every one of the CALLER's own unread notifications read in one call
+  // — the server scopes this to the authenticated user itself, same as
+  // fetchNotifications, so no userId needs to (or should) be sent here.
+  static Future<void> markAllAsRead() async {
+    try {
+      await api.put(
+        Uri.parse('$baseUrl/notifications'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'all': true}),
+      );
+    } catch (e) {
+      print('Error marking all notifications as read: $e');
+    }
+  }
+
   static Future<void> deleteNotification(String id) async {
     try {
       await api.delete(

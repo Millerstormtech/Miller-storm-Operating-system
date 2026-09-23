@@ -101,6 +101,24 @@ export function NotificationBell({ userId }: { userId: string }) {
     }
   }
 
+  async function markAllAsRead() {
+    // Optimistic — the bell already shows unread-only, so clearing local
+    // state immediately is what "mark all as read" should feel like; the
+    // fetchNotifications() afterward reconciles against the server anyway.
+    setNotifications([]);
+    setUnreadCount(0);
+    try {
+      await fetch('/api/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true })
+      });
+      fetchNotifications();
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  }
+
   function handleNotificationClick(notif: Notification) {
     // Clicking counts as "seen": remove it from the bell immediately, then
     // persist it as read so it stays gone (bell shows unread only).
@@ -217,8 +235,16 @@ export function NotificationBell({ userId }: { userId: string }) {
           zIndex: 1000,
           marginTop: 8
         }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Notifications
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Notifications</span>
+            {notifications.length > 0 && (
+              <button
+                onClick={markAllAsRead}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--brand-fill)', padding: 0 }}
+              >
+                Mark all as read
+              </button>
+            )}
           </div>
           {notifications.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-subtle)', fontSize: 14 }}>
