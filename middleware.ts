@@ -50,6 +50,12 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    // api/docs is excluded because whenever middleware runs on a request with
+    // a body, Next copies that body for it and caps the copy at 10MB
+    // (proxyClientMaxBodySize), and the route then reads the truncated copy —
+    // so every Docs & SOPs upload over 10MB would fail. Only same-origin page
+    // code calls /api/docs, and next.config.mjs still adds the CORS headers
+    // for /api/*, so this middleware has nothing to do there.
+    '/((?!_next/static|_next/image|favicon.ico|api/docs).*)',
   ],
 };

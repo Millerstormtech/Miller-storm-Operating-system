@@ -4,8 +4,8 @@ import path from "path";
 import { connectMongo } from "../../../../src/lib/mongodb";
 import { SopDocumentModel } from "../../../../src/lib/models/SopDocument";
 import { requireRole, allowMethods } from "../../../../src/lib/auth";
+import { docsDir } from "../../../../src/lib/uploads/docsDir";
 
-const DOCS_DIR = path.join(process.cwd(), "private-uploads", "docs");
 const UPLOAD_ROLES = ["admin", "c-level"];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -34,6 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   await SopDocumentModel.deleteOne({ id });
+  const DOCS_DIR = docsDir();
   const filePath = path.join(DOCS_DIR, doc.storageKey);
   if (filePath.startsWith(DOCS_DIR)) {
     fs.unlink(filePath, () => {}); // best-effort; the DB record is the source of truth

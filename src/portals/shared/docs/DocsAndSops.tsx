@@ -30,6 +30,21 @@ function fmtSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// The server returns an existing folder (200) instead of creating a duplicate
+// when the name is already taken, so an append must not add the same id twice.
+function withFolder(prev: SopFolder[], folder: SopFolder): SopFolder[] {
+  if (prev.some((f) => f.id === folder.id)) return prev;
+  return [...prev, folder].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// OS clutter that rides along with a folder pick but isn't a document:
+// dotfiles (.DS_Store, ._foo), Windows' Thumbs.db/desktop.ini, and macOS's
+// "Icon\r" custom-folder-icon file.
+const SYSTEM_FILES = new Set(["thumbs.db", "desktop.ini", "icon\r"]);
+function isSystemFile(name: string): boolean {
+  return name.startsWith(".") || SYSTEM_FILES.has(name.toLowerCase());
+}
+
 function iconFor(mimeType: string): string {
   if (mimeType === "application/pdf") return "📄";
   if (IMAGE_TYPES.includes(mimeType)) return "🖼️";
@@ -110,7 +125,7 @@ export function DocsAndSops() {
       });
       if (!res.ok) throw new Error();
       const folder = await res.json();
-      setFolders((prev) => [...prev, folder].sort((a, b) => a.name.localeCompare(b.name)));
+      setFolders((prev) => withFolder(prev, folder));
       setNewFolderOpen(false);
     } catch {
       notify("Couldn't create that folder. Try again.", "error");
@@ -124,29 +139,39 @@ export function DocsAndSops() {
   // means something. Docs & SOPs folders are single-level, so a picked
   // folder's own subfolders are flattened — every file lands in the one
   // folder named after the top-level directory, not a nested tree.
-  async function handleFolderPicked(files: FileList | null) {
-    if (!files || files.length === 0 || folderUpload) return;
-    const first = files[0] as File & { webkitRelativePath?: string };
-    const folderName = (first.webkitRelativePath || first.name).split("/")[0] || "New folder";
+  async function handleFolderPicked(picked: File[]) {
+    if (picked.length === 0 || folderUpload) return;
+    const first = picked[0] as File & { webkitRelativePath?: string };
+    // A browser with no folder-picker support (mobile Safari/Chrome) hands
+    // back plain files with no relative path; those go to Uncategorized rather
+    // than into a folder named after whichever file happened to be first.
+    const relativePath = first.webkitRelativePath || "";
+    const dirName = relativePath.includes("/") ? relativePath.split("/")[0].trim() : "";
+    const label = dirName || "Uncategorized";
+    const fileList = picked.filter((f) => !isSystemFile(f.name));
+    if (fileList.length === 0) {
+      notify(`"${label}" has no files to upload.`, "info");
+      return;
+    }
     // Set this before any await so the button (disabled while folderUpload is
     // set) blocks a fast double-click from starting a second, concurrent
     // upload of the same folder before this one has even created it.
-    setFolderUpload({ folderName, total: files.length, done: 0 });
+    setFolderUpload({ folderName: label, total: fileList.length, done: 0 });
 
-    let folderId: string;
-    const existing = folders.find((f) => f.name === folderName);
-    if (existing) {
-      folderId = existing.id;
-    } else {
+    // Always ask the server rather than trusting the folders already on this
+    // page: it returns the existing folder of that name or creates one, and
+    // stays right even if another admin deleted the folder since page load.
+    let folderId: string | null = null;
+    if (dirName) {
       try {
         const res = await fetch("/api/docs/folders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: folderName }),
+          body: JSON.stringify({ name: dirName }),
         });
         if (!res.ok) throw new Error();
         const folder = await res.json();
-        setFolders((prev) => [...prev, folder].sort((a, b) => a.name.localeCompare(b.name)));
+        setFolders((prev) => withFolder(prev, folder));
         folderId = folder.id;
       } catch {
         notify("Couldn't create the folder. Try again.", "error");
@@ -155,7 +180,9 @@ export function DocsAndSops() {
       }
     }
 
-    const fileList = Array.from(files);
+    // Where the server actually filed the documents — it falls back to
+    // Uncategorized if the folder is deleted mid-upload.
+    let landedIn: string | null = null;
     let uploaded = 0;
     let skipped = 0;
     const failureReasons = new Set<string>();
@@ -165,12 +192,21 @@ export function DocsAndSops() {
         const body = new FormData();
         body.append("title", file.name);
         body.append("description", "");
-        body.append("folderId", folderId);
+        if (folderId) body.append("folderId", folderId);
         body.append("file", file);
         const res = await fetch("/api/docs", { method: "POST", body });
         if (res.ok) {
           const doc = await res.json();
           setDocs((prev) => [doc, ...prev]);
+          if (folderId && doc.folderId !== folderId) {
+            // The folder was deleted mid-upload (the server filed this one as
+            // Uncategorized, and its delete un-filed the earlier ones) — match that.
+            const gone = folderId;
+            setFolders((prev) => prev.filter((f) => f.id !== gone));
+            setDocs((prev) => prev.map((d) => (d.folderId === gone ? { ...d, folderId: null } : d)));
+            folderId = null;
+          }
+          landedIn = doc.folderId ?? null;
           uploaded++;
         } else {
           skipped++;
@@ -189,10 +225,12 @@ export function DocsAndSops() {
     }
 
     setFolderUpload(null);
+    if (uploaded > 0) setActiveFolder(landedIn ?? UNFILED);
+    const destination = uploaded > 0 && !landedIn ? "Uncategorized" : label;
     notify(
       skipped === 0
-        ? `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${folderName}".`
-        : `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${folderName}" — ${skipped} failed (${Array.from(failureReasons).join("; ")}).`,
+        ? `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${destination}".`
+        : `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${destination}" — ${skipped} failed (${Array.from(failureReasons).join("; ")}).`,
       skipped === 0 ? "success" : "error"
     );
   }
@@ -201,7 +239,8 @@ export function DocsAndSops() {
     if (!(await appConfirm(`Remove the "${folder.name}" folder? Its documents move to Uncategorized, not deleted.`))) return;
     try {
       const res = await fetch(`/api/docs/folders/${folder.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      // 404: someone else already removed it — drop the stale chip all the same.
+      if (!res.ok && res.status !== 404) throw new Error();
       setFolders((prev) => prev.filter((f) => f.id !== folder.id));
       setDocs((prev) => prev.map((d) => (d.folderId === folder.id ? { ...d, folderId: null } : d)));
       if (activeFolder === folder.id) setActiveFolder(ALL);
@@ -210,8 +249,12 @@ export function DocsAndSops() {
     }
   }
 
+  // A doc whose folder no longer exists counts as Uncategorized, so it can
+  // never be reachable only through "All".
+  const folderIds = new Set(folders.map((f) => f.id));
+  const isUnfiled = (d: SopDoc) => !d.folderId || !folderIds.has(d.folderId);
   const visibleDocs =
-    activeFolder === ALL ? docs : activeFolder === UNFILED ? docs.filter((d) => !d.folderId) : docs.filter((d) => d.folderId === activeFolder);
+    activeFolder === ALL ? docs : activeFolder === UNFILED ? docs.filter(isUnfiled) : docs.filter((d) => d.folderId === activeFolder);
 
   const chip = (key: string, label: string, count: number, onRemove?: () => void) => {
     const active = activeFolder === key;
@@ -247,7 +290,7 @@ export function DocsAndSops() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {chip(ALL, "All", docs.length)}
-          {chip(UNFILED, "Uncategorized", docs.filter((d) => !d.folderId).length)}
+          {chip(UNFILED, "Uncategorized", docs.filter(isUnfiled).length)}
           {folders.map((f) => chip(f.id, f.name, docs.filter((d) => d.folderId === f.id).length, canUpload ? () => handleDeleteFolder(f) : undefined))}
           {canUpload && (
             <button
@@ -260,12 +303,11 @@ export function DocsAndSops() {
         </div>
         {canUpload && (
           <div style={{ display: "flex", gap: 10 }}>
-            {/* webkitdirectory: a real folder picker (Chrome/Edge/Safari) — the
+            {/* webkitdirectory: a real folder picker on desktop browsers — the
                 FileList this yields carries every file inside the chosen
                 folder, each with webkitRelativePath telling us which folder
-                it came from. Firefox falls back to a plain multi-file picker,
-                so a Firefox admin loses the "folder" grouping but the upload
-                itself still works. */}
+                it came from. Mobile browsers ignore it and offer a plain
+                multi-file picker; those files land in Uncategorized. */}
             <input
               ref={folderInputRef}
               type="file"
@@ -274,7 +316,14 @@ export function DocsAndSops() {
               directory=""
               multiple
               hidden
-              onChange={(e) => { handleFolderPicked(e.target.files); e.target.value = ""; }}
+              onChange={(e) => {
+                // Copy out of the FileList BEFORE clearing the input: in Chrome
+                // the FileList is live, so resetting value empties the list the
+                // async upload is still holding, and every file gets dropped.
+                const picked = Array.from(e.target.files ?? []);
+                e.target.value = "";
+                handleFolderPicked(picked);
+              }}
             />
             <button
               onClick={() => folderInputRef.current?.click()}

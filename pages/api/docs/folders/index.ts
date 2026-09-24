@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import crypto from "crypto";
 import { connectMongo } from "../../../../src/lib/mongodb";
 import { SopFolderModel } from "../../../../src/lib/models/SopFolder";
 import { UserModel } from "../../../../src/lib/models/User";
@@ -42,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const creator = await UserModel.findOne({ id: auth.sub }, { name: 1, email: 1 }).lean() as any;
   const folder = await SopFolderModel.create({
-    id: `sopfolder-${Date.now()}`,
+    id: `sopfolder-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
     name,
     createdById: auth.sub,
     createdByName: creator?.name || creator?.email || "",

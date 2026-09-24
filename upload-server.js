@@ -76,18 +76,19 @@ const ALLOWED_EXTENSIONS = new Set([
   '.psd', '.ai', '.eps', '.indd', '.dwg', '.dxf',
   '.zip', '.rar', '.7z', '.tar', '.gz',
 ]);
-const FORBIDDEN_SUBSTRINGS = [
-  '.html', '.htm', '.xhtml', '.svg', '.js', '.mjs', '.cjs', '.php', '.phtml',
-  '.asp', '.aspx', '.jsp', '.sh', '.bat', '.cmd', '.exe', '.com', '.scr',
-  '.vbs', '.jar', '.htaccess',
-];
+const FORBIDDEN_EXTENSIONS = new Set([
+  'html', 'htm', 'shtml', 'xhtml', 'xml', 'xsl', 'xslt', 'mht', 'mhtml',
+  'rss', 'atom', 'kml', 'xspf', 'mml',
+  'svg', 'svgz', 'js', 'mjs', 'cjs', 'php', 'phtml', 'asp', 'aspx', 'jsp',
+  'sh', 'bat', 'cmd', 'exe', 'com', 'scr', 'vbs', 'jar', 'htaccess',
+]);
 function isAllowedName(name) {
   if (!name || typeof name !== 'string') return false;
-  const lower = name.toLowerCase();
-  if (FORBIDDEN_SUBSTRINGS.some((bad) => lower.includes(bad))) return false;
-  const dot = lower.lastIndexOf('.');
-  if (dot === -1) return false;
-  return ALLOWED_EXTENSIONS.has(lower.slice(dot));
+  const last = name.split('.').pop();
+  if (!name.includes('.') || !/^[A-Za-z0-9]+$/.test(last)) return false;
+  if (!ALLOWED_EXTENSIONS.has(`.${last.toLowerCase()}`)) return false;
+  const kept = (seg) => /^[A-Za-z0-9]*/.exec(seg)[0].toLowerCase();
+  return !name.split('.').slice(1).some((seg) => FORBIDDEN_EXTENSIONS.has(kept(seg)));
 }
 
 // Enable CORS
