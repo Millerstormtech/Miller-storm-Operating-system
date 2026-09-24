@@ -158,6 +158,7 @@ export function DocsAndSops() {
     const fileList = Array.from(files);
     let uploaded = 0;
     let skipped = 0;
+    const failureReasons = new Set<string>();
 
     for (const file of fileList) {
       try {
@@ -173,9 +174,16 @@ export function DocsAndSops() {
           uploaded++;
         } else {
           skipped++;
+          const data = await res.json().catch(() => ({}));
+          const reason = data.error || `HTTP ${res.status}`;
+          failureReasons.add(reason);
+          console.error(`[docs] folder upload failed for "${file.name}": ${reason}`);
         }
-      } catch {
+      } catch (err) {
         skipped++;
+        const reason = err instanceof Error ? err.message : "network error";
+        failureReasons.add(reason);
+        console.error(`[docs] folder upload failed for "${file.name}":`, err);
       }
       setFolderUpload((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
     }
@@ -184,8 +192,8 @@ export function DocsAndSops() {
     notify(
       skipped === 0
         ? `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${folderName}".`
-        : `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${folderName}" — ${skipped} skipped (unsupported file type).`,
-      skipped === 0 ? "success" : "info"
+        : `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${folderName}" — ${skipped} failed (${Array.from(failureReasons).join("; ")}).`,
+      skipped === 0 ? "success" : "error"
     );
   }
 
