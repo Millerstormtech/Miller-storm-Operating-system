@@ -23,10 +23,14 @@ export function PdfViewer({ fileUrl, title, loadingText = "Loading document…" 
         // Loaded on demand (not a top-level import) so the ~1MB pdf.js bundle
         // never ships to a rep who never opens a PDF.
         const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+        // "?v=2": nginx used to serve .mjs as application/octet-stream, which
+        // Chrome refuses to run as a worker, and /_next/static is cached as
+        // immutable for a year — a new URL makes browsers holding that bad
+        // copy fetch the corrected one.
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `${new URL(
           "pdfjs-dist/build/pdf.worker.min.mjs",
           import.meta.url
-        ).toString();
+        ).toString()}?v=2`;
 
         // Fetched here rather than by pdf.js so a failed response's own error
         // message (e.g. a document that couldn't be converted) reaches the user.
