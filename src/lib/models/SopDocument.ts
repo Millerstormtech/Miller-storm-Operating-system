@@ -18,6 +18,10 @@ const sopDocumentSchema = new Schema(
     sizeBytes: { type: Number, required: true },
     uploadedById: { type: String, required: true },
     uploadedByName: { type: String, default: "" },
+    // null/absent = "Uncategorized". Never a hard reference: deleting a
+    // folder just clears this back to null on every document in it (see
+    // pages/api/docs/folders/[id].ts) rather than deleting the documents.
+    folderId: { type: String, default: null },
   },
   { timestamps: true }
 );

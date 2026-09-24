@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // file-serving route, not something the client needs or should see.
     const docs = await SopDocumentModel.find(
       {},
-      { id: 1, title: 1, description: 1, fileName: 1, mimeType: 1, sizeBytes: 1, uploadedByName: 1, createdAt: 1, _id: 0 }
+      { id: 1, title: 1, description: 1, fileName: 1, mimeType: 1, sizeBytes: 1, uploadedByName: 1, createdAt: 1, folderId: 1, _id: 0 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -81,6 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
     const description = (Array.isArray(fields.description) ? fields.description[0] : fields.description || "").trim();
+    const folderIdRaw = (Array.isArray(fields.folderId) ? fields.folderId[0] : fields.folderId || "").trim();
     const uploader = await UserModel.findOne({ id: auth.sub }, { name: 1, email: 1 }).lean() as any;
 
     const doc = await SopDocumentModel.create({
@@ -93,6 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       sizeBytes: file.size,
       uploadedById: auth.sub,
       uploadedByName: uploader?.name || uploader?.email || "",
+      folderId: folderIdRaw || null,
     });
 
     res.status(201).json({
@@ -104,6 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       sizeBytes: doc.sizeBytes,
       uploadedByName: doc.uploadedByName,
       createdAt: doc.createdAt,
+      folderId: doc.folderId,
     });
   } catch (err: any) {
     console.error("[docs] upload failed:", err);

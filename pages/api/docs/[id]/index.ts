@@ -9,7 +9,7 @@ const DOCS_DIR = path.join(process.cwd(), "private-uploads", "docs");
 const UPLOAD_ROLES = ["admin", "c-level"];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!allowMethods(req, res, ["DELETE"])) return;
+  if (!allowMethods(req, res, ["PATCH", "DELETE"])) return;
   const auth = requireRole(req, res, UPLOAD_ROLES);
   if (!auth) return;
 
@@ -18,6 +18,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const doc = await SopDocumentModel.findOne({ id }).lean() as any;
   if (!doc) {
     res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  if (req.method === "PATCH") {
+    // Only re-filing (move to a different folder, or back to Uncategorized
+    // with null) is supported here — everything else about a document is
+    // fixed at upload time.
+    if ("folderId" in (req.body || {})) {
+      const folderId = req.body.folderId || null;
+      await SopDocumentModel.updateOne({ id }, { folderId });
+    }
+    res.status(200).json({ success: true });
     return;
   }
 

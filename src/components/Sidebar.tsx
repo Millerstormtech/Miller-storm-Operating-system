@@ -270,7 +270,18 @@ const collapsedIconMap: Record<string, ReactNode> = {
   "ai-chat": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5h16v10H7l-3 3V5zm4 3h8v2H8V8zm0 4h6v2H8v-2z" /></svg>,
   "my-profile": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4z" /></svg>,
   "user-management": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4z" /></svg>,
-  "course-builder": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6l9-4 9 4-9 4-9-4zm0 6l9 4 9-4v6l-9 4-9-4v-6z" /></svg>
+  "course-builder": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6l9-4 9 4-9 4-9-4zm0 6l9 4 9-4v6l-9 4-9-4v-6z" /></svg>,
+  // Docs & SOPs — document with text lines.
+  "docs-sops": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 13h8v2H8v-2zm0 4h8v2H8v-2z" /></svg>,
+  // Calendar — grid with a bound top strip.
+  calendar: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z" /></svg>,
+  // Canvass Map — location pin.
+  canvassMap: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" /></svg>,
+  "canvass-map": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" /></svg>,
+  // Rep Activity — activity bolt.
+  repActivity: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 2L3 14h6l-2 8 10-12h-6l2-8z" /></svg>,
+  "rep-activity": <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 2L3 14h6l-2 8 10-12h-6l2-8z" /></svg>,
+  myProfile: <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4z" /></svg>
 };
 
 export function Sidebar(props: SidebarProps) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { appConfirm, notify } from "../../../lib/appDialogs";
 import { PdfViewer } from "./PdfViewer";
@@ -12,10 +12,17 @@ type SopDoc = {
   sizeBytes: number;
   uploadedByName: string;
   createdAt: string;
+  folderId: string | null;
 };
+
+type SopFolder = { id: string; name: string };
 
 const UPLOAD_ROLES = ["admin", "c-level"];
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"];
+const UNFILED = "__uncategorized__";
+const ALL = "__all__";
+const BRAND_RED = "#CB0002";
+const DISABLED_GRAY = "#d1d5db";
 
 function fmtSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -35,21 +42,33 @@ function iconFor(mimeType: string): string {
 // Company document library: Admin/C-Level upload, every role reads in-app
 // only. Shared across every portal (pages/*/docs-sops.tsx are thin shells
 // around this one component), same convention as the Canvass Map screen.
+// Folders are purely organizational: a document keeps its own identity and
+// permissions regardless of which folder (if any) it sits in.
 export function DocsAndSops() {
   const { user } = useAuth();
   const canUpload = !!user && UPLOAD_ROLES.includes(user.role);
 
   const [docs, setDocs] = useState<SopDoc[]>([]);
+  const [folders, setFolders] = useState<SopFolder[]>([]);
+  const [activeFolder, setActiveFolder] = useState<string>(ALL);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState<SopDoc | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [folderUpload, setFolderUpload] = useState<{ folderName: string; total: number; done: number } | null>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   function load() {
     setLoading(true);
-    fetch("/api/docs")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setDocs(Array.isArray(data) ? data : []))
-      .catch(() => setDocs([]))
+    Promise.all([
+      fetch("/api/docs").then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/docs/folders").then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([docsData, foldersData]) => {
+        setDocs(Array.isArray(docsData) ? docsData : []);
+        setFolders(Array.isArray(foldersData) ? foldersData : []);
+      })
+      .catch(() => { setDocs([]); setFolders([]); })
       .finally(() => setLoading(false));
   }
 
@@ -67,28 +86,216 @@ export function DocsAndSops() {
     }
   }
 
+  async function handleMove(doc: SopDoc, folderId: string | null) {
+    setDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, folderId } : d)));
+    try {
+      const res = await fetch(`/api/docs/${doc.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      notify("Couldn't move that document. Try again.", "error");
+      load(); // reconcile with the server
+    }
+  }
+
+  async function handleCreateFolder(name: string) {
+    try {
+      const res = await fetch("/api/docs/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) throw new Error();
+      const folder = await res.json();
+      setFolders((prev) => [...prev, folder].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewFolderOpen(false);
+    } catch {
+      notify("Couldn't create that folder. Try again.", "error");
+    }
+  }
+
+  // "Upload a folder from your device" — a browser folder picker gives us
+  // every file inside it (via webkitRelativePath), so this creates the
+  // matching SOP folder (reusing one of the same name if it already exists)
+  // and uploads every file into it, one at a time so the progress readout
+  // means something. Docs & SOPs folders are single-level, so a picked
+  // folder's own subfolders are flattened — every file lands in the one
+  // folder named after the top-level directory, not a nested tree.
+  async function handleFolderPicked(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const first = files[0] as File & { webkitRelativePath?: string };
+    const folderName = (first.webkitRelativePath || first.name).split("/")[0] || "New folder";
+
+    let folderId: string;
+    const existing = folders.find((f) => f.name === folderName);
+    if (existing) {
+      folderId = existing.id;
+    } else {
+      try {
+        const res = await fetch("/api/docs/folders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: folderName }),
+        });
+        if (!res.ok) throw new Error();
+        const folder = await res.json();
+        setFolders((prev) => [...prev, folder].sort((a, b) => a.name.localeCompare(b.name)));
+        folderId = folder.id;
+      } catch {
+        notify("Couldn't create the folder. Try again.", "error");
+        return;
+      }
+    }
+
+    const fileList = Array.from(files);
+    setFolderUpload({ folderName, total: fileList.length, done: 0 });
+    let uploaded = 0;
+    let skipped = 0;
+
+    for (const file of fileList) {
+      try {
+        const body = new FormData();
+        body.append("title", file.name);
+        body.append("description", "");
+        body.append("folderId", folderId);
+        body.append("file", file);
+        const res = await fetch("/api/docs", { method: "POST", body });
+        if (res.ok) {
+          const doc = await res.json();
+          setDocs((prev) => [doc, ...prev]);
+          uploaded++;
+        } else {
+          skipped++;
+        }
+      } catch {
+        skipped++;
+      }
+      setFolderUpload((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
+    }
+
+    setFolderUpload(null);
+    notify(
+      skipped === 0
+        ? `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${folderName}".`
+        : `Uploaded ${uploaded} file${uploaded === 1 ? "" : "s"} to "${folderName}" — ${skipped} skipped (unsupported file type).`,
+      skipped === 0 ? "success" : "info"
+    );
+  }
+
+  async function handleDeleteFolder(folder: SopFolder) {
+    if (!(await appConfirm(`Remove the "${folder.name}" folder? Its documents move to Uncategorized, not deleted.`))) return;
+    try {
+      const res = await fetch(`/api/docs/folders/${folder.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setFolders((prev) => prev.filter((f) => f.id !== folder.id));
+      setDocs((prev) => prev.map((d) => (d.folderId === folder.id ? { ...d, folderId: null } : d)));
+      if (activeFolder === folder.id) setActiveFolder(ALL);
+    } catch {
+      notify("Couldn't remove that folder. Try again.", "error");
+    }
+  }
+
+  const visibleDocs =
+    activeFolder === ALL ? docs : activeFolder === UNFILED ? docs.filter((d) => !d.folderId) : docs.filter((d) => d.folderId === activeFolder);
+
+  const chip = (key: string, label: string, count: number, onRemove?: () => void) => {
+    const active = activeFolder === key;
+    return (
+      <div
+        key={key}
+        onClick={() => setActiveFolder(key)}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer",
+          padding: "6px 12px", borderRadius: 999, fontSize: 12.5, fontWeight: 600,
+          background: active ? BRAND_RED : "var(--surface-subtle)",
+          color: active ? "var(--text-inverse)" : "var(--text-primary)",
+          border: active ? `1px solid ${BRAND_RED}` : "1px solid var(--border-default)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label} <span style={{ opacity: 0.75 }}>({count})</span>
+        {onRemove && (
+          <span
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            style={{ marginLeft: 2, opacity: 0.7, fontWeight: 800 }}
+            title="Remove folder"
+          >
+            ×
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div style={{ padding: 24 }}>
-      {canUpload && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
-          <button
-            onClick={() => setUploadOpen(true)}
-            style={{ padding: "10px 18px", borderRadius: 10, border: "none", background: "#CB0002", color: "var(--text-inverse)", fontSize: 13.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
-          >
-            + Upload document
-          </button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {chip(ALL, "All", docs.length)}
+          {chip(UNFILED, "Uncategorized", docs.filter((d) => !d.folderId).length)}
+          {folders.map((f) => chip(f.id, f.name, docs.filter((d) => d.folderId === f.id).length, canUpload ? () => handleDeleteFolder(f) : undefined))}
+          {canUpload && (
+            <button
+              onClick={() => setNewFolderOpen(true)}
+              style={{ padding: "6px 12px", borderRadius: 999, border: "1px dashed var(--border-default)", background: "transparent", fontSize: 12.5, fontWeight: 600, cursor: "pointer", color: "var(--text-muted)" }}
+            >
+              + New folder
+            </button>
+          )}
+        </div>
+        {canUpload && (
+          <div style={{ display: "flex", gap: 10 }}>
+            {/* webkitdirectory: a real folder picker (Chrome/Edge/Safari) — the
+                FileList this yields carries every file inside the chosen
+                folder, each with webkitRelativePath telling us which folder
+                it came from. Firefox falls back to a plain multi-file picker,
+                so a Firefox admin loses the "folder" grouping but the upload
+                itself still works. */}
+            <input
+              ref={folderInputRef}
+              type="file"
+              // @ts-expect-error non-standard attributes, no TS lib types for them
+              webkitdirectory=""
+              directory=""
+              multiple
+              hidden
+              onChange={(e) => { handleFolderPicked(e.target.files); e.target.value = ""; }}
+            />
+            <button
+              onClick={() => folderInputRef.current?.click()}
+              disabled={!!folderUpload}
+              style={{ padding: "10px 18px", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", color: "var(--text-primary)", fontSize: 13.5, fontWeight: 700, cursor: folderUpload ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+            >
+              📁 Upload a folder
+            </button>
+            <button
+              onClick={() => setUploadOpen(true)}
+              style={{ padding: "10px 18px", borderRadius: 10, border: "none", background: BRAND_RED, color: "var(--text-inverse)", fontSize: 13.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              + Upload document
+            </button>
+          </div>
+        )}
+      </div>
+
+      {folderUpload && (
+        <div style={{ marginBottom: 18, padding: "10px 14px", borderRadius: 10, background: "var(--surface-subtle)", border: "1px solid var(--border-default)", fontSize: 12.5, color: "var(--text-primary)" }}>
+          Uploading "{folderUpload.folderName}" — {folderUpload.done} of {folderUpload.total} files…
         </div>
       )}
 
       {loading ? (
         <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>Loading…</div>
-      ) : docs.length === 0 ? (
+      ) : visibleDocs.length === 0 ? (
         <div style={{ padding: 40, textAlign: "center", color: "var(--text-subtle)", border: "1px dashed var(--border-default)", borderRadius: 12 }}>
-          No documents yet{canUpload ? " — upload the first one." : "."}
+          {docs.length === 0 ? `No documents yet${canUpload ? " — upload the first one." : "."}` : "No documents in this folder."}
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
-          {docs.map((doc) => (
+          {visibleDocs.map((doc) => (
             <div
               key={doc.id}
               style={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 8 }}
@@ -108,6 +315,18 @@ export function DocsAndSops() {
               <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: "auto" }}>
                 {fmtSize(doc.sizeBytes)} · {doc.uploadedByName || "Unknown"} · {new Date(doc.createdAt).toLocaleDateString()}
               </div>
+              {canUpload && folders.length > 0 && (
+                <select
+                  value={doc.folderId || ""}
+                  onChange={(e) => handleMove(doc, e.target.value || null)}
+                  style={{ fontSize: 11.5, padding: "5px 6px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", color: "var(--text-tertiary)" }}
+                >
+                  <option value="">Uncategorized</option>
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              )}
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button
                   onClick={() => setViewing(doc)}
@@ -130,8 +349,13 @@ export function DocsAndSops() {
       )}
 
       {viewing && <DocViewerModal doc={viewing} onClose={() => setViewing(null)} />}
+      {newFolderOpen && (
+        <NewFolderModal onClose={() => setNewFolderOpen(false)} onCreate={handleCreateFolder} />
+      )}
       {uploadOpen && (
         <UploadModal
+          folders={folders}
+          defaultFolderId={activeFolder !== ALL && activeFolder !== UNFILED ? activeFolder : null}
           onClose={() => setUploadOpen(false)}
           onUploaded={(doc) => { setDocs((prev) => [doc, ...prev]); setUploadOpen(false); }}
         />
@@ -176,9 +400,52 @@ function DocViewerModal({ doc, onClose }: { doc: SopDoc; onClose: () => void }) 
   );
 }
 
-function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded: (doc: SopDoc) => void }) {
+function NewFolderModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string) => void }) {
+  const [name, setName] = useState("");
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1001, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ background: "var(--surface-default)", borderRadius: 14, width: "100%", maxWidth: 380, padding: "20px 22px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)", marginBottom: 16 }}>New folder</div>
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) onCreate(name.trim()); }}
+          placeholder="e.g. Compliance"
+          style={{ width: "100%", padding: "9px 12px", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13, marginBottom: 16, boxSizing: "border-box" }}
+        />
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button onClick={onClose} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--surface-default)", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--text-tertiary)" }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => name.trim() && onCreate(name.trim())}
+            disabled={!name.trim()}
+            style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: name.trim() ? BRAND_RED : DISABLED_GRAY, fontSize: 13, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed", color: "var(--text-inverse)" }}
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UploadModal({
+  folders,
+  defaultFolderId,
+  onClose,
+  onUploaded,
+}: {
+  folders: SopFolder[];
+  defaultFolderId: string | null;
+  onClose: () => void;
+  onUploaded: (doc: SopDoc) => void;
+}) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [folderId, setFolderId] = useState(defaultFolderId || "");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -194,6 +461,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
       const body = new FormData();
       body.append("title", title.trim());
       body.append("description", description.trim());
+      if (folderId) body.append("folderId", folderId);
       body.append("file", file);
       const res = await fetch("/api/docs", { method: "POST", body });
       if (!res.ok) {
@@ -231,6 +499,18 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
           style={{ width: "100%", padding: "9px 12px", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13, marginBottom: 14, boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
         />
 
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>Folder (optional)</label>
+        <select
+          value={folderId}
+          onChange={(e) => setFolderId(e.target.value)}
+          style={{ width: "100%", padding: "9px 12px", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13, marginBottom: 14, boxSizing: "border-box" }}
+        >
+          <option value="">Uncategorized</option>
+          {folders.map((f) => (
+            <option key={f.id} value={f.id}>{f.name}</option>
+          ))}
+        </select>
+
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>File</label>
         <input
           type="file"
@@ -248,7 +528,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
           <button
             onClick={save}
             disabled={saving}
-            style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: saving ? "#d1d5db" : "#CB0002", fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", color: "var(--text-inverse)" }}
+            style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: saving ? DISABLED_GRAY : BRAND_RED, fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", color: "var(--text-inverse)" }}
           >
             {saving ? "Uploading…" : "Upload"}
           </button>
