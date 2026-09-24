@@ -10,15 +10,18 @@
 
 export const ALLOWED_UPLOAD_EXTENSIONS = [
   // images
-  ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic", ".heif",
+  ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic", ".heif", ".tif", ".tiff", ".ico",
   // video
-  ".mp4", ".mov", ".webm", ".m4v", ".avi", ".mkv",
+  ".mp4", ".mov", ".webm", ".m4v", ".avi", ".mkv", ".wmv", ".3gp", ".flv",
   // audio
-  ".mp3", ".m4a", ".wav", ".ogg",
+  ".mp3", ".m4a", ".wav", ".ogg", ".aac", ".flac", ".wma",
   // documents
   ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv",
+  ".rtf", ".odt", ".ods", ".odp", ".key", ".pages", ".numbers", ".epub", ".md",
+  // design / CAD (inert; downloaded, not executed)
+  ".psd", ".ai", ".eps", ".indd", ".dwg", ".dxf",
   // archives (inert; downloaded, not executed)
-  ".zip", ".rar",
+  ".zip", ".rar", ".7z", ".tar", ".gz",
 ];
 
 // Explicitly dangerous even if an extension check is somehow bypassed by a

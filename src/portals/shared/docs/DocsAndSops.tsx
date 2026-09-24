@@ -514,7 +514,6 @@ function UploadModal({
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>File</label>
         <input
           type="file"
-          accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           style={{ width: "100%", fontSize: 13, marginBottom: 16 }}
         />

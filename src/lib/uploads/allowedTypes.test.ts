@@ -8,6 +8,12 @@ describe("isAllowedUploadName", () => {
     }
   });
 
+  it("accepts the wider set of office/design/archive formats", () => {
+    for (const n of ["memo.rtf", "budget.ods", "slides.key", "scan.tiff", "plan.dwg", "book.epub", "archive.7z"]) {
+      expect(isAllowedUploadName(n)).toBe(true);
+    }
+  });
+
   it("rejects anything the browser would execute", () => {
     for (const n of ["evil.html", "x.svg", "a.js", "shell.php", "run.exe", "page.HTM"]) {
       expect(isAllowedUploadName(n)).toBe(false);

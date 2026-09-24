@@ -68,11 +68,13 @@ function requireAuth(req, res, next) {
 // XSS). Allow only inert media/documents. KEEP IN SYNC with
 // src/lib/uploads/allowedTypes.ts (that TS file cannot be require()d here).
 const ALLOWED_EXTENSIONS = new Set([
-  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.heif',
-  '.mp4', '.mov', '.webm', '.m4v', '.avi', '.mkv',
-  '.mp3', '.m4a', '.wav', '.ogg',
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.heif', '.tif', '.tiff', '.ico',
+  '.mp4', '.mov', '.webm', '.m4v', '.avi', '.mkv', '.wmv', '.3gp', '.flv',
+  '.mp3', '.m4a', '.wav', '.ogg', '.aac', '.flac', '.wma',
   '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv',
-  '.zip', '.rar',
+  '.rtf', '.odt', '.ods', '.odp', '.key', '.pages', '.numbers', '.epub', '.md',
+  '.psd', '.ai', '.eps', '.indd', '.dwg', '.dxf',
+  '.zip', '.rar', '.7z', '.tar', '.gz',
 ]);
 const FORBIDDEN_SUBSTRINGS = [
   '.html', '.htm', '.xhtml', '.svg', '.js', '.mjs', '.cjs', '.php', '.phtml',
