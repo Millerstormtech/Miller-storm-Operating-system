@@ -37,6 +37,19 @@ vi.mock("../models/User", () => ({
 
 const uploadHandler = (await import("../../../pages/api/docs/index")).default;
 const fileHandler = (await import("../../../pages/api/docs/[id]/file")).default;
+const previewHandler = (await import("../../../pages/api/docs/[id]/preview")).default;
+
+// Stand-in for LibreOffice's soffice: writes <outdir>/<stem>.pdf.
+const FAKE_SOFFICE = path.join(TEST_DOCS_DIR, "..", `fake-soffice-${path.basename(TEST_DOCS_DIR)}`);
+fs.writeFileSync(
+  FAKE_SOFFICE,
+  `#!/usr/bin/env node
+const fs = require("fs"), path = require("path");
+const a = process.argv.slice(2), src = a[a.length - 1], base = path.basename(src);
+fs.writeFileSync(path.join(a[a.indexOf("--outdir") + 1], base.slice(0, base.lastIndexOf(".")) + ".pdf"), "%PDF-1.4 converted");
+`,
+  { mode: 0o755 },
+);
 
 // A plain http server standing in for Next: shim the res helpers Next adds and
 // route by path.
@@ -45,10 +58,10 @@ function startServer() {
     const shimmed = res as any;
     shimmed.status = (code: number) => { res.statusCode = code; return shimmed; };
     shimmed.json = (data: any) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(data)); };
-    const fileMatch = /^\/api\/docs\/([^/]+)\/file$/.exec(req.url || "");
+    const fileMatch = /^\/api\/docs\/([^/]+)\/(file|preview)$/.exec(req.url || "");
     if (fileMatch) {
       (req as any).query = { id: fileMatch[1] };
-      (fileHandler as any)(req, shimmed);
+      ((fileMatch[2] === "file" ? fileHandler : previewHandler) as any)(req, shimmed);
     } else {
       (uploadHandler as any)(req, shimmed);
     }
@@ -84,7 +97,9 @@ async function withServer<T>(fn: (url: string) => Promise<T>): Promise<T> {
 
 afterAll(() => {
   fs.rmSync(TEST_DOCS_DIR, { recursive: true, force: true });
+  fs.rmSync(FAKE_SOFFICE, { force: true });
   delete process.env.SOP_DOCS_DIR;
+  delete process.env.SOFFICE_PATH;
 });
 
 describe("POST /api/docs", () => {
@@ -167,5 +182,37 @@ describe("GET /api/docs/[id]/file", () => {
       expect(res.headers.get("content-type")).toBe("application/pdf");
       expect(res.headers.get("x-content-type-options")).toBe("nosniff");
       expect(res.headers.get("content-security-policy")).toBe("sandbox");
+    }));
+});
+
+describe("GET /api/docs/[id]/preview", () => {
+  const get = (url: string, id: string) =>
+    fetch(`${url}/api/docs/${id}/preview`, { headers: { Authorization: `Bearer ${token()}` } });
+
+  it("serves a Word document as a view-only PDF", () =>
+    withServer(async (url) => {
+      process.env.SOFFICE_PATH = FAKE_SOFFICE;
+      const { id } = await (await upload(url, { name: "202411055-Dipak.doc" })).json();
+      const res = await get(url, id);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/pdf");
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(res.headers.get("content-security-policy")).toBe("sandbox");
+      expect(await res.text()).toBe("%PDF-1.4 converted");
+    }));
+
+  it("refuses types the browser shows directly or can't preview at all", () =>
+    withServer(async (url) => {
+      const { id } = await (await upload(url, { name: "bundle.zip" })).json();
+      expect((await get(url, id)).status).toBe(415);
+    }));
+
+  it("says previews aren't set up when LibreOffice isn't installed", () =>
+    withServer(async (url) => {
+      process.env.SOFFICE_PATH = path.join(TEST_DOCS_DIR, "no-such-soffice");
+      const { id } = await (await upload(url, { name: "sheet.xlsx" })).json();
+      const res = await get(url, id);
+      expect(res.status).toBe(503);
+      expect((await res.json()).error).toMatch(/aren't set up/);
     }));
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { appConfirm, notify } from "../../../lib/appDialogs";
 import { PdfViewer } from "./PdfViewer";
+import { needsPdfConversion } from "../../../lib/uploads/previewTypes";
 
 type SopDoc = {
   id: string;
@@ -429,6 +430,7 @@ function DocViewerModal({ doc, onClose }: { doc: SopDoc; onClose: () => void }) 
   const fileUrl = `/api/docs/${doc.id}/file`;
   const isPdf = doc.mimeType === "application/pdf";
   const isImage = IMAGE_TYPES.includes(doc.mimeType);
+  const isConverted = !isPdf && !isImage && needsPdfConversion(doc.fileName);
 
   return (
     <div
@@ -446,13 +448,19 @@ function DocViewerModal({ doc, onClose }: { doc: SopDoc; onClose: () => void }) 
         <div style={{ flex: 1, overflowY: "auto", background: "var(--surface-subtle)" }}>
           {isPdf ? (
             <PdfViewer fileUrl={fileUrl} title={doc.title} />
+          ) : isConverted ? (
+            <PdfViewer
+              fileUrl={`/api/docs/${doc.id}/preview`}
+              title={doc.title}
+              loadingText="Preparing preview… the first time a document is opened this can take a few seconds."
+            />
           ) : isImage ? (
             <div onContextMenu={(e) => e.preventDefault()} style={{ padding: 16, display: "flex", justifyContent: "center" }}>
               <img src={fileUrl} alt={doc.title} style={{ maxWidth: "100%", height: "auto", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }} draggable={false} />
             </div>
           ) : (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-              Preview isn't available for this file type ({doc.fileName}). Ask whoever uploaded it to share it as a PDF or image instead.
+              Preview isn't available for this file type ({doc.fileName}). Ask whoever uploaded it to share it as a PDF, Word/Excel/PowerPoint file, or image instead.
             </div>
           )}
         </div>

@@ -5,6 +5,7 @@ import { connectMongo } from "../../../../src/lib/mongodb";
 import { SopDocumentModel } from "../../../../src/lib/models/SopDocument";
 import { requireRole, allowMethods } from "../../../../src/lib/auth";
 import { docsDir } from "../../../../src/lib/uploads/docsDir";
+import { previewPathFor } from "../../../../src/lib/uploads/docPreview";
 
 const UPLOAD_ROLES = ["admin", "c-level"];
 
@@ -38,6 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const filePath = path.join(DOCS_DIR, doc.storageKey);
   if (filePath.startsWith(DOCS_DIR)) {
     fs.unlink(filePath, () => {}); // best-effort; the DB record is the source of truth
+    fs.unlink(previewPathFor(doc.storageKey), () => {});
   }
   res.status(200).json({ success: true });
 }

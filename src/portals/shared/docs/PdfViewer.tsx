@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 
+// An error whose message is meant for the user, as opposed to a pdf.js failure.
+class ViewerError extends Error {}
+
 // Renders a PDF to <canvas> elements instead of handing it to the browser's
 // native PDF plugin (an <iframe src="..."> or <embed>). That native viewer —
 // Chrome, Edge, Firefox all do this — carries its OWN download icon in its
 // toolbar, which is browser chrome outside this page's DOM and cannot be
 // hidden by any CSS/JS here. Painting pixels to a canvas is the only way an
 // in-app "view only, no download" claim actually holds for a PDF.
-export function PdfViewer({ fileUrl, title }: { fileUrl: string; title: string }) {
+export function PdfViewer({ fileUrl, title, loadingText = "Loading document…" }: { fileUrl: string; title: string; loadingText?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,8 +28,16 @@ export function PdfViewer({ fileUrl, title }: { fileUrl: string; title: string }
           import.meta.url
         ).toString();
 
-        const loadingTask = pdfjsLib.getDocument({ url: fileUrl, withCredentials: true });
-        pdfDoc = await loadingTask.promise;
+        // Fetched here rather than by pdf.js so a failed response's own error
+        // message (e.g. a document that couldn't be converted) reaches the user.
+        const res = await fetch(fileUrl, { credentials: "include" });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new ViewerError(body.error || "Couldn't load this document. Try again in a moment.");
+        }
+        const data = new Uint8Array(await res.arrayBuffer());
+        if (cancelled) return;
+        pdfDoc = await pdfjsLib.getDocument({ data }).promise;
         if (cancelled) return;
         setLoading(false);
 
@@ -50,7 +61,7 @@ export function PdfViewer({ fileUrl, title }: { fileUrl: string; title: string }
       } catch (e: any) {
         if (!cancelled) {
           console.error("[PdfViewer] failed to render", title, e);
-          setError("Couldn't load this document. Try again in a moment.");
+          setError(e instanceof ViewerError ? e.message : "Couldn't load this document. Try again in a moment.");
           setLoading(false);
         }
       }
@@ -70,7 +81,7 @@ export function PdfViewer({ fileUrl, title }: { fileUrl: string; title: string }
       onContextMenu={(e) => e.preventDefault()}
       style={{ padding: "16px 12px", minHeight: 200 }}
     >
-      {loading && <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)", fontSize: 13 }}>Loading document…</div>}
+      {loading && <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)", fontSize: 13 }}>{loadingText}</div>}
       {error && <div style={{ textAlign: "center", padding: 40, color: "#dc2626", fontSize: 13 }}>{error}</div>}
       <div ref={containerRef} />
     </div>
