@@ -125,9 +125,13 @@ export function DocsAndSops() {
   // folder's own subfolders are flattened — every file lands in the one
   // folder named after the top-level directory, not a nested tree.
   async function handleFolderPicked(files: FileList | null) {
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || folderUpload) return;
     const first = files[0] as File & { webkitRelativePath?: string };
     const folderName = (first.webkitRelativePath || first.name).split("/")[0] || "New folder";
+    // Set this before any await so the button (disabled while folderUpload is
+    // set) blocks a fast double-click from starting a second, concurrent
+    // upload of the same folder before this one has even created it.
+    setFolderUpload({ folderName, total: files.length, done: 0 });
 
     let folderId: string;
     const existing = folders.find((f) => f.name === folderName);
@@ -146,12 +150,12 @@ export function DocsAndSops() {
         folderId = folder.id;
       } catch {
         notify("Couldn't create the folder. Try again.", "error");
+        setFolderUpload(null);
         return;
       }
     }
 
     const fileList = Array.from(files);
-    setFolderUpload({ folderName, total: fileList.length, done: 0 });
     let uploaded = 0;
     let skipped = 0;
 
@@ -400,8 +404,16 @@ function DocViewerModal({ doc, onClose }: { doc: SopDoc; onClose: () => void }) 
   );
 }
 
-function NewFolderModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string) => void }) {
+function NewFolderModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string) => Promise<void> }) {
   const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    if (!name.trim() || submitting) return;
+    setSubmitting(true);
+    await onCreate(name.trim());
+    setSubmitting(false);
+  }
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1001, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -411,7 +423,7 @@ function NewFolderModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) onCreate(name.trim()); }}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
           placeholder="e.g. Compliance"
           style={{ width: "100%", padding: "9px 12px", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13, marginBottom: 16, boxSizing: "border-box" }}
         />
@@ -420,9 +432,9 @@ function NewFolderModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
             Cancel
           </button>
           <button
-            onClick={() => name.trim() && onCreate(name.trim())}
-            disabled={!name.trim()}
-            style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: name.trim() ? BRAND_RED : DISABLED_GRAY, fontSize: 13, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed", color: "var(--text-inverse)" }}
+            onClick={submit}
+            disabled={!name.trim() || submitting}
+            style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: name.trim() && !submitting ? BRAND_RED : DISABLED_GRAY, fontSize: 13, fontWeight: 700, cursor: name.trim() && !submitting ? "pointer" : "not-allowed", color: "var(--text-inverse)" }}
           >
             Create
           </button>

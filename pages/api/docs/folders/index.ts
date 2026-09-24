@@ -30,6 +30,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
+  // Reuse an existing folder of the same name instead of creating a duplicate
+  // — matters both for a deliberate re-use (uploading another device folder
+  // with the same name later) and for a client-side double-submit (e.g. a
+  // fast double-click) racing two create requests for the same new name.
+  const existingFolder = await SopFolderModel.findOne({ name }).lean() as any;
+  if (existingFolder) {
+    res.status(200).json({ id: existingFolder.id, name: existingFolder.name });
+    return;
+  }
+
   const creator = await UserModel.findOne({ id: auth.sub }, { name: 1, email: 1 }).lean() as any;
   const folder = await SopFolderModel.create({
     id: `sopfolder-${Date.now()}`,
