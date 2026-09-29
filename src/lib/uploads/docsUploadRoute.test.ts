@@ -14,6 +14,19 @@ import { signSession } from "../auth";
 const TEST_DOCS_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "sop-docs-test-"));
 process.env.SOP_DOCS_DIR = TEST_DOCS_DIR;
 vi.mock("../mongodb", () => ({ connectMongo: vi.fn().mockResolvedValue(undefined) }));
+// The fake soffice is a Node script with a "#!/usr/bin/env node" line, which
+// Linux runs directly but Windows cannot. Launch it through Node explicitly so
+// these tests pass on a Windows dev machine too. A path that does not exist is
+// passed through untouched, so "LibreOffice not installed" still fails ENOENT.
+vi.mock("child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("child_process")>();
+  const { existsSync } = await import("fs");
+  const execFile = ((file: string, args: string[], ...rest: any[]) =>
+    existsSync(file)
+      ? (actual.execFile as any)(process.execPath, [file, ...args], ...rest)
+      : (actual.execFile as any)(file, args, ...rest)) as typeof actual.execFile;
+  return { ...actual, default: { ...actual, execFile }, execFile };
+});
 
 const docsById = new Map<string, any>();
 vi.mock("../models/SopDocument", () => ({

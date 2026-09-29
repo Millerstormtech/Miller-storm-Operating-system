@@ -1,8 +1,22 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { needsPdfConversion } from "./previewTypes";
+
+// The fake soffice is a Node script with a "#!/usr/bin/env node" line, which
+// Linux runs directly but Windows cannot. Launch it through Node explicitly so
+// these tests pass on a Windows dev machine too. A path that does not exist is
+// passed through untouched, so "LibreOffice not installed" still fails ENOENT.
+vi.mock("child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("child_process")>();
+  const { existsSync } = await import("fs");
+  const execFile = ((file: string, args: string[], ...rest: any[]) =>
+    existsSync(file)
+      ? (actual.execFile as any)(process.execPath, [file, ...args], ...rest)
+      : (actual.execFile as any)(file, args, ...rest)) as typeof actual.execFile;
+  return { ...actual, default: { ...actual, execFile }, execFile };
+});
 
 // A stand-in for LibreOffice: writes <outdir>/<stem>.pdf like soffice does,
 // counts its runs, and (like the real thing) exits 0 without output for a
