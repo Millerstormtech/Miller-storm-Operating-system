@@ -1,5 +1,5 @@
 import type { Scope } from "./types";
-import { resolveTeam, resolveNameBranch, TEAM_BRANCH } from "../repcard/org-chart";
+import { resolveTeam, TEAM_BRANCH } from "../repcard/org-chart";
 
 export function resolveScope(user: { id: string; role: string; name: string }): Scope {
   switch (user.role) {
@@ -9,7 +9,7 @@ export function resolveScope(user: { id: string; role: string; name: string }): 
       return { level: "team", team: resolveTeam(user.name) || null };
     case "branch-manager": {
       const team = resolveTeam(user.name);
-      const branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(user.name) || null;
+      const branch = (team && TEAM_BRANCH[team]) || null;
       return { level: "branch", branch };
     }
     case "c-level":

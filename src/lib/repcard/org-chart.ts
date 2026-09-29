@@ -81,22 +81,13 @@ export const TEAM_BRANCH: Record<string, string> = {
   Commercial: "Commercial",
 };
 
-// Direct name -> branch overrides for reps with a KNOWN home branch but no sales team
-// (former reps, cross-branch execs). Consulted after the team's branch and before the
-// RepCard-office fallback. Keys are matched via the same `norm()` as team lookup.
-export const NAME_TO_BRANCH: Record<string, string> = {
-  "austin apple": "Fort Worth", // former rep, no RepCard directory entry -> no team to derive from
-};
-
-export function resolveNameBranch(name?: string | null): string {
-  return NAME_TO_BRANCH[norm(name)] || "";
-}
-
 // Reps who should show NO branch — cross-branch execs (e.g. the CRO who storm-chases
 // across regions). Pinning them to one branch would mislead; their office fallback is
 // suppressed. Under team-based reporting that means they sit under no branch at
 // all, so a branch filter never claims their numbers for a branch they do not run.
-const BRANCHLESS_NAMES = new Set<string>([norm("Naaman Taylor")]);
+// Quinton Hill added 2026-09-29: no sales team, but his RepCard office filed him
+// under Fort Worth.
+const BRANCHLESS_NAMES = new Set<string>([norm("Naaman Taylor"), norm("Quinton Hill")]);
 export function isBranchless(name?: string | null): boolean {
   return BRANCHLESS_NAMES.has(norm(name));
 }

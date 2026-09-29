@@ -12,7 +12,7 @@ import {
   courseOverallTitle,
   type CourseRowInput,
 } from "../../../lib/report/courseBoard";
-import { resolveTeam, TEAM_BRANCH, resolveNameBranch } from "../../../lib/repcard/org-chart";
+import { resolveTeam, TEAM_BRANCH } from "../../../lib/repcard/org-chart";
 import { useIsNarrow } from "./useIsNarrow";
 import { Legend } from "./Legend";
 import { FiltersBar } from "./FiltersBar";
@@ -109,7 +109,7 @@ export function TrainingLeaderboard() {
   useEffect(() => {
     if (user?.role !== "branch-manager") return;
     const team = resolveTeam(user.name);
-    const branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(user.name) || "";
+    const branch = (team && TEAM_BRANCH[team]) || "";
     if (branch) setFilters((f) => ({ ...f, branch }));
   }, [user?.role, user?.name]);
 
