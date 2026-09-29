@@ -3,6 +3,8 @@ import fs from "fs";
 import path from "path";
 import { connectMongo } from "../../../../src/lib/mongodb";
 import { SopDocumentModel } from "../../../../src/lib/models/SopDocument";
+import { SopFolderModel } from "../../../../src/lib/models/SopFolder";
+import { cleanName, MAX_TITLE_LENGTH } from "../../../../src/lib/docs/folderTree";
 import { requireRole, allowMethods } from "../../../../src/lib/auth";
 import { docsDir } from "../../../../src/lib/uploads/docsDir";
 import { previewPathFor } from "../../../../src/lib/uploads/docPreview";
@@ -23,14 +25,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "PATCH") {
-    // Only re-filing (move to a different folder, or back to Uncategorized
-    // with null) is supported here — everything else about a document is
-    // fixed at upload time.
-    if ("folderId" in (req.body || {})) {
-      const folderId = req.body.folderId || null;
-      await SopDocumentModel.updateOne({ id }, { folderId });
+    // Rename ({ title }) and/or move ({ folderId }, null = top level). The
+    // file itself is fixed at upload time.
+    const body = req.body || {};
+    const update: Record<string, unknown> = {};
+    if ("title" in body) {
+      const title = cleanName(body.title, MAX_TITLE_LENGTH);
+      if (!title) {
+        res.status(400).json({ error: "A document name is required" });
+        return;
+      }
+      update.title = title;
     }
-    res.status(200).json({ success: true });
+    if ("folderId" in body) {
+      const folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
+      if (folderId && !(await SopFolderModel.exists({ id: folderId }))) {
+        res.status(400).json({ error: "The destination folder no longer exists" });
+        return;
+      }
+      update.folderId = folderId;
+    }
+    if (Object.keys(update).length > 0) await SopDocumentModel.updateOne({ id }, update);
+    res.status(200).json({ id, title: update.title ?? doc.title, folderId: "folderId" in update ? update.folderId : doc.folderId ?? null });
     return;
   }
 

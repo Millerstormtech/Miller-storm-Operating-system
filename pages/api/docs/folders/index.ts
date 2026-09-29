@@ -4,6 +4,7 @@ import { connectMongo } from "../../../../src/lib/mongodb";
 import { SopFolderModel } from "../../../../src/lib/models/SopFolder";
 import { UserModel } from "../../../../src/lib/models/User";
 import { requireUser, requireRole, allowMethods } from "../../../../src/lib/auth";
+import { cleanName } from "../../../../src/lib/docs/folderTree";
 
 const UPLOAD_ROLES = ["admin", "c-level"];
 
@@ -14,30 +15,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     const auth = requireUser(req, res);
     if (!auth) return;
-    const folders = await SopFolderModel.find({}, { id: 1, name: 1, _id: 0 })
+    const folders = await SopFolderModel.find({}, { id: 1, name: 1, parentId: 1, _id: 0 })
       .sort({ name: 1 })
-      .lean();
-    res.status(200).json(folders);
+      .lean() as any[];
+    res.status(200).json(folders.map((f) => ({ id: f.id, name: f.name, parentId: f.parentId ?? null })));
     return;
   }
 
-  // POST — create a folder.
+  // POST — create a folder, at the top level or inside parentId.
   const auth = requireRole(req, res, UPLOAD_ROLES);
   if (!auth) return;
 
-  const name = (req.body?.name ?? "").toString().trim();
+  const name = cleanName(req.body?.name);
   if (!name) {
     res.status(400).json({ error: "A folder name is required" });
     return;
   }
+  const parentId: string | null = typeof req.body?.parentId === "string" && req.body.parentId ? req.body.parentId : null;
+  if (parentId && !(await SopFolderModel.exists({ id: parentId }))) {
+    res.status(400).json({ error: "The folder you're adding to no longer exists" });
+    return;
+  }
 
-  // Reuse an existing folder of the same name instead of creating a duplicate
-  // — matters both for a deliberate re-use (uploading another device folder
-  // with the same name later) and for a client-side double-submit (e.g. a
-  // fast double-click) racing two create requests for the same new name.
-  const existingFolder = await SopFolderModel.findOne({ name }).lean() as any;
+  // Reuse a same-named folder in the same place instead of creating a
+  // duplicate — for a re-uploaded device folder, and for a double-submit
+  // racing two creates of one new name.
+  const existingFolder = await SopFolderModel.findOne({ name, parentId }).lean() as any;
   if (existingFolder) {
-    res.status(200).json({ id: existingFolder.id, name: existingFolder.name });
+    res.status(200).json({ id: existingFolder.id, name: existingFolder.name, parentId: existingFolder.parentId ?? null });
     return;
   }
 
@@ -45,9 +50,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const folder = await SopFolderModel.create({
     id: `sopfolder-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
     name,
+    parentId,
     createdById: auth.sub,
     createdByName: creator?.name || creator?.email || "",
   });
 
-  res.status(201).json({ id: folder.id, name: folder.name });
+  res.status(201).json({ id: folder.id, name: folder.name, parentId: folder.parentId ?? null });
 }

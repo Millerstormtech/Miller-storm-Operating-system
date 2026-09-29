@@ -6,6 +6,7 @@ import { SopDocumentModel } from "../../../../src/lib/models/SopDocument";
 import { requireUser, allowMethods } from "../../../../src/lib/auth";
 import { mimeTypeForName } from "../../../../src/lib/uploads/allowedTypes";
 import { docsDir } from "../../../../src/lib/uploads/docsDir";
+import { sendFile } from "../../../../src/lib/uploads/serveFile";
 
 
 // The ONLY route that ever serves a doc's bytes. Any authenticated user may
@@ -43,10 +44,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // whatever Content-Type the uploader's browser sent, which an uploader can
   // set to text/html and turn a "PDF" into a same-origin page. nosniff and a
   // sandbox CSP make sure nothing served here can ever run as a page either.
-  res.setHeader("Content-Type", mimeTypeForName(doc.fileName || ""));
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "sandbox");
-  res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(doc.fileName || "document")}"`);
-  res.setHeader("Cache-Control", "private, no-store");
-  fs.createReadStream(filePath).pipe(res);
+  sendFile(req, res, filePath, {
+    "Content-Type": mimeTypeForName(doc.fileName || ""),
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "sandbox",
+    "Content-Disposition": `inline; filename="${encodeURIComponent(doc.fileName || "document")}"`,
+    // A document's bytes never change after upload, so the viewer may reuse
+    // them — reopening a document is then instant instead of a re-download.
+    "Cache-Control": "private, max-age=86400",
+  });
 }

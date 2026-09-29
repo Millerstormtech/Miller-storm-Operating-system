@@ -7,6 +7,7 @@ import { requireUser, allowMethods } from "../../../../src/lib/auth";
 import { docsDir } from "../../../../src/lib/uploads/docsDir";
 import { needsPdfConversion } from "../../../../src/lib/uploads/previewTypes";
 import { pdfPreviewFor } from "../../../../src/lib/uploads/docPreview";
+import { sendFile } from "../../../../src/lib/uploads/serveFile";
 
 // A PDF rendition of a Word/Excel/PowerPoint-style document, for the same
 // canvas viewer PDFs use — browsers can't render these formats themselves.
@@ -49,10 +50,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Security-Policy", "sandbox");
-  res.setHeader("Content-Disposition", "inline");
-  res.setHeader("Cache-Control", "private, no-store");
-  fs.createReadStream(pdfPath).pipe(res);
+  sendFile(req, res, pdfPath, {
+    "Content-Type": "application/pdf",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "sandbox",
+    "Content-Disposition": "inline",
+    "Cache-Control": "private, max-age=86400",
+  });
 }

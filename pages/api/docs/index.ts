@@ -10,6 +10,9 @@ import { UserModel } from "../../../src/lib/models/User";
 import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 import { isAllowedUploadName, mimeTypeForName, storedUploadName } from "../../../src/lib/uploads/allowedTypes";
 import { docsDir } from "../../../src/lib/uploads/docsDir";
+import { needsPdfConversion } from "../../../src/lib/uploads/previewTypes";
+import { pdfPreviewFor } from "../../../src/lib/uploads/docPreview";
+import { cleanName, MAX_TITLE_LENGTH } from "../../../src/lib/docs/folderTree";
 
 // formidable 3 error codes (FormidableError.js).
 const EMPTY_FILE_ERRORS = [1008, 1010]; // smallerThanMinFileSize, noEmptyFiles
@@ -97,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(400).json({ error: name ? `"${name}" isn't an allowed file type` : "No file uploaded" });
       return;
     }
-    const title = (Array.isArray(fields.title) ? fields.title[0] : fields.title || "").trim();
+    const title = cleanName(Array.isArray(fields.title) ? fields.title[0] : fields.title, MAX_TITLE_LENGTH);
     if (!title) {
       fs.unlink(file.filepath, () => {});
       res.status(400).json({ error: "Title is required" });
@@ -125,6 +128,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       uploadedByName: uploader?.name || uploader?.email || "",
       folderId,
     });
+
+    // Make the viewer's PDF of a Word/Excel/PowerPoint file now, in the
+    // background, so the first person to open it isn't the one who waits for
+    // LibreOffice. A failure here only means the first view converts instead.
+    if (needsPdfConversion(fileName)) {
+      pdfPreviewFor(file.filepath, doc.storageKey).catch((err) => {
+        if (err?.code !== "ENOENT") console.error("[docs] background preview failed for", doc.id, err);
+      });
+    }
 
     res.status(201).json({
       id: doc.id,

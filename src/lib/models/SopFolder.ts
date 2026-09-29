@@ -8,6 +8,9 @@ const sopFolderSchema = new Schema(
   {
     id: { type: String, required: true, unique: true },
     name: { type: String, required: true },
+    // null/absent = top level. Folders created before nesting have no
+    // parentId, which Mongo's { parentId: null } also matches.
+    parentId: { type: String, default: null },
     createdById: { type: String, required: true },
     createdByName: { type: String, default: "" },
   },
