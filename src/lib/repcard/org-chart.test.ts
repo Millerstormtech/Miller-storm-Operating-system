@@ -1,7 +1,7 @@
 // src/lib/repcard/org-chart.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveTeam, TEAM_NAMES, TEAM_BRANCH, resolveNameBranch, isBranchless } from "./org-chart.ts";
+import { resolveTeam, TEAM_NAMES, TEAM_BRANCH, isBranchless } from "./org-chart.ts";
 
 test("Brighton Jenkins and his reps resolve to Daniel Sabedra's team", () => {
   assert.equal(resolveTeam("Brighton Jenkins"), "Daniel Sabedra");
@@ -33,17 +33,14 @@ test("Victor Ramirez (separate person) stays on Cooper too", () => {
   assert.equal(resolveTeam("Victor Ramirez", ""), "Cooper");
 });
 
-test("Austin Apple resolves to Fort Worth via name-branch override", () => {
-  assert.equal(resolveNameBranch("Austin Apple"), "Fort Worth");
-});
-
-test("resolveNameBranch returns '' for a normal rep", () => {
-  assert.equal(resolveNameBranch("Daniel Reyes"), "");
-});
-
 test("Naaman Taylor is branchless (cross-branch CRO)", () => {
   assert.equal(isBranchless("Naaman Taylor"), true);
   assert.equal(isBranchless("Daniel Reyes"), false);
+});
+
+test("Quinton Hill is branchless, not filed under his RepCard office", () => {
+  assert.equal(isBranchless("Quinton Hill"), true);
+  assert.equal(isBranchless("  quinton   HILL "), true);
 });
 
 // --- RepCard is the source of truth for team membership (2026-08-27) -------

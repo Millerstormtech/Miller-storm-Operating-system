@@ -10,7 +10,7 @@ import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
 import { isDeletedFromRepCard } from "./roster";
 import { officeToBranch, attributeToBranch } from "../repcard/branches";
-import { resolveTeam, TEAM_BRANCH, isTeamLead, resolveNameBranch, isBranchless } from "../repcard/org-chart";
+import { resolveTeam, TEAM_BRANCH, isTeamLead, isBranchless } from "../repcard/org-chart";
 
 export interface SalesLeaderRow {
   id: string;               // merge id, e.g. "rc:<repcardUserId>"
@@ -232,7 +232,7 @@ export async function computeSalesRows(
     const team = resolveTeam(rcu?.name || m.name, rcu?.team) || null;
     // Org chart wins for Branch: follow the team's branch when the team is known;
     // fall back to the RepCard office only for reps with no team.
-    const branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(rcu?.name || m.name)
+    const branch = (team && TEAM_BRANCH[team])
       || (isBranchless(rcu?.name || m.name) ? "" : officeToBranch(rcu?.office));
     // Team-based reporting (decided 2026-08-12, confirmed 2026-08-21): every one
     // of this rep's numbers counts toward their home branch -- the branch their

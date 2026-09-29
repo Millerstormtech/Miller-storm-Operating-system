@@ -13,7 +13,7 @@ import {
   RANKED_ROLES,
 } from "./scoring";
 import { aggregateOverall, type OverallRow } from "./board";
-import { resolveTeam, TEAM_BRANCH, resolveNameBranch } from "../repcard/org-chart";
+import { resolveTeam, TEAM_BRANCH } from "../repcard/org-chart";
 
 export type BoardData = {
   /** Lean course docs, heavy per-page fields stripped. */
@@ -94,11 +94,11 @@ export async function loadBoardData(): Promise<BoardData> {
     // their assigned team lead (managerId), branch through the lead or their
     // own territory — so nobody shows a blank "Branch · Team" line.
     let team = resolveTeam(u.name);
-    let branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(u.name) || "";
+    let branch = (team && TEAM_BRANCH[team]) || "";
     if (!team && (u as any).managerId) {
       const mgrName = managerNameById.get(String((u as any).managerId)) || "";
       team = resolveTeam(mgrName) || (mgrName ? mgrName.trim().split(/\s+/)[0] : "");
-      if (!branch) branch = (team && TEAM_BRANCH[team]) || resolveNameBranch(mgrName) || "";
+      if (!branch) branch = (team && TEAM_BRANCH[team]) || "";
     }
     if (!branch) branch = ((u as any).territory || "").toString().split("·")[0].trim();
     return {
