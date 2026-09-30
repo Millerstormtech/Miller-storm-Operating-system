@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { renderTemplate, APP_LINKS } from "./emailTemplates";
+import { renderTemplate, APP_LINKS, SUPPORT_BUTTON_HINT, branchAndLead } from "./emailTemplates";
 import { getEmailTemplate } from "./emailTemplatesServer";
 import { roleDisplayName } from "./roleLabels";
 import { formatTicketNumber } from "./support/ticketNumberFormat";
@@ -115,45 +115,62 @@ export async function sendQuickStartUserEmail(params: {
   email: string;
   role: string;
   password: string;
+  branch: string | null;
+  salesTeamLead: string | null;
 }) {
   const tmpl = await getEmailTemplate("quickStartUser");
   if (tmpl.status === "draft") { console.log("[Email] quickStartUser is draft — skipping"); return; }
+  const lines = branchAndLead([params.role], params.branch, params.salesTeamLead);
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": params.name,
     "{{email}}": params.email,
     "{{role}}": roleDisplayName(params.role),
     "{{password}}": params.password,
+    "{{branch}}": lines.branch,
+    "{{salesTeamLead}}": lines.salesTeamLead,
   });
   return sendEmail({ to: params.email, subject, html, text });
 }
 
-export async function sendQuickStartManagerEmail(hireName: string, managerName: string, managerEmail: string) {
+// Tells a Sales Team Lead a new rep joined, with the rep's contact details.
+export async function sendQuickStartManagerEmail(params: {
+  hireName: string;
+  hireEmail: string;
+  hirePhone: string | null | undefined;
+  managerName: string;
+  managerEmail: string;
+}) {
   const tmpl = await getEmailTemplate("quickStartManager");
   if (tmpl.status === "draft") { console.log("[Email] quickStartManager is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
-    "{{hireName}}": hireName,
-    "{{managerName}}": managerName,
+    "{{hireName}}": params.hireName,
+    "{{hireEmail}}": params.hireEmail,
+    "{{hirePhone}}": (params.hirePhone || "").trim() || "Not on file",
+    "{{managerName}}": params.managerName,
   });
-  return sendEmail({ to: managerEmail, subject, html, text });
+  return sendEmail({ to: params.managerEmail, subject, html, text });
 }
 
+// The "Send Login Details" email. It never carries a password: the app only
+// stores a scrambled copy, and the button works only once changes are saved.
 export async function sendUserAccountUpdatedEmail(params: {
   name: string;
   email: string;
-  password: string | null;
   roles: string[];
   branch: string | null;
-  managerName: string | null;
+  salesTeamLead: string | null;
 }) {
   const tmpl = await getEmailTemplate("userAccountUpdated");
   if (tmpl.status === "draft") { console.log("[Email] userAccountUpdated is draft — skipping"); return; }
+  const lines = branchAndLead(params.roles, params.branch, params.salesTeamLead);
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": params.name,
     "{{email}}": params.email,
-    "{{password}}": params.password || "Unchanged (use your existing password)",
-    "{{branch}}": params.branch || "No Branch",
+    // null drops the line from a template saved before the password line was removed.
+    "{{password}}": null,
+    "{{branch}}": lines.branch,
     "{{role}}": params.roles.map(r => roleDisplayName(r)).join(", "),
-    "{{managerName}}": params.managerName || "N/A",
+    "{{salesTeamLead}}": lines.salesTeamLead,
   });
   return sendEmail({ to: params.email, subject, html, text });
 }
@@ -175,7 +192,7 @@ export async function sendAdminConfirmationEmail(params: {
     "{{userName}}": params.userName,
     "{{userEmail}}": params.userEmail,
     "{{role}}": params.roles.map(r => roleDisplayName(r)).join(", "),
-    "{{managerName}}": params.managerName || "N/A",
+    "{{salesTeamLead}}": branchAndLead(params.roles, null, params.managerName).salesTeamLead,
     "{{passwordChanged}}": params.passwordChanged ? "Changed" : "Not Changed",
     "{{updatedAt}}": params.updatedAt,
   });
@@ -292,6 +309,8 @@ export async function sendSupportTicketCreatedEmail(params: {
   type: string;
   note: string;
   ticketNumber: number;
+  // Admins open tickets on the admin page; a ticket-type owner on /tickets.
+  recipientIsAdmin: boolean;
 }) {
   const tmpl = await getEmailTemplate("supportTicketCreated");
   if (tmpl.status === "draft") { console.log("[Email] supportTicketCreated is draft — skipping"); return; }
@@ -302,6 +321,7 @@ export async function sendSupportTicketCreatedEmail(params: {
     "{{type}}": params.type,
     "{{note}}": params.note,
     "{{ticketNumber}}": formatTicketNumber(params.ticketNumber),
+    "{{ticketsUrl}}": params.recipientIsAdmin ? APP_LINKS.adminTicketsUrl : APP_LINKS.ownerTicketsUrl,
   });
   return sendEmail({ to: params.adminEmail, subject, html, text });
 }
@@ -317,6 +337,7 @@ export async function sendTicketReplyEmail(params: {
   mediaUrl?: string;
   mediaType?: string;  // 'image' | 'video'
   forRaiser: boolean;  // true → email to the raiser; false → to a handler
+  recipientIsAdmin?: boolean; // for a handler: admin page vs the owner inbox
   ticketNumber: number;
 }) {
   const tmpl = await getEmailTemplate("ticketReply");
@@ -339,6 +360,10 @@ export async function sendTicketReplyEmail(params: {
     "{{senderName}}": params.senderName,
     "{{message}}": message,
     "{{ticketNumber}}": formatTicketNumber(params.ticketNumber),
+    // The raiser has no tickets page, only the header's Support button.
+    "{{howToReply}}": params.forRaiser
+      ? `To see the conversation and reply, open Miller Storm (${APP_LINKS.appUrl}) and ${SUPPORT_BUTTON_HINT}.`
+      : `See the conversation and reply here: ${params.recipientIsAdmin ? APP_LINKS.adminTicketsUrl : APP_LINKS.ownerTicketsUrl}`,
   });
   return sendEmail({ to: params.to, subject, html, text });
 }

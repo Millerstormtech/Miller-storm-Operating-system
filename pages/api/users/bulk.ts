@@ -88,6 +88,11 @@ export default async function handler(
       for (const newUser of newSalesUsers) {
         try {
           const name = newUser.name || newUser.email;
+          const manager = newUser.managerId
+            ? await UserModel.findOne({
+                $or: [{ id: newUser.managerId }, { email: newUser.managerId }],
+              }).lean()
+            : null;
           await sendQuickStartUserEmail({
             name,
             email: newUser.email.trim(),
@@ -95,15 +100,20 @@ export default async function handler(
             password: typeof newUser.password === "string" && newUser.password.trim().length > 0
               ? newUser.password.trim()
               : "Ask your administrator for your password",
+            branch: newUser.territory || (Array.isArray(newUser.branches) ? newUser.branches[0] : null) || null,
+            salesTeamLead: manager?.name || null,
           });
           console.log(`[bulk] Quick Start email sent to: ${newUser.email}`);
 
           if (newUser.managerId) {
-            const manager = await UserModel.findOne({
-              $or: [{ id: newUser.managerId }, { email: newUser.managerId }],
-            }).lean();
             if (manager?.email) {
-              await sendQuickStartManagerEmail(name, manager.name || manager.email, manager.email);
+              await sendQuickStartManagerEmail({
+                hireName: name,
+                hireEmail: newUser.email.trim(),
+                hirePhone: newUser.phone,
+                managerName: manager.name || manager.email,
+                managerEmail: manager.email,
+              });
               console.log(`[bulk] Quick Start email sent to manager: ${manager.email}`);
             } else {
               console.log(`[bulk] Manager not found for managerId: ${newUser.managerId}`);

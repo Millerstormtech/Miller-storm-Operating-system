@@ -128,10 +128,9 @@ async function handler(
         await sendUserAccountUpdatedEmail({
           name: safeUser.name as string,
           email: safeUser.email as string,
-          password: typeof password === "string" && password.trim().length > 0 ? password.trim() : null,
           roles,
           branch: (safeUser.territory as string) || (Array.isArray(safeUser.branches) ? (safeUser.branches as string[])[0] : "") || null,
-          managerName: managerName || null,
+          salesTeamLead: managerName || null,
         });
         if (adminEmail) {
           await sendAdminConfirmationEmail({
@@ -170,6 +169,7 @@ async function handler(
     if (rest.role === "sales" && rest.email) {
       try {
         const newHireName = rest.name || rest.email;
+        const manager = rest.managerId ? await UserModel.findOne({ id: rest.managerId }).lean() : null;
         await sendQuickStartUserEmail({
           name: newHireName,
           email: rest.email,
@@ -177,13 +177,18 @@ async function handler(
           password: typeof password === "string" && password.trim().length > 0
             ? password.trim()
             : "Ask your administrator for your password",
+          branch: rest.territory || (Array.isArray(rest.branches) ? rest.branches[0] : null) || null,
+          salesTeamLead: manager?.name || null,
         });
 
-        if (rest.managerId) {
-          const manager = await UserModel.findOne({ id: rest.managerId }).lean();
-          if (manager?.email) {
-            await sendQuickStartManagerEmail(newHireName, manager.name || manager.email, manager.email);
-          }
+        if (manager?.email) {
+          await sendQuickStartManagerEmail({
+            hireName: newHireName,
+            hireEmail: rest.email,
+            hirePhone: rest.phone,
+            managerName: manager.name || manager.email,
+            managerEmail: manager.email,
+          });
         }
       } catch (emailErr) {
         console.error("Failed to send onboarding email:", emailErr);

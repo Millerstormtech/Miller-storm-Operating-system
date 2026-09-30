@@ -653,10 +653,10 @@ export function UserManagement(props: UserEditorProps) {
     }
   }
 
-  // Email the selected user their login details (name, email, branch, role,
-  // manager, and the password if one was set on this account). Confirmed via the
-  // Yes/Cancel dialog. The button is disabled while there are unsaved edits, so
-  // the password we pass from the form matches what's actually saved.
+  // Email the selected user their login details (name, email, role, branch,
+  // Sales Team Lead; never a password). Confirmed via the Yes/Cancel dialog.
+  // The button is disabled while there are unsaved edits, so the email matches
+  // what's actually saved.
   async function sendLoginDetails() {
     if (!selectedUser) return;
     setShowSendCredsConfirm(false);
@@ -665,12 +665,7 @@ export function UserManagement(props: UserEditorProps) {
       const res = await fetch("/api/users/send-credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: selectedUser.id,
-          // The plaintext password only exists in the form; send it so the email
-          // can show it, else the email tells them to use their existing one.
-          password: (selectedUser.password || "").trim() || null,
-        }),
+        body: JSON.stringify({ userId: selectedUser.id }),
       });
       if (res.ok) {
         setSaveNotice(`Login details emailed to ${selectedUser.email}`);

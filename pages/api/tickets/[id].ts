@@ -189,8 +189,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const adminEmails = admins.map((a) => a.email).filter(Boolean);
         const ownerEmails = SUPPORT_CATEGORY_BY_KEY[ticket.type]?.emails || [];
         const recipients = Array.from(new Set([...ownerEmails, ...adminEmails].filter(Boolean).map((e) => e.toLowerCase())));
+        const adminEmailSet = new Set(adminEmails.map((e: string) => e.toLowerCase()));
         await Promise.all(recipients.map((to) =>
-          sendTicketReplyEmail({ to, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: false, ticketNumber }).catch(() => {})
+          sendTicketReplyEmail({ to, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: false, recipientIsAdmin: adminEmailSet.has(to), ticketNumber }).catch(() => {})
         ));
       }
     } catch (e: any) {

@@ -144,18 +144,26 @@ export default async function handler(
         // Send 48-hour Quick Start onboarding email for sales users
         if (userRequest.role === "sales") {
           try {
+            const manager = newUser.managerId
+              ? await UserModel.findOne({ id: newUser.managerId }).lean()
+              : null;
             await sendQuickStartUserEmail({
               name: userRequest.name,
               email: userRequest.email,
               role: userRequest.role,
               password: "The one you chose when you registered",
+              branch: newUser.territory || (Array.isArray(newUser.branches) ? newUser.branches[0] : null) || null,
+              salesTeamLead: (manager as any)?.name || null,
             });
 
-            if (newUser.managerId) {
-              const manager = await UserModel.findOne({ id: newUser.managerId }).lean();
-              if (manager?.email) {
-                await sendQuickStartManagerEmail(userRequest.name, manager.name || manager.email, manager.email);
-              }
+            if ((manager as any)?.email) {
+              await sendQuickStartManagerEmail({
+                hireName: userRequest.name,
+                hireEmail: userRequest.email,
+                hirePhone: userRequest.phone || newUser.phone,
+                managerName: (manager as any).name || (manager as any).email,
+                managerEmail: (manager as any).email,
+              });
             }
 
             console.log("Quick Start onboarding email sent to:", userRequest.email);

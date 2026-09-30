@@ -144,6 +144,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const recipients = Array.from(
       new Set([...(category?.emails || []), ...adminEmails].filter(Boolean).map((e) => e.toLowerCase()))
     );
+    const adminEmailSet = new Set(adminEmails.map((e: string) => e.toLowerCase()));
 
     await Promise.all([
       // Per-category + admin emails.
@@ -156,6 +157,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           type: typeLabel,
           note: emailNote,
           ticketNumber,
+          recipientIsAdmin: adminEmailSet.has(to),
         }).catch((e) => console.error("[ticket] email failed:", e?.message || e))
       ),
       // In-app bell notification for every admin.

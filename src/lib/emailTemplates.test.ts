@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EMAIL_DEFAULTS, GLOBAL_VARIABLES, APP_LINKS, renderTemplate, unknownVariables } from "./emailTemplates";
+import { EMAIL_DEFAULTS, GLOBAL_VARIABLES, APP_LINKS, renderTemplate, unknownVariables, firstNameOf, branchAndLead } from "./emailTemplates";
 
 const COPYRIGHT = "© 2026-2027 Miller Storm. All Rights Reserved.";
 const keys = Object.keys(EMAIL_DEFAULTS);
@@ -19,26 +19,100 @@ describe("built-in email templates", () => {
   });
 
   it.each(keys)("%s ends with the shared sign-off", (key) => {
-    expect(EMAIL_DEFAULTS[key].body.trimEnd()).toMatch(/Best regards,\nMillerStorm\.tech Team$/);
+    expect(EMAIL_DEFAULTS[key].body.trimEnd()).toMatch(/Best regards,\nThe Miller Storm Team$/);
+  });
+
+  it.each(keys)("%s calls the app Miller Storm, not Miller Storm OS or MillerStorm.tech", (key) => {
+    const t = EMAIL_DEFAULTS[key];
+    expect(`${t.subject}\n${t.body}`).not.toMatch(/Miller Storm OS|Operating System|MillerStorm\.tech/);
+  });
+
+  it.each(keys)("%s greets by first name, if it greets at all", (key) => {
+    const first = EMAIL_DEFAULTS[key].body.split("\n")[0];
+    if (first.startsWith("Hi ")) expect(first).toMatch(/^Hi \{\{(firstName|managerFirstName|adminFirstName)\}\},$/);
   });
 
   it.each(keys)("%s hardcodes no app link", (key) => {
-    // Links come from {{loginUrl}}, {{iosAppUrl}} etc. so they are fixed in one place.
+    // Links come from {{appUrl}}, {{iosAppUrl}} etc. so they are fixed in one place.
     expect(EMAIL_DEFAULTS[key].body).not.toMatch(/apps\.apple\.com|play\.google\.com|https?:\/\/millerstorm\.tech/);
   });
 
   it("the welcome email carries the login details it lists", () => {
     const t = EMAIL_DEFAULTS.quickStartUser;
-    const { html, text } = renderTemplate(t.body, t.subject, {
-      "{{name}}": "Jane Rep",
+    const { html, text, subject } = renderTemplate(t.body, t.subject, {
+      "{{name}}": "Jane Rivera",
       "{{email}}": "jane@example.com",
       "{{password}}": "Storm123",
       "{{role}}": "Sales Rep",
+      "{{branch}}": "Austin",
+      "{{salesTeamLead}}": "Daniel Reyes",
     });
+    expect(subject).toBe("Welcome to Miller Storm!");
     expect(html).not.toMatch(/\{\{\w+\}\}/);
-    expect(text).toContain("Password: Storm123");
-    expect(text).toContain(`iPhone App: ${APP_LINKS.iosAppUrl}`);
-    expect(text).not.toContain("Your manager has also received");
+    expect(text.startsWith("Hi Jane,")).toBe(true);
+    expect(text).toContain("- Name: Jane Rivera");
+    expect(text).toContain("- Password: Storm123");
+    expect(text).toContain("- Sales Team Lead: Daniel Reyes");
+    expect(text).toContain(`- iPhone: ${APP_LINKS.iosAppUrl}`);
+    expect(text).not.toMatch(/Success Path|48 hours|manager has also received/);
+  });
+
+  it("the Send Login Details email never shows a password line", () => {
+    expect(EMAIL_DEFAULTS.userAccountUpdated.body).not.toMatch(/password:/i);
+    // A template saved before the line was removed drops it too (the sender passes null).
+    const { text } = renderTemplate("* Email: {{email}}\n* Password: {{password}}", "", { "{{email}}": "a@b.co", "{{password}}": null });
+    expect(text).not.toContain("Password");
+  });
+});
+
+describe("firstNameOf", () => {
+  it("takes the first word of the full name", () => {
+    expect(firstNameOf("Jane Rivera")).toBe("Jane");
+    expect(firstNameOf("  Mary Ann Smith ")).toBe("Mary");
+  });
+
+  it("says 'there' when there is no real name", () => {
+    expect(firstNameOf("")).toBe("there");
+    expect(firstNameOf(null)).toBe("there");
+    expect(firstNameOf("jane.rivera@example.com")).toBe("there");
+  });
+
+  it("is filled in for every greeting field", () => {
+    const { text } = renderTemplate("{{firstName}} {{managerFirstName}} {{adminFirstName}}", "", {
+      "{{name}}": "Jane Rivera", "{{managerName}}": "Daniel Reyes", "{{adminName}}": "Alex Morgan",
+    });
+    expect(text.split("\n")[0]).toBe("Jane Daniel Alex");
+  });
+});
+
+describe("branchAndLead", () => {
+  it("gives a sales rep both lines", () => {
+    expect(branchAndLead(["sales"], "Austin", "Daniel Reyes")).toEqual({ branch: "Austin", salesTeamLead: "Daniel Reyes" });
+  });
+
+  it("says 'Not assigned yet' for a rep missing either", () => {
+    expect(branchAndLead(["sales"], "", null)).toEqual({ branch: "Not assigned yet", salesTeamLead: "Not assigned yet" });
+  });
+
+  it("gives a team lead or branch manager a branch but no Sales Team Lead line", () => {
+    expect(branchAndLead(["sales-team-lead"], "", "Someone")).toEqual({ branch: "Not assigned yet", salesTeamLead: null });
+    expect(branchAndLead(["branch-manager"], "Austin", null)).toEqual({ branch: "Austin", salesTeamLead: null });
+  });
+
+  it("leaves both lines out for C-level and admin accounts without a branch", () => {
+    expect(branchAndLead(["c-level"], "", null)).toEqual({ branch: null, salesTeamLead: null });
+    expect(branchAndLead(["admin"], null, null)).toEqual({ branch: null, salesTeamLead: null });
+  });
+
+  it("drops the lines that do not apply from the email", () => {
+    const t = EMAIL_DEFAULTS.userAccountUpdated;
+    const lines = branchAndLead(["c-level"], "", null);
+    const { text } = renderTemplate(t.body, t.subject, {
+      "{{name}}": "Pat Lee", "{{email}}": "pat@example.com", "{{role}}": "C-Level",
+      "{{branch}}": lines.branch, "{{salesTeamLead}}": lines.salesTeamLead,
+    });
+    expect(text).not.toMatch(/Branch:|Sales Team Lead:/);
+    expect(text).toContain("- Role: C-Level");
   });
 });
 

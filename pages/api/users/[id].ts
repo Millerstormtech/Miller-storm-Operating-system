@@ -172,10 +172,9 @@ export default async function handler(
         await sendUserAccountUpdatedEmail({
           name: safeUser.name as string,
           email: safeUser.email as string,
-          password: plainPassword,
           roles,
           branch: (safeUser.territory as string) || (Array.isArray(safeUser.branches) ? (safeUser.branches as string[])[0] : "") || null,
-          managerName: managerName || null,
+          salesTeamLead: managerName || null,
         });
         console.log("[Email] userAccountUpdated sent OK");
         if (adminEmail) {
