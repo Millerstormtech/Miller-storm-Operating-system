@@ -176,8 +176,9 @@ describe("contractKingCertificate email template", () => {
   it("declares exactly the variables sendKingCertificateEmail substitutes", () => {
     // Drift guard. An admin editing the template sees this list; if the sender
     // stops filling one of them, the rep receives a raw {{placeholder}}.
+    // {{appUrl}} is a shared link every template gets, so it is not listed here.
     expect([...tmpl.variables].sort()).toEqual(
-      ["{{appUrl}}", "{{certificateId}}", "{{issuedDate}}", "{{monthLabel}}", "{{name}}", "{{stats}}"]
+      ["{{certificateId}}", "{{issuedDate}}", "{{monthLabel}}", "{{name}}", "{{stats}}"]
     );
   });
 

@@ -165,9 +165,6 @@ export default async function handler(
 
     // Send emails if admin checked the notify checkbox
     if (sendNotification && safeUser.email) {
-      const loginUrl = process.env.NEXT_PUBLIC_APP_URL
-        ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/login$/, "") + "/login"
-        : "https://yourdomain.com/login";
       try {
         const roles = (safeUser.roles as string[]) || [safeUser.role as string];
         const updatedAt = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
@@ -179,7 +176,6 @@ export default async function handler(
           roles,
           branch: (safeUser.territory as string) || (Array.isArray(safeUser.branches) ? (safeUser.branches as string[])[0] : "") || null,
           managerName: managerName || null,
-          loginUrl
         });
         console.log("[Email] userAccountUpdated sent OK");
         if (adminEmail) {

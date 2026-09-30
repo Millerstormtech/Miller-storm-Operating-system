@@ -58,7 +58,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       roles,
       branch,
       managerName,
-      loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://millerstorm.tech/login",
     });
 
     res.status(200).json({ success: true });

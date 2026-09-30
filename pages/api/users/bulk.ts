@@ -88,7 +88,14 @@ export default async function handler(
       for (const newUser of newSalesUsers) {
         try {
           const name = newUser.name || newUser.email;
-          await sendQuickStartUserEmail(name, newUser.email.trim());
+          await sendQuickStartUserEmail({
+            name,
+            email: newUser.email.trim(),
+            role: newUser.role,
+            password: typeof newUser.password === "string" && newUser.password.trim().length > 0
+              ? newUser.password.trim()
+              : "Ask your administrator for your password",
+          });
           console.log(`[bulk] Quick Start email sent to: ${newUser.email}`);
 
           if (newUser.managerId) {

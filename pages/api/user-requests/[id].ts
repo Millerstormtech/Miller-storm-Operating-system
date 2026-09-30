@@ -135,8 +135,7 @@ export default async function handler(
 
         // Send approval email
         try {
-          const loginUrl = `http://${process.env.PRIMARY_DOMAIN || 'localhost:6789'}/login`;
-          await sendAccountApprovedEmail(userRequest.name, userRequest.email, userRequest.role, loginUrl);
+          await sendAccountApprovedEmail(userRequest.name, userRequest.email, userRequest.role);
           console.log("Approval email sent to:", userRequest.email);
         } catch (emailError: any) {
           console.error("Failed to send approval email:", emailError.message || emailError);
@@ -145,7 +144,12 @@ export default async function handler(
         // Send 48-hour Quick Start onboarding email for sales users
         if (userRequest.role === "sales") {
           try {
-            await sendQuickStartUserEmail(userRequest.name, userRequest.email);
+            await sendQuickStartUserEmail({
+              name: userRequest.name,
+              email: userRequest.email,
+              role: userRequest.role,
+              password: "The one you chose when you registered",
+            });
 
             if (newUser.managerId) {
               const manager = await UserModel.findOne({ id: newUser.managerId }).lean();

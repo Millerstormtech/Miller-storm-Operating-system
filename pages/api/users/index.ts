@@ -132,7 +132,6 @@ async function handler(
           roles,
           branch: (safeUser.territory as string) || (Array.isArray(safeUser.branches) ? (safeUser.branches as string[])[0] : "") || null,
           managerName: managerName || null,
-          loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://yourdomain.com/login"
         });
         if (adminEmail) {
           await sendAdminConfirmationEmail({
@@ -171,7 +170,14 @@ async function handler(
     if (rest.role === "sales" && rest.email) {
       try {
         const newHireName = rest.name || rest.email;
-        await sendQuickStartUserEmail(newHireName, rest.email);
+        await sendQuickStartUserEmail({
+          name: newHireName,
+          email: rest.email,
+          role: rest.role,
+          password: typeof password === "string" && password.trim().length > 0
+            ? password.trim()
+            : "Ask your administrator for your password",
+        });
 
         if (rest.managerId) {
           const manager = await UserModel.findOne({ id: rest.managerId }).lean();

@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { renderTemplate } from "./emailTemplates";
+import { renderTemplate, APP_LINKS } from "./emailTemplates";
 import { getEmailTemplate } from "./emailTemplatesServer";
 import { roleDisplayName } from "./roleLabels";
 import { formatTicketNumber } from "./support/ticketNumberFormat";
@@ -76,25 +76,23 @@ export async function sendNewRegistrationAdminEmail(params: {
 }) {
   const tmpl = await getEmailTemplate("newRegistrationAdmin");
   if (tmpl.status === "draft") { console.log("[Email] newRegistrationAdmin is draft — skipping"); return; }
-  const base = (process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com").replace(/\/$/, "");
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{adminName}}": params.adminName,
     "{{name}}": params.name,
     "{{email}}": params.email,
     "{{role}}": roleDisplayName(params.role),
-    "{{reviewUrl}}": `${base}/admin/user-management`,
+    "{{reviewUrl}}": `${APP_LINKS.appUrl}/admin/user-management`,
   });
   return sendEmail({ to: params.adminEmail, subject, html, text });
 }
 
-export async function sendAccountApprovedEmail(name: string, email: string, role: string, loginUrl: string) {
+export async function sendAccountApprovedEmail(name: string, email: string, role: string) {
   const tmpl = await getEmailTemplate("accountApproved");
   if (tmpl.status === "draft") { console.log("[Email] accountApproved is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": name,
     "{{email}}": email,
     "{{role}}": roleDisplayName(role),
-    "{{loginUrl}}": loginUrl,
   });
   return sendEmail({ to: email, subject, html, text });
 }
@@ -109,13 +107,24 @@ export async function sendAccountRejectedEmail(name: string, email: string, reas
   return sendEmail({ to: email, subject, html, text });
 }
 
-export async function sendQuickStartUserEmail(name: string, email: string) {
+// The welcome email carries the rep's login details. `password` is the plaintext
+// the admin typed when creating the account (the only moment it exists), or a
+// sentence saying where the password comes from when the app never saw it.
+export async function sendQuickStartUserEmail(params: {
+  name: string;
+  email: string;
+  role: string;
+  password: string;
+}) {
   const tmpl = await getEmailTemplate("quickStartUser");
   if (tmpl.status === "draft") { console.log("[Email] quickStartUser is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
-    "{{name}}": name,
+    "{{name}}": params.name,
+    "{{email}}": params.email,
+    "{{role}}": roleDisplayName(params.role),
+    "{{password}}": params.password,
   });
-  return sendEmail({ to: email, subject, html, text });
+  return sendEmail({ to: params.email, subject, html, text });
 }
 
 export async function sendQuickStartManagerEmail(hireName: string, managerName: string, managerEmail: string) {
@@ -135,7 +144,6 @@ export async function sendUserAccountUpdatedEmail(params: {
   roles: string[];
   branch: string | null;
   managerName: string | null;
-  loginUrl: string;
 }) {
   const tmpl = await getEmailTemplate("userAccountUpdated");
   if (tmpl.status === "draft") { console.log("[Email] userAccountUpdated is draft — skipping"); return; }
@@ -146,7 +154,6 @@ export async function sendUserAccountUpdatedEmail(params: {
     "{{branch}}": params.branch || "No Branch",
     "{{role}}": params.roles.map(r => roleDisplayName(r)).join(", "),
     "{{managerName}}": params.managerName || "N/A",
-    "{{loginUrl}}": params.loginUrl,
   });
   return sendEmail({ to: params.email, subject, html, text });
 }
@@ -392,7 +399,6 @@ export async function sendCertificateEarnedEmail(params: {
     "{{courses}}": params.courses.map((c) => `- ${c}`).join("\n"),
     "{{issuedDate}}": params.issuedDate,
     "{{credentialId}}": params.credentialId,
-    "{{appUrl}}": process.env.NEXT_PUBLIC_APP_URL || "https://millerstorm.tech",
   });
 
   // Do not promise an attachment that is not there.
@@ -449,7 +455,6 @@ export async function sendKingCertificateEmail(params: {
     "{{stats}}": params.stats.map((s) => `- ${s}`).join("\n"),
     "{{issuedDate}}": params.issuedDate,
     "{{certificateId}}": params.certificateId,
-    "{{appUrl}}": process.env.NEXT_PUBLIC_APP_URL || "https://millerstorm.tech",
   });
 
   // Do not promise an attachment that is not there.
