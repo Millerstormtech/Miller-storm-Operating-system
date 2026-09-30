@@ -256,24 +256,6 @@ Please follow up with them in Miller Storm: {{appUrl}}
 ${SIGN_OFF}`,
     variables: ["{{managerName}}", "{{managerFirstName}}", "{{userName}}", "{{playlistName}}", "{{deadline}}", "{{completedModules}}", "{{totalModules}}"],
   },
-  adminConfirmation: {
-    subject: "User Account Updated - {{userName}}",
-    body: `Hi {{adminFirstName}},
-
-You have successfully updated the following user account:
-
-* Name: {{userName}}
-* Email: {{userEmail}}
-* Role: {{role}}
-* Sales Team Lead: {{salesTeamLead}}
-* Password: {{passwordChanged}}
-* Updated At: {{updatedAt}}
-
-This is an automated confirmation of the changes you made.
-
-${SIGN_OFF}`,
-    variables: ["{{adminName}}", "{{adminFirstName}}", "{{userName}}", "{{userEmail}}", "{{role}}", "{{salesTeamLead}}", "{{passwordChanged}}", "{{updatedAt}}"],
-  },
   newRegistrationAdmin: {
     subject: "New registration request awaiting your review",
     body: `Hi {{adminFirstName}},

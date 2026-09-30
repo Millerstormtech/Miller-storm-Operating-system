@@ -41,8 +41,6 @@ export function UserManagement(props: UserEditorProps) {
   useEffect(() => {
     if (!isDirty) setDraftDeletedUsers(props.deletedUsers);
   }, [props.deletedUsers]);
-  const [notifyUsers, setNotifyUsers] = useState<Record<string, boolean>>({});
-  const [notifyUsersBySMS, setNotifyUsersBySMS] = useState<Record<string, boolean>>({});
   // "Send Login Details" button: a Yes/Cancel confirm, then an email to the user.
   const [showSendCredsConfirm, setShowSendCredsConfirm] = useState(false);
   const [sendingCreds, setSendingCreds] = useState(false);
@@ -1186,10 +1184,6 @@ export function UserManagement(props: UserEditorProps) {
                       emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       return;
                     }
-                    if (notifyUsersBySMS[selectedUserId] && !selectedUser.phone) {
-                      setPhoneError("Phone number is required when SMS notification is enabled");
-                      return;
-                    }
                     setPhoneError("");
                     // New = a draft not yet in the saved list. (Do NOT use the
                     // "user-" id prefix — saved users can have that prefix too,
@@ -1217,9 +1211,6 @@ export function UserManagement(props: UserEditorProps) {
                     setIsSaving(true);
                     try {
                       const usersToSave = draftUsers.map((user) => ({ ...user }));
-                      const managerUser = selectedUser.managerId ? draftUsers.find(u => u.id === selectedUser.managerId) : null;
-                      const adminRaw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-                      const adminData = adminRaw ? JSON.parse(adminRaw) : null;
                       const userToSave = usersToSave.find(u => u.id === selectedUser.id);
                       if (userToSave) {
                         // New = a draft not yet in the saved list. (Do NOT use the
@@ -1242,11 +1233,6 @@ export function UserManagement(props: UserEditorProps) {
                             body: JSON.stringify({
                               ...userToSave,
                               _id: undefined,
-                              sendNotification: !!notifyUsers[selectedUserId],
-                              sendSMSNotification: !!notifyUsersBySMS[selectedUserId],
-                              adminName: adminData?.name || "Admin",
-                              adminEmail: adminData?.email || "",
-                              managerName: managerUser?.name || null
                             })
                           });
                           if (!res.ok) {
@@ -1270,21 +1256,12 @@ export function UserManagement(props: UserEditorProps) {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               ...userToSave,
-                              sendNotification: !!notifyUsers[selectedUserId],
-                              sendSMSNotification: !!notifyUsersBySMS[selectedUserId],
-                              adminName: adminData?.name || "Admin",
-                              adminEmail: adminData?.email || "",
-                              managerName: managerUser?.name || null
                             })
                           });
                           if (!putRes.ok) {
                             const err = await putRes.json().catch(() => ({}));
                             alert(`Failed to save: ${err.error || "Unknown error"}`);
                             return;
-                          }
-                          const putData = await putRes.json().catch(() => ({}));
-                          if (putData?.emailWarning) {
-                            alert(`User saved, but the notification email could NOT be sent:\n\n${putData.emailWarning}`);
                           }
                           const freshRes = await fetch("/api/users?deleted=false");
                           if (freshRes.ok) {
@@ -1296,8 +1273,6 @@ export function UserManagement(props: UserEditorProps) {
                           }
                         }
                         setIsDirty(false);
-                        setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
-                        setNotifyUsersBySMS(prev => ({ ...prev, [selectedUserId]: false }));
                         setSaveNotice("Changes saved successfully");
                         if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
                         saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
@@ -1383,7 +1358,7 @@ export function UserManagement(props: UserEditorProps) {
                 </div>
               </label>
               <label className="field">
-                <span className="field-label">Phone{notifyUsersBySMS[selectedUserId] && <span style={{ color: "#dc2626" }}> *</span>}</span>
+                <span className="field-label">Phone</span>
                 <input 
                   className="field-input" 
                   value={selectedUser.phone ?? ""} 

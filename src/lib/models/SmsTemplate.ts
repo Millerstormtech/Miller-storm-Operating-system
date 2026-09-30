@@ -30,8 +30,4 @@ export const DEFAULT_SMS_TEMPLATES: Record<string, { label: string; template: st
     label: "Completion Notification",
     template: "{user_name} should have completed their training commitment.",
   },
-  userAccountUpdate: {
-    label: "User Account Update",
-    template: "Hi {user_name}, your account has been updated by {admin_name}. Please login and check for details.",
-  },
 };

@@ -2,8 +2,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
-import { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } from "../../../src/lib/email";
-import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { validateUserPayload } from "../../../src/lib/sanitize";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
@@ -87,7 +85,9 @@ export default async function handler(
       return;
     }
 
-    const { password, passwordHash: _ph, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, id: _id, createdAt: _ca, updatedAt: _ua, __v: _v, _id: _mid, businessPlan: incomingBusinessPlan, ...rest } = payload;
+    // sendNotification/sendSMSNotification/adminName/adminEmail/managerName are
+    // stripped, never stored: the old notify checkbox sent them (removed 2026-08-30).
+    const { password, passwordHash: _ph, sendNotification: _sn, sendSMSNotification: _ssn, adminName: _an, adminEmail: _ae, managerName: _mn, id: _id, createdAt: _ca, updatedAt: _ua, __v: _v, _id: _mid, businessPlan: incomingBusinessPlan, ...rest } = payload;
 
     // A user editing THEMSELVES may only touch profile fields. Everything that
     // decides what they are allowed to do, who they report to, or whether the
@@ -161,62 +161,7 @@ export default async function handler(
       await addUserToBranchGroups(String(u._id), branches);
     }
 
-    let emailWarning: string | null = null;
-
-    // Send emails if admin checked the notify checkbox
-    if (sendNotification && safeUser.email) {
-      try {
-        const roles = (safeUser.roles as string[]) || [safeUser.role as string];
-        const updatedAt = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-        console.log("[Email] Sending userAccountUpdated to:", safeUser.email);
-        await sendUserAccountUpdatedEmail({
-          name: safeUser.name as string,
-          email: safeUser.email as string,
-          roles,
-          branch: (safeUser.territory as string) || (Array.isArray(safeUser.branches) ? (safeUser.branches as string[])[0] : "") || null,
-          salesTeamLead: managerName || null,
-        });
-        console.log("[Email] userAccountUpdated sent OK");
-        if (adminEmail) {
-          console.log("[Email] Sending adminConfirmation to:", adminEmail);
-          await sendAdminConfirmationEmail({
-            adminName: adminName || "Admin",
-            adminEmail,
-            userName: safeUser.name as string,
-            userEmail: safeUser.email as string,
-            roles,
-            managerName: managerName || null,
-            passwordChanged: !!plainPassword,
-            updatedAt
-          });
-          console.log("[Email] adminConfirmation sent OK");
-        }
-      } catch (emailErr: any) {
-        emailWarning = emailErr?.message || String(emailErr);
-        console.error("[Email] Failed to send update emails:", emailWarning);
-      }
-    } else {
-      console.log("[Email] Skipped - sendNotification:", sendNotification, "email:", safeUser.email);
-    }
-
-    // Send SMS if admin checked the SMS notify checkbox
-    if (sendSMSNotification && safeUser.phone) {
-      try {
-        console.log("[SMS] Sending userAccountUpdate SMS to:", safeUser.phone);
-        await sendUserAccountUpdateSMS({
-          userName: safeUser.name as string,
-          adminName: adminName || "Admin",
-          userPhone: safeUser.phone as string,
-        });
-        console.log("[SMS] userAccountUpdate SMS sent OK");
-      } catch (smsErr: any) {
-        console.error("[SMS] Failed to send update SMS:", smsErr?.message || smsErr);
-      }
-    } else {
-      console.log("[SMS] Skipped - sendSMSNotification:", sendSMSNotification, "phone:", safeUser.phone);
-    }
-
-    res.status(200).json({ ...safeUser, emailWarning });
+    res.status(200).json(safeUser);
     return;
   }
 

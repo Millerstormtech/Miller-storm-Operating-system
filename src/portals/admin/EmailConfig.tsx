@@ -13,7 +13,6 @@ const EMAIL_LABELS: Record<string, string> = {
   quickStartUser: "Quick Start (User)",
   quickStartManager: "Quick Start (Sales Team Lead)",
   userAccountUpdated: "User Account Updated",
-  adminConfirmation: "Admin Confirmation",
   newRegistrationAdmin: "New Registration (Admin)",
   managerDeadlineMissed: "Training Deadline Missed (Sales Team Lead)",
   weeklyTeamDigest: "Weekly Team Digest (Sales Team Lead)",

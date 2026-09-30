@@ -175,30 +175,6 @@ export async function sendUserAccountUpdatedEmail(params: {
   return sendEmail({ to: params.email, subject, html, text });
 }
 
-export async function sendAdminConfirmationEmail(params: {
-  adminName: string;
-  adminEmail: string;
-  userName: string;
-  userEmail: string;
-  roles: string[];
-  managerName: string | null;
-  passwordChanged: boolean;
-  updatedAt: string;
-}) {
-  const tmpl = await getEmailTemplate("adminConfirmation");
-  if (tmpl.status === "draft") { console.log("[Email] adminConfirmation is draft — skipping"); return; }
-  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
-    "{{adminName}}": params.adminName,
-    "{{userName}}": params.userName,
-    "{{userEmail}}": params.userEmail,
-    "{{role}}": params.roles.map(r => roleDisplayName(r)).join(", "),
-    "{{salesTeamLead}}": branchAndLead(params.roles, null, params.managerName).salesTeamLead,
-    "{{passwordChanged}}": params.passwordChanged ? "Changed" : "Not Changed",
-    "{{updatedAt}}": params.updatedAt,
-  });
-  return sendEmail({ to: params.adminEmail, subject, html, text });
-}
-
 export async function sendManagerDeadlineMissedEmail(params: {
   managerName: string;
   managerEmail: string;

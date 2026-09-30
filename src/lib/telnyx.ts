@@ -4,8 +4,6 @@
  * Requires TELNYX_API_KEY and TELNYX_FROM_NUMBER in environment.
  */
 
-import { connectMongo } from "./mongodb";
-import { SmsTemplateModel } from "./models/SmsTemplate";
 
 export async function sendSms(to: string, text: string): Promise<void> {
   const apiKey = process.env.TELNYX_API_KEY;
@@ -68,49 +66,4 @@ export function renderTemplate(
   vars: Record<string, string>
 ): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
-}
-
-/** Get SMS template from database */
-async function getSmsTemplate(key: string) {
-  try {
-    await connectMongo();
-    const template = await SmsTemplateModel.findOne({ key }).lean();
-    return template || null;
-  } catch (error) {
-    console.error("[Telnyx] Error fetching SMS template:", error);
-    return null;
-  }
-}
-
-/** Send User Account Update SMS */
-export async function sendUserAccountUpdateSMS(params: {
-  userName: string;
-  adminName: string;
-  userPhone: string;
-}) {
-  try {
-    const tmpl = await getSmsTemplate("userAccountUpdate");
-    
-    if (!tmpl) {
-      console.log("[Telnyx] userAccountUpdate template not found - skipping SMS");
-      return;
-    }
-    
-    if (tmpl.status === "draft") {
-      console.log("[Telnyx] userAccountUpdate template is draft - skipping SMS");
-      return;
-    }
-
-    // Replace variables in template
-    const message = renderTemplate(tmpl.template, {
-      user_name: params.userName,
-      admin_name: params.adminName,
-    });
-
-    await sendSms(params.userPhone, message);
-    console.log("[Telnyx] User account update SMS sent to", params.userPhone);
-  } catch (error) {
-    console.error("[Telnyx] Error sending user account update SMS:", error);
-    // Don't throw - just log so the main operation continues
-  }
 }

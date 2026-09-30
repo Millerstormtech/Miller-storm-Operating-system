@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
-import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
@@ -66,7 +65,9 @@ async function handler(
       return;
     }
 
-    const { password, passwordHash, _id, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, ...rest } = payload;
+    // sendNotification/sendSMSNotification/adminName/adminEmail/managerName are
+    // stripped, never stored: the old notify checkbox sent them (removed 2026-08-30).
+    const { password, passwordHash, _id, sendNotification: _sn, sendSMSNotification: _ssn, adminName: _an, adminEmail: _ae, managerName: _mn, ...rest } = payload;
     const id = rest.email ? rest.email.trim().toLowerCase() : (payload.id || `user-${Date.now()}`);
     const hashedPassword =
       typeof password === "string" && password.trim().length > 0
@@ -118,51 +119,6 @@ async function handler(
       const branches = (createdObj.branches && createdObj.branches.length > 0) ? createdObj.branches : [createdObj.territory];
       await addUserToBranchGroups(String(createdObj._id), branches);
       await addUserToPublicGroups(String(createdObj._id));
-    }
-
-    // Send notification email if requested
-    if (sendNotification && safeUser.email) {
-      try {
-        const { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } = await import("../../../src/lib/email");
-        const roles = (safeUser.roles as string[]) || [safeUser.role as string];
-        await sendUserAccountUpdatedEmail({
-          name: safeUser.name as string,
-          email: safeUser.email as string,
-          roles,
-          branch: (safeUser.territory as string) || (Array.isArray(safeUser.branches) ? (safeUser.branches as string[])[0] : "") || null,
-          salesTeamLead: managerName || null,
-        });
-        if (adminEmail) {
-          await sendAdminConfirmationEmail({
-            adminName: adminName || "Admin",
-            adminEmail,
-            userName: safeUser.name as string,
-            userEmail: safeUser.email as string,
-            roles,
-            managerName: managerName || null,
-            passwordChanged: typeof password === "string" && password.trim().length > 0,
-            updatedAt: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
-          });
-        }
-        console.log("Notification email sent to:", safeUser.email);
-      } catch (emailErr) {
-        console.error("Failed to send notification email:", emailErr);
-      }
-    }
-
-    // Send SMS notification if requested
-    if (sendSMSNotification && safeUser.phone) {
-      try {
-        console.log("[SMS] Sending userAccountUpdate SMS to:", safeUser.phone);
-        await sendUserAccountUpdateSMS({
-          userName: safeUser.name as string,
-          adminName: adminName || "Admin",
-          userPhone: safeUser.phone as string,
-        });
-        console.log("[SMS] userAccountUpdate SMS sent OK");
-      } catch (smsErr: any) {
-        console.error("[SMS] Failed to send SMS:", smsErr?.message || smsErr);
-      }
     }
 
     // Send 48-hour Quick Start onboarding email for new sales users

@@ -7,14 +7,13 @@ type Template = {
   status: "draft" | "published";
 };
 
-const VARIABLES = ["{user_name}", "{admin_name}", "{manager_name}", "{course_name}", "{training_duration}", "{time_remaining}"];
+const VARIABLES = ["{user_name}", "{manager_name}", "{course_name}", "{training_duration}", "{time_remaining}"];
 
 const ICONS: Record<string, string> = {
   start: "🚀",
   midpoint: "⏳",
   final: "⚠️",
   complete: "🏁",
-  userAccountUpdate: "👤",
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -22,7 +21,6 @@ const TRIGGER_LABELS: Record<string, string> = {
   midpoint: "Sent at 50% of selected duration",
   final: "Sent 30 minutes before timer ends",
   complete: "Sent when the timer reaches zero",
-  userAccountUpdate: "Sent when admin updates user account",
 };
 
 const ACCENTS: Record<string, { bg: string; border: string; badge: string; text: string }> = {
@@ -30,7 +28,6 @@ const ACCENTS: Record<string, { bg: string; border: string; badge: string; text:
   midpoint: { bg: "#fefce8", border: "#fde68a", badge: "#fef9c3", text: "#854d0e" },
   final:    { bg: "#fff7ed", border: "#fed7aa", badge: "#ffedd5", text: "#c2410c" },
   complete: { bg: "#f0fdf4", border: "#bbf7d0", badge: "#dcfce7", text: "#15803d" },
-  userAccountUpdate: { bg: "#faf5ff", border: "#e9d5ff", badge: "#f3e8ff", text: "#7c3aed" },
 };
 
 export function Messaging() {
