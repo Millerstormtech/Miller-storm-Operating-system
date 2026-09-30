@@ -18,15 +18,24 @@ const EMAIL_LABELS: Record<string, string> = {
   managerDeadlineMissed: "Training Deadline Missed (Sales Team Lead)",
   weeklyTeamDigest: "Weekly Team Digest (Sales Team Lead)",
   supportTicketCreated: "Support Ticket Created (Admin)",
+  ticketReply: "Ticket Reply (User & Admin)",
   ticketInProgress: "Ticket In Progress (User)",
   ticketCompleted: "Ticket Completed (User)",
 };
+
+// A template with no label still shows (by its key) rather than as a blank row.
+const labelFor = (key: string) => EMAIL_LABELS[key] ?? key;
+
+// The template list, alphabetical by the name shown.
+const TEMPLATE_KEYS = Object.keys(EMAIL_DEFAULTS).sort((a, b) =>
+  labelFor(a).localeCompare(labelFor(b), undefined, { sensitivity: "base" })
+);
 
 type ConfigMap = Record<string, { subject: string; body: string; status: string }>;
 
 export function EmailConfig() {
   const [configs, setConfigs] = useState<ConfigMap>({});
-  const [activeKey, setActiveKey] = useState<string>("passwordReset");
+  const [activeKey, setActiveKey] = useState<string>(TEMPLATE_KEYS[0]);
   const [saving, setSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -114,7 +123,7 @@ export function EmailConfig() {
         <div style={{ padding: "16px 16px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1 }}>
           Email Templates
         </div>
-        {Object.keys(EMAIL_DEFAULTS).map(key => (
+        {TEMPLATE_KEYS.map(key => (
           <button
             key={key}
             type="button"
@@ -127,7 +136,7 @@ export function EmailConfig() {
               color: activeKey === key ? "#e01418" : "var(--text-tertiary)",
             }}
           >
-            {EMAIL_LABELS[key]}
+            {labelFor(key)}
           </button>
         ))}
       </div>
@@ -137,7 +146,7 @@ export function EmailConfig() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <div style={{ fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: "0.01em", color: "var(--text-primary)", marginBottom: 4 }}>
-              {EMAIL_LABELS[activeKey]}
+              {labelFor(activeKey)}
             </div>
             <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
               Edit the subject and body. Use the dynamic fields below in your content.
