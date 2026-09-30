@@ -18,10 +18,8 @@ const EMAIL_LABELS: Record<string, string> = {
   managerDeadlineMissed: "Training Deadline Missed (Sales Team Lead)",
   weeklyTeamDigest: "Weekly Team Digest (Sales Team Lead)",
   supportTicketCreated: "Support Ticket Created (Admin)",
-  ticketApproved: "Ticket Approved (User)",
   ticketInProgress: "Ticket In Progress (User)",
   ticketCompleted: "Ticket Completed (User)",
-  ticketRejected: "Ticket Rejected (User)",
 };
 
 type ConfigMap = Record<string, { subject: string; body: string; status: string }>;

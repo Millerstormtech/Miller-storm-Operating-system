@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import '../theme/app_theme.dart';
 import '../services/api_client.dart';
+import '../utils/ticket_status.dart';
 
 /// One support ticket, opened from the Support screen. Shows the current status
 /// (which everyone involved can follow), the original request, and a back-and-
@@ -25,15 +26,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   Color get _surface => AppColors.surface;
   static const _primary = Color(0xFFCB0002);
 
-  static const _statusLabel = {
-    'open': 'Open',
-    'approved': 'Approved',
-    'in_progress': 'In Progress',
-    'completed': 'Completed',
-    'rejected': 'Rejected',
-  };
-  // The normal forward flow shown as a stepper (rejected is a terminal offshoot).
-  static const _flow = ['open', 'approved', 'in_progress', 'completed'];
+  static const _statusLabel = ticketStatusLabel;
+  // Shown as a stepper: Open → In Progress → Completed.
+  static const _flow = ticketStatuses;
 
   Map<String, dynamic> _ticket = {};
   String _myId = '';
@@ -170,7 +165,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final status = (_ticket['status'] ?? 'open').toString();
+    final status = normalizeTicketStatus(_ticket['status']);
     final messages = (_ticket['messages'] as List?) ?? const [];
     final note = (_ticket['note'] ?? '').toString();
     final raiserId = (_ticket['userId'] ?? '').toString();
@@ -254,17 +249,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   Widget _statusBadge(String status) {
     final label = _statusLabel[status] ?? status;
-    // Semantic status colours (match the web): blue = new, indigo = approved,
-    // amber = in progress, green = completed, red = rejected.
+    // Semantic status colours (match the web): blue = new, amber = in
+    // progress, green = completed.
     final bg = status == 'completed'
         ? const Color(0xFF16A34A)      // green
-        : status == 'approved'
-            ? const Color(0xFF4F46E5)  // indigo
-            : status == 'rejected'
-                ? const Color(0xFFDC2626)  // red
-                : status == 'in_progress'
-                    ? const Color(0xFFF59E0B)  // amber
-                    : const Color(0xFF2563EB); // blue — open
+        : status == 'in_progress'
+            ? const Color(0xFFF59E0B)  // amber
+            : const Color(0xFF2563EB); // blue — open
     return Row(
       children: [
         Container(
@@ -277,9 +268,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     );
   }
 
-  // Simple horizontal stepper for the forward flow. Rejected shows just the badge.
+  // Simple horizontal stepper: Open → In Progress → Completed.
   Widget _statusStepper(String status) {
-    if (status == 'rejected') return const SizedBox.shrink();
     final current = _flow.indexOf(status).clamp(0, _flow.length - 1);
     return Row(
       children: [

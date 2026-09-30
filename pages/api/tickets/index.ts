@@ -9,6 +9,8 @@ import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, supportFieldLines, SUPPORT_C
 import { computeSalesRows } from "../../../src/lib/leaderboard/compute";
 import { findSubmitterRow } from "../../../src/lib/leaderboard/identity";
 import { ticketNumberFor, ticketNumbers } from "../../../src/lib/support/ticketNumber";
+import { normalizeTicketStatus } from "../../../src/lib/support/ticketStatus";
+import { retireLegacyTicketStatuses } from "../../../src/lib/support/retireTicketStatuses";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -48,11 +50,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(200).json({ openCount });
       return;
     }
+    await retireLegacyTicketStatuses();
     const [tickets, numbers] = await Promise.all([
       TicketModel.find(scope).sort({ createdAt: -1 }).lean(),
       ticketNumbers(),
     ]);
-    const withNumbers = (tickets as any[]).map((t) => ({ ...t, number: numbers.get(t.id) ?? null }));
+    const withNumbers = (tickets as any[]).map((t) => ({
+      ...t,
+      status: normalizeTicketStatus(t.status),
+      number: numbers.get(t.id) ?? null,
+    }));
     res.status(200).json(withNumbers);
     return;
   }

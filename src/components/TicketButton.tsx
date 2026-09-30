@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../contexts/AuthContext";
 import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, isTicketOwner } from "../lib/support/categories";
+import { TICKET_STATUSES, TICKET_STATUS_LABEL, normalizeTicketStatus, type TicketStatus } from "../lib/support/ticketStatus";
 
 type TicketMessage = {
   _id?: string;
@@ -23,29 +24,20 @@ type Ticket = {
   type: string;
   fields?: Record<string, string>;
   note: string;
-  status: "open" | "approved" | "in_progress" | "completed" | "rejected";
+  status: TicketStatus;
   adminNote?: string;
   messages?: TicketMessage[];
   createdAt?: string;
 };
 
-const STATUS_FLOW = ["open", "approved", "in_progress", "completed"];
+const STATUS_FLOW = TICKET_STATUSES;
 
-
-export const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
-  approved: "Approved",
-  in_progress: "In Progress",
-  completed: "Completed",
-  rejected: "Rejected",
-};
+export const STATUS_LABEL: Record<string, string> = TICKET_STATUS_LABEL;
 
 export const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
   open: { bg: "#dbeafe", fg: "#1e40af" },         // blue — newly opened
-  approved: { bg: "#e0e7ff", fg: "#3730a3" },     /* tokens-guard-ignore: js-identifier */ // indigo — acknowledged
   in_progress: { bg: "#fef3c7", fg: "#92400e" },  // amber — being worked on
   completed: { bg: "#dcfce7", fg: "#166534" },    // green — done
-  rejected: { bg: "#fee2e2", fg: "#b91c1c" },     /* tokens-guard-ignore: js-identifier */ // red — declined
 };
 
 export function TicketButton() {
@@ -456,27 +448,25 @@ function TicketConversation(props: {
   const { ticket, draft, setDraft, sending, uploading, onSend, onAttach } = props;
   if (!ticket) return null;
   const messages = ticket.messages ?? [];
-  const status = ticket.status;
+  const status = normalizeTicketStatus(ticket.status);
   const current = STATUS_FLOW.indexOf(status);
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {/* Status header + stepper */}
       <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border-default)" }}>
-        <span style={{ background: (STATUS_COLOR[status] || STATUS_COLOR.open).bg, color: (STATUS_COLOR[status] || STATUS_COLOR.open).fg, borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{STATUS_LABEL[status]}</span>
-        {status !== "rejected" && (
-          <div style={{ display: "flex", alignItems: "center", marginTop: 14 }}>
-            {STATUS_FLOW.map((s, i) => (
-              <div key={s} style={{ display: "flex", alignItems: "center", flex: i < STATUS_FLOW.length - 1 ? 1 : "0 0 auto" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: i <= current ? "#CB0002" : "var(--surface-subtle)", border: `2px solid ${i <= current ? "#CB0002" : "var(--border-default)"}`, color: "var(--text-inverse)", fontSize: 11 }}>{i <= current ? "✓" : ""}</div>
-                  <span style={{ fontSize: 9, fontWeight: i === current ? 700 : 500, color: i <= current ? "var(--text-primary)" : "var(--text-subtle)" }}>{STATUS_LABEL[s]}</span>
-                </div>
-                {i < STATUS_FLOW.length - 1 && <div style={{ flex: 1, height: 2, margin: "0 4px 16px", background: i < current ? "#CB0002" : "var(--border-default)" }} />}
+        <span style={{ background: STATUS_COLOR[status].bg, color: STATUS_COLOR[status].fg, borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{STATUS_LABEL[status]}</span>
+        <div style={{ display: "flex", alignItems: "center", marginTop: 14 }}>
+          {STATUS_FLOW.map((s, i) => (
+            <div key={s} style={{ display: "flex", alignItems: "center", flex: i < STATUS_FLOW.length - 1 ? 1 : "0 0 auto" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{ width: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: i <= current ? "#CB0002" : "var(--surface-subtle)", border: `2px solid ${i <= current ? "#CB0002" : "var(--border-default)"}`, color: "var(--text-inverse)", fontSize: 11 }}>{i <= current ? "✓" : ""}</div>
+                <span style={{ fontSize: 9, fontWeight: i === current ? 700 : 500, color: i <= current ? "var(--text-primary)" : "var(--text-subtle)" }}>{STATUS_LABEL[s]}</span>
               </div>
-            ))}
-          </div>
-        )}
+              {i < STATUS_FLOW.length - 1 && <div style={{ flex: 1, height: 2, margin: "0 4px 16px", background: i < current ? "#CB0002" : "var(--border-default)" }} />}
+            </div>
+          ))}
+        </div>
         <div style={{ marginTop: 12, fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)" }}>Your request</div>
         <div style={{ fontSize: 14, color: "var(--text-primary)", marginTop: 2, whiteSpace: "pre-wrap" }}>{ticket.note}</div>
       </div>

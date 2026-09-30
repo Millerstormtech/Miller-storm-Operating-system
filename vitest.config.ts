@@ -32,6 +32,7 @@ export default defineConfig({
       "src/lib/ops/**/*.test.ts",
       "src/lib/uploads/**/*.test.ts",
       "src/lib/docs/**/*.test.ts",
+      "src/lib/support/**/*.test.ts",
       "src/portals/shared/guided-tour/**/*.test.ts",
       "src/lib/report/**/*.test.ts",
       "src/lib/tasks/**/*.test.ts",

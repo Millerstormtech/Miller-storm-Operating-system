@@ -19,8 +19,10 @@ const ticketMessageSchema = new Schema(
   { _id: true }
 );
 
-// Support ticket raised by a sales/manager/marketing user. Admins review and
-// move it through the status flow; each transition emails + notifies the user.
+// Support ticket raised by a sales/manager/marketing user. It starts "open",
+// moves to "in_progress" by itself when a handler first replies (or when the
+// raiser writes again on a completed one), and a handler marks it
+// "completed". A handler changing the status by hand emails + notifies the user.
 // The `messages` thread lets the raiser and the handler talk back and forth, and
 // everyone involved follows the same status from inside the app.
 const ticketSchema = new Schema(
@@ -37,9 +39,10 @@ const ticketSchema = new Schema(
     // Predefined per-category field values (Acculynx Job#, Amount, MSRR tool…).
     fields: { type: Schema.Types.Mixed, default: {} },
     note: { type: String, default: "" },
+    // See src/lib/support/ticketStatus.ts ("approved"/"rejected" were retired).
     status: {
       type: String,
-      enum: ["open", "approved", "in_progress", "completed", "rejected"],
+      enum: ["open", "in_progress", "completed"],
       default: "open",
     },
     adminNote: { type: String, default: "" },

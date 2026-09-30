@@ -274,17 +274,6 @@ Open the app to view the full conversation and reply.
 © 2026-2027 Miller Storm. All Rights Reserved.`,
     variables: ["{{intro}}", "{{type}}", "{{senderName}}", "{{message}}", "{{ticketNumber}}"],
   },
-  ticketApproved: {
-    subject: "Your ticket {{ticketNumber}} has been approved ✅",
-    body: `Hi {{name}},
-
-Good news — your {{type}} ticket ({{ticketNumber}}) has been approved by our team. We'll begin working on it soon.
-
-Thank you for helping us improve Miller Storm OS.
-
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{type}}", "{{ticketNumber}}"],
-  },
   ticketInProgress: {
     subject: "Your ticket {{ticketNumber}} is now in progress 🔧",
     body: `Hi {{name}},
@@ -306,19 +295,6 @@ Thank you!
 
 © 2026-2027 Miller Storm. All Rights Reserved.`,
     variables: ["{{name}}", "{{type}}", "{{ticketNumber}}"],
-  },
-  ticketRejected: {
-    subject: "Update on your ticket {{ticketNumber}}",
-    body: `Hi {{name}},
-
-After review, your {{type}} ticket ({{ticketNumber}}) could not be approved at this time.
-
-{{adminNote}}
-
-Thank you for your feedback — please feel free to raise another ticket anytime.
-
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{type}}", "{{adminNote}}", "{{ticketNumber}}"],
   },
 };
 

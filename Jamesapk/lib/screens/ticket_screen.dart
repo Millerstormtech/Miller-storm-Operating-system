@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../services/api_client.dart';
 import '../widgets/role_bottom_nav.dart';
 import 'ticket_detail_screen.dart';
+import '../utils/ticket_status.dart';
 
 class TicketScreen extends StatefulWidget {
   const TicketScreen({super.key});
@@ -79,28 +80,18 @@ class _TicketScreenState extends State<TicketScreen> {
   // reply shows a red "pending" badge on the ticket.
   Map<String, int> _readCounts = {};
 
-  static const _statusLabel = {
-    'open': 'Open',
-    'approved': 'Approved',
-    'in_progress': 'In Progress',
-    'completed': 'Completed',
-    'rejected': 'Rejected',
-  };
-  // Semantic status colours (match the web STATUS_COLOR): blue = new, indigo =
-  // acknowledged, amber = being worked on, green = done, red = declined.
+  static const _statusLabel = ticketStatusLabel;
+  // Semantic status colours (match the web STATUS_COLOR): blue = new, amber =
+  // being worked on, green = done.
   static const _statusBg = {
     'open': Color(0xFFDBEAFE),        // blue
-    'approved': Color(0xFFE0E7FF),    // indigo
     'in_progress': Color(0xFFFEF3C7), // amber
     'completed': Color(0xFFDCFCE7),   // green
-    'rejected': Color(0xFFFEE2E2),    // red
   };
   static const _statusFg = {
     'open': Color(0xFF1E40AF),        // blue
-    'approved': Color(0xFF3730A3),    // indigo
     'in_progress': Color(0xFF92400E), // amber
     'completed': Color(0xFF166534),   // green
-    'rejected': Color(0xFFB91C1C),    // red
   };
 
   @override
@@ -425,7 +416,7 @@ class _TicketScreenState extends State<TicketScreen> {
   }
 
   Widget _ticketCard(dynamic t) {
-    final status = t['status']?.toString() ?? 'open';
+    final status = normalizeTicketStatus(t['status']);
     final type = t['type']?.toString() ?? 'other';
     final lines = _fieldLines(t);
     final msgCount = (t['messages'] as List?)?.length ?? 0;

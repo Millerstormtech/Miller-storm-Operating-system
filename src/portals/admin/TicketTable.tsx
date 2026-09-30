@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { STATUS_LABEL, STATUS_COLOR } from "../../components/TicketButton";
 import { supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES } from "../../lib/support/categories";
 import { formatTicketNumber } from "../../lib/support/ticketNumberFormat";
+import { TICKET_STATUSES, type TicketStatus } from "../../lib/support/ticketStatus";
 import { useAuth } from "../../contexts/AuthContext";
 
 type TicketMessage = {
@@ -26,14 +27,14 @@ type Ticket = {
   type: string;
   fields?: Record<string, string>;
   note: string;
-  status: "open" | "approved" | "in_progress" | "completed" | "rejected";
+  status: TicketStatus;
   adminNote?: string;
   messages?: TicketMessage[];
   createdAt?: string;
   staffSeenAt?: string | null;
 };
 
-const STATUS_OPTIONS = ["open", "approved", "in_progress", "completed", "rejected"];
+const STATUS_OPTIONS = TICKET_STATUSES;
 
 // Messages from the raiser staff hasn't SEEN yet — opening the conversation
 // (pages/api/tickets/[id].ts's GET) or replying to it both count as seeing it,

@@ -8,12 +8,12 @@ import { sendTicketStatusEmail, sendTicketReplyEmail } from "../../../src/lib/em
 import { sendPushNotification } from "../../../src/lib/firebase-admin";
 import { ownedTicketTypes, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel } from "../../../src/lib/support/categories";
 import { ticketNumberFor } from "../../../src/lib/support/ticketNumber";
+import { isTicketStatus, normalizeTicketStatus } from "../../../src/lib/support/ticketStatus";
 
+// Sent when a handler changes the status by hand. Moving back to "open" says nothing.
 const STATUS_MSG: Record<string, { title: string; message: string }> = {
-  approved: { title: "Ticket Approved ✅", message: "Your ticket has been approved by our team." },
   in_progress: { title: "Ticket In Progress 🔧", message: "Your ticket is now in progress." },
   completed: { title: "Ticket Completed 🎉", message: "Your ticket has been completed successfully — please check further." },
-  rejected: { title: "Ticket Update", message: "Your ticket could not be approved at this time." },
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -66,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ticket.staffSeenAt = new Date();
       await TicketModel.updateOne({ id }, { $set: { staffSeenAt: ticket.staffSeenAt } });
     }
-    res.status(200).json(ticket);
+    res.status(200).json({ ...ticket, status: normalizeTicketStatus(ticket.status) });
     return;
   }
 
@@ -116,6 +116,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // sync with the GET handler's "opening it counts as seen" rule.
     if (isStaff) (ticket as any).staffSeenAt = new Date();
 
+    // An old ticket may still hold a retired status, which the schema would
+    // now refuse on save.
+    ticket.status = normalizeTicketStatus(ticket.status);
+    // A handler answering a new ticket means someone has picked it up — it
+    // moves to "in_progress" by itself (the reply already notifies the raiser,
+    // so no separate status message). The raiser adding details to their own
+    // open ticket leaves it open.
+    if (isStaff && auth.sub !== ticket.userId && ticket.status === "open") {
+      ticket.status = "in_progress";
+    }
     // The raiser writing again on a "completed" ticket means it wasn't
     // actually done — reopen it to "in_progress" automatically instead of
     // leaving a green "Completed" chip sitting on an active conversation.
@@ -193,8 +203,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ---- PATCH: change status (admin, or the type's owner) ---------------------
   const { status, adminNote } = req.body || {};
-  const allowed = ["open", "approved", "in_progress", "completed", "rejected"];
-  if (!allowed.includes(status)) {
+  if (!isTicketStatus(status)) {
     res.status(400).json({ error: "Invalid status" });
     return;
   }

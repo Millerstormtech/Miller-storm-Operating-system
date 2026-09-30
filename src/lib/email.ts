@@ -337,10 +337,8 @@ export async function sendTicketReplyEmail(params: {
 }
 
 const TICKET_STATUS_TEMPLATE: Record<string, string> = {
-  approved: "ticketApproved",
   in_progress: "ticketInProgress",
   completed: "ticketCompleted",
-  rejected: "ticketRejected",
 };
 
 export async function sendTicketStatusEmail(params: {
