@@ -4,16 +4,17 @@
 // a template never hardcodes a URL and a changed link is fixed in one place.
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://millerstorm.tech").replace(/\/$/, "");
 
+// One web link, not two: the home page only forwards to /login, and /login
+// forwards a signed-in user to their dashboard, so both end in the same place.
 export const APP_LINKS = {
   appUrl: APP_URL,
-  loginUrl: `${APP_URL}/login`,
   // The US store. The old /in/ link opened Apple's India store.
   iosAppUrl: "https://apps.apple.com/us/app/millerstorm/id6771883296",
   // Matches applicationId in Jamesapk/android/app/build.gradle.
   androidAppUrl: "https://play.google.com/store/apps/details?id=com.millerstorm.millerstorm_app",
 };
 
-export const GLOBAL_VARIABLES = ["{{appUrl}}", "{{loginUrl}}", "{{iosAppUrl}}", "{{androidAppUrl}}"];
+export const GLOBAL_VARIABLES = ["{{appUrl}}", "{{iosAppUrl}}", "{{androidAppUrl}}"];
 
 // Fields whose value is already HTML (built by the sender) and must not be escaped.
 const RAW_HTML_FIELDS = new Set(["{{teamTable}}"]);
@@ -118,7 +119,7 @@ Sign in with the email and password you chose when you registered:
 * Email: {{email}}
 
 Use the same login on the web or on your phone:
-* Web App: {{loginUrl}}
+* Web App: {{appUrl}}
 * iPhone App: {{iosAppUrl}}
 * Android App: {{androidAppUrl}}
 
@@ -157,7 +158,7 @@ Your goal for the first 48 hours is simple: **Start your training and get into t
 
 To get started, sign in to **Miller Storm OS** on the web or on your phone:
 
-* Web App: {{loginUrl}}
+* Web App: {{appUrl}}
 * iPhone App: {{iosAppUrl}}
 * Android App: {{androidAppUrl}}
 
@@ -207,7 +208,7 @@ Here are your account details:
 * Role: {{role}}
 
 Use the same login on the web or on your phone:
-* Web App: {{loginUrl}}
+* Web App: {{appUrl}}
 * iPhone App: {{iosAppUrl}}
 * Android App: {{androidAppUrl}}
 
@@ -379,7 +380,10 @@ const BULLET = /^\s*[*-]\s+/;
 export function renderTemplate(body: string, subject: string, vars: Record<string, string>): { html: string; text: string; subject: string } {
   const all: Record<string, string> = {
     "{{appUrl}}": APP_LINKS.appUrl,
-    "{{loginUrl}}": APP_LINKS.loginUrl,
+    // Old name for the same link. Not offered in Email Config any more; it is
+    // still filled so templates saved before 2026-09-30 keep working until
+    // they are updated.
+    "{{loginUrl}}": APP_LINKS.appUrl,
     "{{iosAppUrl}}": APP_LINKS.iosAppUrl,
     "{{androidAppUrl}}": APP_LINKS.androidAppUrl,
     ...vars,

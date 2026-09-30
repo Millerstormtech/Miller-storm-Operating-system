@@ -48,14 +48,22 @@ describe("app links", () => {
   });
 
   it("are available to every template", () => {
-    const { text } = renderTemplate("{{appUrl}} {{loginUrl}} {{iosAppUrl}} {{androidAppUrl}}", "", {});
+    const { text } = renderTemplate("{{appUrl}} {{iosAppUrl}} {{androidAppUrl}}", "", {});
     expect(text).not.toMatch(/\{\{\w+\}\}/);
-    expect(GLOBAL_VARIABLES).toHaveLength(4);
+    expect(GLOBAL_VARIABLES).toEqual(["{{appUrl}}", "{{iosAppUrl}}", "{{androidAppUrl}}"]);
   });
 
-  it("build the login link from the app link, never localhost", () => {
-    expect(APP_LINKS.loginUrl).toBe(`${APP_LINKS.appUrl}/login`);
-    expect(APP_LINKS.loginUrl).not.toContain("localhost");
+  it("never point at localhost", () => {
+    expect(APP_LINKS.appUrl).not.toContain("localhost");
+  });
+
+  it("still fill the old {{loginUrl}} name, so not-yet-updated templates keep working", () => {
+    const { text } = renderTemplate("{{loginUrl}}", "", {});
+    expect(text.startsWith(APP_LINKS.appUrl)).toBe(true);
+  });
+
+  it("are no longer offered as {{loginUrl}}, so there is one web link to pick", () => {
+    expect(unknownVariables("quickStartUser", "", "{{loginUrl}}")).toEqual(["{{loginUrl}}"]);
   });
 });
 
