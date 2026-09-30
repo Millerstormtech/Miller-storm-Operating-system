@@ -192,7 +192,19 @@ export function UserManagement(props: UserEditorProps) {
   };
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
-  
+
+  // Why "Send Login Details" can't be used right now, shown next to the button.
+  // A brand-new user is checked first: it is also "unsaved", but this is clearer.
+  const sendCredsBlockedReason: string | null = !selectedUser
+    ? null
+    : !props.users.some((u) => u.id === selectedUser.id)
+      ? "Save this new user first"
+      : isDirty
+        ? "Save your changes first"
+        : !(selectedUser.email || "").trim()
+          ? "This user has no email address"
+          : null;
+
   // Single role selection
   const userRoles = selectedUser ? [selectedUser.role] : [];
   const uniqueRoles = [...new Set(userRoles)];
@@ -1166,14 +1178,18 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {/* Emails this user their login details on demand. Disabled while
-                      there are unsaved edits, so the emailed password always matches
-                      what's actually saved. */}
+                  {/* Emails this user their login details on demand. Off while there
+                      are unsaved edits (on ANY user), so the email matches what's
+                      actually saved. When it is off, the reason is shown next to it:
+                      a disabled button alone reads as "clicking does nothing". */}
+                  {sendCredsBlockedReason && (
+                    <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-muted)", textTransform: "none", letterSpacing: "normal" }}>{sendCredsBlockedReason}</span>
+                  )}
                   <button
                     type="button"
                     className="btn-secondary btn-small"
-                    disabled={isDirty || isSaving || sendingCreds || !((selectedUser.email || "").trim()) || !props.users.some((u) => u.id === selectedUser.id)}
-                    title={isDirty ? "Save your changes first" : "Email this user their login details"}
+                    disabled={!!sendCredsBlockedReason || isSaving || sendingCreds}
+                    title={sendCredsBlockedReason || "Email this user their login details"}
                     onClick={() => setShowSendCredsConfirm(true)}
                   >
                     {sendingCreds ? "Sending…" : "Send Login Details"}
@@ -1336,9 +1352,12 @@ export function UserManagement(props: UserEditorProps) {
                 )}
               </label>
               <label className="field">
+                {/* autoComplete="new-password": Chrome must never auto-fill the admin's own
+                    saved password here. That silently counted as an edit (switching off
+                    Send Login Details), and saving would set this user's password to it. */}
                 <span className="field-label">Reset Password</span>
                 <div className="field-input" style={{ display: "flex", alignItems: "center", gap: 8, paddingRight: 8 }}>
-                  <input type={showPassword ? "text" : "password"} value={selectedUser.password ?? ""} onChange={(e) => updateUser({ ...selectedUser, password: e.target.value })} placeholder="Set a login password" style={{ border: "none", outline: "none", background: "transparent", flex: 1, minWidth: 0 }} />
+                  <input type={showPassword ? "text" : "password"} autoComplete="new-password" name="reset-password" value={selectedUser.password ?? ""} onChange={(e) => updateUser({ ...selectedUser, password: e.target.value })} placeholder="Set a login password" style={{ border: "none", outline: "none", background: "transparent", flex: 1, minWidth: 0 }} />
                   <button type="button" className="btn-ghost btn-small" onClick={() => setShowPassword((prev) => !prev)} aria-label={showPassword ? "Hide password" : "Show password"} style={{ padding: 4 }}>
                     {showPassword ? (
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
