@@ -7,6 +7,7 @@ import { requireUser, allowMethods } from "../../../../src/lib/auth";
 import { mimeTypeForName } from "../../../../src/lib/uploads/allowedTypes";
 import { docsDir } from "../../../../src/lib/uploads/docsDir";
 import { sendFile } from "../../../../src/lib/uploads/serveFile";
+import { canSeeDocument } from "../../../../src/lib/docs/folderAccess";
 
 
 // The ONLY route that ever serves a doc's bytes. Any authenticated user may
@@ -25,7 +26,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
   const id = typeof req.query.id === "string" ? req.query.id : "";
   const doc = await SopDocumentModel.findOne({ id }).lean() as any;
-  if (!doc) {
+  // A document in a folder hidden from this account type answers exactly like
+  // one that doesn't exist, so a link to it reveals nothing.
+  if (!doc || !(await canSeeDocument(auth.role, doc.folderId))) {
     res.status(404).json({ error: "Not found" });
     return;
   }

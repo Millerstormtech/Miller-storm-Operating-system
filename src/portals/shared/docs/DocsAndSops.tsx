@@ -14,7 +14,11 @@ import {
   subtreeIds,
   folderOptions,
   relativeDirs,
+  effectiveVisibleTo,
+  intersectVisibleTo,
+  DOC_VIEWER_ROLES,
 } from "../../../lib/docs/folderTree";
+import { roleDisplayName } from "../../../lib/roleLabels";
 
 type SopDoc = {
   id: string;
@@ -52,8 +56,15 @@ function plural(n: number, word: string): string {
 // The server returns an existing folder (200) instead of creating a duplicate
 // when the name is already taken there, so an append must not add it twice.
 function withFolder(prev: SopFolder[], folder: SopFolder): SopFolder[] {
-  const f = { id: folder.id, name: folder.name, parentId: folder.parentId ?? null };
+  const f = { id: folder.id, name: folder.name, parentId: folder.parentId ?? null, visibleTo: folder.visibleTo ?? null };
   return prev.some((p) => p.id === f.id) ? prev : [...prev, f];
+}
+
+// Who can see a folder, in words. Admin and C-Level always can.
+function whoCanSee(allowed: string[] | null): string {
+  if (allowed === null) return "Everyone";
+  if (allowed.length === 0) return "Admin & C-Level only";
+  return ["Admin", "C-Level", ...allowed.map(roleDisplayName)].join(", ");
 }
 
 // OS clutter that rides along with a folder pick but isn't a document:
@@ -134,6 +145,7 @@ export function DocsAndSops() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [nameDialog, setNameDialog] = useState<NameDialogConfig | null>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogConfig | null>(null);
+  const [accessDialog, setAccessDialog] = useState<AccessDialogConfig | null>(null);
   const [folderUpload, setFolderUpload] = useState<{ folderName: string; total: number; done: number } | null>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -301,6 +313,7 @@ export function DocsAndSops() {
       from: effectiveParentId(folder.parentId, byId),
       // Not into itself or anything inside it.
       exclude: subtreeIds(folder.id, folders),
+      ownVisibleTo: folder.visibleTo ?? null,
       onMove: async (target) => {
         const r = await sendJson(`/api/docs/folders/${folder.id}`, "PATCH", { parentId: target });
         if (!r.ok) {
@@ -314,20 +327,48 @@ export function DocsAndSops() {
     });
   }
 
+  function askAccess(folder: SopFolder) {
+    const parentId = effectiveParentId(folder.parentId, byId);
+    setAccessDialog({
+      folder,
+      parentName: parentId ? locationOf(parentId) : null,
+      parentAllowed: effectiveVisibleTo(parentId, byId),
+      onSave: async (visibleTo) => {
+        const r = await sendJson(`/api/docs/folders/${folder.id}`, "PATCH", { visibleTo });
+        if (!r.ok) {
+          if (r.status === 404) load(true);
+          return r.data.error || "Couldn't save who can see this folder. Try again.";
+        }
+        setFolders((prev) => prev.map((f) => (f.id === folder.id ? { ...f, visibleTo: r.data.visibleTo ?? null } : f)));
+        notify(`Saved who can see "${folder.name}".`, "success");
+        return null;
+      },
+    });
+  }
+
   async function deleteFolder(folder: SopFolder) {
     const parentId = effectiveParentId(folder.parentId, byId);
     const c = counts.get(folder.id);
     const inside = c
       ? ` Its ${[c.folders ? plural(c.folders, "folder") : "", c.docs ? plural(c.docs, "document") : ""].filter(Boolean).join(" and ")} will move to "${locationOf(parentId)}" — nothing inside is deleted.`
       : "";
-    if (!(await appConfirm(`Delete the folder "${folder.name}"?${inside}`))) return;
+    // Its subfolders keep its restriction (the server carries it over), but
+    // its documents take on the access of wherever they land.
+    const before = whoCanSee(effectiveVisibleTo(folder.id, byId));
+    const after = whoCanSee(effectiveVisibleTo(parentId, byId));
+    const widens = c?.docs && before !== after ? ` Those documents will then be visible to: ${after}.` : "";
+    if (!(await appConfirm(`Delete the folder "${folder.name}"?${inside}${widens}`))) return;
     const r = await sendJson(`/api/docs/folders/${folder.id}`, "DELETE");
     // 404: someone else already removed it — drop it here all the same.
     if (!r.ok && r.status !== 404) {
       notify(r.data.error || "Couldn't delete that folder. Try again.", "error");
       return;
     }
-    setFolders((prev) => prev.filter((f) => f.id !== folder.id).map((f) => (f.parentId === folder.id ? { ...f, parentId } : f)));
+    setFolders((prev) =>
+      prev
+        .filter((f) => f.id !== folder.id)
+        .map((f) => (f.parentId === folder.id ? { ...f, parentId, visibleTo: intersectVisibleTo(f.visibleTo, folder.visibleTo) } : f))
+    );
     setDocs((prev) => prev.map((d) => (d.folderId === folder.id ? { ...d, folderId: parentId } : d)));
     if (currentId === folder.id) openFolder(parentId);
     notify(`Folder "${folder.name}" deleted.`, "success");
@@ -449,15 +490,29 @@ export function DocsAndSops() {
         </div>
       </div>
       {searching && <div style={metaStyle}>in {locationOf(effectiveParentId(f.parentId, byId))}</div>}
+      {canManage && accessLine(f.id, "Who can see this folder and everything in it — change it with Access")}
       {canManage && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "auto" }}>
           <SmallButton onClick={() => askRenameFolder(f)}>Rename</SmallButton>
           <SmallButton onClick={() => askMoveFolder(f)}>Move</SmallButton>
+          <SmallButton onClick={() => askAccess(f)}>Access</SmallButton>
           <SmallButton danger onClick={() => deleteFolder(f)}>Delete</SmallButton>
         </div>
       )}
     </div>
   );
+
+  // Who can see a folder or a document (documents follow their folder), shown
+  // to the people who manage access.
+  const accessLine = (folderId: string | null, title: string) => {
+    const allowed = effectiveVisibleTo(folderId, byId);
+    return (
+      <div style={{ ...metaStyle, color: "var(--text-muted)", fontWeight: 600 }} title={title}>
+        {allowed === null ? "👥 " : "🔒 "}
+        {whoCanSee(allowed)}
+      </div>
+    );
+  };
 
   const renderDoc = (doc: SopDoc) => (
     <div key={`d-${doc.id}`} style={cardStyle} onPointerEnter={() => prefetchSoon(doc)} onPointerLeave={cancelPrefetch}>
@@ -472,6 +527,7 @@ export function DocsAndSops() {
         {fmtSize(doc.sizeBytes)} · {doc.uploadedByName || "Unknown"} · {new Date(doc.createdAt).toLocaleDateString()}
       </div>
       {searching && <div style={metaStyle}>in {locationOf(docFolder(doc))}</div>}
+      {canManage && accessLine(docFolder(doc), "Who can see this document — it follows the folder it's in")}
       <button
         onClick={() => setViewing(doc)}
         style={{ padding: "7px 0", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--surface-subtle)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", color: "var(--text-primary)" }}
@@ -571,6 +627,18 @@ export function DocsAndSops() {
         </div>
       </div>
 
+      {canManage && !searching && (
+        <div style={{ margin: "-6px 0 16px", fontSize: 12.5, color: "var(--text-muted)" }}>
+          {currentId === null ? (
+            <>👥 Everything at the top level is visible to <strong>everyone</strong>. To choose who can see something, put it in a folder and use that folder's <strong>Access</strong> button.</>
+          ) : effectiveVisibleTo(currentId, byId) === null ? (
+            <>👥 This folder is visible to <strong>everyone</strong> — change that with <strong>Access</strong> on its tile, one level up.</>
+          ) : (
+            <>🔒 Visible to: <strong>{whoCanSee(effectiveVisibleTo(currentId, byId))}</strong> — anything added here follows the same access.</>
+          )}
+        </div>
+      )}
+
       {folderUpload && (
         <div style={{ marginBottom: 18, padding: "10px 14px", borderRadius: 10, background: "var(--surface-subtle)", border: "1px solid var(--border-default)", fontSize: 12.5, color: "var(--text-primary)" }}>
           Uploading "{folderUpload.folderName}" — {folderUpload.done} of {folderUpload.total} files…
@@ -597,6 +665,7 @@ export function DocsAndSops() {
       {viewing && <DocViewerModal doc={viewing} onClose={() => setViewing(null)} />}
       {nameDialog && <NameModal config={nameDialog} onClose={() => setNameDialog(null)} />}
       {moveDialog && <MoveModal config={moveDialog} folders={folders} onClose={() => setMoveDialog(null)} />}
+      {accessDialog && <AccessModal config={accessDialog} onClose={() => setAccessDialog(null)} />}
       {uploadOpen && (
         <UploadModal
           folders={folders}
@@ -688,6 +757,82 @@ function NameModal({ config, onClose }: { config: NameDialogConfig; onClose: () 
   );
 }
 
+type AccessDialogConfig = {
+  folder: SopFolder;
+  parentName: string | null;
+  // What the folders above already allow (null = they don't restrict).
+  parentAllowed: string[] | null;
+  onSave: (visibleTo: string[] | null) => Promise<string | null>;
+};
+
+// "Who can see this folder?" — everyone, or only chosen account types. Admin
+// and C-Level always see everything, so they aren't choices. An account type
+// a folder above already hides can't be let back in here.
+function AccessModal({ config, onClose }: { config: AccessDialogConfig; onClose: () => void }) {
+  const { folder, parentName, parentAllowed } = config;
+  const own = folder.visibleTo ?? null;
+  const [mode, setMode] = useState<"all" | "some">(own === null ? "all" : "some");
+  const [picked, setPicked] = useState<string[]>(own ?? []);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const available = (role: string) => parentAllowed === null || parentAllowed.includes(role);
+  const setting = mode === "all" ? null : DOC_VIEWER_ROLES.filter((r) => picked.includes(r) && available(r));
+  const result = intersectVisibleTo(parentAllowed, setting);
+
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    const err = await config.onSave(setting);
+    setSaving(false);
+    if (err) setError(err);
+    else onClose();
+  }
+
+  const radio: CSSProperties = { display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "var(--text-primary)", cursor: "pointer", marginBottom: 10 };
+  return (
+    <ModalShell width={470} onClose={onClose}>
+      <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)", marginBottom: 6, wordBreak: "break-word" }}>Who can see “{folder.name}”?</div>
+      <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 14 }}>
+        Everything inside it — documents and subfolders — follows this. Admin and C-Level always see every folder.
+      </div>
+      {parentAllowed !== null && (
+        <div style={{ fontSize: 12.5, color: "var(--text-tertiary)", background: "var(--surface-subtle)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "8px 10px", marginBottom: 14 }}>
+          It's inside “{parentName}”, which only {whoCanSee(parentAllowed)} can see — anyone that hides stays hidden here too.
+        </div>
+      )}
+      <label style={radio}>
+        <input type="radio" name="access" checked={mode === "all"} onChange={() => setMode("all")} style={{ accentColor: "var(--brand-fill)" }} />
+        {parentAllowed === null ? "Everyone" : `Everyone who can see “${parentName}”`}
+      </label>
+      <label style={radio}>
+        <input type="radio" name="access" checked={mode === "some"} onChange={() => setMode("some")} style={{ accentColor: "var(--brand-fill)" }} />
+        Only these account types:
+      </label>
+      <div style={{ paddingLeft: 26, display: "grid", gap: 8, marginBottom: 14 }}>
+        {DOC_VIEWER_ROLES.map((role) => (
+          <label key={role} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-primary)", opacity: mode === "some" && available(role) ? 1 : 0.5, cursor: mode === "some" && available(role) ? "pointer" : "not-allowed" }}>
+            <input
+              type="checkbox"
+              disabled={mode !== "some" || !available(role)}
+              checked={picked.includes(role) && available(role)}
+              onChange={(e) => setPicked((p) => (e.target.checked ? [...p, role] : p.filter((r) => r !== role)))}
+              style={{ accentColor: "var(--brand-fill)" }}
+            />
+            {roleDisplayName(role)}
+            {!available(role) && <span style={{ fontSize: 11.5, color: "var(--text-subtle)" }}>(hidden by “{parentName}”)</span>}
+          </label>
+        ))}
+      </div>
+      <div style={{ fontSize: 13, color: "var(--text-primary)", marginBottom: error ? 8 : 16 }}>
+        Who will see it: <strong>{whoCanSee(result)}</strong>
+      </div>
+      {error && <div style={{ fontSize: 12.5, color: DANGER_TEXT, marginBottom: 12 }}>{error}</div>}
+      <ModalButtons onCancel={onClose} onSubmit={save} submitLabel={saving ? "Saving…" : "Save"} disabled={saving} />
+    </ModalShell>
+  );
+}
+
 const TOP_LEVEL = "__top__";
 
 type MoveDialogConfig = {
@@ -695,6 +840,8 @@ type MoveDialogConfig = {
   from: string | null;
   // Folders that can't be chosen (a folder can't go inside itself).
   exclude: Set<string>;
+  // A folder being moved keeps its own access setting on top of the new place's.
+  ownVisibleTo?: string[] | null;
   onMove: (target: string | null) => Promise<string | null>;
 };
 
@@ -702,6 +849,8 @@ function MoveModal({ config, folders, onClose }: { config: MoveDialogConfig; fol
   const options = folderOptions(folders).filter((o) => !config.exclude.has(o.id));
   const start = config.from ?? TOP_LEVEL;
   const [target, setTarget] = useState(start);
+  const byId = indexFolders(folders);
+  const visibleThere = intersectVisibleTo(effectiveVisibleTo(target === TOP_LEVEL ? null : target, byId), config.ownVisibleTo ?? null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -725,6 +874,9 @@ function MoveModal({ config, folders, onClose }: { config: MoveDialogConfig; fol
           <option key={o.id} value={o.id}>{o.label}</option>
         ))}
       </select>
+      <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "-8px 0 16px" }}>
+        Who can see it there: <strong>{whoCanSee(visibleThere)}</strong>
+      </div>
       {error && <div style={{ fontSize: 12.5, color: DANGER_TEXT, marginBottom: 12 }}>{error}</div>}
       <ModalButtons onCancel={onClose} onSubmit={submit} submitLabel="Move" disabled={submitting || target === start} />
     </ModalShell>

@@ -11,6 +11,10 @@ const sopFolderSchema = new Schema(
     // null/absent = top level. Folders created before nesting have no
     // parentId, which Mongo's { parentId: null } also matches.
     parentId: { type: String, default: null },
+    // Which viewer account types may see this folder and everything in it:
+    // null/absent = everyone, [] = Admin & C-Level only. Folders above it can
+    // narrow this further (src/lib/docs/folderTree.ts, canSeeFolder).
+    visibleTo: { type: [String], default: null },
     createdById: { type: String, required: true },
     createdByName: { type: String, default: "" },
   },

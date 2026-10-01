@@ -2,7 +2,18 @@
 // Pure functions over plain arrays — no Mongoose, no React — so both sides
 // agree on what "inside", "above" and "a valid move" mean.
 
-export type FolderNode = { id: string; name: string; parentId: string | null };
+// visibleTo: which viewer account types may see the folder — null = all of
+// them, [] = only the roles that manage Docs & SOPs. See canSeeFolder.
+export type FolderNode = { id: string; name: string; parentId: string | null; visibleTo?: string[] | null };
+
+// Admin and C-Level manage the library: they see every folder and decide who
+// else can see each one. Every other account type is a viewer.
+export const DOC_MANAGER_ROLES = ["admin", "c-level"];
+export const DOC_VIEWER_ROLES = ["branch-manager", "sales-team-lead", "sales", "marketing"];
+
+export function managesDocs(role: string | null | undefined): boolean {
+  return !!role && DOC_MANAGER_ROLES.includes(role);
+}
 
 export const MAX_NAME_LENGTH = 120;
 export const MAX_TITLE_LENGTH = 200;
@@ -84,6 +95,40 @@ export function folderOptions(folders: FolderNode[]): Array<{ id: string; label:
 export function relativeDirs(webkitRelativePath: string): string[] {
   const parts = (webkitRelativePath || "").split("/").map((p) => p.trim());
   return parts.slice(0, -1).filter(Boolean);
+}
+
+// The viewer account types that can see a folder once every folder above it
+// has had its say: each restriction on the path narrows the set, so a
+// subfolder can never be seen by someone its parent hides from. null = all.
+export function effectiveVisibleTo(folderId: string | null, byId: Map<string, FolderNode>): string[] | null {
+  let allowed: string[] | null = null;
+  for (const f of pathTo(folderId, byId)) {
+    const own = f.visibleTo;
+    if (own) allowed = allowed === null ? [...own] : allowed.filter((r) => own.includes(r));
+  }
+  return allowed;
+}
+
+// Whether someone with this role may see a folder (and so everything in it).
+// The top level (null) is open to everyone; managers see everything.
+export function canSeeFolder(role: string | null | undefined, folderId: string | null, byId: Map<string, FolderNode>): boolean {
+  if (managesDocs(role) || folderId === null) return true;
+  const allowed = effectiveVisibleTo(folderId, byId);
+  return allowed === null || (!!role && allowed.includes(role));
+}
+
+// A folder access setting as stored: null (everyone), or the chosen viewer
+// roles in a fixed order with no repeats. undefined = not a valid setting.
+export function cleanVisibleTo(raw: unknown): string[] | null | undefined {
+  if (raw === null) return null;
+  if (!Array.isArray(raw) || raw.some((r) => typeof r !== "string" || !DOC_VIEWER_ROLES.includes(r))) return undefined;
+  return DOC_VIEWER_ROLES.filter((r) => raw.includes(r));
+}
+
+export function intersectVisibleTo(a: string[] | null | undefined, b: string[] | null | undefined): string[] | null {
+  if (!a) return b ? [...b] : null;
+  if (!b) return [...a];
+  return a.filter((r) => b.includes(r));
 }
 
 // A folder name or document title as stored: trimmed, internal runs of

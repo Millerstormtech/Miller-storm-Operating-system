@@ -10,6 +10,11 @@ import {
   folderOptions,
   relativeDirs,
   cleanName,
+  effectiveVisibleTo,
+  canSeeFolder,
+  cleanVisibleTo,
+  intersectVisibleTo,
+  managesDocs,
 } from "./folderTree";
 
 //  HR
@@ -89,6 +94,45 @@ describe("folder tree", () => {
     expect(relativeDirs("offer letter/Dipak.pdf")).toEqual(["offer letter"]);
     expect(relativeDirs("Dipak.pdf")).toEqual([]);
     expect(relativeDirs("")).toEqual([]);
+  });
+
+  it("narrows who can see a folder at every level above it", () => {
+    const tree: FolderNode[] = [
+      { id: "hr", name: "HR", parentId: null, visibleTo: ["sales", "marketing"] },
+      { id: "pay", name: "Payroll", parentId: "hr", visibleTo: ["marketing", "branch-manager"] },
+      { id: "open", name: "Open", parentId: "pay", visibleTo: null },
+      { id: "pub", name: "Public", parentId: null },
+      { id: "locked", name: "Locked", parentId: null, visibleTo: [] },
+    ];
+    const t = indexFolders(tree);
+    expect(effectiveVisibleTo("hr", t)).toEqual(["sales", "marketing"]);
+    expect(effectiveVisibleTo("pay", t)).toEqual(["marketing"]); // branch-manager can't be re-added under HR
+    expect(effectiveVisibleTo("open", t)).toEqual(["marketing"]); // "everyone" inside still means everyone HR allows
+    expect(effectiveVisibleTo("pub", t)).toBeNull();
+    expect(effectiveVisibleTo("locked", t)).toEqual([]);
+
+    expect(canSeeFolder("sales", "hr", t)).toBe(true);
+    expect(canSeeFolder("sales", "pay", t)).toBe(false);
+    expect(canSeeFolder("sales", "open", t)).toBe(false);
+    expect(canSeeFolder("marketing", "open", t)).toBe(true);
+    expect(canSeeFolder("sales", "locked", t)).toBe(false);
+    expect(canSeeFolder("sales", null, t)).toBe(true); // the top level is open to all
+    expect(canSeeFolder("admin", "locked", t)).toBe(true);
+    expect(canSeeFolder("c-level", "pay", t)).toBe(true);
+    expect(canSeeFolder(undefined, "hr", t)).toBe(false);
+  });
+
+  it("accepts only real viewer roles as an access setting", () => {
+    expect(cleanVisibleTo(null)).toBeNull();
+    expect(cleanVisibleTo([])).toEqual([]);
+    expect(cleanVisibleTo(["marketing", "sales", "sales"])).toEqual(["sales", "marketing"]);
+    expect(cleanVisibleTo(["admin"])).toBeUndefined(); // managers always see everything
+    expect(cleanVisibleTo(["nobody"])).toBeUndefined();
+    expect(cleanVisibleTo("sales")).toBeUndefined();
+    expect(intersectVisibleTo(null, ["sales"])).toEqual(["sales"]);
+    expect(intersectVisibleTo(["sales", "marketing"], ["marketing"])).toEqual(["marketing"]);
+    expect(intersectVisibleTo(null, null)).toBeNull();
+    expect(managesDocs("admin") && managesDocs("c-level") && !managesDocs("sales")).toBe(true);
   });
 
   it("cleans names and refuses empty ones", () => {

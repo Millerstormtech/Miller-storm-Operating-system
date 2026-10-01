@@ -4,7 +4,8 @@ import { connectMongo } from "../../../../src/lib/mongodb";
 import { SopFolderModel } from "../../../../src/lib/models/SopFolder";
 import { UserModel } from "../../../../src/lib/models/User";
 import { requireUser, requireRole, allowMethods } from "../../../../src/lib/auth";
-import { cleanName } from "../../../../src/lib/docs/folderTree";
+import { cleanName, indexFolders, canSeeFolder, managesDocs } from "../../../../src/lib/docs/folderTree";
+import { loadFolders } from "../../../../src/lib/docs/folderAccess";
 
 const UPLOAD_ROLES = ["admin", "c-level"];
 
@@ -15,10 +16,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     const auth = requireUser(req, res);
     if (!auth) return;
-    const folders = await SopFolderModel.find({}, { id: 1, name: 1, parentId: 1, _id: 0 })
-      .sort({ name: 1 })
-      .lean() as any[];
-    res.status(200).json(folders.map((f) => ({ id: f.id, name: f.name, parentId: f.parentId ?? null })));
+    const folders = await loadFolders();
+    // Managers see every folder with its access setting; everyone else only
+    // gets the folders their account type may see — a hidden folder isn't
+    // just greyed out on screen, it never reaches their browser.
+    if (managesDocs(auth.role)) {
+      res.status(200).json(folders);
+      return;
+    }
+    const byId = indexFolders(folders);
+    res.status(200).json(
+      folders
+        .filter((f) => canSeeFolder(auth.role, f.id, byId))
+        .map((f) => ({ id: f.id, name: f.name, parentId: f.parentId }))
+    );
     return;
   }
 
@@ -42,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // racing two creates of one new name.
   const existingFolder = await SopFolderModel.findOne({ name, parentId }).lean() as any;
   if (existingFolder) {
-    res.status(200).json({ id: existingFolder.id, name: existingFolder.name, parentId: existingFolder.parentId ?? null });
+    res.status(200).json({ id: existingFolder.id, name: existingFolder.name, parentId: existingFolder.parentId ?? null, visibleTo: existingFolder.visibleTo ?? null });
     return;
   }
 
@@ -55,5 +66,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     createdByName: creator?.name || creator?.email || "",
   });
 
-  res.status(201).json({ id: folder.id, name: folder.name, parentId: folder.parentId ?? null });
+  res.status(201).json({ id: folder.id, name: folder.name, parentId: folder.parentId ?? null, visibleTo: null });
 }

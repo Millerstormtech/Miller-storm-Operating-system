@@ -8,6 +8,7 @@ import { docsDir } from "../../../../src/lib/uploads/docsDir";
 import { needsPdfConversion } from "../../../../src/lib/uploads/previewTypes";
 import { pdfPreviewFor } from "../../../../src/lib/uploads/docPreview";
 import { sendFile } from "../../../../src/lib/uploads/serveFile";
+import { canSeeDocument } from "../../../../src/lib/docs/folderAccess";
 
 // A PDF rendition of a Word/Excel/PowerPoint-style document, for the same
 // canvas viewer PDFs use — browsers can't render these formats themselves.
@@ -20,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
   const id = typeof req.query.id === "string" ? req.query.id : "";
   const doc = await SopDocumentModel.findOne({ id }).lean() as any;
-  if (!doc) {
+  if (!doc || !(await canSeeDocument(auth.role, doc.folderId))) {
     res.status(404).json({ error: "Not found" });
     return;
   }

@@ -12,7 +12,8 @@ import { isAllowedUploadName, mimeTypeForName, storedUploadName } from "../../..
 import { docsDir } from "../../../src/lib/uploads/docsDir";
 import { needsPdfConversion } from "../../../src/lib/uploads/previewTypes";
 import { pdfPreviewFor } from "../../../src/lib/uploads/docPreview";
-import { cleanName, MAX_TITLE_LENGTH } from "../../../src/lib/docs/folderTree";
+import { cleanName, MAX_TITLE_LENGTH, managesDocs, indexFolders, canSeeFolder, effectiveParentId } from "../../../src/lib/docs/folderTree";
+import { loadFolders } from "../../../src/lib/docs/folderAccess";
 
 // formidable 3 error codes (FormidableError.js).
 const EMPTY_FILE_ERRORS = [1008, 1010]; // smallerThanMinFileSize, noEmptyFiles
@@ -47,13 +48,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!auth) return;
     // Metadata only — never storageKey, which is an internal detail of the
     // file-serving route, not something the client needs or should see.
-    const docs = await SopDocumentModel.find(
+    const docs = (await SopDocumentModel.find(
       {},
       { id: 1, title: 1, description: 1, fileName: 1, mimeType: 1, sizeBytes: 1, uploadedByName: 1, createdAt: 1, folderId: 1, _id: 0 }
     )
       .sort({ createdAt: -1 })
-      .lean();
-    res.status(200).json(docs);
+      .lean()) as any[];
+    if (managesDocs(auth.role)) {
+      res.status(200).json(docs);
+      return;
+    }
+    // Viewers only get documents in folders their account type may see.
+    const byId = indexFolders(await loadFolders());
+    res.status(200).json(docs.filter((d) => canSeeFolder(auth.role, effectiveParentId(d.folderId, byId), byId)));
     return;
   }
 

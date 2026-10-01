@@ -3,7 +3,7 @@ import { connectMongo } from "../../../../src/lib/mongodb";
 import { SopFolderModel } from "../../../../src/lib/models/SopFolder";
 import { SopDocumentModel } from "../../../../src/lib/models/SopDocument";
 import { requireRole, allowMethods } from "../../../../src/lib/auth";
-import { canMoveFolder, cleanName, type FolderNode } from "../../../../src/lib/docs/folderTree";
+import { canMoveFolder, cleanName, cleanVisibleTo, intersectVisibleTo, type FolderNode } from "../../../../src/lib/docs/folderTree";
 
 const UPLOAD_ROLES = ["admin", "c-level"];
 
@@ -22,7 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const currentParent: string | null = folder.parentId ?? null;
 
   if (req.method === "PATCH") {
-    // Rename ({ name }) and/or move ({ parentId }, null = top level).
+    // Rename ({ name }), move ({ parentId }, null = top level) and/or set who
+    // can see it ({ visibleTo }).
     const body = req.body || {};
     const update: Record<string, unknown> = {};
     let name: string = folder.name;
@@ -53,21 +54,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       update.parentId = target;
     }
 
-    if (Object.keys(update).length > 0) {
+    // Who can see it ({ visibleTo }: null = everyone, [] = Admin & C-Level only).
+    let visibleTo: string[] | null = folder.visibleTo ?? null;
+    if ("visibleTo" in body) {
+      const cleaned = cleanVisibleTo(body.visibleTo);
+      if (cleaned === undefined) {
+        res.status(400).json({ error: "Choose who can see this folder from the listed account types" });
+        return;
+      }
+      visibleTo = cleaned;
+      update.visibleTo = cleaned;
+    }
+
+    if ("name" in update || "parentId" in update) {
       // Two same-named folders side by side would be indistinguishable.
       const clash = await SopFolderModel.findOne({ name, parentId, id: { $ne: id } }).lean();
       if (clash) {
         res.status(409).json({ error: `A folder named "${name}" already exists there` });
         return;
       }
-      await SopFolderModel.updateOne({ id }, update);
     }
-    res.status(200).json({ id, name, parentId });
+    if (Object.keys(update).length > 0) await SopFolderModel.updateOne({ id }, update);
+    res.status(200).json({ id, name, parentId, visibleTo });
     return;
   }
 
   // DELETE. Removing a folder never removes what's in it: its documents and
   // subfolders move up into the folder that contained it (or the top level).
+  // Its subfolders keep its access restriction, so deleting a restricted
+  // folder can't open them up to people it was hiding them from. (Its
+  // documents follow their new folder; the page warns about that first.)
+  if (folder.visibleTo) {
+    const children = (await SopFolderModel.find({ parentId: id }, { id: 1, visibleTo: 1, _id: 0 }).lean()) as any[];
+    for (const child of children) {
+      await SopFolderModel.updateOne({ id: child.id }, { visibleTo: intersectVisibleTo(child.visibleTo, folder.visibleTo) });
+    }
+  }
   await SopDocumentModel.updateMany({ folderId: id }, { folderId: currentParent });
   await SopFolderModel.updateMany({ parentId: id }, { parentId: currentParent });
   await SopFolderModel.deleteOne({ id });
