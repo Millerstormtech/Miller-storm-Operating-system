@@ -2,10 +2,10 @@
 // Pure, import-free. Decides whether a Miller Storm user's Branch and Team fields
 // disagree with what RepCard says, for the advisory warning in User Management.
 //
-// This is ADVISORY ONLY. It never blocks a save and never changes a value: RepCard
-// is the source of truth for the sales leaderboard (see org-chart.ts), but the app's
-// Branch and Team also drive permissions and the org chart, and sometimes RepCard is
-// the one that is out of date. A human decides.
+// This is ADVISORY ONLY. It never blocks a save and never changes a value. Since
+// 2026-10-02 the app's Branch and Team Lead decide every board (see org-chart.ts),
+// so a disagreement usually means RepCard is out of date. It still matters for
+// anyone who knocks in RepCard without an app account. A human decides.
 //
 // The hard part is silence, not detection. Measured against production on
 // 2026-08-27, a naive "field A != field B" check lit up 8 of 52 users and only 2

@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   try {
-    const caller = await UserModel.findOne({ id: auth.sub }).select("id role name businessPlan").lean();
+    const caller = await UserModel.findOne({ id: auth.sub }).select("id role name businessPlan territory").lean();
     if (!caller) return res.status(404).json({ error: "User not found" });
 
     // Admin "View As": an admin may request another user's scoreboard by passing
@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const requestedId = typeof req.query.userId === "string" ? req.query.userId : "";
     let user: any = caller;
     if (requestedId && requestedId !== (caller as any).id && (caller as any).role === "admin") {
-      const target = await UserModel.findOne({ id: requestedId }).select("id role name businessPlan").lean();
+      const target = await UserModel.findOne({ id: requestedId }).select("id role name businessPlan territory").lean();
       if (target) user = target;
     }
 
@@ -116,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const curRows = curRowsRaw.map(toSalesRow);
     const prevRows = prevRowsRaw.map(toSalesRow);
 
-    const scope = resolveScope({ id: (user as any).id, role: (user as any).role, name: (user as any).name });
+    const scope = resolveScope({ id: (user as any).id, role: (user as any).role, name: (user as any).name, territory: (user as any).territory });
 
     const inScope = scopeRows(curRows, scope);
     const inScopePrev = scopeRows(prevRows, scope);

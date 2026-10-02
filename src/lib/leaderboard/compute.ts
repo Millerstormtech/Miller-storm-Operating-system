@@ -9,8 +9,8 @@ import { mergeLeaderboard } from "./merge";
 import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
 import { isDeletedFromRepCard } from "./roster";
-import { officeToBranch, attributeToBranch } from "../repcard/branches";
-import { resolveTeam, TEAM_BRANCH, isTeamLead, isBranchless } from "../repcard/org-chart";
+import { officeToBranch, attributeToBranch, BRANCH_ORDER } from "../repcard/branches";
+import { buildOrgChart, repcardTeamMatcher, type OrgChart } from "../repcard/org-chart";
 
 export interface SalesLeaderRow {
   id: string;               // merge id, e.g. "rc:<repcardUserId>"
@@ -68,6 +68,12 @@ export interface SharedRosterData {
   readonly rcById: ReadonlyMap<string, any>;
   readonly acctSets: Readonly<{ emails: ReadonlySet<string>; phones: ReadonlySet<string>; names: ReadonlySet<string> }>;
   readonly byEmail: ReadonlyMap<string, any>;
+  // Deleted accounts by email, only to place former reps on the org chart.
+  readonly deletedByEmail: ReadonlyMap<string, any>;
+  // The org chart from User Management: who is on which team (org-chart.ts).
+  readonly org: OrgChart;
+  // RepCard team label -> app team, only for reps with no app account.
+  readonly appTeamForRepCardTeam: (repcardTeam: string | null | undefined) => string;
 }
 
 export async function loadSharedRosterData(): Promise<SharedRosterData> {
@@ -107,15 +113,30 @@ export async function loadSharedRosterData(): Promise<SharedRosterData> {
     if (a.nameKey) acctSets.names.add(a.nameKey);
   }
 
-  // Light app enrichment (never gating): match a Miller Storm user by email for the
-  // profile photo and the "You" highlight.
-  const appUsers = await UserModel.find({ deleted: { $ne: true }, testAccount: { $ne: true } }).select("id email headshotUrl name managerId").lean();
+  // App accounts, matched to roster reps by email. Never gating (a rep with no
+  // app account still shows), but they decide each rep's Team and Branch: the
+  // org chart in User Management is the source of truth (decided 2026-10-02),
+  // plus the profile photo and the "You" highlight.
+  // Deleted accounts are loaded too (accounts are deleted all the time): a
+  // former rep's numbers stay with the team stored on their deleted account.
+  // They never count as "You" or lend a photo; a live account wins an email.
+  const appUsers = await UserModel.find({ testAccount: { $ne: true } })
+    .select("id email headshotUrl name role managerId territory deleted")
+    .lean();
   const byEmail = new Map<string, any>();
+  const deletedByEmail = new Map<string, any>();
   for (const u of appUsers) {
-    const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);
+    const e = (u as any).email; if (!e) continue;
+    ((u as any).deleted ? deletedByEmail : byEmail).set(String(e).toLowerCase(), u);
   }
+  const org = buildOrgChart(appUsers as any[], BRANCH_ORDER, officeToBranch);
+  const appTeamForRepCardTeam = repcardTeamMatcher(
+    rcUsers as any[],
+    (email) => org.teamOf(byEmail.get(email)),
+    org.teams
+  );
 
-  return { acxAll, allTimeKnockers, rcById, acctSets, byEmail };
+  return { acxAll, allTimeKnockers, rcById, acctSets, byEmail, deletedByEmail, org, appTeamForRepCardTeam };
 }
 
 export async function computeSalesRows(
@@ -228,12 +249,25 @@ export async function computeSalesRows(
     // Does this rep have an AccuLynx account? (roster match by email/phone/name)
     const acctIdent = rcId ? rcIdentityById.get(rcId) : undefined;
     const hasAccount = acctIdent ? hasAcculynxAccount(acctIdent, acctSets) : false;
-    // Team from the official org chart (by name), RepCard's team as fallback.
-    const team = resolveTeam(rcu?.name || m.name, rcu?.team) || null;
-    // Org chart wins for Branch: follow the team's branch when the team is known;
-    // fall back to the RepCard office only for reps with no team.
-    const branch = (team && TEAM_BRANCH[team])
-      || (isBranchless(rcu?.name || m.name) ? "" : officeToBranch(rcu?.office));
+    // Team and Branch from the org chart in User Management (org-chart.ts),
+    // whatever RepCard says: the Team Lead decides the team, and the branch
+    // follows the team lead up to their branch manager. A former rep's deleted
+    // account still places them. Only a rep with no app account at all falls
+    // back to RepCard: their RepCard team matched to its app team, and that
+    // team's branch, else their RepCard office.
+    // A former rep's deleted account places them only when it can: older
+    // accounts may hold no usable Team Lead, and then RepCard is the fallback.
+    const former = !u && m.email ? roster.deletedByEmail.get(m.email) : null;
+    const placed = u || (former && roster.org.teamOf(former) ? former : null);
+    let team: string | null;
+    let branch: string;
+    if (placed) {
+      team = roster.org.teamOf(placed) || null;
+      branch = roster.org.branchOf(placed);
+    } else {
+      team = roster.appTeamForRepCardTeam(rcu?.team) || null;
+      branch = roster.org.branchOfTeam(team) || officeToBranch(rcu?.office);
+    }
     // Team-based reporting (decided 2026-08-12, confirmed 2026-08-21): every one
     // of this rep's numbers counts toward their home branch -- the branch their
     // TEAM belongs to -- including sales filed out of another branch's AccuLynx
@@ -250,7 +284,7 @@ export async function computeSalesRows(
       verifiedKnocks: m.verifiedKnocks, leadsCreated: m.lead, filed: m.filed, won: m.won, revenue: m.revenue,
       repUserId: u ? (u as any).id : null, headshotUrl: u ? (u as any).headshotUrl || "" : "",
       team,
-      isTeamLead: isTeamLead(rcu?.name || m.name, team),
+      isTeamLead: roster.org.isLead(placed),
       // "both" = the rep has an AccuLynx ACCOUNT (roster match) OR any all-time sales
       // (backstop — a selling rep can never be flagged). "repcard" = a genuine account gap.
       source: hasAccount || linked.get(m.id) ? "both" : "repcard",

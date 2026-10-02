@@ -1,17 +1,18 @@
 import type { Scope } from "./types";
-import { resolveTeam, TEAM_BRANCH } from "../repcard/org-chart";
+import { branchFromProfile } from "../repcard/org-chart";
 
-export function resolveScope(user: { id: string; role: string; name: string }): Scope {
+// What a person's dashboard rolls up, from their own profile in User Management
+// (no typed org-chart list, decided 2026-10-02). A team lead's team is named
+// after them, the same name every board uses for it (org-chart.ts); a branch
+// manager's branch is the Branch on their profile.
+export function resolveScope(user: { id: string; role: string; name: string; territory?: string | null }): Scope {
   switch (user.role) {
     case "sales":
       return { level: "self", userId: user.id };
     case "sales-team-lead":
-      return { level: "team", team: resolveTeam(user.name) || null };
-    case "branch-manager": {
-      const team = resolveTeam(user.name);
-      const branch = (team && TEAM_BRANCH[team]) || null;
-      return { level: "branch", branch };
-    }
+      return { level: "team", team: (user.name || "").trim() || null };
+    case "branch-manager":
+      return { level: "branch", branch: branchFromProfile(user) || null };
     case "c-level":
       return { level: "company" };
     default:

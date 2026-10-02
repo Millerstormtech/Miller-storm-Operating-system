@@ -22,7 +22,6 @@ import {
   type ReportSection,
 } from "./document";
 import { filtersActive, type BoardFilters, type OverallRow } from "../training/board";
-import { TEAM_LEADS } from "../repcard/org-chart";
 
 export type CourseExportScope = "view" | "board";
 
@@ -37,7 +36,7 @@ export type CourseRowInput = {
   pct: number;
 };
 
-const teamLabel = (team: string) => (team ? TEAM_LEADS[team] || team : "");
+const teamLabel = (team: string) => team || "";
 
 const MEDALS = ["Gold", "Silver", "Bronze"];
 

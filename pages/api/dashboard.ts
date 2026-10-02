@@ -23,7 +23,6 @@ import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, customRange, centralDateStr } from "../../src/lib/acculynx/windows";
 import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
-import { resolveTeam, TEAM_LEADS } from "../../src/lib/repcard/org-chart";
 import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
 import { scopeLabel, scopeResolved } from "../../src/lib/scoreboard/display";
 import { trend } from "../../src/lib/scoreboard/metrics";
@@ -176,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   try {
-    const caller = await UserModel.findOne({ id: auth.sub }).select("id role name email").lean();
+    const caller = await UserModel.findOne({ id: auth.sub }).select("id role name email managerId territory").lean();
     if (!caller) return res.status(404).json({ error: "User not found" });
 
     // Admin "View As", matching /api/scoreboard exactly: only an admin may pass
@@ -186,7 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const requestedId = typeof req.query.userId === "string" ? req.query.userId : "";
     let user: any = caller;
     if (requestedId && requestedId !== (caller as any).id && (caller as any).role === "admin") {
-      const target = await UserModel.findOne({ id: requestedId }).select("id role name email").lean();
+      const target = await UserModel.findOne({ id: requestedId }).select("id role name email managerId territory").lean();
       if (target) user = target;
     }
 
@@ -201,7 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const month = getWindowRange("month", now);
     const prevMonth = previousSlice("month", month.start, now);
 
-    const scope = resolveScope({ id: user.id, role: user.role, name: user.name });
+    const scope = resolveScope({ id: user.id, role: user.role, name: user.name, territory: user.territory });
     // The Lowest knocks card is for managers only: a rep never sees colleagues
     // named as the lowest, so its two extra queries are skipped for reps.
     const lowWindow = scope.level === "self" ? null : lastCompleteDays(now);
@@ -348,11 +347,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // A rep's own team. scopeLabel() is intentionally empty for "self" (the
         // web never renders a rep's scope line), but the mobile board shows a
         // team chip, so the team name is carried here for that one use.
-        team: resolveTeam(user.name) || "",
-        // The same team as the Course Leaderboard names it (the lead's full
-        // name, MS-027), for the mobile training card's "See all" filter.
-        // `team` above stays the org-chart label the Sales Leaderboard uses.
-        trainingTeam: TEAM_LEADS[resolveTeam(user.name)] || resolveTeam(user.name) || "",
+        // From the org chart in User Management, named by the team lead's full
+        // name like on every board.
+        team: shared.org.teamOf(user) || "",
+        // Kept for app builds that read it (added 2026-10-02): every board now
+        // names teams the same way, so it always equals `team`.
+        trainingTeam: shared.org.teamOf(user) || "",
         // The raw branch key (never a display label), so the dashboard's links
         // can pre-filter the leaderboards to exactly this branch.
         branch: scope.level === "branch" ? scope.branch || "" : "",

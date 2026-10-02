@@ -13,8 +13,6 @@ import { publishedItems } from "../../../src/lib/training/scoring";
 import {
   weekStartMonday,
   computeRankDeltas,
-  teamFromProfile,
-  branchFromProfile,
   type OverallResponse,
 } from "../../../src/lib/training/board";
 
@@ -71,10 +69,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // The viewer's own team/branch, from their profile by the same rule as the
   // rows, so a team lead opens on their team and a branch manager on theirs.
   const me: any = await UserModel.findOne({ id: auth.sub })
-    .select("name role managerId territory")
+    .select("id name role managerId territory")
     .lean();
   const viewer = me
-    ? { team: teamFromProfile(me, data.leadNameById), branch: branchFromProfile(me) }
+    ? { team: data.org.teamOf(me), branch: data.org.branchOf(me) }
     : { team: "", branch: "" };
 
   const deltas = computeRankDeltas(data.rows, prevRanks);

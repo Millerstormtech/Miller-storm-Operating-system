@@ -13,7 +13,6 @@
 //   - the board scrolls to the viewer's own row (focus=me)
 // The Flutter dashboard mirrors these rules; this file is the written spec.
 import type { ScopeLevel } from "./types";
-import { TEAM_LEADS } from "../repcard/org-chart";
 import type { Metric } from "./dashboard";
 
 /** Every column the Sales Leaderboard can sort by (its own SortKey). */
@@ -111,10 +110,7 @@ export function trainingLink(scope: ScopeRef): string {
   const f = scopeFilter(scope);
   const q = new URLSearchParams();
   if (f.branch) q.set("branch", f.branch);
-  // The dashboards still name a team by its org-chart label ("Cooper"), but
-  // the Course Leaderboard names it after the team lead's full name from the
-  // profile ("Cooper Bledsoe", MS-027). Translate, or the link opens empty.
-  if (f.team) q.set("team", TEAM_LEADS[f.team] || f.team);
+  if (f.team) q.set("team", f.team);
   const qs = q.toString();
   return qs ? `${path}?${qs}` : path;
 }

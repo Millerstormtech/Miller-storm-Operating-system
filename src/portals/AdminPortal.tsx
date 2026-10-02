@@ -3712,7 +3712,8 @@ function AppsToolManagement() {
 }
 
 function BusinessUnitsManager(props: { users: UserProfile[] }) {
-  const managers = props.users.filter((u) => u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead"));
+  // Every branch manager also leads a team (2026-10-02).
+  const managers = props.users.filter((u) => u.role === "sales-team-lead" || u.role === "branch-manager" || (u.roles || []).includes("sales-team-lead"));
 
   function getTeamMembers(managerId: string) {
     return props.users.filter((u) => u.managerId === managerId);

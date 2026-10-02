@@ -9,8 +9,6 @@ import {
   weekStartMonday,
   computeRankDeltas,
   courseHeaderStats,
-  teamFromProfile,
-  branchFromProfile,
   standingsInBranch,
 } from "./board";
 import type { CourseStats } from "./scoring";
@@ -234,49 +232,6 @@ describe("courseHeaderStats", () => {
 
   it("handles an empty roster", () => {
     expect(courseHeaderStats([])).toEqual({ started: 0, total: 0, avgPct: 0 });
-  });
-});
-
-describe("teamFromProfile (team comes from the app profile only)", () => {
-  const leads = new Map([
-    ["u-luke", "Luke Huber"],
-    ["u-reyes", "Daniel Reyes"],
-  ]);
-
-  it("puts a rep on the team of the Team Lead set on their profile", () => {
-    expect(teamFromProfile({ name: "Jose Robles", role: "sales", managerId: "u-reyes" }, leads)).toBe("Daniel Reyes");
-  });
-
-  it("follows a Team Lead change with no other edit (MS-027: Jose moved off Luke)", () => {
-    const before = teamFromProfile({ name: "Jose Robles", role: "sales", managerId: "u-luke" }, leads);
-    const after = teamFromProfile({ name: "Jose Robles", role: "sales", managerId: "u-reyes" }, leads);
-    expect([before, after]).toEqual(["Luke Huber", "Daniel Reyes"]);
-  });
-
-  it("puts a team lead on their own team, whoever their own Team Lead is", () => {
-    expect(teamFromProfile({ name: "Luke Huber", role: "sales-team-lead", managerId: "u-reyes" }, leads)).toBe("Luke Huber");
-  });
-
-  it("gives no team when the profile has no Team Lead (no typed fallback)", () => {
-    expect(teamFromProfile({ name: "Jose Robles", role: "sales", managerId: null }, leads)).toBe("");
-    expect(teamFromProfile({ name: "Jose Robles", role: "sales" }, leads)).toBe("");
-  });
-
-  it("gives no team when the Team Lead no longer exists", () => {
-    expect(teamFromProfile({ name: "Jose Robles", role: "sales", managerId: "u-gone" }, leads)).toBe("");
-  });
-});
-
-describe("branchFromProfile", () => {
-  it("reads the branch from the profile territory", () => {
-    expect(branchFromProfile({ territory: "Fort Worth" })).toBe("Fort Worth");
-  });
-  it("keeps only the part before a dot separator", () => {
-    expect(branchFromProfile({ territory: "Dallas · North" })).toBe("Dallas");
-  });
-  it("is blank when no territory is set", () => {
-    expect(branchFromProfile({ territory: "" })).toBe("");
-    expect(branchFromProfile({})).toBe("");
   });
 });
 

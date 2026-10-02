@@ -12,7 +12,9 @@ import {
   isRankedUser,
   RANKED_ROLES,
 } from "./scoring";
-import { aggregateOverall, teamFromProfile, branchFromProfile, type OverallRow } from "./board";
+import { aggregateOverall, type OverallRow } from "./board";
+import { buildOrgChart, type OrgChart } from "../repcard/org-chart";
+import { BRANCH_ORDER, officeToBranch } from "../repcard/branches";
 
 export type BoardData = {
   /** Lean course docs, heavy per-page fields stripped. */
@@ -25,8 +27,8 @@ export type BoardData = {
   started: OverallRow[];
   /** Keyed `${userId}:${courseId}`. */
   progressByUserCourse: Map<string, any>;
-  /** Team Lead names by user id, for teamFromProfile() on the viewer too. */
-  leadNameById: Map<string, string>;
+  /** The org chart from User Management, for the viewer's own team too. */
+  org: OrgChart;
 };
 
 export async function loadBoardData(): Promise<BoardData> {
@@ -50,15 +52,14 @@ export async function loadBoardData(): Promise<BoardData> {
     .lean();
   const ranked = users.filter((u) => isRankedUser({ role: u.role, email: u.email }));
 
-  // Each rep's team is the Team Lead on their profile (managerId), so load
-  // those leads' names. A deleted lead no longer forms a team.
-  const managerIds = Array.from(new Set(ranked.map((u: any) => u.managerId).filter(Boolean)));
-  const managers = managerIds.length
-    ? await UserModel.find({ id: { $in: managerIds }, deleted: { $ne: true } }).select("id name").lean()
-    : [];
-  const leadNameById = new Map<string, string>(
-    (managers as any[]).map((m) => [String(m.id), (m.name || "").toString()])
-  );
+  // Each rep's team and branch come from the org chart in User Management, the
+  // same rules every board uses (src/lib/repcard/org-chart.ts). Deleted accounts
+  // are included so a rep whose Team Lead was deleted keeps that team until
+  // reassigned; deleted reps themselves are not on this board (query above).
+  const directory = await UserModel.find({ testAccount: { $ne: true } })
+    .select("id name role managerId territory deleted")
+    .lean();
+  const org = buildOrgChart(directory as any[], BRANCH_ORDER, officeToBranch);
 
   // All progress for these reps across all courses, in one query.
   const userIds = ranked.map((u) => u.id);
@@ -92,8 +93,8 @@ export async function loadBoardData(): Promise<BoardData> {
     // Team and Branch come from the rep's own profile only (MS-027): team
     // from their Team Lead, branch from their territory. A blank is the
     // signal to fill in the profile, never something to paper over here.
-    const team = teamFromProfile(u as any, leadNameById);
-    const branch = branchFromProfile(u as any);
+    const team = org.teamOf(u as any);
+    const branch = org.branchOf(u as any);
     return {
       id: u.id,
       name: u.name || u.email,
@@ -139,6 +140,6 @@ export async function loadBoardData(): Promise<BoardData> {
     rows: [...started, ...notStarted],
     started,
     progressByUserCourse,
-    leadNameById,
+    org,
   };
 }
