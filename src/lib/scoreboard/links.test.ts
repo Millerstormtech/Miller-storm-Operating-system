@@ -80,7 +80,16 @@ describe("trainingLink", () => {
     expect(trainingLink({ level: "company" })).toBe("/c-level/course-leaderboard");
     expect(params(trainingLink({ level: "branch", branch: "West Texas" }))).toEqual({ branch: "West Texas" });
     expect(path(trainingLink({ level: "team", team: "Cooper" }))).toBe("/manager/course-leaderboard");
-    expect(params(trainingLink({ level: "team", team: "Cooper" }))).toEqual({ team: "Cooper" });
+    expect(params(trainingLink({ level: "team", team: "Cooper" }))).toEqual({ team: "Cooper Bledsoe" });
+  });
+
+  it("names the team by its lead's full name, as the Course Leaderboard does", () => {
+    expect(params(trainingLink({ level: "team", team: "Luke" }))).toEqual({ team: "Luke Huber" });
+    expect(params(trainingLink({ level: "team", team: "Mike Muscari" }))).toEqual({ team: "Mike Muscari" });
+  });
+
+  it("passes an unknown team label through unchanged", () => {
+    expect(params(trainingLink({ level: "team", team: "Daniel Reyes" }))).toEqual({ team: "Daniel Reyes" });
   });
 });
 

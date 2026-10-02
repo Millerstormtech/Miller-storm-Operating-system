@@ -12,8 +12,7 @@ import {
   isRankedUser,
   RANKED_ROLES,
 } from "./scoring";
-import { aggregateOverall, type OverallRow } from "./board";
-import { resolveTeam, TEAM_BRANCH, teamFromUserManagement, type AppTeamUser } from "../repcard/org-chart";
+import { aggregateOverall, teamFromProfile, branchFromProfile, type OverallRow } from "./board";
 
 export type BoardData = {
   /** Lean course docs, heavy per-page fields stripped. */
@@ -26,6 +25,8 @@ export type BoardData = {
   started: OverallRow[];
   /** Keyed `${userId}:${courseId}`. */
   progressByUserCourse: Map<string, any>;
+  /** Team Lead names by user id, for teamFromProfile() on the viewer too. */
+  leadNameById: Map<string, string>;
 };
 
 export async function loadBoardData(): Promise<BoardData> {
@@ -49,15 +50,15 @@ export async function loadBoardData(): Promise<BoardData> {
     .lean();
   const ranked = users.filter((u) => isRankedUser({ role: u.role, email: u.email }));
 
-  // Each rep's assigned team lead (User Management), which decides their team.
+  // Each rep's team is the Team Lead on their profile (managerId), so load
+  // those leads' names. A deleted lead no longer forms a team.
   const managerIds = Array.from(new Set(ranked.map((u: any) => u.managerId).filter(Boolean)));
   const managers = managerIds.length
-    ? await UserModel.find({ id: { $in: managerIds } }).select("id name role roles").lean()
+    ? await UserModel.find({ id: { $in: managerIds }, deleted: { $ne: true } }).select("id name").lean()
     : [];
-  const managerNameById = new Map<string, string>(
+  const leadNameById = new Map<string, string>(
     (managers as any[]).map((m) => [String(m.id), (m.name || "").toString()])
   );
-  const leadsById = new Map<string, AppTeamUser>((managers as any[]).map((m) => [String(m.id), m]));
 
   // All progress for these reps across all courses, in one query.
   const userIds = ranked.map((u) => u.id);
@@ -88,18 +89,11 @@ export async function loadBoardData(): Promise<BoardData> {
       courses.map((c: any, i: number): [string, CourseStats] => [String(c.id), perCourse[i]])
     );
     const credentials = credentialProgress(courses as any, statsById);
-    // Team: the team lead assigned in User Management first, then the org
-    // chart by name — the same order the Sales Leaderboard uses, so labels
-    // agree across both boards. Branch follows the team, else the rep's own
-    // territory, so nobody shows a blank "Branch · Team" line.
-    let team = teamFromUserManagement(u as AppTeamUser, leadsById) || resolveTeam(u.name);
-    let branch = (team && TEAM_BRANCH[team]) || "";
-    if (!team && (u as any).managerId) {
-      const mgrName = managerNameById.get(String((u as any).managerId)) || "";
-      team = resolveTeam(mgrName) || (mgrName ? mgrName.trim().split(/\s+/)[0] : "");
-      if (!branch) branch = (team && TEAM_BRANCH[team]) || "";
-    }
-    if (!branch) branch = ((u as any).territory || "").toString().split("·")[0].trim();
+    // Team and Branch come from the rep's own profile only (MS-027): team
+    // from their Team Lead, branch from their territory. A blank is the
+    // signal to fill in the profile, never something to paper over here.
+    const team = teamFromProfile(u as any, leadNameById);
+    const branch = branchFromProfile(u as any);
     return {
       id: u.id,
       name: u.name || u.email,
@@ -145,5 +139,6 @@ export async function loadBoardData(): Promise<BoardData> {
     rows: [...started, ...notStarted],
     started,
     progressByUserCourse,
+    leadNameById,
   };
 }

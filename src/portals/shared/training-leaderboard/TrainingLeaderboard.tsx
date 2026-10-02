@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isRankedRole } from "../../../lib/training/scoring";
 import type { BoardFilters, OverallResponse, OverallRow } from "../../../lib/training/board";
-import { teamSummaryFor, filterRows, filtersActive, teamStandings } from "../../../lib/training/board";
+import { teamSummaryFor, filterRows, filtersActive, teamStandings, standingsInBranch } from "../../../lib/training/board";
 import { ExportReportButton, type ExportRequest, type ExportScope } from "../../../components/report/ExportReportButton";
 import {
   buildCourseByCourseReport,
@@ -12,7 +12,6 @@ import {
   courseOverallTitle,
   type CourseRowInput,
 } from "../../../lib/report/courseBoard";
-import { resolveTeam, TEAM_BRANCH } from "../../../lib/repcard/org-chart";
 import { useIsNarrow } from "./useIsNarrow";
 import { Legend } from "./Legend";
 import { FiltersBar } from "./FiltersBar";
@@ -104,14 +103,16 @@ export function TrainingLeaderboard() {
     }
   }
 
-  // Branch managers open on their own branch (they can widen). Resolved by
-  // name via the org chart, same as every row's branch.
+  // Branch managers open on their own branch (they can widen). The branch is
+  // the territory on their profile, sent by the API as viewer.branch. Applied
+  // once, and never over a branch a dashboard link already chose.
+  const viewerBranchApplied = useRef(false);
+  const viewerBranch = data?.viewer?.branch || "";
   useEffect(() => {
-    if (user?.role !== "branch-manager") return;
-    const team = resolveTeam(user.name);
-    const branch = (team && TEAM_BRANCH[team]) || "";
-    if (branch) setFilters((f) => ({ ...f, branch }));
-  }, [user?.role, user?.name]);
+    if (user?.role !== "branch-manager" || !viewerBranch || viewerBranchApplied.current) return;
+    viewerBranchApplied.current = true;
+    setFilters((f) => (f.branch ? f : { ...f, branch: viewerBranch }));
+  }, [user?.role, viewerBranch]);
 
   // The dashboard's Training Center "See all" opens this board already
   // filtered (?branch= or ?team=; see lib/scoreboard/links.ts). Applied once on
@@ -139,7 +140,7 @@ export function TrainingLeaderboard() {
   const youRow = user && isRankedRole(user.role) ? allRows.find((r) => r.id === user.id) || null : null;
   const myTeam =
     user?.role === "sales-team-lead"
-      ? teamSummaryFor(allRows, resolveTeam(user.name))
+      ? teamSummaryFor(allRows, data?.viewer?.team || "")
       : null;
 
   const branches = useMemo(
@@ -155,9 +156,8 @@ export function TrainingLeaderboard() {
   // but never renumbers ranks (same principle as rep medals).
   const standings = useMemo(() => teamStandings(allRows), [allRows]);
   const visibleStandings = useMemo(
-    () =>
-      filters.branch ? standings.filter((s) => TEAM_BRANCH[s.team] === filters.branch) : standings,
-    [standings, filters.branch]
+    () => standingsInBranch(standings, allRows, filters.branch),
+    [standings, allRows, filters.branch]
   );
 
   // Default to the first course once the board arrives (CourseView used to own this).

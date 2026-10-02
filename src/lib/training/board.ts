@@ -101,7 +101,48 @@ export type OverallResponse = {
   totalItems: number;
   courses: Array<{ id: string; title: string; videos: number; quizzes: number }>;
   rows: OverallRow[];
+  /** The signed-in viewer's own team and branch, read from their profile the
+   * same way as every row: a team lead opens on their team, a branch manager
+   * on their branch. Empty strings when the profile has none. */
+  viewer: { team: string; branch: string };
 };
+
+/**
+ * A person's team on the Course Leaderboard, read from their Miller Storm
+ * profile and nothing else (decided by Youssef 2026-10-02, ticket MS-027):
+ *   - a sales team lead is on their own team;
+ *   - anyone else is on the team of the Team Lead set on their profile
+ *     (`managerId`), looked up in `leadNameById`;
+ *   - no Team Lead, or one who no longer exists, means no team ("").
+ * There is deliberately no typed fallback list: when a rep shows no team, the
+ * fix is to set their Team Lead in User Management.
+ */
+export function teamFromProfile(
+  user: { name?: string | null; role?: string | null; managerId?: string | null },
+  leadNameById: ReadonlyMap<string, string>
+): string {
+  if (user.role === "sales-team-lead") return (user.name || "").trim();
+  if (!user.managerId) return "";
+  return (leadNameById.get(String(user.managerId)) || "").trim();
+}
+
+/** A person's branch, from the territory on their own profile ("" when unset).
+ * Some territories carry a suffix after a "·"; only the branch part counts. */
+export function branchFromProfile(user: { territory?: string | null }): string {
+  return (user.territory || "").toString().split("·")[0].trim();
+}
+
+/** Under a branch filter, a team stays visible when any of its members is in
+ * that branch. No branch filter keeps every team. Ranks are never renumbered. */
+export function standingsInBranch<S extends { team: string }>(
+  standings: S[],
+  rows: Array<{ team: string; branch: string }>,
+  branch: string
+): S[] {
+  if (!branch) return standings;
+  const teams = new Set(rows.filter((r) => r.branch === branch && r.team).map((r) => r.team));
+  return standings.filter((s) => teams.has(s.team));
+}
 
 import { teamScore } from "./scoring";
 
