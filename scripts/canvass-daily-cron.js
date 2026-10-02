@@ -50,7 +50,11 @@ function runRefresh() {
   const viteNode = path.resolve(__dirname, "../node_modules/vite-node/vite-node.mjs");
   const script = path.resolve(__dirname, "canvass-daily.ts");
   running = true;
-  const child = spawn(process.execPath, [viteNode, script], { stdio: "inherit", cwd: path.resolve(__dirname, "..") });
+  // Piped and forwarded, not inherited: PM2 runs this process in cluster mode, where an inherited
+  // stdout reaches no log file (the 2 Oct 2026 run left only "finished with code 1").
+  const child = spawn(process.execPath, [viteNode, script], { stdio: ["ignore", "pipe", "pipe"], cwd: path.resolve(__dirname, "..") });
+  child.stdout.on("data", (chunk) => process.stdout.write(chunk));
+  child.stderr.on("data", (chunk) => process.stderr.write(chunk));
   child.on("exit", (code) => {
     running = false;
     console.log(`[canvass-daily-cron] refresh finished with code ${code}`);

@@ -18,6 +18,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import mongoose from "mongoose";
+import { PARTIAL_EXIT_CODE, isRejectedKey } from "../src/lib/canvass/dailyRun";
 import { createClient } from "../src/lib/acculynx/client";
 import { cleanBranchName, getLocationKeys } from "../src/lib/acculynx/config";
 import { isOpenJob, mapJob, type JobRecord } from "../src/lib/canvass/jobs";
@@ -72,12 +73,23 @@ async function main() {
   if (locations.length === 0) throw new Error("No AccuLynx keys found in the env file");
 
   await mongoose.connect(options.uri);
+  const skipped: string[] = [];
   const loadedAt = new Date();
   let totalJobs = 0;
 
   for (const { envVar, key } of locations) {
     const client = createClient(key);
-    const company = await client.fetchCompanySettings();
+    let company;
+    try {
+      company = await client.fetchCompanySettings();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!isRejectedKey(message)) throw error;
+      // One branch's key was refused (deactivated or wrong): skip that branch, keep the others.
+      skipped.push(envVar);
+      console.log(`[jobs] SKIPPED ${envVar}: AccuLynx refused the key (${message.slice(0, 80)})`);
+      continue;
+    }
     const branch = company ? cleanBranchName(company.name) : envVar.replace(/^ACCULYNX_API_KEY_?/, "") || "Unknown";
 
     const seen = new Set<string>();
@@ -124,6 +136,7 @@ async function main() {
 
   console.log(`[jobs] done: ${totalJobs} jobs ${options.dryRun ? "counted" : "written"} across ${locations.length} AccuLynx locations`);
   await mongoose.disconnect();
+  if (skipped.length > 0) process.exitCode = PARTIAL_EXIT_CODE;
 }
 
 main().catch(async (error) => {

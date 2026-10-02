@@ -6,6 +6,19 @@
 
 import { daysBetween } from "./dates";
 
+/**
+ * Exit code a step uses for "done, but one AccuLynx location was skipped": its
+ * key was rejected (deactivated or wrong). The refresh carries on with the other
+ * locations and emails a warning, instead of stopping the whole map for one
+ * branch (2 Oct 2026: the Commercial key was deactivated and every run stopped).
+ */
+export const PARTIAL_EXIT_CODE = 3;
+
+/** True when an AccuLynx error means the key itself was refused, not a passing outage. */
+export function isRejectedKey(message: string): boolean {
+  return /AccuLynx 40[13] on /.test(message);
+}
+
 /** A refresh never reaches back further than this on its own; an operator passes --from for older gaps. */
 export const MAX_CATCH_UP_DAYS = 45;
 
@@ -87,6 +100,22 @@ export function dailySteps(input: StepInput): Step[] {
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string);
+}
+
+/** The email when the refresh finished but skipped something. Plain words, no keys. */
+export function partialAlert(notes: string[]): { subject: string; text: string; html: string } {
+  const list = notes.length ? notes : ["a step reported that it skipped part of its work"];
+  const text =
+    `The Canvass Map's daily refresh finished, but skipped part of its work:\n` +
+    list.map((n) => `- ${n}`).join("\n") +
+    `\nThe map is up to date for everything else. A rejected AccuLynx key is replaced in AccuLynx (Account Settings, API keys) and then in the server's .env.\n` +
+    `Check: pm2 logs canvass-daily`;
+  const html =
+    `<p>The <strong>Canvass Map</strong> daily refresh finished, but skipped part of its work:</p>` +
+    `<ul>${list.map((n) => `<li>${escapeHtml(n)}</li>`).join("")}</ul>` +
+    `<p>The map is up to date for everything else. A rejected AccuLynx key is replaced in AccuLynx (Account Settings, API keys) and then in the server's .env.</p>` +
+    `<p>Check the PM2 logs on the server (<code>pm2 logs canvass-daily</code>).</p>`;
+  return { subject: "Canvass Map refresh skipped part of its work", text, html };
 }
 
 /** The email when a step fails. Plain words, no addresses, no keys. */
