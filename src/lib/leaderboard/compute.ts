@@ -10,7 +10,7 @@ import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
 import { isDeletedFromRepCard } from "./roster";
 import { officeToBranch, attributeToBranch } from "../repcard/branches";
-import { resolveTeam, TEAM_BRANCH, isTeamLead, isBranchless } from "../repcard/org-chart";
+import { resolveTeam, TEAM_BRANCH, isTeamLead, isBranchless, teamFromUserManagement, type AppTeamUser } from "../repcard/org-chart";
 
 export interface SalesLeaderRow {
   id: string;               // merge id, e.g. "rc:<repcardUserId>"
@@ -68,6 +68,8 @@ export interface SharedRosterData {
   readonly rcById: ReadonlyMap<string, any>;
   readonly acctSets: Readonly<{ emails: ReadonlySet<string>; phones: ReadonlySet<string>; names: ReadonlySet<string> }>;
   readonly byEmail: ReadonlyMap<string, any>;
+  // App users by id, so a rep's assigned team lead (User Management) can be looked up.
+  readonly usersById: ReadonlyMap<string, AppTeamUser>;
 }
 
 export async function loadSharedRosterData(): Promise<SharedRosterData> {
@@ -107,15 +109,18 @@ export async function loadSharedRosterData(): Promise<SharedRosterData> {
     if (a.nameKey) acctSets.names.add(a.nameKey);
   }
 
-  // Light app enrichment (never gating): match a Miller Storm user by email for the
-  // profile photo and the "You" highlight.
-  const appUsers = await UserModel.find({ deleted: { $ne: true }, testAccount: { $ne: true } }).select("id email headshotUrl name managerId").lean();
+  // App enrichment: match a Miller Storm user by email for the profile photo,
+  // the "You" highlight, and their team lead in User Management (which decides
+  // their team).
+  const appUsers = await UserModel.find({ deleted: { $ne: true }, testAccount: { $ne: true } }).select("id email headshotUrl name role roles managerId").lean();
   const byEmail = new Map<string, any>();
+  const usersById = new Map<string, AppTeamUser>();
   for (const u of appUsers) {
     const e = (u as any).email; if (e) byEmail.set(String(e).toLowerCase(), u);
+    usersById.set(String((u as any).id), u as AppTeamUser);
   }
 
-  return { acxAll, allTimeKnockers, rcById, acctSets, byEmail };
+  return { acxAll, allTimeKnockers, rcById, acctSets, byEmail, usersById };
 }
 
 export async function computeSalesRows(
@@ -228,8 +233,10 @@ export async function computeSalesRows(
     // Does this rep have an AccuLynx account? (roster match by email/phone/name)
     const acctIdent = rcId ? rcIdentityById.get(rcId) : undefined;
     const hasAccount = acctIdent ? hasAcculynxAccount(acctIdent, acctSets) : false;
-    // Team from the official org chart (by name), RepCard's team as fallback.
-    const team = resolveTeam(rcu?.name || m.name, rcu?.team) || null;
+    // Team: the team lead assigned in User Management first, then RepCard's
+    // team, then the org chart by name (see org-chart.ts).
+    const team = teamFromUserManagement(u as AppTeamUser | null, roster.usersById)
+      || resolveTeam(rcu?.name || m.name, rcu?.team) || null;
     // Org chart wins for Branch: follow the team's branch when the team is known;
     // fall back to the RepCard office only for reps with no team.
     const branch = (team && TEAM_BRANCH[team])

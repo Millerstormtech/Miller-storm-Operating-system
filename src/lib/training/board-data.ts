@@ -13,7 +13,7 @@ import {
   RANKED_ROLES,
 } from "./scoring";
 import { aggregateOverall, type OverallRow } from "./board";
-import { resolveTeam, TEAM_BRANCH } from "../repcard/org-chart";
+import { resolveTeam, TEAM_BRANCH, teamFromUserManagement, type AppTeamUser } from "../repcard/org-chart";
 
 export type BoardData = {
   /** Lean course docs, heavy per-page fields stripped. */
@@ -49,15 +49,15 @@ export async function loadBoardData(): Promise<BoardData> {
     .lean();
   const ranked = users.filter((u) => isRankedUser({ role: u.role, email: u.email }));
 
-  // Managers' names, for the team/branch fallback below: a rep the org chart
-  // doesn't know can still be labeled through their assigned team lead.
+  // Each rep's assigned team lead (User Management), which decides their team.
   const managerIds = Array.from(new Set(ranked.map((u: any) => u.managerId).filter(Boolean)));
   const managers = managerIds.length
-    ? await UserModel.find({ id: { $in: managerIds } }).select("id name").lean()
+    ? await UserModel.find({ id: { $in: managerIds } }).select("id name role roles").lean()
     : [];
   const managerNameById = new Map<string, string>(
     (managers as any[]).map((m) => [String(m.id), (m.name || "").toString()])
   );
+  const leadsById = new Map<string, AppTeamUser>((managers as any[]).map((m) => [String(m.id), m]));
 
   // All progress for these reps across all courses, in one query.
   const userIds = ranked.map((u) => u.id);
@@ -88,12 +88,11 @@ export async function loadBoardData(): Promise<BoardData> {
       courses.map((c: any, i: number): [string, CourseStats] => [String(c.id), perCourse[i]])
     );
     const credentials = credentialProgress(courses as any, statsById);
-    // Branch and Team resolved by NAME via the org chart, the same source the
-    // Sales Leaderboard uses, so labels agree across both boards (master 2.5).
-    // Reps the chart doesn't know fall back to their profile: team through
-    // their assigned team lead (managerId), branch through the lead or their
-    // own territory — so nobody shows a blank "Branch · Team" line.
-    let team = resolveTeam(u.name);
+    // Team: the team lead assigned in User Management first, then the org
+    // chart by name — the same order the Sales Leaderboard uses, so labels
+    // agree across both boards. Branch follows the team, else the rep's own
+    // territory, so nobody shows a blank "Branch · Team" line.
+    let team = teamFromUserManagement(u as AppTeamUser, leadsById) || resolveTeam(u.name);
     let branch = (team && TEAM_BRANCH[team]) || "";
     if (!team && (u as any).managerId) {
       const mgrName = managerNameById.get(String((u as any).managerId)) || "";

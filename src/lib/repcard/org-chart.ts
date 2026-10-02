@@ -1,9 +1,14 @@
 // src/lib/repcard/org-chart.ts
 // Pure, import-free. Resolves a rep's TEAM, and which branch that team belongs to.
 //
-// SOURCE OF TRUTH: RepCard's own `team` field. RepCard is the system the branch
-// managers actually maintain — a rep who changes teams is moved there the same
-// day — so the leaderboard follows it and self-corrects.
+// WHERE A REP'S TEAM COMES FROM, first match wins:
+//   1. User Management — the Sales Team Lead assigned to a sales rep there
+//      (teamFromUserManagement below). Admins move reps between teams there, and
+//      the Org Chart has always read it, so every board follows it too.
+//   2. RepCard's own `team` field (resolveTeam), for reps User Management doesn't
+//      place. RepCard is what branch managers maintain day to day, and User
+//      Management shows a note wherever the two disagree.
+//   3. ROSTER below, by name.
 //
 // This file used to work the other way round: ROSTER below was transcribed by
 // hand from the Sales Org Chart PDF (2026-07) and OVERRODE RepCard, which froze
@@ -22,7 +27,8 @@
 const ROSTER: Record<string, string[]> = {
   // Fort Worth branch (mgr Gunner McCullough)
   Gunner: ["Gunner McCullough", "Alan Bieberle", "Daniel Reyes", "Michael Gonzalez", "Preston Taylor", "Jason Nguyen"],
-  Luke: ["Luke Huber", "Alec Rodriguez", "Devin Ishmael", "Hieu Pham", "Jose Robles", "Trace Lutteringer", "Jordan Strong", "Dakota Porter", "Justin Jones", "Joe Charles"],
+  // Jose Robles left Team Luke 2026-09-29 (support ticket from Luke Huber).
+  Luke: ["Luke Huber", "Alec Rodriguez", "Devin Ishmael", "Hieu Pham", "Trace Lutteringer", "Jordan Strong", "Dakota Porter", "Justin Jones", "Joe Charles"],
   Jonathan: ["Jonathan Chambers", "Austin Porter", "David Bolles", "Esteban Serna", "Fernando Cano", "Jordan Dillon", "Kelvin Burdiez", "Moises Belza", "Johnny Franco", "Declan Mathison", "Valentin Grajeda", "Waylon Dean"],
   // Dallas branch (mgr Mike Muscari)
   "Mike Muscari": ["Mike Muscari", "Jaren Lushaj", "Nathan Gregory", "Nate Gregory", "Dylan Looney"],
@@ -124,6 +130,41 @@ export function resolveTeam(name?: string | null, repcardTeam?: string | null): 
   }
 
   return NAME_TO_TEAM.get(norm(name)) || "";
+}
+
+// A Miller Storm user, as far as team membership needs: their role(s) and the
+// Sales Team Lead assigned to them in User Management (managerId).
+export type AppTeamUser = {
+  id?: string;
+  name?: string | null;
+  role?: string | null;
+  roles?: string[] | null;
+  managerId?: string | null;
+};
+
+const LEAD_ROLES = ["sales-team-lead", "branch-manager"];
+const hasLeadRole = (u: AppTeamUser) =>
+  LEAD_ROLES.includes(u.role || "") || (u.roles || []).some((r) => LEAD_ROLES.includes(r));
+
+/**
+ * The team a sales rep is on according to User Management: the team of the
+ * Sales Team Lead assigned to them there. That assignment beats RepCard and
+ * ROSTER everywhere a team is shown, so moving a rep to another lead in User
+ * Management moves them on every board at once (Org Chart included, which
+ * already reads managerId). "" when User Management doesn't place them — not a
+ * sales rep, no lead assigned, or the lead isn't a team lead — and callers then
+ * fall back to resolveTeam().
+ *
+ * Leads themselves are never placed through their own managerId (that points
+ * at their branch manager): a lead's team is named after them.
+ */
+export function teamFromUserManagement(user: AppTeamUser | null | undefined, usersById: ReadonlyMap<string, AppTeamUser>): string {
+  if (!user || user.role !== "sales" || !user.managerId) return "";
+  const lead = usersById.get(user.managerId);
+  if (!lead || !hasLeadRole(lead)) return "";
+  // A lead the roster doesn't know yet (a newly promoted one) gets a team
+  // named by their first name, matching how teams are named ("Luke", "Gunner").
+  return resolveTeam(lead.name) || (lead.name || "").trim().split(/\s+/)[0] || "";
 }
 
 // The FIRST member of each team is its lead — the branch manager. Used by the

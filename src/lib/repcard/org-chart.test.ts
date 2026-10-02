@@ -1,7 +1,7 @@
 // src/lib/repcard/org-chart.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveTeam, TEAM_NAMES, TEAM_BRANCH, isBranchless } from "./org-chart.ts";
+import { resolveTeam, TEAM_NAMES, TEAM_BRANCH, isBranchless, teamFromUserManagement, type AppTeamUser } from "./org-chart.ts";
 
 test("Brighton Jenkins and his reps resolve to Daniel Sabedra's team", () => {
   assert.equal(resolveTeam("Brighton Jenkins"), "Daniel Sabedra");
@@ -100,4 +100,40 @@ test("nothing to go on resolves to no team", () => {
   assert.equal(resolveTeam("Nobody At All", ""), "");
   assert.equal(resolveTeam("Nobody At All", "Management"), "");
   assert.equal(resolveTeam(""), "");
+});
+
+// ---- User Management decides a rep's team -----------------------------------
+
+const leads: AppTeamUser[] = [
+  { id: "luke", name: "Luke Huber", role: "sales-team-lead", managerId: "gunner" },
+  { id: "gunner", name: "Gunner McCullough", role: "branch-manager", roles: ["sales-team-lead"] },
+  { id: "cooper", name: "Cooper Bledsoe", role: "sales-team-lead" },
+  { id: "newlead", name: "Ramon Ortiz", role: "sales-team-lead" },
+  { id: "ops", name: "Office Admin", role: "admin" },
+];
+const byId = new Map(leads.map((u) => [u.id!, u] as [string, AppTeamUser]));
+const rep = (managerId: string | null, role = "sales"): AppTeamUser => ({ id: "r", name: "Jose Robles", role, managerId });
+
+test("a rep is on the team of the lead User Management assigns them", () => {
+  assert.equal(teamFromUserManagement(rep("luke"), byId), "Luke");
+  // Moved to another lead: on that lead's team everywhere, whatever RepCard or the roster say.
+  assert.equal(teamFromUserManagement(rep("cooper"), byId), "Cooper");
+  // Branch managers who run a team directly are team leads too.
+  assert.equal(teamFromUserManagement(rep("gunner"), byId), "Gunner");
+  // A newly promoted lead the roster doesn't know names the team by first name.
+  assert.equal(teamFromUserManagement(rep("newlead"), byId), "Ramon");
+});
+
+test("User Management only places sales reps assigned to a real team lead", () => {
+  assert.equal(teamFromUserManagement(rep(null), byId), "");
+  assert.equal(teamFromUserManagement(rep("ops"), byId), ""); // not a team lead
+  assert.equal(teamFromUserManagement(rep("missing"), byId), ""); // deleted lead
+  assert.equal(teamFromUserManagement(null, byId), "");
+  // A lead's own managerId points at their branch manager; their team is their own.
+  assert.equal(teamFromUserManagement(byId.get("luke"), byId), "");
+  assert.equal(resolveTeam("Luke Huber"), "Luke");
+});
+
+test("Jose Robles is no longer on Team Luke (support ticket, 2026-09-29)", () => {
+  assert.notEqual(resolveTeam("Jose Robles"), "Luke");
 });

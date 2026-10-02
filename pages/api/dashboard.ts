@@ -23,7 +23,7 @@ import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, customRange, centralDateStr } from "../../src/lib/acculynx/windows";
 import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
-import { resolveTeam } from "../../src/lib/repcard/org-chart";
+import { resolveTeam, teamFromUserManagement } from "../../src/lib/repcard/org-chart";
 import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
 import { scopeLabel, scopeResolved } from "../../src/lib/scoreboard/display";
 import { trend } from "../../src/lib/scoreboard/metrics";
@@ -348,7 +348,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // A rep's own team. scopeLabel() is intentionally empty for "self" (the
         // web never renders a rep's scope line), but the mobile board shows a
         // team chip, so the team name is carried here for that one use.
-        team: resolveTeam(user.name) || "",
+        team: teamFromUserManagement(shared.usersById.get(user.id), shared.usersById) || resolveTeam(user.name) || "",
         // The raw branch key (never a display label), so the dashboard's links
         // can pre-filter the leaderboards to exactly this branch.
         branch: scope.level === "branch" ? scope.branch || "" : "",
