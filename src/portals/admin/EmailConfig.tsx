@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { EMAIL_DEFAULTS } from "../../lib/emailTemplates";
+import { EMAIL_DEFAULTS, GLOBAL_VARIABLES, renderTemplate, unknownVariables } from "../../lib/emailTemplates";
 
 type EmailKey = keyof typeof EMAIL_DEFAULTS;
 
@@ -13,7 +13,6 @@ const EMAIL_LABELS: Record<string, string> = {
   quickStartUser: "Quick Start (User)",
   quickStartManager: "Quick Start (Sales Team Lead)",
   userAccountUpdated: "User Account Updated",
-  adminConfirmation: "Admin Confirmation",
   newRegistrationAdmin: "New Registration (Admin)",
   managerDeadlineMissed: "Training Deadline Missed (Sales Team Lead)",
   weeklyTeamDigest: "Weekly Team Digest (Sales Team Lead)",
@@ -33,6 +32,18 @@ const TEMPLATE_KEYS = Object.keys(EMAIL_DEFAULTS).sort((a, b) =>
 
 type ConfigMap = Record<string, { subject: string; body: string; status: string }>;
 
+// Templates that use a {{field}} their email never fills in. Saving one of these
+// would send people a raw "{{password}}", so both save paths refuse it.
+function findUnknownFields(configs: ConfigMap): { key: string; fields: string[] }[] {
+  return TEMPLATE_KEYS
+    .map((key) => ({ key, fields: unknownVariables(key, configs[key]?.subject || "", configs[key]?.body || "") }))
+    .filter((p) => p.fields.length > 0);
+}
+
+function describeUnknownFields(problems: { key: string; fields: string[] }[]): string {
+  return problems.map((p) => `${labelFor(p.key)}: ${p.fields.join(", ")}`).join("; ");
+}
+
 export function EmailConfig() {
   const [configs, setConfigs] = useState<ConfigMap>({});
   const [activeKey, setActiveKey] = useState<string>(TEMPLATE_KEYS[0]);
@@ -40,6 +51,8 @@ export function EmailConfig() {
   const [saveNotice, setSaveNotice] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
+  // "Reset to Default" asks first: it wipes any custom wording on the template.
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/email-config")
@@ -74,6 +87,11 @@ export function EmailConfig() {
   }
 
   async function handleSave() {
+    const problems = findUnknownFields(configs);
+    if (problems.length > 0) {
+      setSaveNotice(`Not saved. These fields can't be filled in: ${describeUnknownFields(problems)}`);
+      return;
+    }
     setSaving(true);
     try {
       await fetch("/api/admin/email-config", {
@@ -91,6 +109,12 @@ export function EmailConfig() {
   }
 
   async function handleToggleStatus() {
+    // Switching saves every template, so it gets the same check as Save.
+    const problems = findUnknownFields(configs);
+    if (problems.length > 0) {
+      setSaveNotice(`Not saved. These fields can't be filled in: ${describeUnknownFields(problems)}`);
+      return;
+    }
     const newStatus = active?.status === "published" ? "draft" : "published";
     // Update local state
     const updatedConfigs = { ...configs, [activeKey]: { ...configs[activeKey], status: newStatus } };
@@ -113,11 +137,55 @@ export function EmailConfig() {
 
   const active = configs[activeKey];
   const variables = EMAIL_DEFAULTS[activeKey]?.variables || [];
+  // A refused save explains itself on its own line; "Saved!" fits in the button row.
+  const refusal = saveNotice.startsWith("Not saved");
+  const activeUnknown = active ? unknownVariables(activeKey, active.subject, active.body) : [];
+  // The preview is the real email builder, so bold text, bullets, the shared
+  // links and the copyright footer look exactly as they will in an inbox.
+  const preview = active ? renderTemplate(active.body, active.subject, {}) : null;
 
   if (!loaded) return <div style={{ padding: 40, color: "var(--text-muted)", textAlign: "center" }}>Loading...</div>;
 
   return (
     <div style={{ display: "flex", gap: 0, height: "calc(100vh - 80px)", overflow: "hidden" }}>
+      {showResetConfirm && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title" style={{ width: 480 }}>
+            <div className="dialog-title" id="reset-confirm-title">Reset to default?</div>
+            <div style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>
+              <p style={{ margin: "0 0 10px" }}>
+                This replaces the subject line and email body of <strong>{labelFor(activeKey)}</strong> with
+                the standard version stored in the app's code. Any wording written for this template on this
+                page is lost.
+              </p>
+              <ul style={{ margin: "0 0 20px", paddingLeft: 18 }}>
+                <li>This does not undo your last edit. The app keeps no history of earlier versions.</li>
+                <li>Only this template changes. The other templates stay as they are.</li>
+                <li>The Draft / Published setting stays as it is.</li>
+                <li>
+                  Nothing is saved yet. Click <strong>Save All Templates</strong> to keep the reset, or leave
+                  this page without saving to undo it. Switching Draft / Published also saves it.
+                </li>
+              </ul>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" className="btn-secondary btn-cancel" onClick={() => setShowResetConfirm(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary btn-success"
+                onClick={() => {
+                  resetToDefault(activeKey);
+                  setShowResetConfirm(false);
+                }}
+              >
+                Yes, reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Left tab list */}
       <div style={{ width: 220, borderRight: "1px solid var(--border-default)", overflowY: "auto", flexShrink: 0, background: "var(--surface-subtle)" }}>
         <div style={{ padding: "16px 16px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1 }}>
@@ -143,8 +211,8 @@ export function EmailConfig() {
 
       {/* Right editor */}
       <div style={{ flex: 1, overflowY: "auto", padding: 32 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
-          <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: refusal ? 12 : 24 }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: "0.01em", color: "var(--text-primary)", marginBottom: 4 }}>
               {labelFor(activeKey)}
             </div>
@@ -152,8 +220,10 @@ export function EmailConfig() {
               Edit the subject and body. Use the dynamic fields below in your content.
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {saveNotice && <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 500 }}>{saveNotice}</span>}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+            {saveNotice && !refusal && (
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#16a34a", whiteSpace: "nowrap" }}>{saveNotice}</span>
+            )}
             {/* Draft / Published toggle */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: active?.status !== "published" ? "var(--text-secondary)" : "var(--text-subtle)" }}>Draft</span>
@@ -179,8 +249,8 @@ export function EmailConfig() {
             </div>
             <button
               type="button"
-              onClick={() => resetToDefault(activeKey)}
-              style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--surface-default)", fontSize: 13, cursor: "pointer", color: "var(--text-primary)" }}
+              onClick={() => setShowResetConfirm(true)}
+              style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--surface-default)", fontSize: 13, cursor: "pointer", color: "var(--text-primary)", whiteSpace: "nowrap" }}
             >
               Reset to Default
             </button>
@@ -188,18 +258,22 @@ export function EmailConfig() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
             >
               {saving ? "Saving..." : "Save All Templates"}
             </button>
           </div>
         </div>
 
+        {refusal && (
+          <div role="status" style={{ marginBottom: 20, fontSize: 13, fontWeight: 500, color: "var(--brand-on-surface)" }}>{saveNotice}</div>
+        )}
+
         {/* Dynamic variables reference */}
         <div style={{ marginBottom: 20, padding: 14, background: "rgba(241,195,60,0.1)", border: "1px solid rgba(241,195,60,0.3)", borderRadius: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8 }}>Available Dynamic Fields:</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {variables.map(v => (
+            {[...variables, ...GLOBAL_VARIABLES.filter(v => !variables.includes(v))].map(v => (
               <span key={v} style={{ padding: "3px 10px", background: "rgba(241,195,60,0.16)", border: "1px solid rgba(241,195,60,0.4)", borderRadius: 4, fontSize: 12, fontFamily: "monospace", color: "var(--text-primary)" }}>
                 {v}
               </span>
@@ -207,8 +281,18 @@ export function EmailConfig() {
           </div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>
             Copy and paste these exactly into your subject or body. They will be replaced with real values when the email is sent.
+            {" "}{GLOBAL_VARIABLES.join(", ")} are the app links and work in every email.
+            {" "}Wrap text in **double asterisks** to make it bold. Start a line with * or - to make it a bullet.
+            {" "}The copyright line is added automatically at the bottom of every email.
           </div>
         </div>
+
+        {activeUnknown.length > 0 && (
+          <div role="alert" style={{ marginBottom: 20, padding: 14, border: "1px solid var(--brand-fill)", borderRadius: 8, fontSize: 13, color: "var(--text-primary)" }}>
+            <strong>This email can't fill in {activeUnknown.join(", ")}.</strong> People would see it written out
+            exactly like that. Remove it, or use one of the fields listed above. Saving is blocked until it's fixed.
+          </div>
+        )}
 
         {/* Subject */}
         <label style={{ display: "block", marginBottom: 20 }}>
@@ -238,11 +322,15 @@ export function EmailConfig() {
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 10 }}>Preview</div>
           <div style={{ border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden" }}>
             <div style={{ background: "var(--surface-subtle)", padding: "10px 16px", fontSize: 12, color: "var(--text-muted)", borderBottom: "1px solid var(--border-default)" }}>
-              <strong>Subject:</strong> {active?.subject}
+              <strong>Subject:</strong> {preview?.subject}
             </div>
-            <div style={{ padding: 24, background: "var(--surface-default)", fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.8, whiteSpace: "pre-wrap", fontFamily: "Arial, sans-serif" }}>
-              {active?.body}
-            </div>
+            {/* sandbox with no permissions: the email HTML is shown, never run. */}
+            <iframe
+              title="Email preview"
+              sandbox=""
+              srcDoc={preview?.html || ""}
+              style={{ display: "block", width: "100%", height: 640, border: "none" }}
+            />
           </div>
         </div>
       </div>

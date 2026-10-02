@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
-import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
@@ -66,7 +65,9 @@ async function handler(
       return;
     }
 
-    const { password, passwordHash, _id, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, ...rest } = payload;
+    // sendNotification/sendSMSNotification/adminName/adminEmail/managerName are
+    // stripped, never stored: the old notify checkbox sent them (removed 2026-08-30).
+    const { password, passwordHash, _id, sendNotification: _sn, sendSMSNotification: _ssn, adminName: _an, adminEmail: _ae, managerName: _mn, ...rest } = payload;
     const id = rest.email ? rest.email.trim().toLowerCase() : (payload.id || `user-${Date.now()}`);
     const hashedPassword =
       typeof password === "string" && password.trim().length > 0
@@ -120,64 +121,30 @@ async function handler(
       await addUserToPublicGroups(String(createdObj._id));
     }
 
-    // Send notification email if requested
-    if (sendNotification && safeUser.email) {
-      try {
-        const { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } = await import("../../../src/lib/email");
-        const roles = (safeUser.roles as string[]) || [safeUser.role as string];
-        await sendUserAccountUpdatedEmail({
-          name: safeUser.name as string,
-          email: safeUser.email as string,
-          password: typeof password === "string" && password.trim().length > 0 ? password.trim() : null,
-          roles,
-          branch: (safeUser.territory as string) || (Array.isArray(safeUser.branches) ? (safeUser.branches as string[])[0] : "") || null,
-          managerName: managerName || null,
-          loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://yourdomain.com/login"
-        });
-        if (adminEmail) {
-          await sendAdminConfirmationEmail({
-            adminName: adminName || "Admin",
-            adminEmail,
-            userName: safeUser.name as string,
-            userEmail: safeUser.email as string,
-            roles,
-            managerName: managerName || null,
-            passwordChanged: typeof password === "string" && password.trim().length > 0,
-            updatedAt: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
-          });
-        }
-        console.log("Notification email sent to:", safeUser.email);
-      } catch (emailErr) {
-        console.error("Failed to send notification email:", emailErr);
-      }
-    }
-
-    // Send SMS notification if requested
-    if (sendSMSNotification && safeUser.phone) {
-      try {
-        console.log("[SMS] Sending userAccountUpdate SMS to:", safeUser.phone);
-        await sendUserAccountUpdateSMS({
-          userName: safeUser.name as string,
-          adminName: adminName || "Admin",
-          userPhone: safeUser.phone as string,
-        });
-        console.log("[SMS] userAccountUpdate SMS sent OK");
-      } catch (smsErr: any) {
-        console.error("[SMS] Failed to send SMS:", smsErr?.message || smsErr);
-      }
-    }
-
     // Send 48-hour Quick Start onboarding email for new sales users
     if (rest.role === "sales" && rest.email) {
       try {
         const newHireName = rest.name || rest.email;
-        await sendQuickStartUserEmail(newHireName, rest.email);
+        const manager = rest.managerId ? await UserModel.findOne({ id: rest.managerId }).lean() : null;
+        await sendQuickStartUserEmail({
+          name: newHireName,
+          email: rest.email,
+          role: rest.role,
+          password: typeof password === "string" && password.trim().length > 0
+            ? password.trim()
+            : "Ask your administrator for your password",
+          branch: rest.territory || (Array.isArray(rest.branches) ? rest.branches[0] : null) || null,
+          salesTeamLead: manager?.name || null,
+        });
 
-        if (rest.managerId) {
-          const manager = await UserModel.findOne({ id: rest.managerId }).lean();
-          if (manager?.email) {
-            await sendQuickStartManagerEmail(newHireName, manager.name || manager.email, manager.email);
-          }
+        if (manager?.email) {
+          await sendQuickStartManagerEmail({
+            hireName: newHireName,
+            hireEmail: rest.email,
+            hirePhone: rest.phone,
+            managerName: manager.name || manager.email,
+            managerEmail: manager.email,
+          });
         }
       } catch (emailErr) {
         console.error("Failed to send onboarding email:", emailErr);

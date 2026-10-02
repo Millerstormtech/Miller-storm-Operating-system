@@ -29,6 +29,7 @@ export default defineConfig({
       "src/lib/pageTitle.test.ts",
       "src/lib/subdomain.test.ts",
       "src/lib/rateLimit.test.ts",
+      "src/lib/emailTemplates.test.ts",
       "src/lib/ops/**/*.test.ts",
       "src/lib/uploads/**/*.test.ts",
       "src/lib/docs/**/*.test.ts",

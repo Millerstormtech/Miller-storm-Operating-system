@@ -7,9 +7,8 @@ import { sendUserAccountUpdatedEmail } from "../../../src/lib/email";
 // Emails a user their login details on demand — triggered by the admin's
 // "Send Login Details" button in User Management (behind a Yes/Cancel confirm).
 // Separate from creating/updating a user: this only sends the email, it writes
-// nothing. Admin only. The password is the plaintext the admin currently has in
-// the form (only place it exists); when omitted the email says to use the
-// existing password rather than inventing one.
+// nothing. Admin only. It carries no password: the app only stores a scrambled
+// copy, so the email points to Forgot Password instead.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -24,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const { userId, password } = (req.body || {}) as { userId?: string; password?: string | null };
+  const { userId } = (req.body || {}) as { userId?: string };
   if (!userId || typeof userId !== "string") {
     res.status(400).json({ error: "userId is required" });
     return;
@@ -51,15 +50,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       managerName = manager?.name || null;
     }
 
-    await sendUserAccountUpdatedEmail({
+    const sent = await sendUserAccountUpdatedEmail({
       name: user.name || user.email,
       email: user.email,
-      password: typeof password === "string" && password.trim().length > 0 ? password.trim() : null,
       roles,
       branch,
-      managerName,
-      loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://millerstorm.tech/login",
+      salesTeamLead: managerName,
     });
+    if (sent && "skipped" in sent) {
+      res.status(409).json({
+        error: 'The "User Account Updated" email is set to Draft in Email Config. Switch it to Published to send it.',
+      });
+      return;
+    }
 
     res.status(200).json({ success: true });
     return;

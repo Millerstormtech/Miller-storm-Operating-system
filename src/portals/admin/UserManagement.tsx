@@ -41,8 +41,6 @@ export function UserManagement(props: UserEditorProps) {
   useEffect(() => {
     if (!isDirty) setDraftDeletedUsers(props.deletedUsers);
   }, [props.deletedUsers]);
-  const [notifyUsers, setNotifyUsers] = useState<Record<string, boolean>>({});
-  const [notifyUsersBySMS, setNotifyUsersBySMS] = useState<Record<string, boolean>>({});
   // "Send Login Details" button: a Yes/Cancel confirm, then an email to the user.
   const [showSendCredsConfirm, setShowSendCredsConfirm] = useState(false);
   const [sendingCreds, setSendingCreds] = useState(false);
@@ -194,7 +192,19 @@ export function UserManagement(props: UserEditorProps) {
   };
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
-  
+
+  // Why "Send Login Details" can't be used right now, shown next to the button.
+  // A brand-new user is checked first: it is also "unsaved", but this is clearer.
+  const sendCredsBlockedReason: string | null = !selectedUser
+    ? null
+    : !props.users.some((u) => u.id === selectedUser.id)
+      ? "Save this new user first"
+      : isDirty
+        ? "Save your changes first"
+        : !(selectedUser.email || "").trim()
+          ? "This user has no email address"
+          : null;
+
   // Single role selection
   const userRoles = selectedUser ? [selectedUser.role] : [];
   const uniqueRoles = [...new Set(userRoles)];
@@ -653,10 +663,10 @@ export function UserManagement(props: UserEditorProps) {
     }
   }
 
-  // Email the selected user their login details (name, email, branch, role,
-  // manager, and the password if one was set on this account). Confirmed via the
-  // Yes/Cancel dialog. The button is disabled while there are unsaved edits, so
-  // the password we pass from the form matches what's actually saved.
+  // Email the selected user their login details (name, email, role, branch,
+  // Sales Team Lead; never a password). Confirmed via the Yes/Cancel dialog.
+  // The button is disabled while there are unsaved edits, so the email matches
+  // what's actually saved.
   async function sendLoginDetails() {
     if (!selectedUser) return;
     setShowSendCredsConfirm(false);
@@ -665,12 +675,7 @@ export function UserManagement(props: UserEditorProps) {
       const res = await fetch("/api/users/send-credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: selectedUser.id,
-          // The plaintext password only exists in the form; send it so the email
-          // can show it, else the email tells them to use their existing one.
-          password: (selectedUser.password || "").trim() || null,
-        }),
+        body: JSON.stringify({ userId: selectedUser.id }),
       });
       if (res.ok) {
         setSaveNotice(`Login details emailed to ${selectedUser.email}`);
@@ -1173,14 +1178,18 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {/* Emails this user their login details on demand. Disabled while
-                      there are unsaved edits, so the emailed password always matches
-                      what's actually saved. */}
+                  {/* Emails this user their login details on demand. Off while there
+                      are unsaved edits (on ANY user), so the email matches what's
+                      actually saved. When it is off, the reason is shown next to it:
+                      a disabled button alone reads as "clicking does nothing". */}
+                  {sendCredsBlockedReason && (
+                    <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-muted)", textTransform: "none", letterSpacing: "normal" }}>{sendCredsBlockedReason}</span>
+                  )}
                   <button
                     type="button"
                     className="btn-secondary btn-small"
-                    disabled={isDirty || isSaving || sendingCreds || !((selectedUser.email || "").trim()) || !props.users.some((u) => u.id === selectedUser.id)}
-                    title={isDirty ? "Save your changes first" : "Email this user their login details"}
+                    disabled={!!sendCredsBlockedReason || isSaving || sendingCreds}
+                    title={sendCredsBlockedReason || "Email this user their login details"}
                     onClick={() => setShowSendCredsConfirm(true)}
                   >
                     {sendingCreds ? "Sending…" : "Send Login Details"}
@@ -1189,10 +1198,6 @@ export function UserManagement(props: UserEditorProps) {
                     if (emailError) {
                       emailInputRef.current?.focus();
                       emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      return;
-                    }
-                    if (notifyUsersBySMS[selectedUserId] && !selectedUser.phone) {
-                      setPhoneError("Phone number is required when SMS notification is enabled");
                       return;
                     }
                     setPhoneError("");
@@ -1222,9 +1227,6 @@ export function UserManagement(props: UserEditorProps) {
                     setIsSaving(true);
                     try {
                       const usersToSave = draftUsers.map((user) => ({ ...user }));
-                      const managerUser = selectedUser.managerId ? draftUsers.find(u => u.id === selectedUser.managerId) : null;
-                      const adminRaw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-                      const adminData = adminRaw ? JSON.parse(adminRaw) : null;
                       const userToSave = usersToSave.find(u => u.id === selectedUser.id);
                       if (userToSave) {
                         // New = a draft not yet in the saved list. (Do NOT use the
@@ -1247,11 +1249,6 @@ export function UserManagement(props: UserEditorProps) {
                             body: JSON.stringify({
                               ...userToSave,
                               _id: undefined,
-                              sendNotification: !!notifyUsers[selectedUserId],
-                              sendSMSNotification: !!notifyUsersBySMS[selectedUserId],
-                              adminName: adminData?.name || "Admin",
-                              adminEmail: adminData?.email || "",
-                              managerName: managerUser?.name || null
                             })
                           });
                           if (!res.ok) {
@@ -1275,21 +1272,12 @@ export function UserManagement(props: UserEditorProps) {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               ...userToSave,
-                              sendNotification: !!notifyUsers[selectedUserId],
-                              sendSMSNotification: !!notifyUsersBySMS[selectedUserId],
-                              adminName: adminData?.name || "Admin",
-                              adminEmail: adminData?.email || "",
-                              managerName: managerUser?.name || null
                             })
                           });
                           if (!putRes.ok) {
                             const err = await putRes.json().catch(() => ({}));
                             alert(`Failed to save: ${err.error || "Unknown error"}`);
                             return;
-                          }
-                          const putData = await putRes.json().catch(() => ({}));
-                          if (putData?.emailWarning) {
-                            alert(`User saved, but the notification email could NOT be sent:\n\n${putData.emailWarning}`);
                           }
                           const freshRes = await fetch("/api/users?deleted=false");
                           if (freshRes.ok) {
@@ -1301,8 +1289,6 @@ export function UserManagement(props: UserEditorProps) {
                           }
                         }
                         setIsDirty(false);
-                        setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
-                        setNotifyUsersBySMS(prev => ({ ...prev, [selectedUserId]: false }));
                         setSaveNotice("Changes saved successfully");
                         if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
                         saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
@@ -1366,9 +1352,12 @@ export function UserManagement(props: UserEditorProps) {
                 )}
               </label>
               <label className="field">
+                {/* autoComplete="new-password": Chrome must never auto-fill the admin's own
+                    saved password here. That silently counted as an edit (switching off
+                    Send Login Details), and saving would set this user's password to it. */}
                 <span className="field-label">Reset Password</span>
                 <div className="field-input" style={{ display: "flex", alignItems: "center", gap: 8, paddingRight: 8 }}>
-                  <input type={showPassword ? "text" : "password"} value={selectedUser.password ?? ""} onChange={(e) => updateUser({ ...selectedUser, password: e.target.value })} placeholder="Set a login password" style={{ border: "none", outline: "none", background: "transparent", flex: 1, minWidth: 0 }} />
+                  <input type={showPassword ? "text" : "password"} autoComplete="new-password" name="reset-password" value={selectedUser.password ?? ""} onChange={(e) => updateUser({ ...selectedUser, password: e.target.value })} placeholder="Set a login password" style={{ border: "none", outline: "none", background: "transparent", flex: 1, minWidth: 0 }} />
                   <button type="button" className="btn-ghost btn-small" onClick={() => setShowPassword((prev) => !prev)} aria-label={showPassword ? "Hide password" : "Show password"} style={{ padding: 4 }}>
                     {showPassword ? (
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1388,7 +1377,7 @@ export function UserManagement(props: UserEditorProps) {
                 </div>
               </label>
               <label className="field">
-                <span className="field-label">Phone{notifyUsersBySMS[selectedUserId] && <span style={{ color: "#dc2626" }}> *</span>}</span>
+                <span className="field-label">Phone</span>
                 <input 
                   className="field-input" 
                   value={selectedUser.phone ?? ""} 

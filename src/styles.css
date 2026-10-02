@@ -582,6 +582,18 @@ body {
   border-color: #ef4444;
 }
 
+/* A switched-off button must look switched off. Until 2026-09-30 these kept
+   full colour and a pointer cursor, so a disabled "Send Login Details" looked
+   clickable and silently ignored clicks. After every variant above so it wins;
+   a screen with its own :disabled rule further down still overrides it. */
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+
 .btn-with-icon {
   display: inline-flex;
   align-items: center;

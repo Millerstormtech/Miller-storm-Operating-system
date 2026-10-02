@@ -1,8 +1,51 @@
 // Browser-safe: no mongoose imports here
+
+// Links every template can use, filled in on every email by renderTemplate, so
+// a template never hardcodes a URL and a changed link is fixed in one place.
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://millerstorm.tech").replace(/\/$/, "");
+
+// One web link, not two: the home page only forwards to /login, and /login
+// forwards a signed-in user to their dashboard, so both end in the same place.
+export const APP_LINKS = {
+  appUrl: APP_URL,
+  // The US store. The old /in/ link opened Apple's India store.
+  iosAppUrl: "https://apps.apple.com/us/app/millerstorm/id6771883296",
+  // Matches applicationId in Jamesapk/android/app/build.gradle.
+  androidAppUrl: "https://play.google.com/store/apps/details?id=com.millerstorm.millerstorm_app",
+  // Ticket inboxes. Admins use the admin page; a ticket-type owner uses /tickets.
+  // The person who raised a ticket has no page: they use the header's Support button.
+  adminTicketsUrl: `${APP_URL}/admin/tickets`,
+  ownerTicketsUrl: `${APP_URL}/tickets`,
+};
+
+export const GLOBAL_VARIABLES = ["{{appUrl}}", "{{iosAppUrl}}", "{{androidAppUrl}}"];
+
+// Where the web app's Support button is, for emails that send a rep to it.
+export const SUPPORT_BUTTON_HINT = "click Support at the top right of the screen, next to your name";
+
+// Fields whose value is already HTML (built by the sender) and must not be escaped.
+const RAW_HTML_FIELDS = new Set(["{{teamTable}}"]);
+
+// A first-name field is derived from each of these full-name fields, so an
+// email can open "Hi Jane" and still list "Jane Rivera" further down.
+const FIRST_NAME_OF: Record<string, string> = {
+  "{{name}}": "{{firstName}}",
+  "{{managerName}}": "{{managerFirstName}}",
+  "{{adminName}}": "{{adminFirstName}}",
+};
+
+const COPYRIGHT = "© 2026-2027 Miller Storm. All Rights Reserved.";
+
+// The one sign-off every template ends with.
+const SIGN_OFF = `Best regards,
+The Miller Storm Team`;
+
+// `variables` lists the fields this template's sender fills in. GLOBAL_VARIABLES
+// are available to every template on top of these.
 export const EMAIL_DEFAULTS: Record<string, { subject: string; body: string; variables: string[] }> = {
   certificateEarned: {
     subject: "You earned your {{credential}}",
-    body: `Hi {{name}},
+    body: `Hi {{firstName}},
 
 You have earned your {{credential}}.
 
@@ -16,21 +59,14 @@ Certificate number: {{credentialId}}
 
 Congratulations from everyone at Miller Storm.
 
-{{appUrl}}
+Open Miller Storm: {{appUrl}}
 
-(c) 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: [
-      "{{name}}",
-      "{{credential}}",
-      "{{courses}}",
-      "{{issuedDate}}",
-      "{{credentialId}}",
-      "{{appUrl}}",
-    ],
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{credential}}", "{{courses}}", "{{issuedDate}}", "{{credentialId}}"],
   },
   contractKingCertificate: {
     subject: "You are the {{monthLabel}} Contract King",
-    body: `Hi {{name}},
+    body: `Hi {{firstName}},
 
 You finished {{monthLabel}} at the top of the Miller Storm sales leaderboard. That makes you the Contract King for the month.
 
@@ -44,23 +80,16 @@ Certificate number: {{certificateId}}
 
 Congratulations from everyone at Miller Storm.
 
-{{appUrl}}
+Open Miller Storm: {{appUrl}}
 
-(c) 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: [
-      "{{name}}",
-      "{{monthLabel}}",
-      "{{stats}}",
-      "{{issuedDate}}",
-      "{{certificateId}}",
-      "{{appUrl}}",
-    ],
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{monthLabel}}", "{{stats}}", "{{issuedDate}}", "{{certificateId}}"],
   },
   passwordReset: {
-    subject: "Reset Your Password - Miller Storm OS",
-    body: `Hi {{name}},
+    subject: "Reset Your Password - Miller Storm",
+    body: `Hi {{firstName}},
 
-We received a request to reset your password for your Miller Storm OS account.
+We received a request to reset your password for your Miller Storm account.
 
 Click the link below to reset your password:
 {{resetLink}}
@@ -69,243 +98,348 @@ This link will expire in 1 hour for security reasons.
 
 If you didn't request a password reset, you can safely ignore this email.
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{resetLink}}"],
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{resetLink}}"],
   },
   registrationConfirmation: {
-    subject: "Registration Request Received - Miller Storm OS",
-    body: `Hi {{name}},
+    subject: "Registration Request Received - Miller Storm",
+    body: `Hi {{firstName}},
 
-Thank you for requesting access to the Miller Storm Operating System.
+Thank you for registering for Miller Storm.
 
-Registration Details:
-- Name: {{name}}
-- Email: {{email}}
-- Requested Role: {{role}}
+We've received your account request and it's currently awaiting approval.
 
-Your request is currently pending approval. Our admin team will review it within 24 to 48 hours.
+**Registration Details**
 
-You will receive another email once your account has been approved.
+* Name: {{name}}
+* Email: {{email}}
+* Requested Role: {{role}}
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{email}}", "{{role}}"],
+Our admin team will review your request and email you once it's done, with instructions for signing in on the web and on your phone.
+
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{email}}", "{{role}}"],
   },
   accountApproved: {
-    subject: "Account Approved - Miller Storm OS",
-    body: `Hi {{name}},
+    subject: "Account Approved - Miller Storm",
+    body: `Hi {{firstName}},
 
-Great news! Your registration request has been approved.
+Good news! Your registration has been approved, and your {{role}} account is ready.
 
-Your Login Credentials:
-- Email: {{email}}
-- Role: {{role}}
-- Password: The password you set during registration
+Sign in with the email and password you chose when you registered:
+* Email: {{email}}
 
-You can access Miller Storm OS on both web and mobile — use the same login on either:
+Use the same login on the web or on your phone:
+* Web App: {{appUrl}}
+* iPhone App: {{iosAppUrl}}
+* Android App: {{androidAppUrl}}
 
-Web App: {{loginUrl}}
-iPhone / iPad App: https://apps.apple.com/in/app/millerstorm/id6771883296
+If you forget your password, click "Forgot Password" on the login page and follow the steps.
 
-Welcome to Miller Storm OS!
+Welcome to Miller Storm!
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{email}}", "{{role}}", "{{loginUrl}}"],
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{email}}", "{{role}}"],
   },
   accountRejected: {
-    subject: "Registration Request Update - Miller Storm OS",
-    body: `Hi {{name}},
+    subject: "Registration Request Update - Miller Storm",
+    body: `Hi {{firstName}},
 
-Thank you for your interest in the Miller Storm Operating System.
+Thank you for your interest in joining Miller Storm.
 
-After careful review, we are unable to approve your registration request at this time.
+After reviewing your registration request, we are unable to approve your account at this time.
 
-Reason: {{reason}}
+Reason for the decision:
+{{reason}}
 
-If you have any questions, please contact your administrator.
+If you think this is a mistake or have any questions, email tech@millerstorm.com.
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{reason}}"],
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{reason}}"],
   },
   quickStartUser: {
-    subject: "Welcome to Miller Storm - Quick Start",
-    body: `Hi {{name}},
+    subject: "Welcome to Miller Storm!",
+    body: `Hi {{firstName}},
 
-Welcome to Miller Storm.
+Welcome to Miller Storm! We're excited to have you on the team.
 
-Your goal in the first 48 hours is simple: Complete training and get into the field.
+Here are your login details:
+* Name: {{name}}
+* Email: {{email}}
+* Password: {{password}}
+* Role: {{role}}
+* Branch: {{branch}}
+* Sales Team Lead: {{salesTeamLead}}
 
-Your Quick Start Success Path is available inside the Miller Storm Operating System.
+Here are your next steps:
 
-Your manager has also received this plan so you can coordinate your ride-along.
+**1. Sign in on your computer**
+Go to {{appUrl}} and sign in with the email and password above.
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}"],
+**2. Add a profile photo**
+In the menu, open Profile and click "Upload a new photo". This photo shows next to your name on the leaderboard.
+
+**3. Start your training**
+Open the Training Center and start your first course.
+
+**4. Get the app on your phone**
+Install the Miller Storm app and sign in with the same email and password, so you can train, check the leaderboard and message your team from the field.
+* iPhone: {{iosAppUrl}}
+* Android: {{androidAppUrl}}
+
+If you forget your password, click "Forgot Password" on the login page and follow the steps to set a new one.
+
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{email}}", "{{password}}", "{{role}}", "{{branch}}", "{{salesTeamLead}}"],
   },
   quickStartManager: {
-    subject: "New Sales Rep Joined Your Team - Miller Storm OS",
-    body: `Hi {{managerName}},
+    subject: "New Sales Rep Joined Your Team - Miller Storm",
+    body: `Hi {{managerFirstName}},
 
 A new sales rep has joined your team: {{hireName}}.
+* Email: {{hireEmail}}
+* Phone: {{hirePhone}}
 
-Their goal in the first 48 hours is simple: Complete training and get into the field.
-
-Their 48-Hour Quick Start Success Path is available inside the Miller Storm Operating System.
-
-Please coordinate their ride-along as soon as possible.
-
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{managerName}}", "{{hireName}}"],
+${SIGN_OFF}`,
+    variables: ["{{managerName}}", "{{managerFirstName}}", "{{hireName}}", "{{hireEmail}}", "{{hirePhone}}"],
   },
   userAccountUpdated: {
-    subject: "Your Account Details - Miller Storm OS",
-    body: `Hi {{name}},
+    subject: "Your Account Details - Miller Storm",
+    body: `Hi {{firstName}},
 
-Your account has been updated by an administrator. Here are your current login details:
+Here are your account details:
+* Name: {{name}}
+* Email: {{email}}
+* Role: {{role}}
+* Branch: {{branch}}
+* Sales Team Lead: {{salesTeamLead}}
 
-- Name: {{name}}
-- Email: {{email}}
-- Password: {{password}}
-- Branch: {{branch}}
-- Role: {{role}}
-- Sales Team Lead / Branch Manager: {{managerName}}
+If you do not remember your password and would like to change it, click "Forgot Password" on the login page and follow the steps.
 
-Login here: {{loginUrl}}
+If you have any questions, please submit a support ticket: open Miller Storm ({{appUrl}}) and ${SUPPORT_BUTTON_HINT}.
 
-If you have any questions, please contact your administrator.
-
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{email}}", "{{password}}", "{{branch}}", "{{role}}", "{{managerName}}", "{{loginUrl}}"],
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{email}}", "{{role}}", "{{branch}}", "{{salesTeamLead}}"],
   },
   weeklyTeamDigest: {
-    subject: "Weekly Team Training Digest - Miller Storm OS",
-    body: `Hi {{managerName}},
+    subject: "Weekly Team Training Digest - Miller Storm",
+    body: `Hi {{managerFirstName}},
 
-Here is your team's training progress for this week, broken down by assigned playlist:
+Here is your team's weekly training progress report, organized by assigned playlist.
 
 {{teamTable}}
 
-Please follow up with anyone who is behind, inside the Miller Storm Operating System.
+Please review the progress and follow up with any team members who are behind on their assigned training.
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{managerName}}", "{{teamTable}}"],
+You can see more details and manage your team's progress in Miller Storm: {{appUrl}}
+
+${SIGN_OFF}`,
+    variables: ["{{managerName}}", "{{managerFirstName}}", "{{teamTable}}"],
   },
   managerDeadlineMissed: {
     subject: "Training Deadline Missed - {{userName}}",
-    body: `Hi {{managerName}},
+    body: `Hi {{managerFirstName}},
 
-A training deadline has been missed by a member of your team.
+A member of your team has missed a training deadline.
 
-Details:
-- Team Member: {{userName}}
-- Playlist: {{playlistName}}
-- Deadline: {{deadline}}
-- Progress: {{completedModules}} of {{totalModules}} modules complete
+**Training Details**
 
-{{userName}} did not finish watching the assigned videos and passing the quizzes before the deadline. Please follow up with them inside the Miller Storm Operating System.
+* Team Member: {{userName}}
+* Assigned Playlist: {{playlistName}}
+* Deadline: {{deadline}}
+* Progress: {{completedModules}} of {{totalModules}} videos completed
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{managerName}}", "{{userName}}", "{{playlistName}}", "{{deadline}}", "{{completedModules}}", "{{totalModules}}"],
-  },
-  adminConfirmation: {
-    subject: "User Account Updated - {{userName}}",
-    body: `Hi {{adminName}},
+{{userName}} did not complete the required training, including watching the assigned videos and passing the quizzes, before the deadline.
 
-You have successfully updated the following user account:
+Please follow up with them in Miller Storm: {{appUrl}}
 
-- Name: {{userName}}
-- Email: {{userEmail}}
-- Role: {{role}}
-- Sales Team Lead: {{managerName}}
-- Password: {{passwordChanged}}
-- Updated At: {{updatedAt}}
-
-This is an automated confirmation of the changes you made.
-
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{adminName}}", "{{userName}}", "{{userEmail}}", "{{role}}", "{{managerName}}", "{{passwordChanged}}", "{{updatedAt}}"],
+${SIGN_OFF}`,
+    variables: ["{{managerName}}", "{{managerFirstName}}", "{{userName}}", "{{playlistName}}", "{{deadline}}", "{{completedModules}}", "{{totalModules}}"],
   },
   newRegistrationAdmin: {
     subject: "New registration request awaiting your review",
-    body: `Hi {{adminName}},
+    body: `Hi {{adminFirstName}},
 
-A new registration request has been submitted to the Miller Storm Operating System and is waiting for your review.
+A new registration request has been submitted to Miller Storm and is waiting for your review.
 
 Registration Details:
-- Name: {{name}}
-- Email: {{email}}
-- Requested Role: {{role}}
+* Name: {{name}}
+* Email: {{email}}
+* Requested Role: {{role}}
 
 Review and approve or reject this request here:
 {{reviewUrl}}
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{adminName}}", "{{name}}", "{{email}}", "{{role}}", "{{reviewUrl}}"],
+${SIGN_OFF}`,
+    variables: ["{{adminName}}", "{{adminFirstName}}", "{{name}}", "{{email}}", "{{role}}", "{{reviewUrl}}"],
   },
   supportTicketCreated: {
     subject: "New Support Ticket {{ticketNumber}} — {{type}}",
-    body: `Hi {{adminName}},
+    body: `Hi {{adminFirstName}},
 
-A new support ticket has just been raised.
+A new support ticket has been submitted and is ready for your review.
 
-- Ticket: {{ticketNumber}}
-- From: {{userName}}
-- Email: {{userEmail}}
-- Type: {{type}}
-- Details: {{note}}
+**Ticket Details**
 
-Please review and action it in the Admin Portal → Tickets.
+* Ticket: {{ticketNumber}}
+* Submitted By: {{userName}}
+* Email: {{userEmail}}
+* Ticket Type: {{type}}
+* Description: {{note}}
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{adminName}}", "{{userName}}", "{{userEmail}}", "{{type}}", "{{note}}", "{{ticketNumber}}"],
+Open it here: {{ticketsUrl}}
+
+${SIGN_OFF}`,
+    variables: ["{{adminName}}", "{{adminFirstName}}", "{{userName}}", "{{userEmail}}", "{{type}}", "{{note}}", "{{ticketNumber}}", "{{ticketsUrl}}"],
   },
   ticketReply: {
     subject: "New reply on ticket {{ticketNumber}} — {{type}}",
     body: `{{intro}}
 
-- Ticket: {{ticketNumber}}
-- Ticket type: {{type}}
-- From: {{senderName}}
+* Ticket: {{ticketNumber}}
+* Ticket type: {{type}}
+* From: {{senderName}}
 
 Message:
 {{message}}
 
-Open the app to view the full conversation and reply.
+{{howToReply}}
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{intro}}", "{{type}}", "{{senderName}}", "{{message}}", "{{ticketNumber}}"],
+${SIGN_OFF}`,
+    variables: ["{{intro}}", "{{type}}", "{{senderName}}", "{{message}}", "{{ticketNumber}}", "{{howToReply}}"],
   },
   ticketInProgress: {
     subject: "Your ticket {{ticketNumber}} is now in progress 🔧",
-    body: `Hi {{name}},
+    body: `Hi {{firstName}},
 
 Your {{type}} ticket ({{ticketNumber}}) is now in progress. Our team is actively working on it and we'll let you know as soon as it's done.
 
-Thank you for your patience.
+To see your ticket, open Miller Storm ({{appUrl}}) and ${SUPPORT_BUTTON_HINT}.
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{type}}", "{{ticketNumber}}"],
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{type}}", "{{ticketNumber}}"],
   },
   ticketCompleted: {
     subject: "Your ticket {{ticketNumber}} has been completed 🎉",
-    body: `Hi {{name}},
+    body: `Hi {{firstName}},
 
-Your {{type}} ticket ({{ticketNumber}}) has been completed successfully. Please check further and let us know if anything else is needed.
+Your {{type}} ticket ({{ticketNumber}}) has been completed. If anything still isn't right, reply to the ticket in the app and we'll pick it back up.
 
-Thank you!
+To see your ticket, open Miller Storm ({{appUrl}}) and ${SUPPORT_BUTTON_HINT}.
 
-© 2026-2027 Miller Storm. All Rights Reserved.`,
-    variables: ["{{name}}", "{{type}}", "{{ticketNumber}}"],
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{type}}", "{{ticketNumber}}"],
   },
 };
 
-export function renderTemplate(body: string, subject: string, vars: Record<string, string>): { html: string; text: string; subject: string } {
-  let renderedBody = body;
-  let renderedSubject = subject;
-  Object.entries(vars).forEach(([key, val]) => {
-    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    renderedBody = renderedBody.replace(new RegExp(escaped, "g"), val || "N/A");
-    renderedSubject = renderedSubject.replace(new RegExp(escaped, "g"), val || "N/A");
-  });
+/** The fields a template may use: its own plus the shared links. */
+export function allowedVariables(key: string): string[] {
+  return [...(EMAIL_DEFAULTS[key]?.variables || []), ...GLOBAL_VARIABLES];
+}
+
+/** Placeholders in a subject/body that the template's sender never fills in. */
+export function unknownVariables(key: string, subject: string, body: string): string[] {
+  const allowed = new Set(allowedVariables(key));
+  const used = `${subject}\n${body}`.match(/\{\{\s*\w+\s*\}\}/g) || [];
+  return [...new Set(used)].filter((v) => !allowed.has(v));
+}
+
+/** "Jane Rivera" → "Jane". Falls back to "there" ("Hi there") when there is no real name. */
+export function firstNameOf(fullName: string | null | undefined): string {
+  const name = (fullName || "").trim();
+  if (!name || name.includes("@")) return "there";
+  return name.split(/\s+/)[0];
+}
+
+const BRANCH_ROLES = ["sales", "sales-team-lead", "branch-manager"];
+const NOT_ASSIGNED = "Not assigned yet";
+
+/**
+ * The Branch and Sales Team Lead lines of a person's details, by role. null
+ * means the line does not apply to this person and is left out of the email:
+ * only a sales rep has a Sales Team Lead, and C-level, admin and marketing
+ * accounts do not belong to a branch (the line still shows if one is set).
+ */
+export function branchAndLead(
+  roles: string[],
+  branch: string | null | undefined,
+  salesTeamLead: string | null | undefined
+): { branch: string | null; salesTeamLead: string | null } {
+  const has = (r: string) => roles.includes(r);
+  const b = (branch || "").trim();
+  const lead = (salesTeamLead || "").trim();
+  return {
+    branch: b || (BRANCH_ROLES.some(has) ? NOT_ASSIGNED : null),
+    salesTeamLead: has("sales") ? lead || NOT_ASSIGNED : null,
+  };
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// One pass over the text, so a value that itself contains "{{x}}" is never
+// substituted a second time. Placeholders with no value are left as written.
+function fill(src: string, vars: Record<string, string>, transform: (key: string, val: string) => string): string {
+  return src.replace(/\{\{\w+\}\}/g, (key) => (key in vars ? transform(key, vars[key] || "N/A") : key));
+}
+
+// Lines that start with "* " or "- " are bullets.
+const BULLET = /^\s*[*-]\s+/;
+
+/**
+ * Builds the email. A field given as null does not apply to this recipient, so
+ * every line that uses it is dropped (an admin's details have no "Sales Team
+ * Lead" line). A field given as "" still shows, as "N/A".
+ */
+export function renderTemplate(
+  body: string,
+  subject: string,
+  vars: Record<string, string | null>
+): { html: string; text: string; subject: string } {
+  const all: Record<string, string> = {
+    "{{appUrl}}": APP_LINKS.appUrl,
+    // Old name for the same link. Not offered in Email Config any more; it is
+    // still filled so templates saved before 2026-09-30 keep working until
+    // they are updated.
+    "{{loginUrl}}": APP_LINKS.appUrl,
+    "{{iosAppUrl}}": APP_LINKS.iosAppUrl,
+    "{{androidAppUrl}}": APP_LINKS.androidAppUrl,
+  };
+  const skipped = new Set<string>();
+  for (const [key, val] of Object.entries(vars)) {
+    if (val === null) skipped.add(key);
+    else all[key] = val;
+  }
+  for (const [full, first] of Object.entries(FIRST_NAME_OF)) {
+    if (full in all && !(first in vars)) all[first] = firstNameOf(all[full]);
+  }
+
+  const kept = body
+    .split("\n")
+    .filter((line) => !(line.match(/\{\{\w+\}\}/g) || []).some((k) => skipped.has(k)))
+    .join("\n");
+
+  const renderedSubject = fill(subject, all, (_k, v) => v).replace(/\*\*/g, "");
+
+  // Plain-text part: bold markers dropped, bullets as "- ", HTML values stripped.
+  const text = fill(kept, all, (k, v) => (RAW_HTML_FIELDS.has(k) ? v.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : v))
+    .split("\n")
+    .map((line) => line.replace(/\*\*(.+?)\*\*/g, "$1").replace(BULLET, "- "))
+    .join("\n") + `\n\n${COPYRIGHT}`;
+
+  // HTML part: the template and every value are escaped (a ticket note is typed
+  // by a user and must not be able to inject links or markup), then **bold** and
+  // bullets are turned into markup.
+  const htmlBody = fill(escapeHtml(kept), all, (k, v) => (RAW_HTML_FIELDS.has(k) ? v : escapeHtml(v)))
+    .split("\n")
+    .map((line) => {
+      if (!line.trim()) return "<br/>";
+      const bullet = BULLET.test(line);
+      const content = line.replace(BULLET, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      return `<p style="margin:0 0 12px;color:#374151;font-size:15px;line-height:1.6;">${bullet ? "&bull;&nbsp;" : ""}${content}</p>`;
+    })
+    .join("");
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
@@ -313,15 +447,15 @@ export function renderTemplate(body: string, subject: string, vars: Record<strin
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
 <tr><td style="padding:40px 40px 20px;text-align:center;">
-  <h1 style="margin:0;color:#111827;font-size:24px;font-weight:600;">Miller Storm Operating System</h1>
+  <h1 style="margin:0;color:#111827;font-size:24px;font-weight:600;">Miller Storm</h1>
 </td></tr>
 <tr><td style="padding:20px 40px 40px;">
-  ${renderedBody.split("\n").map(line => line.trim() ? `<p style="margin:0 0 12px;color:#374151;font-size:15px;line-height:1.6;">${line}</p>` : "<br/>").join("")}
+  ${htmlBody}
 </td></tr>
 <tr><td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
-  <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
+  <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">${COPYRIGHT}</p>
 </td></tr>
 </table></td></tr></table></body></html>`;
 
-  return { html, text: renderedBody, subject: renderedSubject };
+  return { html, text, subject: renderedSubject };
 }

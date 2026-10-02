@@ -176,14 +176,17 @@ describe("contractKingCertificate email template", () => {
   it("declares exactly the variables sendKingCertificateEmail substitutes", () => {
     // Drift guard. An admin editing the template sees this list; if the sender
     // stops filling one of them, the rep receives a raw {{placeholder}}.
+    // {{appUrl}} is a shared link every template gets, so it is not listed here.
+    // {{firstName}} is worked out from {{name}} by the email builder.
     expect([...tmpl.variables].sort()).toEqual(
-      ["{{appUrl}}", "{{certificateId}}", "{{issuedDate}}", "{{monthLabel}}", "{{name}}", "{{stats}}"]
+      ["{{certificateId}}", "{{firstName}}", "{{issuedDate}}", "{{monthLabel}}", "{{name}}", "{{stats}}"]
     );
   });
 
   it("uses every variable it declares", () => {
+    // The greeting uses {{firstName}}; the full {{name}} stays available to editors.
     const src = `${tmpl.subject}\n${tmpl.body}`;
-    for (const v of tmpl.variables) expect(src).toContain(v);
+    for (const v of tmpl.variables.filter((v) => v !== "{{name}}")) expect(src).toContain(v);
   });
 
   it("leaves no placeholder behind once rendered", () => {
