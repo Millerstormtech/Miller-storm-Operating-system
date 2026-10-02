@@ -137,6 +137,8 @@ export function EmailConfig() {
 
   const active = configs[activeKey];
   const variables = EMAIL_DEFAULTS[activeKey]?.variables || [];
+  // A refused save explains itself on its own line; "Saved!" fits in the button row.
+  const refusal = saveNotice.startsWith("Not saved");
   const activeUnknown = active ? unknownVariables(activeKey, active.subject, active.body) : [];
   // The preview is the real email builder, so bold text, bullets, the shared
   // links and the copyright footer look exactly as they will in an inbox.
@@ -209,8 +211,8 @@ export function EmailConfig() {
 
       {/* Right editor */}
       <div style={{ flex: 1, overflowY: "auto", padding: 32 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
-          <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: refusal ? 12 : 24 }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: "0.01em", color: "var(--text-primary)", marginBottom: 4 }}>
               {labelFor(activeKey)}
             </div>
@@ -218,11 +220,9 @@ export function EmailConfig() {
               Edit the subject and body. Use the dynamic fields below in your content.
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {saveNotice && (
-              <span style={{ fontSize: 12, fontWeight: 500, maxWidth: 360, color: saveNotice.startsWith("Not saved") ? "var(--brand-on-surface)" : "#16a34a" }}>
-                {saveNotice}
-              </span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+            {saveNotice && !refusal && (
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#16a34a", whiteSpace: "nowrap" }}>{saveNotice}</span>
             )}
             {/* Draft / Published toggle */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -250,7 +250,7 @@ export function EmailConfig() {
             <button
               type="button"
               onClick={() => setShowResetConfirm(true)}
-              style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--surface-default)", fontSize: 13, cursor: "pointer", color: "var(--text-primary)" }}
+              style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--surface-default)", fontSize: 13, cursor: "pointer", color: "var(--text-primary)", whiteSpace: "nowrap" }}
             >
               Reset to Default
             </button>
@@ -258,12 +258,16 @@ export function EmailConfig() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+              style={{ padding: "8px 20px", borderRadius: 6, border: "none", background: "linear-gradient(90deg, #b30002, #e01418)", color: "var(--text-inverse)", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
             >
               {saving ? "Saving..." : "Save All Templates"}
             </button>
           </div>
         </div>
+
+        {refusal && (
+          <div role="status" style={{ marginBottom: 20, fontSize: 13, fontWeight: 500, color: "var(--brand-on-surface)" }}>{saveNotice}</div>
+        )}
 
         {/* Dynamic variables reference */}
         <div style={{ marginBottom: 20, padding: 14, background: "rgba(241,195,60,0.1)", border: "1px solid rgba(241,195,60,0.3)", borderRadius: 8 }}>
