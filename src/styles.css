@@ -2632,7 +2632,9 @@ body {
 .training-card-grid {
   margin-top: 4px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  /* min() lets a card shrink to the screen on phones: a bare 420px minimum ran
+     every course card 30px past the right edge of a 390px-wide phone. */
+  grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
   gap: 16px;
 }
 
