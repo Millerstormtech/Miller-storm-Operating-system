@@ -2528,8 +2528,6 @@ class _AIChatState extends State<_AIChat> {
                                 fontSize: 12,
                                 color: _textLight,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                         ],
                       ),
@@ -2588,8 +2586,6 @@ class _AIChatState extends State<_AIChat> {
                                       fontWeight: FontWeight.w500,
                                       color: _textDark,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   subtitle: Text(
                                     '${(chat['messages'] as List?)?.length ?? 0} messages',

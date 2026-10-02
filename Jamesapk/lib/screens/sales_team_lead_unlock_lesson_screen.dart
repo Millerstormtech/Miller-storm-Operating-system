@@ -626,7 +626,7 @@ class _SalesTeamLeadUnlockLessonScreenState extends State<SalesTeamLeadUnlockLes
                         Text(p['isQuiz'] == true ? 'Quiz' : 'Lesson',
                             style: TextStyle(fontSize: 10, color: _textLight)),
                         Text((p['title'] ?? '').toString(),
-                            style: TextStyle(fontSize: 13, color: _textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            style: TextStyle(fontSize: 13, color: _textDark), ),
                       ],
                     ),
                   ),

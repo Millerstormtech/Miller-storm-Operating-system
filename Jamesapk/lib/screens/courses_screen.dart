@@ -520,8 +520,6 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                         style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 2),
                     Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13)),
                   ],
                 ),
@@ -755,8 +753,6 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
             child: Text(
               name.toUpperCase(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: _textDark),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

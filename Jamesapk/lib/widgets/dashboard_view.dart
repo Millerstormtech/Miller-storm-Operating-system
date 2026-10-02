@@ -240,7 +240,6 @@ class _DashboardViewState extends State<DashboardView> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text('Hi, ${_firstName((scope['viewer'] ?? '').toString())}',
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textDark)),
               ),
               const SizedBox(width: 8),
@@ -630,7 +629,7 @@ class _DashboardViewState extends State<DashboardView> {
             children: [
               SizedBox(width: 18, child: Text('$rank', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: rankColor))),
               const SizedBox(width: 6),
-              Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textDark))),
+              Expanded(child: Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textDark))),
               const SizedBox(width: 8),
               Text(valueText, style: TextStyle(fontSize: 14, color: AppColors.textDark, fontFeatures: const [FontFeature.tabularFigures()])),
             ],
@@ -760,7 +759,7 @@ class _DashboardViewState extends State<DashboardView> {
         if (name == null || name.isEmpty)
           Text('Nobody yet', style: TextStyle(fontSize: 13, color: AppColors.textPlaceholder, fontStyle: FontStyle.italic))
         else ...[
-          Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+          Text(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark)),
           const SizedBox(height: 3),
           Text(money ? _money(value) : _int(value), style: TextStyle(fontSize: 13, color: AppColors.textLight, fontFeatures: const [FontFeature.tabularFigures()])),
         ],
@@ -861,7 +860,7 @@ class _DashboardViewState extends State<DashboardView> {
             child: Row(
               children: [
                 Flexible(
-                  child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  child: Text(name,
                       style: TextStyle(
                         fontSize: 14, fontWeight: FontWeight.w700,
                         color: onTap != null ? _primary : AppColors.textDark,
@@ -1031,7 +1030,7 @@ class _DashboardViewState extends State<DashboardView> {
                     SizedBox(width: 16, child: Text('${i + 1}', style: TextStyle(fontSize: 11, color: AppColors.textPlaceholder))),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      child: Text(name,
                           style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w700,
                             color: id.isEmpty ? AppColors.textDark : _primary,

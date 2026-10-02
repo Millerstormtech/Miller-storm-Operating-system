@@ -339,8 +339,6 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
                       fontWeight: FontWeight.w700,
                       color: _textDark,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 4),

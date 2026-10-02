@@ -1258,7 +1258,6 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
                             child: Text(
                               isYou ? '$name (You)' : name,
                               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark),
-                              maxLines: 2, overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (isFormer) ...[
@@ -1276,8 +1275,7 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
                         ],
                       ),
                       if (subtitle.isNotEmpty)
-                        Text(subtitle, style: TextStyle(fontSize: 12, color: _textPlaceholder),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(subtitle, style: TextStyle(fontSize: 12, color: _textPlaceholder)),
                     ],
                   ),
                 ),
@@ -1378,8 +1376,6 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
                 Text(
                   name,
                   style: const TextStyle(color: Color(0xFFF0F2F5), fontSize: 16, fontWeight: FontWeight.w700),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -1462,14 +1458,12 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(name,
-                  style: TextStyle(color: _textDark, fontSize: 14.5, fontWeight: FontWeight.w700),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
+                  style: TextStyle(color: _textDark, fontSize: 14.5, fontWeight: FontWeight.w700)),
               Text(
                 behindBy == null
                     ? 'Leads the company'
                     : 'Behind $behindName by ${_money(behindBy)}',
                 style: TextStyle(color: _textLight, fontSize: 11.5),
-                maxLines: 1, overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

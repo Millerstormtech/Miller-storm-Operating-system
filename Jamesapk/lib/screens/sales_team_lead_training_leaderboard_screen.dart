@@ -428,7 +428,7 @@ class _SalesTeamLeadTrainingLeaderboardScreenState extends State<SalesTeamLeadTr
           children: [
             Icon(Icons.menu_book_outlined, size: 18, color: _textLight),
             const SizedBox(width: 8),
-            Expanded(child: Text(_selectedCourse?['title'] ?? 'Select a course', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark))),
+            Expanded(child: Text(_selectedCourse?['title'] ?? 'Select a course', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark))),
             Icon(Icons.keyboard_arrow_down, size: 20, color: _textLight),
           ],
         ),
@@ -564,7 +564,7 @@ class _SalesTeamLeadTrainingLeaderboardScreenState extends State<SalesTeamLeadTr
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Team ${s['team']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textDark)),
+                              Text('Team ${s['team']}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textDark)),
                               const SizedBox(height: 3),
                               Row(
                                 children: [
@@ -766,7 +766,7 @@ class _SalesTeamLeadTrainingLeaderboardScreenState extends State<SalesTeamLeadTr
               children: [
                 Row(
                   children: [
-                    Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
+                    Flexible(child: Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
                     if (r['isPodium'] == true) const Padding(padding: EdgeInsets.only(left: 4), child: Text('🏆', style: TextStyle(fontSize: 13))),
                     if (isMe) ...[
                       const SizedBox(width: 6),
@@ -786,8 +786,6 @@ class _SalesTeamLeadTrainingLeaderboardScreenState extends State<SalesTeamLeadTr
                     Flexible(
                       child: Text(
                         [if (branch.isNotEmpty) branch, if (team.isNotEmpty) 'Team $team'].join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 11.5, color: _textLight),
                       ),
                     ),
@@ -906,7 +904,7 @@ class _SalesTeamLeadTrainingLeaderboardScreenState extends State<SalesTeamLeadTr
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(children: [
-                  Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
+                  Flexible(child: Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
                   if (isMe) ...[
                     const SizedBox(width: 6),
                     Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: _indigo, borderRadius: BorderRadius.circular(6)), child: Text('YOU', style: TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w800))),
@@ -1230,7 +1228,7 @@ class _RepDetailSheetState extends State<_RepDetailSheet> {
                       _tierPill(tier),
                       const SizedBox(width: 6),
                     ],
-                    Flexible(child: Text([if (branch.isNotEmpty) branch, if (team.isNotEmpty) 'Team $team'].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: _textLight))),
+                    Flexible(child: Text([if (branch.isNotEmpty) branch, if (team.isNotEmpty) 'Team $team'].join(' · '), style: TextStyle(fontSize: 12.5, color: _textLight))),
                   ]),
                 ],
               ),
@@ -1297,7 +1295,7 @@ class _RepDetailSheetState extends State<_RepDetailSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _textDark))),
+            Expanded(child: Text(title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _textDark))),
             if (complete) const Padding(padding: EdgeInsets.only(left: 6), child: Text('🏁', style: TextStyle(fontSize: 14))),
           ]),
           const SizedBox(height: 6),

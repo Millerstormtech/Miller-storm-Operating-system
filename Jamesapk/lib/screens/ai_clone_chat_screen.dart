@@ -530,14 +530,19 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    botName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  // The app bar is one line tall: a long bot name shrinks to
+                  // fit rather than being cut off with "...".
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      botName,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   if (_currentChatTitle.isNotEmpty && _currentChatTitle != 'New Chat')
@@ -917,8 +922,6 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                                                     color: Colors.white,
                                                     fontSize: 13,
                                                   ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Text(
@@ -1131,8 +1134,6 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                                 fontSize: 12,
                                 color: _textDark,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

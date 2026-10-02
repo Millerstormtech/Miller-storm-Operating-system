@@ -896,8 +896,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                         children: [
                           Flexible(
                             child: Text('${voted ? '✓ ' : ''}${o['text'] ?? ''}',
-                                style: TextStyle(color: textColor, fontSize: 13, fontWeight: voted ? FontWeight.w700 : FontWeight.w500),
-                                overflow: TextOverflow.ellipsis),
+                                style: TextStyle(color: textColor, fontSize: 13, fontWeight: voted ? FontWeight.w700 : FontWeight.w500)),
                           ),
                           const SizedBox(width: 6),
                           Text('$votes · $pct%', style: TextStyle(color: textColor, fontSize: 12)),
@@ -3021,7 +3020,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(fileName,
-                        maxLines: 2, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor)),
                     Text('Tap to open',
                         style: TextStyle(fontSize: 11, color: textColor.withOpacity(0.8))),

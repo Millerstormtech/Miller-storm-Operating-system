@@ -589,8 +589,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -599,8 +597,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: _white.withOpacity(0.9),
                             fontSize: 13,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 8),
                         Container(

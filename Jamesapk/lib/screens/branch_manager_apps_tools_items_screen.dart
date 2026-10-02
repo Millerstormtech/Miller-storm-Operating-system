@@ -339,8 +339,6 @@ class _BranchManagerAppsToolsItemsScreenState extends State<BranchManagerAppsToo
                       fontWeight: FontWeight.w700,
                       color: _textDark,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 4),

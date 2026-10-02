@@ -521,8 +521,6 @@ class _CLevelProfileScreenState extends State<CLevelProfileScreen> {
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -531,8 +529,6 @@ class _CLevelProfileScreenState extends State<CLevelProfileScreen> {
                             color: _white.withOpacity(0.9),
                             fontSize: 13,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 8),
                         Container(

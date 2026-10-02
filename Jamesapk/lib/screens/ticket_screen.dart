@@ -293,12 +293,17 @@ class _TicketScreenState extends State<TicketScreen> {
                     child: DropdownButton<String>(
                       value: _type.isEmpty ? null : _type,
                       isExpanded: true,
+                      // Rows grow to fit the whole reason; the default fixed
+                      // row height would cut a long one off with "...".
+                      itemHeight: null,
                       hint: const Text('Not Selected'),
                       items: _categories
                           .map((c) => DropdownMenuItem(
                                 value: c['key'] as String,
-                                child: Text('${c['label']} — ${c['reason']}',
-                                    overflow: TextOverflow.ellipsis),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  child: Text('${c['label']} — ${c['reason']}'),
+                                ),
                               ))
                           .toList(),
                       onChanged: (v) { if (v != null) _onReasonChanged(v); },

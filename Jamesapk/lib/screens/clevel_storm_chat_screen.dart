@@ -609,8 +609,6 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                                 fontWeight: FontWeight.w700,
                                 color: _textDark,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (onlyAdminCanChat)
@@ -795,7 +793,7 @@ class _CLevelStormChatScreenState extends State<CLevelStormChatScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark), ),
                       const SizedBox(height: 3),
                       Text('Private message', style: TextStyle(fontSize: 13, color: _textLight)),
                     ],

@@ -407,7 +407,6 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                           Flexible(
                             child: Text(
                               playlist['courseName'] ?? '',
-                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12.5),
                             ),
                           ),
@@ -755,7 +754,6 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                     if ((user['email'] ?? '').toString().isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(user['email'] ?? '',
-                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 12, color: _textLight)),
                     ],
                     if (deadlineChip != null) ...[
@@ -898,7 +896,6 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                   if ((email ?? '').isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(email ?? '',
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 12, color: _textLight)),
                   ],
                 ],
@@ -1124,8 +1121,6 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
                         style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 2),
                     Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13)),
                   ],
                 ),
@@ -1290,8 +1285,6 @@ class _SalesTeamLeadCoursesScreenState extends State<SalesTeamLeadCoursesScreen>
             child: Text(
               name.toUpperCase(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: _textDark),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

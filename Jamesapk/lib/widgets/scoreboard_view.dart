@@ -726,8 +726,6 @@ class _ScoreboardViewState extends State<ScoreboardView> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
           ),
           const SizedBox(width: 8),
