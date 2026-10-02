@@ -8,10 +8,13 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { loadBoardData } from "../../../src/lib/training/board-data";
 import { LeaderboardSnapshotModel } from "../../../src/lib/models/LeaderboardSnapshot";
+import { UserModel } from "../../../src/lib/models/User";
 import { publishedItems } from "../../../src/lib/training/scoring";
 import {
   weekStartMonday,
   computeRankDeltas,
+  teamFromProfile,
+  branchFromProfile,
   type OverallResponse,
 } from "../../../src/lib/training/board";
 
@@ -65,6 +68,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (e) {
     console.error("[training/leaderboard] snapshot read failed:", e);
   }
+  // The viewer's own team/branch, from their profile by the same rule as the
+  // rows, so a team lead opens on their team and a branch manager on theirs.
+  const me: any = await UserModel.findOne({ id: auth.sub })
+    .select("name role managerId territory")
+    .lean();
+  const viewer = me
+    ? { team: teamFromProfile(me, data.leadNameById), branch: branchFromProfile(me) }
+    : { team: "", branch: "" };
+
   const deltas = computeRankDeltas(data.rows, prevRanks);
   for (const r of data.rows) r.rankDelta = deltas.get(r.id) ?? null;
 
@@ -82,6 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
     }),
     rows: data.rows,
+    viewer,
   };
   return res.status(200).json(payload);
 }
