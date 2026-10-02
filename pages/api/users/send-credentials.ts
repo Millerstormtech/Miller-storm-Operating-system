@@ -50,13 +50,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       managerName = manager?.name || null;
     }
 
-    await sendUserAccountUpdatedEmail({
+    const sent = await sendUserAccountUpdatedEmail({
       name: user.name || user.email,
       email: user.email,
       roles,
       branch,
       salesTeamLead: managerName,
     });
+    if (sent && "skipped" in sent) {
+      res.status(409).json({
+        error: 'The "User Account Updated" email is set to Draft in Email Config. Switch it to Published to send it.',
+      });
+      return;
+    }
 
     res.status(200).json({ success: true });
     return;

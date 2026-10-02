@@ -161,7 +161,9 @@ export async function sendUserAccountUpdatedEmail(params: {
   salesTeamLead: string | null;
 }) {
   const tmpl = await getEmailTemplate("userAccountUpdated");
-  if (tmpl.status === "draft") { console.log("[Email] userAccountUpdated is draft — skipping"); return; }
+  // Draft = switched off in Email Config. Report it, so Send Login Details can say
+  // "not sent" instead of showing "emailed" for an email that never went out.
+  if (tmpl.status === "draft") { console.log("[Email] userAccountUpdated is draft — skipping"); return { skipped: "draft" as const }; }
   const lines = branchAndLead(params.roles, params.branch, params.salesTeamLead);
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": params.name,
