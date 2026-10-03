@@ -7,6 +7,7 @@ import { sendPushNotificationToMultiple } from "../../../src/lib/firebase-admin"
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 import { trainingRouteForRole } from "../../../src/lib/trainingRoute";
 import { fillMissingDurations } from "../../../src/lib/lessonDurations";
+import { REP_ROLES } from "../../../src/lib/roleLadder";
 
 type ContentAnnouncement = {
   course: any;
@@ -24,9 +25,10 @@ async function notifyNewContent(announcements: ContentAnnouncement[]) {
     const recipients = await UserModel.find(
       {
         deleted: { $ne: true },
-        $or: [{ role: { $in: ["sales", "sales-team-lead"] } }, { roles: { $in: ["sales", "sales-team-lead"] } }],
+        // Everyone who sells: reps, team leads and branch managers (roleLadder.ts).
+        role: { $in: [...REP_ROLES] },
       },
-      { id: 1, role: 1, roles: 1, fcmToken: 1 }
+      { id: 1, role: 1, fcmToken: 1 }
     ).lean();
     if (!recipients.length) return;
 

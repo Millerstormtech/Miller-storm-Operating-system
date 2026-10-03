@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ...c,
       userName: u.name || c.userName,
       userEmail: u.email || c.userEmail,
-      userRole: u.role || (Array.isArray(u.roles) ? u.roles[0] : "") || c.userRole,
+      userRole: u.role || c.userRole,
     };
   });
 

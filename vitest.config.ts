@@ -28,6 +28,8 @@ export default defineConfig({
       "src/lib/businessPlan/**/*.test.ts",
       "src/lib/pageTitle.test.ts",
       "src/lib/subdomain.test.ts",
+      // The role ladder: one role per account, nested sales roles (2026-10-03).
+      "src/lib/roleLadder.test.ts",
       "src/lib/rateLimit.test.ts",
       "src/lib/emailTemplates.test.ts",
       "src/lib/ops/**/*.test.ts",

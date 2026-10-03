@@ -1,6 +1,7 @@
 import { useState, useMemo, ChangeEvent, useEffect, useRef } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile, BusinessPlan } from "../../types";
+import { isTeamLead } from "../../lib/roleLadder";
 
 export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   const [expandedManagers, setExpandedManagers] = useState<Set<string>>(new Set());
@@ -47,9 +48,9 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   const [savedUserId, setSavedUserId] = useState<string | null>(null);
   const [yearlyExpanded, setYearlyExpanded] = useState(true);
   const [monthlyExpanded, setMonthlyExpanded] = useState(true);
-  // Every branch manager also leads a team (2026-10-02).
-  const managers = props.users.filter((u) => u.role === "sales-team-lead" || u.role === "branch-manager" || (u.roles || []).includes("sales-team-lead"));
-  const salesReps = props.users.filter((u) => u.role === "sales" || (u.roles || []).includes("sales"));
+  // Everyone who leads a team: team leads and branch managers (roleLadder.ts).
+  const managers = props.users.filter((u) => isTeamLead(u.role));
+  const salesReps = props.users.filter((u) => u.role === "sales");
 
   // Calculate metrics using same formula as sales rep business plan page
   const calculateMetrics = (incomeGoal: number, dealAve: number, daysPerWeek: number = 5) => {

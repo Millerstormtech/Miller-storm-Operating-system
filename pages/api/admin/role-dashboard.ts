@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         id: u.id,
         name: u.name || u.email,
         email: u.email,
-        role: u.role || (u.roles || [])[0] || "",
+        role: u.role || "",
         headshotUrl: u.headshotUrl || "",
         suspended: !!u.suspended,
         doneLessons,

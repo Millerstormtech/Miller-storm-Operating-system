@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { isQuizResultPassing } from "../../lib/quiz";
+import { isRep, isTeamLead } from "../../lib/roleLadder";
 
 type UserRow = {
   id: string;
@@ -46,8 +47,8 @@ export function TrainingExecutiveView() {
           (u: any) =>
             !u.deleted &&
             !u.suspended &&
-            (u.role === "sales-team-lead" || u.role === "sales" ||
-              (u.roles || []).some((r: string) => r === "sales-team-lead" || r === "sales"))
+            // Everyone who sells: reps, team leads and branch managers (roleLadder.ts).
+            isRep(u.role)
         );
 
         const published = courses.filter((c: any) => c.status === "published");
@@ -103,14 +104,14 @@ export function TrainingExecutiveView() {
               id: u.id,
               name: u.name || u.email,
               email: u.email,
-              role: u.role || (u.roles || [])[0] || "",
+              role: u.role || "",
               done,
               total,
               pct,
               status,
             };
 
-            const isManager = u.role === "sales-team-lead" || u.role === "branch-manager" || (u.roles || []).includes("sales-team-lead");
+            const isManager = isTeamLead(u.role);
             if (isManager) managers.push(row);
             else sales.push(row);
           });
