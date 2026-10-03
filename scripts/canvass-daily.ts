@@ -22,7 +22,7 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import mongoose from "mongoose";
-import { MAX_CATCH_UP_DAYS, dailySteps, failureAlert, stormDaysToFetch, type Step } from "../src/lib/canvass/dailyRun";
+import { MAX_CATCH_UP_DAYS, PARTIAL_EXIT_CODE, dailySteps, failureAlert, partialAlert, stormDaysToFetch, type Step } from "../src/lib/canvass/dailyRun";
 import { centralDay } from "../src/lib/canvass/dates";
 import { CanvassHailCellModel } from "../src/lib/models/CanvassHailCell";
 import { sendEmail } from "../src/lib/email";
@@ -58,13 +58,35 @@ function loadEnv(file: string) {
   }
 }
 
-function run(step: Step): Promise<void> {
+/**
+ * Runs one step, passing its output through line by line so it reaches the PM2
+ * log, and keeping the lines the alerts need: what it skipped, and its own
+ * FAILED line (on 2 Oct 2026 the email said only "ended with code 1").
+ * Resolves with the SKIPPED lines; an exit with PARTIAL_EXIT_CODE counts as done.
+ */
+function run(step: Step): Promise<string[]> {
   return new Promise((resolve, reject) => {
-    const child = spawn(step.command, step.args, { stdio: "inherit" });
+    const child = spawn(step.command, step.args, { stdio: ["ignore", "pipe", "pipe"] });
+    const skipped: string[] = [];
+    let lastFailure = "";
+    const watch = (stream: NodeJS.ReadableStream, out: NodeJS.WriteStream) => {
+      let pending = "";
+      stream.on("data", (chunk: Buffer) => {
+        out.write(chunk);
+        const lines = (pending + chunk.toString("utf8")).split("\n");
+        pending = lines.pop() ?? "";
+        for (const line of lines) {
+          if (line.includes(" SKIPPED ")) skipped.push(line.replace(/^\[[a-z-]+\]\s*SKIPPED\s*/, "").trim());
+          if (line.includes("FAILED")) lastFailure = line.trim();
+        }
+      });
+    };
+    watch(child.stdout!, process.stdout);
+    watch(child.stderr!, process.stderr);
     child.on("error", (error) => reject(new Error(`${step.name} could not start: ${error.message}`)));
-    child.on("exit", (code, signal) => {
-      if (code === 0) resolve();
-      else reject(new Error(`${step.name} ended with ${signal ? `signal ${signal}` : `code ${code}`}`));
+    child.on("close", (code, signal) => {
+      if (code === 0 || code === PARTIAL_EXIT_CODE) resolve(skipped);
+      else reject(new Error(`${step.name} ended with ${signal ? `signal ${signal}` : `code ${code}`}${lastFailure ? `: ${lastFailure.slice(0, 300)}` : ""}`));
     });
   });
 }
@@ -112,11 +134,12 @@ async function main() {
   console.log(`[daily] ${options.dryRun ? "DRY RUN: " : ""}${steps.length} step(s) for ${today}: ${steps.map((s) => s.name).join(", ")}`);
   const started = Date.now();
   const done: string[] = [];
+  const skippedNotes: string[] = [];
   for (const step of steps) {
     const at = Date.now();
     console.log(`[daily] ${step.name}: ${step.description}`);
     try {
-      await run(step);
+      for (const note of await run(step)) skippedNotes.push(`${step.name}: ${note}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`[daily] FAILED at ${step.name} after ${((Date.now() - at) / 60000).toFixed(1)} min: ${message}`);
@@ -130,7 +153,11 @@ async function main() {
     done.push(step.name);
     console.log(`[daily] ${step.name} done in ${((Date.now() - at) / 60000).toFixed(1)} min`);
   }
-  console.log(`[daily] refresh complete: ${done.length} step(s) in ${((Date.now() - started) / 60000).toFixed(1)} min`);
+  console.log(`[daily] refresh complete: ${done.length} step(s) in ${((Date.now() - started) / 60000).toFixed(1)} min${skippedNotes.length ? `, with ${skippedNotes.length} skip(s)` : ""}`);
+  if (skippedNotes.length && !options.dryRun) {
+    const to = process.env.SYNC_ALERT_EMAIL || process.env.RESEND_FROM_ADDRESS || "tech@millerstorm.com";
+    await sendEmail({ to, ...partialAlert(skippedNotes) }).catch(() => {}); // a safety net, never a failure
+  }
 }
 
 main().catch(async (error) => {

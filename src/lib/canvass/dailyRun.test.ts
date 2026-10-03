@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_CATCH_UP_DAYS, dailySteps, dayAfter, failureAlert, stormDaysToFetch, type StepInput } from "./dailyRun";
+import { MAX_CATCH_UP_DAYS, PARTIAL_EXIT_CODE, dailySteps, dayAfter, failureAlert, isRejectedKey, partialAlert, stormDaysToFetch, type StepInput } from "./dailyRun";
 
 describe("stormDaysToFetch", () => {
   it("fetches from the day after the newest loaded day up to yesterday", () => {
@@ -93,5 +93,28 @@ describe("failureAlert", () => {
     const alert = failureAlert("hail-fetch", "<timeout>", []);
     expect(alert.html).toContain("&lt;timeout&gt;");
     expect(alert.text).toContain("Steps completed first: none");
+  });
+});
+
+describe("a refused AccuLynx key", () => {
+  it("is told apart from a passing outage", () => {
+    expect(isRejectedKey('AccuLynx 401 on /company-settings: {"title":"API Key is invalid or deactivated."}')).toBe(true);
+    expect(isRejectedKey("AccuLynx 403 on /jobs: forbidden")).toBe(true);
+    expect(isRejectedKey("AccuLynx 500 on /jobs: oops")).toBe(false);
+    expect(isRejectedKey("AccuLynx retries exhausted on /jobs")).toBe(false);
+    expect(isRejectedKey("AccuLynx request failed on /jobs: fetch failed")).toBe(false);
+  });
+
+  it("uses an exit code no other failure uses", () => {
+    expect(PARTIAL_EXIT_CODE).toBe(3);
+  });
+
+  it("warns by email with what was skipped and how to fix it, one line each", () => {
+    const alert = partialAlert(["jobs: ACCULYNX_API_KEY_COMMERCIAL: AccuLynx refused the key", "jobs-signed: ACCULYNX_API_KEY_COMMERCIAL: AccuLynx refused the key"]);
+    expect(alert.subject).toBe("Canvass Map refresh skipped part of its work");
+    expect(alert.text.split("\n")).toContain("- jobs: ACCULYNX_API_KEY_COMMERCIAL: AccuLynx refused the key");
+    expect(alert.text).toContain("pm2 logs canvass-daily");
+    expect(alert.html).toContain("<li>jobs-signed: ACCULYNX_API_KEY_COMMERCIAL: AccuLynx refused the key</li>");
+    expect(alert.text).not.toMatch(/\u2014/);
   });
 });

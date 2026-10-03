@@ -27,6 +27,7 @@ import { cleanBranchName, getLocationKeys } from "../src/lib/acculynx/config";
 import { signedDateFrom } from "../src/lib/canvass/jobs";
 import { isLocalTestDatabase } from "../src/lib/canvass/dbGuard";
 import { monthsBefore, centralDay } from "../src/lib/canvass/dates";
+import { PARTIAL_EXIT_CODE, isRejectedKey } from "../src/lib/canvass/dailyRun";
 import { CanvassJobModel } from "../src/lib/models/CanvassJob";
 
 const STAGES_TO_READ = ["Approved", "Completed", "Invoiced", "Closed"];
@@ -70,6 +71,7 @@ async function main() {
   if (locations.length === 0) throw new Error("No AccuLynx keys found in the env file");
 
   await mongoose.connect(options.uri);
+  const skipped: string[] = [];
   const today = centralDay(new Date()) ?? new Date().toISOString().slice(0, 10);
   const since = new Date(`${monthsBefore(today, options.sinceMonths)}T00:00:00Z`);
   let read = 0;
@@ -78,7 +80,17 @@ async function main() {
   for (const { envVar, key } of locations) {
     if (read >= options.maxJobs) break;
     const client = createClient(key);
-    const company = await client.fetchCompanySettings();
+    let company;
+    try {
+      company = await client.fetchCompanySettings();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!isRejectedKey(message)) throw error;
+      // One branch's key was refused (deactivated or wrong): skip that branch, keep the others.
+      skipped.push(envVar);
+      console.log(`[signed] SKIPPED ${envVar}: AccuLynx refused the key (${message.slice(0, 80)})`);
+      continue;
+    }
     const branch = company ? cleanBranchName(company.name) : envVar.replace(/^ACCULYNX_API_KEY_?/, "") || "Unknown";
 
     const jobs = (await CanvassJobModel.find(
@@ -107,6 +119,7 @@ async function main() {
 
   console.log(`[signed] done: ${read} job histories read, ${signed} with a signing date ${options.dryRun ? "(dry run, nothing written)" : "written"}`);
   await mongoose.disconnect();
+  if (skipped.length > 0) process.exitCode = PARTIAL_EXIT_CODE;
 }
 
 main().catch(async (error) => {
