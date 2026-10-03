@@ -14,7 +14,7 @@ import { sendPushNotification } from "../../../src/lib/firebase-admin";
 // without an edit here; anything privileged that is added to the User model
 // must be appended.
 const SELF_EDIT_FORBIDDEN_FIELDS = [
-  "role", "roles", "managerId", "email", "territory", "branches",
+  "role", "managerId", "email", "territory", "branches",
   "suspended", "deleted", "deletedAt",
   "deletionRequested", "deletionRequestedAt", "deletionRejected", "deletionApproved",
   "testAccount", "featureToggles", "fastForwardAllowed", "acculynxUserId",

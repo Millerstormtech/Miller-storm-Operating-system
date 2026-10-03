@@ -216,7 +216,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Leadership accounts, so a branch manager the org chart does not list as a
       // team lead is still never named on the Lowest Knocks card.
       lowWindow
-        ? UserModel.find({ $or: [{ role: { $in: LEADER_ROLES } }, { roles: { $in: LEADER_ROLES } }] }).select("id").lean()
+        ? UserModel.find({ role: { $in: LEADER_ROLES } }).select("id").lean()
         : Promise.resolve(null),
       // The crowning that actually happened: one row per month, written by the
       // 1st-of-month cron. The live crown on the leaderboard is a race still

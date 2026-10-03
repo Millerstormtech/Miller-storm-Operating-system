@@ -351,7 +351,7 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
     // `roles` array (e.g. a branch manager who is also a sales team lead).
     if (roleFilter !== "all") {
       filtered = filtered.filter(u =>
-        u.role === roleFilter || (Array.isArray((u as any).roles) && (u as any).roles.includes(roleFilter))
+        u.role === roleFilter
       );
     }
     

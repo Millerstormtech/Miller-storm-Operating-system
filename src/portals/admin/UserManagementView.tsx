@@ -200,7 +200,7 @@ export function UserManagementView() {
                       <div style={{ flex: 1, minWidth: 200 }}>
                         <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{user.name}</div>
                         <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 4 }}>
-                          {(user.roles || [user.role]).map((r) => (r || "").toUpperCase()).join(", ")} • {user.email}
+                          {(user.role || "").toUpperCase()} • {user.email}
                         </div>
                         {(user as any).deletionRequestedAt && (
                           <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
@@ -250,7 +250,7 @@ export function UserManagementView() {
                 q === "" ||
                 (user.name ?? "").toLowerCase().includes(q) ||
                 (user.email ?? "").toLowerCase().includes(q) ||
-                (user.roles || [user.role]).some((r) => (r ?? "").toLowerCase().includes(q))
+                (user.role ?? "").toLowerCase().includes(q)
               );
               return (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -278,7 +278,7 @@ export function UserManagementView() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{user.name}</div>
                       <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 4 }}>
-                        {(user.roles || [user.role]).map((r) => r.toUpperCase()).join(", ")} • {user.email}
+                        {(user.role || "").toUpperCase()} • {user.email}
                       </div>
                       {user.deletedAt && (
                         <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>

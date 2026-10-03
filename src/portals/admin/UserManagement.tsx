@@ -6,6 +6,7 @@ import { roleDisplayName } from "../../lib/roleLabels";
 import { useAuth } from "../../contexts/AuthContext";
 import type { Drift } from "../../lib/repcard/appDrift";
 import type { OrgWarning } from "../../lib/repcard/org-chart";
+import { isRep, isTeamLead, isBranchManager } from "../../lib/roleLadder";
 
 type UserRole = "admin" | "sales-team-lead" | "sales" | "marketing" | "c-level" | "branch-manager";
 
@@ -458,7 +459,6 @@ export function UserManagement(props: UserEditorProps) {
       email: "",
       password: "",
       role: "" as any,
-      roles: [],
       strengths: "",
       weaknesses: "",
       phone: "",
@@ -1534,8 +1534,8 @@ export function UserManagement(props: UserEditorProps) {
                       setShowRolesDropdown(!showRolesDropdown);
                     }}
                   >
-                    <span className="territory-trigger-value" style={{ color: (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 ? 'var(--text-subtle)' : undefined }}>
-                      {(selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0
+                    <span className="territory-trigger-value" style={{ color: !selectedUser.role ? 'var(--text-subtle)' : undefined }}>
+                      {!selectedUser.role
                         ? "-- Select a role (required) --"
                         : roleDisplayName(selectedUser.role)}
                     </span>
@@ -1566,13 +1566,9 @@ export function UserManagement(props: UserEditorProps) {
                           className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"}
                           style={{ cursor: "pointer" }}
                           onClick={() => {
-                            // Every branch manager also leads a team (Youssef, 2026-10-02),
-                            // so they always carry the sales-team-lead role too: they show in
-                            // the Team Lead picker and get team-lead training like before.
-                            const newRoles: UserRole[] = role === "branch-manager" ? ["branch-manager", "sales-team-lead"] : [role];
                             const newManagerId = role === "sales" ? selectedUser.managerId : undefined;
                             if (role !== "sales") setManagerDraftId("");
-                            updateUser({ ...selectedUser, role: role, roles: newRoles, managerId: newManagerId });
+                            updateUser({ ...selectedUser, role: role, managerId: newManagerId });
                             setRoleError("");
                             setShowRolesDropdown(false);
                             setRolesDropdownPos(null);
@@ -1603,7 +1599,7 @@ export function UserManagement(props: UserEditorProps) {
                 const teamLeadOptions = branchSelected
                   ? draftUsers.filter((u) =>
                       !u.testAccount &&
-                      (u.role === "sales-team-lead" || u.role === "branch-manager" || (u.roles || []).includes("sales-team-lead")) &&
+                      isTeamLead(u.role) &&
                       (u.territory || "").trim().toLowerCase() === branch
                     )
                   : [];
@@ -1654,7 +1650,7 @@ export function UserManagement(props: UserEditorProps) {
                   Sales Team Lead + Sales Rep once a Branch is picked. */}
               {(selectedUser.role === "sales" || selectedUser.role === "sales-team-lead") && (selectedUser.territory || "").trim() && (() => {
                 const branch = (selectedUser.territory || "").trim().toLowerCase();
-                const branchMgr = draftUsers.find(u => (u.role === "branch-manager" || (u.roles || []).includes("branch-manager")) && (u.territory || "").trim().toLowerCase() === branch);
+                const branchMgr = draftUsers.find(u => isBranchManager(u.role) && (u.territory || "").trim().toLowerCase() === branch);
                 return (
                   <label className="field">
                     <span className="field-label">Branch Manager</span>
@@ -1725,7 +1721,7 @@ export function UserManagement(props: UserEditorProps) {
                       className="btn-primary btn-small"
                       onClick={async () => {
                         const applyToAll = (document.getElementById("applyToAllCheck") as HTMLInputElement)?.checked;
-                        const userRolesList = selectedUser.roles || [selectedUser.role];
+                        const userRolesList = [selectedUser.role];
 
                         // Build list of users to save
                         let usersToSave: UserProfile[] = [selectedUser];
@@ -1734,7 +1730,7 @@ export function UserManagement(props: UserEditorProps) {
                         if (applyToAll) {
                           nextDraft = draftUsers.map((u) => {
                             if (u.id === selectedUser.id) return u;
-                            const uRoles = u.roles || [u.role];
+                            const uRoles = [u.role];
                             // Find which roles this user shares with the selected user
                             const sharedRoles = userRolesList.filter(r => uRoles.includes(r));
                             if (sharedRoles.length === 0) return u;
@@ -1747,7 +1743,7 @@ export function UserManagement(props: UserEditorProps) {
                             return { ...u, featureToggles: { ...u.featureToggles, ...partialToggles } };
                           });
                           usersToSave = nextDraft.filter((u) => {
-                            const uRoles = u.roles || [u.role];
+                            const uRoles = [u.role];
                             return userRolesList.some(r => uRoles.includes(r));
                           });
                           setDraftUsers(nextDraft);
@@ -1781,7 +1777,7 @@ export function UserManagement(props: UserEditorProps) {
             </div>
 
             {/* Training Progress - Collapsible Inline */}
-            {(selectedUser.roles || [selectedUser.role]).some(r => r === 'sales-team-lead' || r === 'sales') && (
+            {isRep(selectedUser.role) && (
               <div className="panel-section" style={{ marginTop: 24 }}>
                 <div 
                   className="panel-section-title" 
@@ -2035,7 +2031,7 @@ export function UserManagement(props: UserEditorProps) {
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 14 }}>{user.name}</div>
                             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                              {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                              {(user.role || "").toUpperCase()} • {user.email}
                             </div>
                           </div>
                           {isSelected && (
@@ -2070,7 +2066,7 @@ export function UserManagement(props: UserEditorProps) {
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 14 }}>{user.name}</div>
                             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                              {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                              {(user.role || "").toUpperCase()} • {user.email}
                             </div>
                           </div>
                           <span style={{

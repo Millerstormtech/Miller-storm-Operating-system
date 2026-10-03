@@ -4,6 +4,7 @@ import { UserModel } from "../../../src/lib/models/User";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
+import { REP_ROLES } from "../../../src/lib/roleLadder";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -16,11 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const allUsers = await UserModel.find({
       deleted: { $ne: true },
       testAccount: { $ne: true },
-      $or: [
-        { role: "sales-team-lead" },
-        { role: "sales" },
-        { roles: { $in: ["sales-team-lead", "sales"] } },
-      ],
+      // Everyone who sells: reps, team leads and branch managers (roleLadder.ts).
+      role: { $in: [...REP_ROLES] },
     }).lean();
 
     // Fetch all published courses (with only necessary fields)

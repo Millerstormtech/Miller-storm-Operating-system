@@ -12,6 +12,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
+import { requireRole } from "../../../src/lib/auth";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { QuizAttemptModel } from "../../../src/lib/models/QuizAttempt";
@@ -29,16 +30,15 @@ const HISTORY_DAYS = 180;
 // Failed quiz attempts count as activity; only recent ones can matter.
 const ATTEMPT_DAYS = 30;
 
-// Authorization mirrors pages/api/stormbot/monthly-king.ts, including its note
-// on the body userId path.
-async function authorize(req: NextApiRequest): Promise<boolean> {
+// Two paths, like pages/api/acculynx/sync.ts:
+//   1. x-sync-secret header (the cron) -- server-trusted, not spoofable.
+//   2. a signed admin session (cookie or Bearer token), for a manual run from
+//      the app. Identity comes from the token, never from a userId in the body:
+//      a typed-in userId used to be enough, so anyone who knew an admin's
+//      email could trigger this (fixed 2026-10-03).
+function hasSyncSecret(req: NextApiRequest): boolean {
   const secret = req.headers["x-sync-secret"];
-  if (secret && secret === process.env.ACCULYNX_SYNC_SECRET) return true;
-  const userId = (req.body?.userId as string) || "";
-  if (!userId) return false;
-  await connectMongo();
-  const user: any = await UserModel.findOne({ id: userId, deleted: { $ne: true } }).lean();
-  return user?.role === "admin" || (user?.roles ?? []).includes("admin");
+  return !!secret && secret === process.env.ACCULYNX_SYNC_SECRET;
 }
 
 function serverMode(): "off" | "dry" | "on" {
@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader("Allow", "POST");
     return res.status(405).end();
   }
-  if (!(await authorize(req))) return res.status(401).json({ error: "unauthorized" });
+  if (!hasSyncSecret(req) && !requireRole(req, res, "admin")) return;
 
   const setting = serverMode();
   if (setting === "off") return res.status(200).json({ mode: "off", nudges: 0 });

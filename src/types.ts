@@ -76,7 +76,6 @@ export type UserProfile = {
   email: string;
   password?: string;
   role: UserRole;
-  roles?: UserRole[];
   suspended?: boolean;
   deleted?: boolean;
   deletedAt?: string;

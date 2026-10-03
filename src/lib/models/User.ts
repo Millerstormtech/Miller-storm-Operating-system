@@ -68,7 +68,6 @@ const userSchema = new Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, index: true },
     role: { type: String, required: true },
-    roles: [String],
     managerId: String,
     // When true, this rep may fast-forward/seek freely in training videos
     // (normally seeking past the watched point is blocked). Granted by a
