@@ -43,18 +43,22 @@ class _RankingsScreenState extends State<RankingsScreen> {
 
   static const List<String> _branches = ['Fort Worth', 'Dallas', 'West Texas', 'Commercial'];
 
-  // Team key → team-lead display name (from the web org chart). The board shows
-  // the lead's name instead of the raw team key.
-  static const Map<String, String> _teamLeads = {
-    'Gunner': 'Gunner McCullough',
-    'Luke': 'Luke Huber',
-    'Jonathan': 'Jonathan Chambers',
-    'Mike Muscari': 'Mike Muscari',
-    'Cooper': 'Cooper Bledsoe',
-    'Daniel Sabedra': 'Daniel Sabedra',
-  };
-  static const List<String> _teamNames = ['Gunner', 'Luke', 'Jonathan', 'Mike Muscari', 'Cooper', 'Daniel Sabedra'];
-  String _teamLabel(String team) => _teamLeads[team] ?? team;
+  // The Team filter's options: every team in the org chart (User Management),
+  // sent by the server in branch order. Teams are named after their lead
+  // ("Luke Huber"), so the name is shown as-is.
+  List<String> _teams = [];
+
+  // A server older than the `teams` field still gets a working filter: the
+  // teams that appear on the board.
+  static List<String> _teamsFrom(dynamic data, List rows) {
+    final sent = ((data is Map ? data['teams'] : null) as List?)
+        ?.map((t) => t.toString())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (sent != null && sent.isNotEmpty) return sent;
+    final onBoard = <String>{for (final r in rows) (r['team'] ?? '').toString()}..remove('');
+    return onBoard.toList()..sort();
+  }
 
   String _period = 'month';
   DateTime? _from;
@@ -226,6 +230,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         final data = json.decode(res.body);
         setState(() {
           _rows = (data['leaderboard'] as List?) ?? [];
+          _teams = _teamsFrom(data, _rows);
           _contractKing = (data['contractKing'] as Map?)?.cast<String, dynamic>();
           _ytdPodium = (data['ytdPodium'] as List?) ?? [];
           _rankMoves = RankMoves.fromJson(data['rankMoves'] as Map?);
@@ -395,7 +400,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
   String get _branchChipLabel =>
       _branchSel.length == 1 ? _branchSel.first : '${_branchSel.length} branches';
   String get _teamChipLabel =>
-      _teamSel.length == 1 ? _teamLabel(_teamSel.first) : '${_teamSel.length} teams';
+      _teamSel.length == 1 ? _teamSel.first : '${_teamSel.length} teams';
 
   // A short, human summary of what's applied, shown next to the Filters button.
   String get _filterSummary {
@@ -803,7 +808,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
   void _openTeamSelector() => _openMultiSelect(
         title: 'Team',
         selected: _teamSel,
-        options: [for (final t in _teamNames) MapEntry(t, _teamLabel(t))],
+        options: [for (final t in _teams) MapEntry(t, t)],
       );
 
   // Multi-select bottom sheet (Branch / Team): tick any number, applies on tick
@@ -1119,7 +1124,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
     final filed = r['filed'] ?? 0;
     final won = r['won'] ?? 0;
     final leads = r['leadsCreated'] ?? r['lead'] ?? 0;
-    final subtitle = [branch, _teamLabel(team)].where((s) => s.isNotEmpty).join(' · ');
+    final subtitle = [branch, team].where((s) => s.isNotEmpty).join(' · ');
 
     final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : null;
     final id = (r['id'] ?? '').toString();

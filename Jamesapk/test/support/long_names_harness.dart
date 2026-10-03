@@ -92,6 +92,7 @@ Future<void> pumpScreen(WidgetTester tester, Widget screen, Map<String, Object> 
   SharedPreferences.setMockInitialValues({
     'token': 'test-token',
     'tour_seen_apps_tools_v1': true,
+    'tour_seen_sales_leaderboard_v1': true,
     'user': jsonEncode({'id': 'me', 'name': longName, 'email': 'me@example.com', 'role': 'sales'}),
   });
   _routes = routes;
