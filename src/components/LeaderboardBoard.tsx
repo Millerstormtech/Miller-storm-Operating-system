@@ -6,7 +6,6 @@ import { useRouter } from "next/router";
 import { BRANCHES, BRANCH_ORDER } from "../lib/repcard/branches";
 import { parseSalesLink } from "../lib/scoreboard/links";
 import { NO_VALUE, matchesSelection, selectedNames, selectionChipLabel } from "../lib/leaderboard/filters";
-import { TEAM_NAMES, TEAM_LEADS } from "../lib/repcard/org-chart";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { SALES_LEADERBOARD_TOUR } from "../portals/shared/guided-tour/definitions/salesLeaderboard";
 import { compareStanding } from "../lib/leaderboard/ranking";
@@ -141,6 +140,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   // What the up and down arrows describe, straight from the endpoint.
   const [rankMoves, setRankMoves] = useState<{ week: string; month: string; basis: string } | null>(null);
   const [moment, setMoment] = useState<{ mark: string; title: string; line: string } | null>(null);
+  // Every team in the org chart, from the endpoint (named by the team lead).
+  const [teams, setTeams] = useState<string[]>([]);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -149,6 +150,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
       if (res.ok) {
         const data = await res.json();
         setRows(data.leaderboard ?? []);
+        setTeams(data.teams ?? []);
         setRankMoves(data.rankMoves ?? null);
         setContractKing(data.contractKing ?? null);
         setYtdPodium(data.ytdPodium ?? []);
@@ -245,15 +247,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     [rows]
   );
   const teamOptions = useMemo(
-    () => ({ list: TEAM_NAMES, hasNone: rows.some((r) => !r.team) }),
-    [rows]
+    () => {
+      // The org chart's teams, plus any team a row carries that the list lacks.
+      const extra = [...new Set(rows.map((r) => r.team).filter((t): t is string => !!t && !teams.includes(t)))].sort();
+      return { list: [...teams, ...extra], hasNone: rows.some((r) => !r.team) };
+    },
+    [rows, teams]
   );
 
   // Selected values as display names, in canonical order. Shared with the PDF via
   // the same helpers, so an export can never name a scope the screen was not showing.
   const branchNames = useMemo(() => selectedNames(branchSel, BRANCH_ORDER, "(No branch)"), [branchSel]);
   const teamNames = useMemo(
-    () => selectedNames(teamSel, {}, "(No team)").map((t) => TEAM_LEADS[t] || t),
+    () => selectedNames(teamSel, {}, "(No team)"),
     [teamSel]
   );
 
@@ -617,7 +623,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                   {teamOptions.list.map((t) => (
                     <label key={t} className="sl__rep-item">
                       <input type="checkbox" checked={teamSel.has(t)} onChange={() => toggleTeam(t)} />
-                      {TEAM_LEADS[t] || t}
+                      {t}
                     </label>
                   ))}
                   {teamOptions.hasNone ? (
@@ -786,7 +792,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                       </span>
                     </td>
                     <td className="sl__muted">{r.branch || "—"}</td>
-                    <td className="sl__muted">{TEAM_LEADS[r.team] || r.team || "—"}</td>
+                    <td className="sl__muted">{r.team || "—"}</td>
                     <td className="sl__num">{r.verifiedKnocks ?? 0}</td>
                     <td className="sl__num">{r.leadsCreated ?? 0}</td>
                     <td className="sl__num">{r.filed}</td>
@@ -844,7 +850,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           ) : visible.map((r, i) => {
             const isYou = currentUserId && r.repUserId === currentUserId;
             const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-            const subtitle = [r.branch, TEAM_LEADS[r.team] || r.team].filter(Boolean).join(" · ");
+            const subtitle = [r.branch, r.team].filter(Boolean).join(" · ");
             return (
               <div key={r.id} data-row-id={r.id} className={`sl__card${i === 0 ? " sl__card--top" : ""}${isYou ? " sl__card--you" : ""}${r.id === highlightId ? " sl__card--focus" : ""}`}>
                 <div className="sl__card-head">

@@ -11,7 +11,7 @@ import { weekStartMonday, weekKey, monthKey, rankDeltas } from "../../src/lib/sc
 import type { Window } from "../../src/lib/acculynx/windows";
 import { pickContractKing, pickYtdPodium, kingMonthLabel } from "../../src/lib/leaderboard/contractKing";
 import { courseStats, isRankedUser, RANKED_ROLES } from "../../src/lib/training/scoring";
-import { computeSalesRows } from "../../src/lib/leaderboard/compute";
+import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -116,14 +116,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const w = (["day", "week", "month", "year"].includes(String(req.query.window)) ? req.query.window : "month") as Window;
   const { start, end } = isCustom ? customRange(fromQ, toQ) : getWindowRange(w);
 
-  const rows = await computeSalesRows({ start, end });
+  // One roster load for all three ranges below (and the team list).
+  const shared = await loadSharedRosterData();
+  const rows = await computeSalesRows({ start, end }, shared);
 
   // Contract King: the CURRENT CALENDAR MONTH's top rep by Contract Amount.
   // Deliberately its own month window rather than the selected period, so a Year
   // to Date view cannot crown the year's best rep under a "July" caption. When
   // the selected period already IS the current month, no second query runs.
   const monthRange = getWindowRange("month");
-  const kingSource = isCustom || w !== "month" ? await computeSalesRows(monthRange) : rows;
+  const kingSource = isCustom || w !== "month" ? await computeSalesRows(monthRange, shared) : rows;
   const king = pickContractKing(
     kingSource.map((m) => ({
       id: m.id, name: m.name, revenue: m.revenue, won: m.won,
@@ -179,7 +181,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // under a "year to date" heading. When the selected period already IS the year,
   // no second query runs.
   const yearRange = getWindowRange("year");
-  const podiumSource = isCustom || w !== "year" ? await computeSalesRows(yearRange) : rows;
+  const podiumSource = isCustom || w !== "year" ? await computeSalesRows(yearRange, shared) : rows;
   const ytdPodium = pickYtdPodium(
     podiumSource.map((m) => ({
       id: m.id, name: m.name, revenue: m.revenue, won: m.won,
@@ -194,6 +196,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     window: isCustom ? "custom" : w,
     range: { from: isCustom ? fromQ : centralDateStr(start), to: isCustom ? toQ : centralDateStr(end) },
     leaderboard,
+    // Every team in the org chart (User Management), in branch order, for the
+    // Team filter: the options never vanish because a team is quiet this period.
+    teams: shared.org.teams,
     contractKing,
     ytdPodium,
     // What the arrows mean, so the screen can label them and show them only on

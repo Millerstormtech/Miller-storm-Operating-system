@@ -1,146 +1,283 @@
 // src/lib/repcard/org-chart.ts
-// Pure, import-free. Resolves a rep's TEAM, and which branch that team belongs to.
+// Pure, import-free. Decides a person's TEAM and BRANCH from the Miller Storm
+// org chart: the roles and Team Leads set in User Management, the same data the
+// in-app Org Chart page draws (pages/api/org-chart.ts). There is deliberately no
+// typed list of names in this file.
 //
-// SOURCE OF TRUTH: RepCard's own `team` field. RepCard is the system the branch
-// managers actually maintain — a rep who changes teams is moved there the same
-// day — so the leaderboard follows it and self-corrects.
+// Decided by Youssef 2026-10-02 (support ticket MS-027 and follow-up). The rules
+// mirror the Org Chart page (src/components/TeamStructure.tsx), so every board
+// agrees with what admins see there:
+//   - A team is named after its lead's full name ("Luke Huber").
+//   - A sales rep is on their Team Lead's team when they have a Branch and that
+//     Team Lead is a sales team lead or a branch manager. A rep set to No Branch
+//     is unassigned on purpose: no team, no branch, whatever Team Lead is stored.
+//   - Only sales reps have a Team Lead. Every team lead also knocks like a rep,
+//     and every branch manager is also a team lead: each is on their own team.
+//   - Branch: a rep shows their team lead's branch. A team lead's branch, and a
+//     branch manager's, is the Branch on their own profile (User Management shows
+//     a team lead's branch manager from that Branch, so the two always agree).
+//   - Marketing, C-level and Admin accounts have no team and no branch, whatever
+//     is stored on their profile.
+//   - Deleted accounts keep their place, so former reps' numbers stay with the
+//     team they sold for (details on buildOrgChart below).
+//   - RepCard decides nothing for anyone who has an app account. It only places
+//     reps who knock in RepCard but have no app account yet: their RepCard team
+//     is matched to the app team its other members are on (repcardTeamMatcher).
 //
-// This file used to work the other way round: ROSTER below was transcribed by
-// hand from the Sales Org Chart PDF (2026-07) and OVERRODE RepCard, which froze
-// every rep on whatever team they were on in July. By 2026-08-27 that had
-// misplaced five active reps, including Gunner's top knocker (Jason Nguyen,
-// filed under Cooper in Dallas) and Justin Jones (under Mike Muscari in Dallas
-// rather than Luke). Because Branch follows Team, their numbers were also being
-// counted toward the wrong branch. Reported by Jason Nguyen, 2026-08-27.
-//
-// ROSTER is still needed: the role dashboards (pages/api/dashboard.ts), the
-// training leaderboard and the Scoreboard all call resolveTeam() with a Miller
-// Storm user's NAME only — they have no RepCard record to pass. It is therefore
-// kept in step with RepCard so no surface can disagree with the sales board.
-// Re-check it with `node check-repcard-team-drift.js` after any team shuffle.
+// History: until 2026-10-02 this file held ROSTER, a hand-typed team list from
+// the July 2026 org chart PDF, plus RepCard alias, override and branch tables.
+// Every team move needed a code change, and the boards disagreed with each other
+// and with User Management (Jose Robles stayed on Team Luke after he was moved).
 
-const ROSTER: Record<string, string[]> = {
-  // Fort Worth branch (mgr Gunner McCullough)
-  Gunner: ["Gunner McCullough", "Alan Bieberle", "Daniel Reyes", "Michael Gonzalez", "Preston Taylor", "Jason Nguyen"],
-  // Jose Robles left Team Luke 2026-09-29 (support ticket MS-027 from Luke Huber).
-  Luke: ["Luke Huber", "Alec Rodriguez", "Devin Ishmael", "Hieu Pham", "Trace Lutteringer", "Jordan Strong", "Dakota Porter", "Justin Jones", "Joe Charles"],
-  Jonathan: ["Jonathan Chambers", "Austin Porter", "David Bolles", "Esteban Serna", "Fernando Cano", "Jordan Dillon", "Kelvin Burdiez", "Moises Belza", "Johnny Franco", "Declan Mathison", "Valentin Grajeda", "Waylon Dean"],
-  // Dallas branch (mgr Mike Muscari)
-  "Mike Muscari": ["Mike Muscari", "Jaren Lushaj", "Nathan Gregory", "Nate Gregory", "Dylan Looney"],
-  Cooper: ["Cooper Bledsoe", "Colton Lathrom", "Martin Ramirez", "Victor Ramirez", "Victor Gonzalez", "Ashton Foster"],
-  // West Texas branch (mgr Daniel Sabedra) — Brighton Jenkins folded in as a regular
-  // rep (with Matthew Stevens + Chris Holman) 2026-07-14; he is no longer a team lead.
-  "Daniel Sabedra": ["Daniel Sabedra", "Sergio Flores", "Shane Goldsmith", "Eduardo Ramos", "Colton Randolph", "Brighton Jenkins", "Matthew Stevens", "Chris Holman", "Trey Serna", "James Williams"],
-};
+/** A Miller Storm user, as far as the org chart needs. */
+export interface DirectoryUser {
+  id: string;
+  name?: string | null;
+  role?: string | null;
+  /** The Team Lead assigned in User Management (a user id). */
+  managerId?: string | null;
+  /** The Branch picked in User Management. Older values may carry "· ..." suffixes. */
+  territory?: string | null;
+  /** Soft-deleted account. Kept so former reps' numbers stay with their team. */
+  deleted?: boolean | null;
+}
 
-// Deliberate team assignments that OVERRIDE RepCard, for decisions RepCard has
-// not caught up on. Keep this list short and always say why: each entry is a
-// place where the board knowingly contradicts the system of record.
-//
-// The Dylon team (Round Rock) was wound down on 2026-07-14 and its remaining reps
-// folded into Daniel Sabedra's team. RepCard still lists them under "Dylon", which
-// is not a real team and has no branch of its own, so without these they would
-// show an unfilterable team and fall back to their office for a branch.
-const TEAM_OVERRIDES: Record<string, string> = {
-  "brighton jenkins": "Daniel Sabedra",
-  "matthew stevens": "Daniel Sabedra",
-  "chris holman": "Daniel Sabedra",
-};
+/** A RepCard directory record, as far as team matching needs. */
+export interface RepCardRecord {
+  email?: string | null;
+  team?: string | null;
+  status?: string | null;
+}
 
-// Normalize RepCard's own team label to the naming used above. "Management" is
-// RepCard's non-sales catch-all (execs, ops, office, dev), not a team, so it maps
-// to "" — meaning "RepCard cannot place this rep", which falls through to ROSTER.
-const TEAM_ALIAS: Record<string, string> = {
-  jon: "Jonathan",
-  jonathan: "Jonathan",
-  "mike m.": "Mike Muscari",
-  "mike m": "Mike Muscari",
-  "daniel s": "Daniel Sabedra",
-  luke: "Luke",
-  cooper: "Cooper",
-  gunner: "Gunner",
-  "lubbock team": "Daniel Sabedra",
-  dylon: "Dylon",
-  commercial: "Commercial",
-  management: "",
-};
+/** Something in User Management an admin should fix. */
+export interface OrgWarning {
+  kind: "no-branch-manager" | "team-lead-deleted" | "team-lead-invalid" | "branch-differs";
+  message: string;
+}
 
 function norm(s?: string | null): string {
   return (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
 }
 
-// Which branch each team belongs to. Team is the source of truth for reporting,
-// so the leaderboard's Branch follows the team's branch whenever a team is known
-// (RepCard office is only the fallback for reps with no team).
-export const TEAM_BRANCH: Record<string, string> = {
-  Gunner: "Fort Worth",
-  Luke: "Fort Worth",
-  Jonathan: "Fort Worth",
-  "Mike Muscari": "Dallas",
-  Cooper: "Dallas",
-  "Daniel Sabedra": "West Texas",
-  Commercial: "Commercial",
-};
-
-// Reps who should show NO branch — cross-branch execs (e.g. the CRO who storm-chases
-// across regions). Pinning them to one branch would mislead; their office fallback is
-// suppressed. Under team-based reporting that means they sit under no branch at
-// all, so a branch filter never claims their numbers for a branch they do not run.
-// Quinton Hill added 2026-09-29: no sales team, but his RepCard office filed him
-// under Fort Worth.
-const BRANCHLESS_NAMES = new Set<string>([norm("Naaman Taylor"), norm("Quinton Hill")]);
-export function isBranchless(name?: string | null): boolean {
-  return BRANCHLESS_NAMES.has(norm(name));
+/** The Branch on a person's own profile ("" when unset).
+ * Older values join several with "·"; only the first part counts. */
+export function branchFromProfile(user: { territory?: string | null } | null | undefined): string {
+  return ((user && user.territory) || "").toString().split("·")[0].trim();
 }
 
-const NAME_TO_TEAM = new Map<string, string>();
-for (const [team, members] of Object.entries(ROSTER)) {
-  for (const m of members) NAME_TO_TEAM.set(norm(m), team);
+export interface OrgChart {
+  /** The team this person is on ("" for none). */
+  teamOf(user: DirectoryUser | null | undefined): string;
+  /** The branch this person counts toward ("" for none). */
+  branchOf(user: DirectoryUser | null | undefined): string;
+  /** True when this person leads a team. */
+  isLead(user: DirectoryUser | null | undefined): boolean;
+  /** The branch of a team ("" when unknown). */
+  branchOfTeam(team: string | null | undefined): string;
+  /** Every team led by a live account, by branch (`branchOrder`), then by name. */
+  teams: string[];
+  /** What admins should fix, by user id (live accounts only). */
+  warnings: Map<string, OrgWarning[]>;
 }
 
 /**
- * Resolve a rep's team, in order:
- *   1. TEAM_OVERRIDES — a deliberate decision RepCard has not caught up on.
- *   2. RepCard's own `team`, normalized — the live source of truth, so a rep who
- *      moves teams moves on the board without anyone editing this file.
- *   3. ROSTER by name — for callers with no RepCard record to pass, and for reps
- *      RepCard cannot place (its non-sales "Management" bucket aliases to "").
- *   4. "" — nothing to go on.
- *
- * An unrecognized RepCard team is passed through as-is rather than dropped, so a
- * newly created team shows up on the board (unfiltered) instead of vanishing.
+ * Build the org chart from the app's users. Pass every non-test account,
+ * DELETED ONES INCLUDED (flagged `deleted`): accounts are deleted all the time.
+ *   - A former rep (deleted account) keeps the team stored on their account, so
+ *     their numbers stay with the team they sold for. If that Team Lead has since
+ *     stopped leading, they follow that person to the team they are on now.
+ *   - A departed team lead's team stays in place for those numbers, but is not
+ *     offered as a current team.
+ *   - An active rep whose Team Lead was deleted stays on that team until they
+ *     are given a new Team Lead, with a warning (the Org Chart page shows them
+ *     as Unassigned meanwhile; the boards keep their numbers on the team).
  */
-export function resolveTeam(name?: string | null, repcardTeam?: string | null): string {
-  const override = TEAM_OVERRIDES[norm(name)];
-  if (override) return override;
+export function buildOrgChart(
+  users: DirectoryUser[],
+  branchOrder: Record<string, number> = {},
+  normalizeBranch: (raw: string) => string = (raw) => raw
+): OrgChart {
+  const byId = new Map<string, DirectoryUser>();
+  for (const u of users) if (u && u.id) byId.set(String(u.id), u);
+  const nameOf = (u?: DirectoryUser | null) => ((u && u.name) || "").trim();
+  const isBranchManager = (u?: DirectoryUser | null) => !!u && u.role === "branch-manager";
+  // Only the sales side of the company has teams and branches.
+  const onSalesSide = (u?: DirectoryUser | null) =>
+    !!u && (u.role === "sales" || u.role === "sales-team-lead" || u.role === "branch-manager");
+  const isTeamLeadRole = (u?: DirectoryUser | null) => !!u && u.role === "sales-team-lead";
+  const canLead = (u?: DirectoryUser | null) => isTeamLeadRole(u) || isBranchManager(u);
+  const managerOf = (u?: DirectoryUser | null) => (u && u.managerId ? byId.get(String(u.managerId)) : undefined);
+  // No Branch: unassigned on purpose (the Org Chart's "Unassigned"). A choice
+  // made on a LIVE profile; many older deleted accounts simply never had a
+  // Branch filled in, and their stored Team Lead still places them.
+  const unassigned = (u: DirectoryUser) => !u.deleted && u.role === "sales" && !branchFromProfile(u);
+  // Profile Branch values, read through the caller's normaliser (older values
+  // such as "Round Rock, Texas" predate the three branches).
+  const branchOfProfile = (u?: DirectoryUser | null) => {
+    const raw = branchFromProfile(u);
+    return raw ? normalizeBranch(raw) || raw : "";
+  };
 
-  const raw = repcardTeam || "";
-  if (raw) {
-    const alias = TEAM_ALIAS[norm(raw)];
-    // `alias === ""` is RepCard saying "not a sales team" (its Management bucket).
-    // That is not an answer, so fall through to the roster rather than stripping a
-    // real salesperson of the team the roster knows they are on.
-    const fromRepCard = alias !== undefined ? alias : raw;
-    if (fromRepCard) return fromRepCard;
+  // Who leads a team: every sales team lead and every branch manager. Every
+  // branch manager is also a team lead, and every team lead also knocks doors
+  // like a rep (Youssef, 2026-10-02), so each is on their own team.
+  const leadIds = new Set<string>();
+  for (const u of byId.values()) if (canLead(u)) leadIds.add(String(u.id));
+  const isLead = (u?: DirectoryUser | null) => !!u && leadIds.has(String(u.id));
+
+  // The lead of the team this person is on, or undefined for none.
+  const leadOf = (u?: DirectoryUser | null, seen = new Set<string>()): DirectoryUser | undefined => {
+    if (!u || seen.has(String(u.id))) return undefined;
+    seen.add(String(u.id));
+    if (!onSalesSide(u)) return undefined;
+    if (isLead(u)) return u;
+    if (u.role !== "sales" || unassigned(u)) return undefined;
+    const m = managerOf(u);
+    if (!m) return undefined;
+    if (canLead(m)) return m;
+    // A former rep whose old Team Lead has since gone back to selling: follow
+    // that person to the team they are on now.
+    return u.deleted ? leadOf(m, seen) : undefined;
+  };
+
+  // Branches that have a live branch manager, for the warning below.
+  const managedBranches = new Set<string>();
+  for (const u of byId.values()) {
+    const b = norm(branchOfProfile(u));
+    if (isBranchManager(u) && !u.deleted && b) managedBranches.add(b);
+  }
+  // A team's branch is the Branch on its lead's profile.
+  const leadBranch = (lead: DirectoryUser) => branchOfProfile(lead);
+
+  const teamOf = (u?: DirectoryUser | null) => nameOf(leadOf(u));
+  const branchOf = (u?: DirectoryUser | null): string => {
+    if (!u || !onSalesSide(u) || unassigned(u)) return "";
+    const lead = leadOf(u);
+    return lead ? leadBranch(lead) : branchOfProfile(u);
+  };
+
+  const leadByTeam = new Map<string, DirectoryUser>();
+  for (const id of leadIds) {
+    const lead = byId.get(id)!;
+    const name = nameOf(lead);
+    // A live lead wins a name clash with a departed one.
+    if (name && (!leadByTeam.has(name) || leadByTeam.get(name)!.deleted)) leadByTeam.set(name, lead);
+  }
+  const branchOfTeam = (team?: string | null) => (team && leadByTeam.has(team) ? leadBranch(leadByTeam.get(team)!) : "");
+
+  const rank = (team: string) => {
+    const b = branchOfTeam(team);
+    return b in branchOrder ? branchOrder[b] : Number.MAX_SAFE_INTEGER;
+  };
+  const teams = [...leadByTeam.entries()]
+    .filter(([, lead]) => !lead.deleted)
+    .map(([team]) => team)
+    .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+
+  const warnings = new Map<string, OrgWarning[]>();
+  const warn = (u: DirectoryUser, w: OrgWarning) => {
+    const list = warnings.get(String(u.id)) || [];
+    list.push(w);
+    warnings.set(String(u.id), list);
+  };
+  for (const u of byId.values()) {
+    if (u.deleted) continue;
+    if (isTeamLeadRole(u) && !managedBranches.has(norm(branchOfProfile(u)))) {
+      warn(u, {
+        kind: "no-branch-manager",
+        message: "No branch manager for this team lead's Branch, so the team counts toward the Branch on this profile.",
+      });
+    }
+    if (u.role !== "sales" || unassigned(u)) continue;
+    const m = managerOf(u);
+    if (!u.managerId) continue; // User Management requires one; nothing to add
+    if (!m || (!m.deleted && !canLead(m))) {
+      warn(u, { kind: "team-lead-invalid", message: "The Team Lead on this profile is not a current team lead. Pick a new one." });
+      continue;
+    }
+    if (m.deleted) {
+      warn(u, {
+        kind: "team-lead-deleted",
+        message: `Team Lead ${nameOf(m) || "(unnamed)"} has been deleted. This rep stays on that team until a new Team Lead is picked.`,
+      });
+    }
+    const own = branchOfProfile(u);
+    const team = branchOf(u);
+    if (own && team && norm(own) !== norm(team)) {
+      warn(u, {
+        kind: "branch-differs",
+        message: `Branch says ${own}, but their Team Lead is in ${team}. The boards use ${team}.`,
+      });
+    }
   }
 
-  return NAME_TO_TEAM.get(norm(name)) || "";
+  return { teamOf, branchOf, isLead, branchOfTeam, teams, warnings };
 }
 
-// The FIRST member of each team is its lead — the branch manager. Used by the
-// admin Branch Manager dashboard to show each branch manager (team lead)
-// individually with their own sales.
-export const TEAM_LEADS: Record<string, string> = Object.fromEntries(
-  Object.entries(ROSTER).map(([team, members]) => [team, members[0]])
-);
+// RepCard's catch-all for people outside the sales teams (execs, office, dev).
+// Not a team, so it never decides one.
+const REPCARD_NON_TEAM = "management";
 
-// True when this rep is their team's lead (branch manager).
-export function isTeamLead(name?: string | null, team?: string | null): boolean {
-  if (!team) return false;
-  const lead = TEAM_LEADS[team];
-  return !!lead && norm(name) === norm(lead);
+/** Does a RepCard team label read as this lead's name? "Gunner" -> Gunner
+ * McCullough, "Jon" -> Jonathan Chambers, "Mike M." -> Mike Muscari, "Daniel
+ * Reyes" -> Daniel Reyes, "Daniel S" -> Daniel Sabedra. "Lubbock Team" names no one. */
+export function teamLabelNamesLead(label: string, leadName: string): boolean {
+  const l = norm(label).split(" ").filter(Boolean);
+  const n = norm(leadName).split(" ").filter(Boolean);
+  if (!l.length || !n.length) return false;
+  if (!n[0].startsWith(l[0])) return false;
+  if (l.length === 1) return true;
+  if (n.length < 2) return false;
+  return n[n.length - 1].startsWith(l[1]);
 }
 
-// Fixed, ordered team list for the leaderboard's Team filter, so the dropdown
-// options never disappear based on which reps have data in the current range.
-export const TEAM_NAMES: string[] = Object.keys(ROSTER);
+/**
+ * Translates a RepCard team label into the app team it corresponds to, for reps
+ * who have no app account. No typed list: for each RepCard team, count which app
+ * team its members (the ones who DO have app accounts) are on, and add a strong
+ * preference for the lead the label is named after (RepCard's "Gunner" team
+ * holds three of Gunner's reps and three of Daniel Reyes's, a tie the name
+ * settles). The highest score wins; a tie, or nothing to go on, gives "".
+ *
+ * @param repcard    The RepCard directory.
+ * @param appTeamOfEmail  The app team of the person with this (lower-cased)
+ *                   email, "" if they have no account or no team.
+ * @param teams      The app's teams (OrgChart.teams), named by lead.
+ */
+export function repcardTeamMatcher(
+  repcard: RepCardRecord[],
+  appTeamOfEmail: (email: string) => string,
+  teams: string[]
+): (repcardTeam: string | null | undefined) => string {
+  const votes = new Map<string, Map<string, number>>();
+  for (const r of repcard) {
+    const label = norm(r.team);
+    if (!label || label === REPCARD_NON_TEAM) continue;
+    const appTeam = r.email ? appTeamOfEmail(String(r.email).trim().toLowerCase()) : "";
+    if (!appTeam) continue;
+    const forLabel = votes.get(label) || new Map<string, number>();
+    forLabel.set(appTeam, (forLabel.get(appTeam) || 0) + 1);
+    votes.set(label, forLabel);
+  }
+
+  const cache = new Map<string, string>();
+  return (repcardTeam) => {
+    const label = norm(repcardTeam);
+    if (!label || label === REPCARD_NON_TEAM) return "";
+    if (cache.has(label)) return cache.get(label)!;
+    const score = new Map<string, number>(votes.get(label) || []);
+    for (const t of teams) {
+      if (teamLabelNamesLead(label, t)) score.set(t, (score.get(t) || 0) + 1000);
+    }
+    let best = "";
+    let bestScore = 0;
+    let tied = false;
+    for (const [t, s] of score) {
+      if (s > bestScore) { best = t; bestScore = s; tied = false; }
+      else if (s === bestScore) tied = true;
+    }
+    const answer = tied ? "" : best;
+    cache.set(label, answer);
+    return answer;
+  };
+}

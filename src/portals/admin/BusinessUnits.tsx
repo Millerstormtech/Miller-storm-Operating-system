@@ -47,7 +47,8 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   const [savedUserId, setSavedUserId] = useState<string | null>(null);
   const [yearlyExpanded, setYearlyExpanded] = useState(true);
   const [monthlyExpanded, setMonthlyExpanded] = useState(true);
-  const managers = props.users.filter((u) => u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead"));
+  // Every branch manager also leads a team (2026-10-02).
+  const managers = props.users.filter((u) => u.role === "sales-team-lead" || u.role === "branch-manager" || (u.roles || []).includes("sales-team-lead"));
   const salesReps = props.users.filter((u) => u.role === "sales" || (u.roles || []).includes("sales"));
 
   // Calculate metrics using same formula as sales rep business plan page

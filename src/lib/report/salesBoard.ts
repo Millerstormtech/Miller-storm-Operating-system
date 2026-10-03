@@ -20,7 +20,6 @@ import {
   type ReportDocument,
   type TotalsSpec,
 } from "./document";
-import { TEAM_LEADS } from "../repcard/org-chart";
 import { BRANCH_ORDER } from "../repcard/branches";
 import { selectedNames, selectionChipLabel } from "../leaderboard/filters";
 
@@ -51,7 +50,7 @@ export type SalesExportContext = {
   rowCount: number;
 };
 
-const teamLabel = (team: string) => (team ? TEAM_LEADS[team] || team : "");
+const teamLabel = (team: string) => team || "";
 
 /** Selected branches as display names. Empty on a full board export, which
  *  ignores the on-screen filters by definition. */

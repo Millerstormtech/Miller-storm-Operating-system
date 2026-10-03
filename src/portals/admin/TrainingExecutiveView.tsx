@@ -110,7 +110,7 @@ export function TrainingExecutiveView() {
               status,
             };
 
-            const isManager = u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead");
+            const isManager = u.role === "sales-team-lead" || u.role === "branch-manager" || (u.roles || []).includes("sales-team-lead");
             if (isManager) managers.push(row);
             else sales.push(row);
           });

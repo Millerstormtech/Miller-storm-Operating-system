@@ -5,12 +5,13 @@ import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
 import { roleDisplayName } from "../../lib/roleLabels";
 import { useAuth } from "../../contexts/AuthContext";
 import type { Drift } from "../../lib/repcard/appDrift";
+import type { OrgWarning } from "../../lib/repcard/org-chart";
 
 type UserRole = "admin" | "sales-team-lead" | "sales" | "marketing" | "c-level" | "branch-manager";
 
 // Advisory note shown under Branch / Sales Team Lead when the field disagrees with
-// RepCard. Read-only on purpose: RepCard is the source of truth for the sales
-// leaderboard, but it is sometimes the one that is out of date, so a human decides.
+// RepCard. Read-only on purpose: User Management decides every board, so this
+// usually means RepCard is out of date, but a human decides.
 // See src/lib/repcard/appDrift.ts for which differences are worth showing at all.
 function RepCardNote({ says }: { says: string }) {
   return (
@@ -18,6 +19,23 @@ function RepCardNote({ says }: { says: string }) {
       <span aria-hidden="true">⚠</span>
       <span>RepCard says {says}</span>
     </div>
+  );
+}
+
+// Org chart problems to fix on this profile (src/lib/repcard/org-chart.ts):
+// no branch manager for a team lead's Branch, a deleted or invalid Team Lead,
+// or a rep whose Branch differs from their team lead's. Advisory only.
+function OrgWarningNotes({ list }: { list?: OrgWarning[] }) {
+  if (!list || list.length === 0) return null;
+  return (
+    <>
+      {list.map((w) => (
+        <div key={w.kind} style={{ fontSize: 12, color: "var(--warning-on-surface)", marginTop: 4, display: "flex", alignItems: "flex-start", gap: 5 }}>
+          <span aria-hidden="true">⚠</span>
+          <span>{w.message}</span>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -110,6 +128,8 @@ export function UserManagement(props: UserEditorProps) {
   // only: a failed fetch just leaves the map empty and no warnings appear, which
   // is the right failure mode for a hint that never gates anything.
   const [repcardDrift, setRepcardDrift] = useState<Record<string, Drift>>({});
+  // Org chart problems by user id, from the same endpoint (advisory only).
+  const [orgWarnings, setOrgWarnings] = useState<Record<string, OrgWarning[]>>({});
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -117,7 +137,10 @@ export function UserManagement(props: UserEditorProps) {
         const res = await fetch("/api/users/repcard-drift");
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setRepcardDrift(data.drift || {});
+        if (!cancelled) {
+          setRepcardDrift(data.drift || {});
+          setOrgWarnings(data.warnings || {});
+        }
       } catch {
         /* advisory only — leave the map empty */
       }
@@ -233,7 +256,10 @@ export function UserManagement(props: UserEditorProps) {
     
     // Apply role filter
     if (roleFilter !== "all") {
-      filtered = filtered.filter(u => u.role === roleFilter);
+      // Every branch manager also leads a team, so "Sales Team Lead" lists them too.
+      filtered = filtered.filter(u =>
+        u.role === roleFilter || (roleFilter === "sales-team-lead" && u.role === "branch-manager")
+      );
     }
     
     // Apply sorting
@@ -1028,10 +1054,10 @@ export function UserManagement(props: UserEditorProps) {
                             {/* Branch or Team disagrees with RepCard. Here so the
                                 handful that need attention can be spotted without
                                 opening all ~50 accounts one by one. */}
-                            {repcardDrift[user.id] && (
+                            {!!(repcardDrift[user.id] || orgWarnings[user.id]?.length) && (
                               <span
-                                aria-label="Branch or Team differs from RepCard"
-                                title="Branch or Team differs from RepCard"
+                                aria-label="Branch or Team needs attention"
+                                title={orgWarnings[user.id]?.length ? orgWarnings[user.id]!.map((w) => w.message).join(" ") : "Branch or Team differs from RepCard"}
                                 style={{ color: "var(--warning-on-surface)", fontSize: 12, lineHeight: 1 }}
                               >
                                 ⚠
@@ -1490,6 +1516,7 @@ export function UserManagement(props: UserEditorProps) {
                 {repcardDrift[selectedUser.id]?.branch && (
                   <RepCardNote says={repcardDrift[selectedUser.id]!.branch!.repcard} />
                 )}
+                <OrgWarningNotes list={orgWarnings[selectedUser.id]} />
               </label>
               <label className="field">
                 <span className="field-label">Role</span>
@@ -1539,7 +1566,10 @@ export function UserManagement(props: UserEditorProps) {
                           className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"}
                           style={{ cursor: "pointer" }}
                           onClick={() => {
-                            const newRoles = [role];
+                            // Every branch manager also leads a team (Youssef, 2026-10-02),
+                            // so they always carry the sales-team-lead role too: they show in
+                            // the Team Lead picker and get team-lead training like before.
+                            const newRoles: UserRole[] = role === "branch-manager" ? ["branch-manager", "sales-team-lead"] : [role];
                             const newManagerId = role === "sales" ? selectedUser.managerId : undefined;
                             if (role !== "sales") setManagerDraftId("");
                             updateUser({ ...selectedUser, role: role, roles: newRoles, managerId: newManagerId });
@@ -1564,35 +1594,16 @@ export function UserManagement(props: UserEditorProps) {
                   <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>Role is required</div>
                 )}
               </label>
-              {/* A Branch Manager can also run their own team (dual role): adds
-                  "sales-team-lead" to their roles so they appear in the Sales
-                  Team Lead picker and reps can be assigned under them. */}
-              {selectedUser.role === "branch-manager" && (
-                <label className="field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    style={{ width: 16, height: 16 }}
-                    checked={(selectedUser.roles || []).includes("sales-team-lead")}
-                    onChange={(e) => {
-                      const roles: UserRole[] = e.target.checked
-                        ? ["branch-manager", "sales-team-lead"]
-                        : ["branch-manager"];
-                      updateUser({ ...selectedUser, roles });
-                    }}
-                  />
-                  <span className="field-label" style={{ margin: 0 }}>Also a Sales Team Lead (has their own team of reps)</span>
-                </label>
-              )}
               {selectedUser.role === "sales" && (() => {
                 const branch = (selectedUser.territory || "").trim().toLowerCase();
                 const branchSelected = branch.length > 0;
-                // Team leads to choose from: real (non-developer) Sales Team Leads —
-                // including branch managers who also run a team — whose OWN branch
-                // matches the rep's selected branch. No branch → "No team" only.
+                // Team leads to choose from: real (non-developer) Sales Team Leads and
+                // Branch Managers (every branch manager also leads a team) whose OWN
+                // branch matches the rep's selected branch. No branch → "No team" only.
                 const teamLeadOptions = branchSelected
                   ? draftUsers.filter((u) =>
                       !u.testAccount &&
-                      (u.role === "sales-team-lead" || (u.roles || []).includes("sales-team-lead")) &&
+                      (u.role === "sales-team-lead" || u.role === "branch-manager" || (u.roles || []).includes("sales-team-lead")) &&
                       (u.territory || "").trim().toLowerCase() === branch
                     )
                   : [];

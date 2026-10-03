@@ -1,7 +1,7 @@
 // pages/api/users/repcard-drift.ts
 //
-// Which users' Branch / Team fields disagree with RepCard, for the advisory
-// warning in User Management.
+// Which users' Branch / Team fields disagree with RepCard, plus org chart
+// problems to fix (org-chart.ts warnings), for the advisory notes in User Management.
 //
 // Deliberately its OWN endpoint rather than extra fields on /api/users: that
 // route is called by a lot of screens (pickers, rosters, the mobile app) and
@@ -18,8 +18,8 @@ import { UserModel } from "../../../src/lib/models/User";
 import { RepCardUserModel } from "../../../src/lib/models/RepCardUser";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 import { compareToRepCard, hasDrift } from "../../../src/lib/repcard/appDrift";
-import { resolveTeam, TEAM_BRANCH, TEAM_LEADS } from "../../../src/lib/repcard/org-chart";
-import { officeToBranch } from "../../../src/lib/repcard/branches";
+import { buildOrgChart, repcardTeamMatcher, type OrgWarning } from "../../../src/lib/repcard/org-chart";
+import { officeToBranch, BRANCH_ORDER } from "../../../src/lib/repcard/branches";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -28,9 +28,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectMongo();
 
-  const users = await UserModel.find({ deleted: { $ne: true } })
-    .select("id name role territory managerId email testAccount")
+  // Deleted accounts too: the org chart needs them to place a rep whose Team
+  // Lead was deleted. Only live accounts are compared or warned about.
+  const everyone = await UserModel.find({})
+    .select("id name role territory managerId email testAccount deleted")
     .lean();
+  const users = (everyone as any[]).filter((u) => !u.deleted);
 
   const rcUsers = await RepCardUserModel.find({})
     .select("name email team office status")
@@ -46,6 +49,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const nameById = new Map<string, string>();
   for (const u of users as any[]) nameById.set(u.id, u.name || "");
 
+  // RepCard's team label ("Gunner", "Jon", "Lubbock Team") means nothing to the
+  // app on its own: translate it to the app team it corresponds to, the same way
+  // the Sales Leaderboard does for reps without an app account (org-chart.ts).
+  const org = buildOrgChart((everyone as any[]).filter((u) => !u.testAccount), BRANCH_ORDER, officeToBranch);
+  const byEmail = new Map<string, any>();
+  for (const u of users) if (u.email && !u.testAccount) byEmail.set(String(u.email).toLowerCase(), u);
+  const appTeamForRepCardTeam = repcardTeamMatcher(rcUsers as any[], (e) => org.teamOf(byEmail.get(e)), org.teams);
+
   const drift: Record<string, { branch?: unknown; team?: unknown }> = {};
   let compared = 0;
 
@@ -57,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!rc) continue;
     compared++;
 
-    const team = resolveTeam(rc.name, rc.team);
+    const team = appTeamForRepCardTeam(rc.team);
     const d = compareToRepCard(
       {
         role: u.role || "",
@@ -65,15 +76,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         teamLeadName: u.managerId ? nameById.get(u.managerId) || "" : "",
       },
       {
-        // Same precedence the sales leaderboard uses: the team's branch when the
-        // team is known, the RepCard office only as a fallback.
-        branch: (team && TEAM_BRANCH[team]) || officeToBranch(rc.office) || "",
-        teamLeadName: team ? TEAM_LEADS[team] || "" : "",
+        // RepCard's team translated to the app team (named by its lead), and that
+        // team's branch, the RepCard office only as a fallback.
+        branch: org.branchOfTeam(team) || officeToBranch(rc.office) || "",
+        teamLeadName: team,
       }
     );
 
     if (hasDrift(d)) drift[u.id] = d;
   }
 
-  return res.status(200).json({ drift, compared });
+  // Org chart problems an admin should fix (no branch manager for a team
+  // lead's Branch, a deleted or invalid Team Lead, a rep whose Branch differs
+  // from their team lead's). Advisory, like the RepCard notes.
+  const warnings: Record<string, OrgWarning[]> = {};
+  for (const [id, list] of org.warnings) warnings[id] = list;
+
+  return res.status(200).json({ drift, compared, warnings });
 }

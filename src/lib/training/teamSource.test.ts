@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Which team a rep shows on each board (decided by Youssef 2026-10-02, MS-027):
-//   - Course Leaderboard: the Team Lead on the rep's profile in User Management,
-//     and nothing else. No Team Lead means no team; no typed fallback.
-//   - Sales Leaderboard (and the dashboards built on it): RepCard's team, as before.
-// Both boards' real loaders run here against an in-memory stand-in for the database.
+// Which team a rep shows on each board (decided by Youssef 2026-10-02, MS-027 and
+// follow-up): the org chart in User Management decides on EVERY board. A rep is
+// on their Team Lead's team, a lead on their own, no Team Lead means no team, and
+// there is no typed fallback list. RepCard only places reps who knock in RepCard
+// but have no app account yet. Both boards' real loaders run here against an
+// in-memory stand-in for the database.
 const db = vi.hoisted(() => ({
   users: [] as any[],
   repcardUsers: [] as any[],
@@ -51,8 +52,10 @@ beforeEach(() => {
     // No Team Lead set: no team on the Course Leaderboard, whatever RepCard says.
     { id: "alan", name: "Alan Bieberle", email: "alan@x.com", role: "sales", territory: "Fort Worth" },
   ];
-  // RepCard still has Jose on Luke's team.
+  // RepCard still has Jose on Luke's team. Martin knocks in RepCard on Cooper's
+  // team but has no app account yet.
   db.repcardUsers = [
+    { repcardUserId: "rc-martin", name: "Martin Ramirez", email: "martin@x.com", team: "Cooper", office: "Fort Worth Office", status: "ACTIVE" },
     { repcardUserId: "rc-jose", name: "Jose Robles", email: "jose@x.com", team: "Luke", office: "Fort Worth", status: "ACTIVE" },
     { repcardUserId: "rc-alan", name: "Alan Bieberle", email: "alan@x.com", team: "Gunner", office: "Fort Worth", status: "ACTIVE" },
     { repcardUserId: "rc-james", name: "James Carter", email: "james@x.com", team: "", office: "Fort Worth", status: "ACTIVE" },
@@ -82,11 +85,30 @@ describe("the Course Leaderboard takes teams from the app profile only", () => {
   });
 });
 
-describe("the Sales Leaderboard keeps taking teams from RepCard", () => {
-  it("follows RepCard even where User Management says otherwise", async () => {
-    const rows = await computeSalesRows({ start: new Date("2026-09-01"), end: new Date("2026-09-30") });
-    const teams = teamsOf(rows, (r) => r.name);
-    expect(teams["Jose Robles"]).toBe("Luke");
-    expect(teams["Alan Bieberle"]).toBe("Gunner");
+describe("the Sales Leaderboard takes teams from the app profile too", () => {
+  const load = () => computeSalesRows({ start: new Date("2026-09-01"), end: new Date("2026-09-30") });
+
+  it("follows User Management even where RepCard says otherwise", async () => {
+    const teams = teamsOf(await load(), (r) => r.name);
+    expect(teams["Jose Robles"]).toBe("Cooper Bledsoe"); // RepCard: Luke
+    expect(teams["James Carter"]).toBe("Luke Huber"); // RepCard: no team
+  });
+
+  it("gives an app user with no Team Lead no team, whatever RepCard says", async () => {
+    const teams = teamsOf(await load(), (r) => r.name);
+    expect(teams["Alan Bieberle"]).toBeNull(); // RepCard: Gunner
+  });
+
+  it("takes the branch from the app profile", async () => {
+    const rows = await load();
+    expect(rows.find((r) => r.name === "Jose Robles")!.branch).toBe("Dallas"); // RepCard office: Fort Worth
+  });
+
+  it("places a rep with no app account through their RepCard team", async () => {
+    const martin = (await load()).find((r) => r.name === "Martin Ramirez")!;
+    expect(martin.team).toBe("Cooper Bledsoe");
+    // The matched team's branch, not his RepCard office.
+    expect(martin.branch).toBe("Dallas");
+    expect(martin.isTeamLead).toBe(false);
   });
 });
