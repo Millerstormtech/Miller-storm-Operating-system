@@ -14,7 +14,7 @@ import { Schema, model, models } from "mongoose";
 // everyone went back to nothing.
 const salesRankSnapshotSchema = new Schema(
   {
-    weekOf: { type: Date, required: true },   // UTC midnight of that week's Monday
+    weekOf: { type: Date, required: true },   // UTC midnight of the week's first day (Saturday since 2026-10-05; Monday before)
     month: { type: String, required: true },  // "2026-09", the race being ranked
     repId: { type: String, required: true },  // leaderboard row id, e.g. "rc:123"
     rank: { type: Number, required: true },

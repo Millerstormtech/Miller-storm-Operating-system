@@ -2,9 +2,8 @@
 // lost since the previous week's photograph of the same month's race.
 //
 // Pure, so the endpoint and the screen agree (CLAUDE.md convention). The week
-// rule (Mondays, UTC) is the app's existing one, borrowed from the training
-// board rather than invented again.
-export { weekStartMonday } from "../training/board";
+// rule is the app-wide one (WEEK_START_DAY, Saturday, keyed in UTC).
+export { weekStartUtc } from "../acculynx/windows";
 
 export type RankSnapshot = { repId: string; rank: number };
 

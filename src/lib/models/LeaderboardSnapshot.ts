@@ -6,7 +6,7 @@ import { Schema, model, models } from "mongoose";
 // first-loads-of-the-week collide harmlessly.
 const leaderboardSnapshotSchema = new Schema(
   {
-    weekOf: { type: Date, required: true }, // UTC midnight of that week's Monday
+    weekOf: { type: Date, required: true }, // UTC midnight of the week's first day (Saturday since 2026-10-05; Monday before)
     userId: { type: String, required: true },
     rank: { type: Number, required: true },
     itemsCompleted: { type: Number, required: true },

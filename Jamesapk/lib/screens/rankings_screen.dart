@@ -1058,10 +1058,10 @@ class _RankingsScreenState extends State<RankingsScreen> {
                                           fontSize: 15,
                                           color: selected ? _primary : _textDark,
                                           fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
-                                  // The weekly window resets Monday 12:00 AM Central.
+                                  // The weekly window resets Saturday 12:00 AM Central (WEEK_START_DAY on the server).
                                   if (o.key == 'week') ...[
                                     const SizedBox(height: 3),
-                                    Text('Resets Mondays at 12:00 AM CT.',
+                                    Text('Resets Saturdays at 12:00 AM CT.',
                                         style: TextStyle(fontSize: 12, color: _textLight)),
                                   ],
                                 ],

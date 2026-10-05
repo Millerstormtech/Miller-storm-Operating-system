@@ -1,12 +1,49 @@
 // src/lib/acculynx/windows.ts
 // All windows are "to date": from the period start (Central time) through now.
 //   day   = today         (since 00:00 Central today)
-//   week  = week-to-date  (since Monday 00:00 Central)
+//   week  = week-to-date  (since WEEK_START_DAY 00:00 Central; Saturday)
 //   month = month-to-date (since the 1st 00:00 Central)
 //   year  = year-to-date  (since Jan 1 00:00 Central)
 export type Window = "day" | "week" | "month" | "year";
 
 const ZONE = "America/Chicago";
+
+export type Weekday = "Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
+
+// The day every reporting week starts, app-wide: the Sales Leaderboard's
+// "Week", the Scoreboard, the rank arrows and the DMO all read this one value.
+// Jay, 2026-10-02: "That's how we report, Saturday to Friday", and "we might
+// change it later down the road", so change it HERE and nowhere else. It lives
+// in this file (not its own module) because the node:test runner cannot follow
+// an extensionless import out of src/lib/acculynx.
+export const WEEK_START_DAY: Weekday = "Sat";
+
+const DAY_INDEX: Record<Weekday, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+const DAY_PLURAL: Record<Weekday, string> = {
+  Sun: "Sundays", Mon: "Mondays", Tue: "Tuesdays", Wed: "Wednesdays",
+  Thu: "Thursdays", Fri: "Fridays", Sat: "Saturdays",
+};
+
+/** The caption under every "Week" toggle, e.g. "Resets Saturdays at 12:00 AM CT." */
+export const WEEK_RESET_CAPTION = `Resets ${DAY_PLURAL[WEEK_START_DAY]} at 12:00 AM CT.`;
+
+/** Days since the week began: 0 on the start day itself, 6 on its last day. */
+export function daysIntoWeek(weekday: Weekday, start: Weekday = WEEK_START_DAY): number {
+  return (DAY_INDEX[weekday] - DAY_INDEX[start] + 7) % 7;
+}
+
+/**
+ * UTC midnight of the first day of the week containing `d`, counted on UTC
+ * calendar days. This is the key the weekly rank snapshots are stored under
+ * (SalesRankSnapshot, LeaderboardSnapshot). It is deliberately UTC, not
+ * Central: it only has to be the same for every request in a week, and the
+ * stored keys have always been UTC midnights.
+ */
+export function weekStartUtc(d: Date, start: Weekday = WEEK_START_DAY): Date {
+  const back = (d.getUTCDay() - DAY_INDEX[start] + 7) % 7;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back));
+}
 
 // Offset (ms) of Central from UTC at the given instant (handles CST/CDT).
 function centralOffsetMs(d: Date): number {
@@ -37,8 +74,6 @@ function centralParts(d: Date) {
   return { year: +p.year, month: +p.month, day: +p.day, weekday: p.weekday };
 }
 
-const MON_INDEX: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-
 export function getWindowRange(window: Window, now: Date = new Date()): { start: Date; end: Date } {
   const { year, month, day, weekday } = centralParts(now);
 
@@ -54,11 +89,11 @@ export function getWindowRange(window: Window, now: Date = new Date()): { start:
     return { start: centralWallToUtc(year, month, 1), end: now };
   }
 
-  // week: back up to Monday in Central time
-  const daysSinceMonday = MON_INDEX[weekday] ?? 0;
-  const mondayUtcMidday = new Date(Date.UTC(year, month - 1, day, 12) - daysSinceMonday * 86400000);
-  const mp = centralParts(mondayUtcMidday);
-  return { start: centralWallToUtc(mp.year, mp.month, mp.day), end: now };
+  // week: back up to the week's first day in Central time
+  const back = daysIntoWeek(weekday as Weekday);
+  const startUtcMidday = new Date(Date.UTC(year, month - 1, day, 12) - back * 86400000);
+  const sp = centralParts(startUtcMidday);
+  return { start: centralWallToUtc(sp.year, sp.month, sp.day), end: now };
 }
 
 // The COMPLETE previous calendar month in Central time: 00:00 on the 1st through

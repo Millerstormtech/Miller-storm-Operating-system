@@ -221,12 +221,10 @@ export function teamSummaryFor(
   return mine ? { ...mine, teamCount: standings.length } : null;
 }
 
-/** UTC midnight of the Monday of the given date's week. Weeks start Monday
- * (decided 2026-07-23; matches the weekly digest). */
-export function weekStartMonday(d: Date): Date {
-  const daysSinceMonday = (d.getUTCDay() + 6) % 7; // Sun=0 -> 6, Mon=1 -> 0
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - daysSinceMonday));
-}
+/** UTC midnight of the first day of the given date's week. Weeks started
+ * Monday until 2026-10-05; they now follow the app-wide WEEK_START_DAY
+ * (Saturday) in src/lib/acculynx/windows.ts. */
+export { weekStartUtc } from "../acculynx/windows";
 
 /**
  * Company-rank movement per rep vs the previous week's snapshot.

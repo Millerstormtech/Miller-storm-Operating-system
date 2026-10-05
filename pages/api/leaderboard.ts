@@ -7,7 +7,7 @@ import { UserProgressModel } from "../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, customRange, centralDateStr } from "../../src/lib/acculynx/windows";
 import { SalesRankSnapshotModel } from "../../src/lib/models/SalesRankSnapshot";
-import { weekStartMonday, weekKey, monthKey, rankDeltas } from "../../src/lib/scoreboard/rankMoves";
+import { weekStartUtc, weekKey, monthKey, rankDeltas } from "../../src/lib/scoreboard/rankMoves";
 import type { Window } from "../../src/lib/acculynx/windows";
 import { pickContractKing, pickYtdPodium, kingMonthLabel } from "../../src/lib/leaderboard/contractKing";
 import { courseStats, isBoardUser, BOARD_ROLES, scoresVideosOnly } from "../../src/lib/training/scoring";
@@ -148,7 +148,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // the arrows mean one thing only. The photograph is taken on the week's first
   // board load; the arrows compare it with the newest earlier week OF THE SAME
   // MONTH, because the monthly race restarts at zero on the 1st.
-  const weekOf = weekStartMonday(new Date());
+  const weekOf = weekStartUtc(new Date());
   const raceMonth = monthKey(centralDateStr(monthRange.start));
   const standing = kingSource.map((r, i) => ({ id: r.id, rank: i + 1, revenue: r.revenue }));
   let moves = new Map<string, number | null>();
