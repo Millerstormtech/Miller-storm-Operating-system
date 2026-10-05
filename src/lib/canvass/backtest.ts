@@ -4,6 +4,7 @@
 //
 // Pure: no DB.
 
+import type { GradeConfig } from "./config";
 import type { HomeFacts } from "./grade";
 
 /**
@@ -88,4 +89,113 @@ export function pickRandom<T>(items: readonly T[], count: number, seed: number):
     pool.pop();
   }
   return picked;
+}
+
+// ---- Option B: retuning so yellow means something (Youssef, 5 Oct 2026: work the parked items) ----
+// Method fixed on 17 Sep: tune on the OLDER half of signings, confirm on the NEWER half,
+// then propose. Nothing here changes the live grade; GRADE in config.ts does that.
+
+/** Per colour, how many signed and random houses got it. */
+export type ColorCounts = Record<Color, { signed: number; random: number }> & { signedTotal: number; randomTotal: number };
+
+export const emptyColorCounts = (): ColorCounts => ({
+  green: { signed: 0, random: 0 },
+  yellow: { signed: 0, random: 0 },
+  orange: { signed: 0, random: 0 },
+  red: { signed: 0, random: 0 },
+  signedTotal: 0,
+  randomTotal: 0,
+});
+
+export function countColor(counts: ColorCounts, color: Color, signed: boolean): void {
+  if (signed) {
+    counts.signedTotal++;
+    counts[color].signed++;
+  } else {
+    counts.randomTotal++;
+    counts[color].random++;
+  }
+}
+
+/** How many times more common a set of colours is among signed houses than random ones. */
+export function colorLift(counts: ColorCounts, colors: readonly Color[]): Lift {
+  const sum = (side: "signed" | "random") => colors.reduce((total, color) => total + counts[color][side], 0);
+  return liftSummary({ signedGood: sum("signed"), signedTotal: counts.signedTotal, randomGood: sum("random"), randomTotal: counts.randomTotal });
+}
+
+export type Variant = { name: string; config: GradeConfig };
+
+/**
+ * The settings tried: hail points by size band, house-age points, owner points
+ * and colour cut-offs. 288 combinations, today's settings among them. Only
+ * points and cut-offs move; which facts count stays the same.
+ */
+export function retuneVariants(base: GradeConfig): Variant[] {
+  const hails: Array<[string, number[]]> = [
+    ["hail 40/30/20", [40, 30, 20]],
+    ["hail 40/30/0", [40, 30, 0]],
+    ["hail 50/35/0", [50, 35, 0]],
+    ["hail 45/35/10", [45, 35, 10]],
+  ];
+  const ages: Array<[string, [number, number, number]]> = [
+    ["age 20/10/10", [20, 10, 10]],
+    ["age 20/10/0", [20, 10, 0]],
+    ["age 10/5/0", [10, 5, 0]],
+    ["age 0/0/0", [0, 0, 0]],
+  ];
+  const owners: Array<[string, [number, number]]> = [
+    ["owner +10/-5", [10, -5]],
+    ["owner +15/-10", [15, -10]],
+    ["owner +20/-15", [20, -15]],
+  ];
+  const cutoffs: Array<[string, GradeConfig["colors"]]> = [
+    ["colours 60/40/20", { green: 60, yellow: 40, orange: 20 }],
+    ["colours 60/45/25", { green: 60, yellow: 45, orange: 25 }],
+    ["colours 60/50/30", { green: 60, yellow: 50, orange: 30 }],
+    ["colours 65/45/25", { green: 65, yellow: 45, orange: 25 }],
+    ["colours 70/50/30", { green: 70, yellow: 50, orange: 30 }],
+    ["colours 55/40/20", { green: 55, yellow: 40, orange: 20 }],
+  ];
+  const variants: Variant[] = [];
+  for (const [hailName, points] of hails)
+    for (const [ageName, [oldPoints, midPoints, unknownPoints]] of ages)
+      for (const [ownerName, [livesHerePoints, livesElsewherePoints]] of owners)
+        for (const [colorName, colors] of cutoffs) {
+          variants.push({
+            name: `${hailName}, ${ageName}, ${ownerName}, ${colorName}`,
+            config: {
+              ...base,
+              hailBands: base.hailBands.map((band, i) => ({ ...band, points: points[i] ?? band.points })),
+              age: { ...base.age, oldPoints, midPoints, unknownPoints },
+              owner: { livesHerePoints, livesElsewherePoints },
+              colors,
+            },
+          });
+        }
+  return variants;
+}
+
+export type RetuneScore = { green: Lift; yellow: Lift; greenOrYellow: Lift };
+
+export function retuneScore(counts: ColorCounts): RetuneScore {
+  return { green: colorLift(counts, ["green"]), yellow: colorLift(counts, ["yellow"]), greenOrYellow: colorLift(counts, ["green", "yellow"]) };
+}
+
+/**
+ * The bar a retuned grade must clear on the older half before it is even
+ * looked at: green must not get worse at its job (lift at least today's) or
+ * much rarer (at least half of today's share of random houses), and yellow
+ * must be a real group (at least 10% of random houses).
+ */
+export function qualifies(candidate: RetuneScore, today: RetuneScore): boolean {
+  return (
+    (candidate.green.lift ?? 0) >= (today.green.lift ?? 0) &&
+    candidate.green.randomShare >= today.green.randomShare / 2 &&
+    candidate.yellow.randomShare >= 0.1
+  );
+}
+
+/** Qualifying settings, highest yellow lift first: that is what "yellow means something" asks. */
+export function rankRetunes<T extends { score: RetuneScore }>(candidates: readonly T[], today: RetuneScore): T[] {
+  return candidates.filter((c) => qualifies(c.score, today)).sort((a, b) => (b.score.yellow.lift ?? 0) - (a.score.yellow.lift ?? 0));
 }

@@ -1,6 +1,18 @@
 // src/lib/canvass/backtest.test.ts
 import { describe, it, expect } from "vitest";
-import { asOfFacts, isGoodDoor, isGoodOrMaybeDoor, liftSummary, pickRandom } from "./backtest";
+import {
+  asOfFacts,
+  colorLift,
+  countColor,
+  emptyColorCounts,
+  isGoodDoor,
+  isGoodOrMaybeDoor,
+  liftSummary,
+  pickRandom,
+  rankRetunes,
+  retuneVariants,
+} from "./backtest";
+import { GRADE } from "./config";
 import type { HomeFacts } from "./grade";
 
 // Spec A6: grade each house signed in the last 12 months using only what we would
@@ -110,5 +122,60 @@ describe("isGoodDoor", () => {
     expect(measured.lift).toBe(1.94);
     expect(measured.passes).toBe(false); // a hair under, and it is reported that way
     expect(liftSummary({ signedGood: 400, signedTotal: 787, randomGood: 1865, randomTotal: 7870 }).passes).toBe(true);
+  });
+});
+
+describe("option B retune helpers", () => {
+  const counts = () => {
+    const c = emptyColorCounts();
+    // 10 signed: 4 green, 3 yellow, 2 orange, 1 red. 100 random: 10 green, 15 yellow, 40 orange, 35 red.
+    const signed = [["green", 4], ["yellow", 3], ["orange", 2], ["red", 1]] as const;
+    const random = [["green", 10], ["yellow", 15], ["orange", 40], ["red", 35]] as const;
+    for (const [color, n] of signed) for (let i = 0; i < n; i++) countColor(c, color, true);
+    for (const [color, n] of random) for (let i = 0; i < n; i++) countColor(c, color, false);
+    return c;
+  };
+
+  it("counts each colour on each side and works out lifts", () => {
+    const c = counts();
+    expect(c.signedTotal).toBe(10);
+    expect(c.randomTotal).toBe(100);
+    expect(colorLift(c, ["green"]).lift).toBe(4);
+    expect(colorLift(c, ["yellow"]).lift).toBe(2);
+    expect(colorLift(c, ["green", "yellow"]).lift).toBe(2.8);
+  });
+
+  it("tries 288 settings, today's among them, changing only points and cut-offs", () => {
+    const variants = retuneVariants(GRADE);
+    expect(variants).toHaveLength(288);
+    expect(new Set(variants.map((v) => v.name)).size).toBe(288);
+    const today = variants.find((v) => v.name === "hail 40/30/20, age 20/10/10, owner +10/-5, colours 60/40/20");
+    expect(today?.config).toEqual(GRADE);
+    for (const v of variants) {
+      expect(v.config.hailLookbackMonths).toBe(GRADE.hailLookbackMonths);
+      expect(v.config.hailBands.map((b) => b.minInches)).toEqual(GRADE.hailBands.map((b) => b.minInches));
+      expect(v.config.closedJobBlocksYears).toBe(GRADE.closedJobBlocksYears);
+    }
+  });
+
+  it("ranks only settings where green stays as good and not too rare and yellow is a real group, best yellow lift first", () => {
+    const lift = (value: number, randomShare: number) => ({ lift: value, randomShare, signedShare: 0, passes: false });
+    const score = (green: number, greenRandom: number, yellow: number, yellowRandom: number) => ({
+      green: lift(green, greenRandom),
+      yellow: lift(yellow, yellowRandom),
+      greenOrYellow: lift(0, 0),
+    });
+    const today = score(1.9, 0.2, 1.0, 0.2);
+    const ranked = rankRetunes(
+      [
+        { name: "worse green", score: score(1.8, 0.2, 1.6, 0.2) },
+        { name: "green too rare", score: score(2.5, 0.09, 1.6, 0.2) },
+        { name: "yellow too small", score: score(2.0, 0.2, 1.9, 0.05) },
+        { name: "good", score: score(1.95, 0.15, 1.4, 0.2) },
+        { name: "better", score: score(1.9, 0.12, 1.5, 0.25) },
+      ],
+      today
+    );
+    expect(ranked.map((r) => r.name)).toEqual(["better", "good"]);
   });
 });
