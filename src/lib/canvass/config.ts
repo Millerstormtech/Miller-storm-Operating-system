@@ -32,13 +32,17 @@ export const GRADE: GradeConfig = {
     { minInches: 1.25, points: 30 },
     { minInches: 1, points: 20 },
   ],
-  age: { oldYears: 20, oldPoints: 20, midYears: 12, midPoints: 10, unknownPoints: 10 },
-  owner: { livesHerePoints: 10, livesElsewherePoints: -5 },
+  // Option B retune, approved by Youssef 5 Oct 2026 (scripts/canvass-backtest.ts --retune): an
+  // unknown age scores 0 (was 10), the owner counts more (was +10/-5), cut-offs rise (were
+  // 60/40/20). Tuned on the older half of 780 signings, confirmed on the newer half: yellow
+  // lift 0.95 -> about 1.25, green 1.6 -> 1.65, on three different random samples.
+  age: { oldYears: 20, oldPoints: 20, midYears: 12, midPoints: 10, unknownPoints: 0 },
+  owner: { livesHerePoints: 20, livesElsewherePoints: -15 },
   visibleDamagePoints: 15,
   notInterested: { points: -25, withinDays: 60 },
   renterPoints: -10,
   neighborSigned: { points: 5, withinDays: 90, radiusMeters: 150 },
-  colors: { green: 60, yellow: 40, orange: 20 },
+  colors: { green: 70, yellow: 50, orange: 30 },
   closedJobBlocksYears: 5, // Youssef, 16 Sep 2026
 };
 

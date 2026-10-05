@@ -145,12 +145,13 @@ describe("option B retune helpers", () => {
     expect(colorLift(c, ["green", "yellow"]).lift).toBe(2.8);
   });
 
-  it("tries 288 settings, today's among them, changing only points and cut-offs", () => {
+  it("tries 288 settings, the live ones among them, changing only points and cut-offs", () => {
     const variants = retuneVariants(GRADE);
     expect(variants).toHaveLength(288);
     expect(new Set(variants.map((v) => v.name)).size).toBe(288);
-    const today = variants.find((v) => v.name === "hail 40/30/20, age 20/10/10, owner +10/-5, colours 60/40/20");
-    expect(today?.config).toEqual(GRADE);
+    // The setting chosen on 5 Oct 2026 is the live GRADE.
+    const live = variants.find((v) => v.name === "hail 40/30/20, age 20/10/0, owner +20/-15, colours 70/50/30");
+    expect(live?.config).toEqual(GRADE);
     for (const v of variants) {
       expect(v.config.hailLookbackMonths).toBe(GRADE.hailLookbackMonths);
       expect(v.config.hailBands.map((b) => b.minInches)).toEqual(GRADE.hailBands.map((b) => b.minInches));

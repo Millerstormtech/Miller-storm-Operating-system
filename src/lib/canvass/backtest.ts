@@ -34,9 +34,9 @@ import type { Color } from "./grade";
  * the backtest judges the promise. The old reading (green or yellow) is still
  * printed for information so the two can be compared.
  *
- * PARKED, option B: retune so yellow means something (drop the 1 in hail band,
- * stop paying for house age, lean on hail size and owner occupancy). The best
- * combination tried reached 1.84x on green-or-yellow. Only if A is not enough.
+ * Option B (retune so yellow means something) was APPLIED on 5 Oct 2026 with
+ * Youssef's approval: see GRADE in config.ts and `--retune` in the backtest
+ * script. Green stays the promise.
  */
 export function isGoodDoor(color: Color): boolean {
   return color === "green";

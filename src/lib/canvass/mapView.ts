@@ -6,6 +6,7 @@
 //
 // Pure: no DB, no React, no clock.
 
+import { GRADE } from "./config";
 import type { Color } from "./grade";
 import { MAX_BBOX_DEGREES, type Bbox } from "./query";
 
@@ -138,12 +139,18 @@ export const LEGEND: Array<{ color: Color; label: string; meaning: string }> = [
   { color: "red", label: "Skip", meaning: "Marked do not knock, told us no recently, or already a Miller Storm job." },
 ];
 
-/** The plain-words panel behind "How the colors work" (spec A3). No em dashes. */
+const [hailBig, hailMid, hailSmall] = GRADE.hailBands;
+const unknownAge = GRADE.age.unknownPoints === 0 ? "If we do not know the age it adds nothing." : `If we do not know the age it gets ${GRADE.age.unknownPoints}.`;
+
+/**
+ * The plain-words panel behind "How the colors work" (spec A3), written from
+ * GRADE so the words can never drift from the points. No em dashes.
+ */
 export const HOW_COLORS_WORK: string[] = [
-  "Every house starts at zero points. Hail in the last 12 months adds the most: 1.75 inch or bigger adds 40, 1.25 inch adds 30, 1 inch adds 20. Only the biggest storm counts, not a total.",
-  "A house built more than 20 years ago adds 20 points; 12 to 20 years adds 10. If we do not know the age it gets 10.",
-  "An owner who lives in the house adds 10. An owner who lives somewhere else takes 5 away. A house marked as a renter takes 10 away.",
-  "A rep who saw visible damage adds 15. A neighbour who signed with us in the last 90 days adds 5. A house that told us no in the last 60 days loses 25.",
-  "60 points or more is green, 40 is yellow, 20 is orange, below that is red. Do Not Knock, an open Miller Storm job, and a finished roof less than 5 years old make a house red whatever its points.",
+  `Every house starts at zero points. Hail in the last ${GRADE.hailLookbackMonths} months adds the most: ${hailBig.minInches} inch or bigger adds ${hailBig.points}, ${hailMid.minInches} inch adds ${hailMid.points}, ${hailSmall.minInches} inch adds ${hailSmall.points}. Only the biggest storm counts, not a total.`,
+  `A house built more than ${GRADE.age.oldYears} years ago adds ${GRADE.age.oldPoints} points; ${GRADE.age.midYears} to ${GRADE.age.oldYears} years adds ${GRADE.age.midPoints}. ${unknownAge}`,
+  `An owner who lives in the house adds ${GRADE.owner.livesHerePoints}. An owner who lives somewhere else takes ${-GRADE.owner.livesElsewherePoints} away. A house marked as a renter takes ${-GRADE.renterPoints} away.`,
+  `A rep who saw visible damage adds ${GRADE.visibleDamagePoints}. A neighbour who signed with us in the last ${GRADE.neighborSigned.withinDays} days adds ${GRADE.neighborSigned.points}. A house that told us no in the last ${GRADE.notInterested.withinDays} days loses ${-GRADE.notInterested.points}.`,
+  `${GRADE.colors.green} points or more is green, ${GRADE.colors.yellow} is yellow, ${GRADE.colors.orange} is orange, below that is red. Do Not Knock, an open Miller Storm job, and a finished roof less than ${GRADE.closedJobBlocksYears} years old make a house red whatever its points.`,
   "Hail sizes are radar estimates, not measurements. Treat the colour as a starting point, not a promise.",
 ];
