@@ -33,8 +33,15 @@ describe("pace and bar colours", () => {
     expect(barColour(199, 200, 200, true)).toBe("red");
     expect(barColour(200, 200, 200, true)).toBe("green");
   });
-  it("a zero target is always green", () => {
+  it("a zero target is always green, and gets no bar", () => {
     expect(barColour(0, 0, paceFor(0, 3, 7), false)).toBe("green");
+    expect(bars({ doors: 5, claims: 0, contracts: 0, contractDollars: 0 }, { doors: 0, claims: 1 }, { presentDays: 7, elapsedPresentDays: 3, ended: false }).map((b) => b.field)).toEqual(["claims"]);
+  });
+  it("whole-number goals round the pace down; dollars do not", () => {
+    const wed = { presentDays: 7, elapsedPresentDays: 3, ended: false };
+    const [claims, dollars] = bars({ doors: 0, claims: 0, contracts: 0, contractDollars: 0 }, { claims: 1, contractDollars: 7000 }, wed);
+    expect(claims).toMatchObject({ pace: 0, colour: "green" }); // not red for missing 0.43 of a claim
+    expect(dollars.pace).toBe(3000);
   });
   it("makes one bar per committed field and skips the rest", () => {
     const b = bars(
@@ -44,7 +51,7 @@ describe("pace and bar colours", () => {
     );
     expect(b.map((x) => [x.field, x.pace, x.colour])).toEqual([
       ["doors", 80, "yellow"],
-      ["claims", 2 * 4 / 7, "red"],
+      ["claims", 1, "red"], // 2 x 4/7 = 1.14 rounds down to 1 claim
     ]);
   });
 });
@@ -93,7 +100,7 @@ describe("minimum chip", () => {
     expect(monthlyContractAverage(119_999)).toBeLessThan(40_000);
   });
   it("otherwise judges doors against the 100-door pace", () => {
-    // day 4 of 7: pace 57.1, yellow from 40
+    // day 4 of 7: pace 57 (rounded down), yellow from 39.9
     expect(minimumChip({ ...base, doors: 58 }).state).toBe("on-pace");
     expect(minimumChip({ ...base, doors: 40 }).state).toBe("at-risk");
     expect(minimumChip({ ...base, doors: 39 }).state).toBe("off-pace");

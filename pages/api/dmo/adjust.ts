@@ -41,7 +41,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const doc: any = await DmoWeeklyModel.findOne({ userId: target.id, weekOf: clock.nextWeekOf }).lean();
-    if (!doc) return res.status(404).json({ error: `${target.name || "They"} haven't sent their weekly DMO yet.` });
+    if (!doc) {
+      return res.status(404).json({ error: target.name ? `${target.name} hasn't sent their weekly DMO yet.` : "They haven't sent their weekly DMO yet." });
+    }
 
     const current = {} as Commitment;
     for (const f of WEEKLY_FIELDS) current[f] = Number(doc[f]) || 0;

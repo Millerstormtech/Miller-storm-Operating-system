@@ -16,6 +16,8 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // pages/*/my-tasks.tsx before reviving or deleting them.
 export const salesSidebarItems: { id: string; label: string; toggleKey?: string; href?: string }[] = [
   { id: "dashboard", label: "My Dashboard", href: "/sales/dashboard", toggleKey: "dashboard" },
+  // Monthly + weekly DMO (Jay, 2026-10-02). No toggleKey yet: shown to everyone in this role.
+  { id: "dmo", label: "My DMO", href: "/sales/dmo" },
   { id: "storm-chat", label: "StormChat", href: "/sales/storm-chat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", href: "/sales/course-leaderboard", toggleKey: "trainingCenter" },
   { id: "apps-tools", label: "Tools & Products", href: "/sales/apps-tools", toggleKey: "appsTools" },

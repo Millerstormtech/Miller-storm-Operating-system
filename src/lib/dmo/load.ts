@@ -43,6 +43,8 @@ export interface DmoBoard {
   groups: GroupDmo[];
   /** Leadership only: every red team, with who owns fixing it. */
   slipping: Array<GroupDmo & { branch: string; branchOwner: string }>;
+  /** Names for the user ids in commitment changes ("changed to 150 by Gunner"). */
+  names: Record<string, string>;
 }
 
 const isDmoRole = (role?: string | null) => (DMO_ROLES as readonly string[]).includes(String(role || ""));
@@ -172,7 +174,16 @@ export async function loadDmo(viewer: Viewer, now: Date = new Date()): Promise<D
       });
   }
 
-  return { clock, scope, me, people: sorted, total, groups, slipping };
+  // Who changed a commitment: their name, so the screen can say "changed by Gunner".
+  const nameById = new Map([...shared.byEmail.values()].map((u: any) => [String(u.id), String(u.name || u.email || "")]));
+  const names: Record<string, string> = {};
+  for (const p of people) {
+    for (const c of [p.thisWeek.commitment, p.weeklyForm.commitment]) {
+      for (const a of c?.adjustments || []) names[a.byUserId] = nameById.get(a.byUserId) || "your Team Lead";
+    }
+  }
+
+  return { clock, scope, me, people: sorted, total, groups, slipping, names };
 }
 
 /**

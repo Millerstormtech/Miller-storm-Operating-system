@@ -79,7 +79,16 @@ export interface Period {
   ended: boolean;
 }
 
-/** One bar per committed number. Fields the person did not commit to (null) get no bar. */
+/**
+ * Pace for one field. Doors, claims and contracts are whole numbers, so their
+ * pace rounds DOWN: nobody is behind for missing 0.4 of a claim on a Wednesday.
+ */
+export function fieldPace(field: WeeklyField, target: number, period: Period): number {
+  const exact = paceFor(target, period.elapsedPresentDays, period.presentDays);
+  return field === "contractDollars" ? exact : Math.floor(exact);
+}
+
+/** One bar per committed number. Fields with no commitment (null) or a commitment of 0 get no bar. */
 export function bars(
   actuals: Record<WeeklyField, number>,
   targets: Partial<Record<WeeklyField, number | null>>,
@@ -88,8 +97,8 @@ export function bars(
   const out: Bar[] = [];
   for (const field of WEEKLY_FIELDS) {
     const target = targets[field];
-    if (target == null) continue;
-    const pace = paceFor(target, period.elapsedPresentDays, period.presentDays);
+    if (target == null || target <= 0) continue;
+    const pace = fieldPace(field, target, period);
     out.push({ field, actual: actuals[field] || 0, target, pace, colour: barColour(actuals[field] || 0, target, pace, period.ended) });
   }
   return out;
@@ -156,7 +165,7 @@ export function minimumChip(input: {
   period: Period;
 }): MinimumChip {
   const ramp = rampDay(input.firstKnockDay, input.today);
-  const doorsPace = paceFor(MIN_WEEKLY_DOORS, input.period.elapsedPresentDays, input.period.presentDays);
+  const doorsPace = fieldPace("doors", MIN_WEEKLY_DOORS, input.period);
   const chip = (state: ChipState, colour: Colour | null): MinimumChip => ({ state, colour, doorsPace, rampDay: ramp });
 
   if (ramp != null) return chip("ramp", null);
