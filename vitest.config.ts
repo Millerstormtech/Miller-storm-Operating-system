@@ -53,6 +53,8 @@ export default defineConfig({
       "src/lib/design/**/*.test.ts",
       // Canvass Map: house grading rules, pure like the scoreboard modules.
       "src/lib/canvass/**/*.test.ts",
+      // DMO (monthly + weekly commitments, pace bars, minimum chip), 2026-10-05.
+      "src/lib/dmo/**/*.test.ts",
     ],
     environment: "node",
   },
