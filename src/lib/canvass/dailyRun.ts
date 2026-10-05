@@ -93,6 +93,7 @@ export function dailySteps(input: StepInput): Step[] {
   steps.push({ name: "jobs", description: "read every job from AccuLynx", ...script("canvass-jobs-backfill.ts", ["--env", input.envFile]) });
   steps.push({ name: "jobs-signed", description: "find the signing date of jobs not yet checked", ...script("canvass-jobs-signed.ts", ["--env", input.envFile]) });
   steps.push({ name: "match", description: "match doors and jobs to houses", ...script("canvass-match.ts", []) });
+  steps.push({ name: "parker-owner", description: "refresh Parker's owner-lives-here reading from Parker CAD", ...script("canvass-parker-owner.ts", []) });
   steps.push({ name: "grade", description: "work out every house's colour for today", ...script("canvass-grade.ts", []) });
   steps.push({ name: "grid", description: "rebuild the zoomed-out pre-count", ...script("canvass-grid.ts", []) });
   return steps;
