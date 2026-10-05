@@ -28,9 +28,7 @@ const ROLE: Record<string, { label: string; dot: string; avatarBg: string; avata
 
 function roleOf(u: OrgUser): string {
   const r = (u.role || "").toLowerCase();
-  if (ROLE[r]) return r;
-  const list = (u.roles || []).map((x) => x.toLowerCase());
-  return list.find((x) => ROLE[x]) || "sales";
+  return ROLE[r] ? r : "sales";
 }
 
 function initials(name: string): string {

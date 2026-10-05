@@ -18,6 +18,7 @@ import headerLogo from "../../ref. images/ChatGPT_Image_Feb_23__2026__07_00_52_P
 import footerImage from "../../ref. images/image.png";
 import { WebPagePreview as SalesWebPagePreview } from "./SalesPortal";
 import { roleDisplayName } from "../lib/roleLabels";
+import { isTeamLead } from "../lib/roleLadder";
 
 type AdminPortalProps = {
   currentUser: AuthenticatedUser;
@@ -454,8 +455,8 @@ function UserManagement(props: UserEditorProps) {
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
   const showManagerField = selectedUser?.role === "sales";
   
-  // Get all roles for the user (including primary role and additional roles)
-  const userRoles = selectedUser ? [selectedUser.role, ...(selectedUser.roles || [])] : [];
+  // Every account has exactly one role (src/lib/roleLadder.ts).
+  const userRoles = selectedUser ? [selectedUser.role] : [];
   const uniqueRoles = [...new Set(userRoles)];
   
   // Get toggles grouped by role
@@ -656,7 +657,7 @@ function UserManagement(props: UserEditorProps) {
                       <div>
                         <div className="list-item-title">{user.name}</div>
                         <div className="list-item-subtitle">
-                          {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                          {(user.role || "").toUpperCase()} • {user.email}
                           {user.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}
                         </div>
                       </div>
@@ -675,7 +676,7 @@ function UserManagement(props: UserEditorProps) {
                     <div style={{ flex: 1 }}>
                       <div className="list-item-title">{user.name}</div>
                       <div className="list-item-subtitle">
-                        {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                        {(user.role || "").toUpperCase()} • {user.email}
                       </div>
                     </div>
                     <button
@@ -882,11 +883,9 @@ function UserManagement(props: UserEditorProps) {
                           key={role}
                           className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"}
                           onClick={() => {
-                            const newRoles = [role];
                             updateUser({
                               ...selectedUser,
                               role: role,
-                              roles: newRoles,
                               managerId: role === "sales" ? selectedUser.managerId : undefined
                             });
                             setShowRolesDropdown(false);
@@ -3712,8 +3711,8 @@ function AppsToolManagement() {
 }
 
 function BusinessUnitsManager(props: { users: UserProfile[] }) {
-  // Every branch manager also leads a team (2026-10-02).
-  const managers = props.users.filter((u) => u.role === "sales-team-lead" || u.role === "branch-manager" || (u.roles || []).includes("sales-team-lead"));
+  // Everyone who leads a team: team leads and branch managers (roleLadder.ts).
+  const managers = props.users.filter((u) => isTeamLead(u.role));
 
   function getTeamMembers(managerId: string) {
     return props.users.filter((u) => u.managerId === managerId);

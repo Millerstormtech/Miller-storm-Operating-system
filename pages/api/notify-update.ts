@@ -4,6 +4,7 @@ import { UserModel } from "../../src/lib/models/User";
 import { NotificationModel } from "../../src/lib/models/Notification";
 import { requireRole, allowMethods } from "../../src/lib/auth";
 import { sendPushNotificationToMultiple } from "../../src/lib/firebase-admin";
+import { REP_ROLES } from "../../src/lib/roleLadder";
 
 // Store links the "update" notification deep-links to. The app is currently
 // only live on the Apple App Store, so iOS is the real target; the Play Store
@@ -38,10 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const recipients = await UserModel.find(
     {
       deleted: { $ne: true },
-      $or: [
-        { role: { $in: ["sales", "sales-team-lead"] } },
-        { roles: { $in: ["sales", "sales-team-lead"] } },
-      ],
+      // Everyone who sells: reps, team leads and branch managers (roleLadder.ts).
+      role: { $in: [...REP_ROLES] },
     },
     { id: 1, fcmToken: 1 }
   ).lean();

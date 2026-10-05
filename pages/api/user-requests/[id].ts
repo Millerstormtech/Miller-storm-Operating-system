@@ -95,7 +95,6 @@ export default async function handler(
           name: userRequest.name,
           email: userRequest.email,
           role: userRequest.role || "sales",
-          roles: [userRequest.role || "sales"],
           passwordHash: userRequest.passwordHash,
           phone: userRequest.phone || "",
           territory: reqBranch,

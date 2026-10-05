@@ -8,31 +8,23 @@
 // its models and its env already loaded.
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
-import { UserModel } from "../../../src/lib/models/User";
 import { announceMonthlyKing } from "../../../src/lib/stormbot/monthly-king";
+import { requireRole } from "../../../src/lib/auth";
 
-// Authorization mirrors pages/api/repcard/sync.ts:
+// Two paths, like pages/api/acculynx/sync.ts:
 //   1. x-sync-secret header (the cron) -- server-trusted, not spoofable.
-//   2. body userId resolved to an admin (a manual re-trigger from a script).
-// See that file's SECURITY LIMITATION note: path 2 trusts a client-supplied
-// userId, which is a known platform-wide issue, not one introduced here. The
-// blast radius of abuse is bounded by the once-ever ledger row: a second caller
-// for an already-announced month gets "already-sent" and posts nothing.
-async function authorize(req: NextApiRequest): Promise<boolean> {
+//   2. a signed admin session (cookie or Bearer token), for a manual run from
+//      the app. Identity comes from the token, never from a userId in the body:
+//      a typed-in userId used to be enough, so anyone who knew an admin's
+//      email could trigger this (fixed 2026-10-03).
+function hasSyncSecret(req: NextApiRequest): boolean {
   const secret = req.headers["x-sync-secret"];
-  if (secret && secret === process.env.ACCULYNX_SYNC_SECRET) return true;
-  const userId = (req.body?.userId as string) || "";
-  if (!userId) return false;
-  await connectMongo();
-  const user = await UserModel.findOne({ id: userId, deleted: { $ne: true } }).lean();
-  const role = (user as any)?.role;
-  const roles = (user as any)?.roles ?? [];
-  return role === "admin" || roles.includes("admin");
+  return !!secret && secret === process.env.ACCULYNX_SYNC_SECRET;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).end(); }
-  if (!(await authorize(req))) return res.status(401).json({ error: "unauthorized" });
+  if (!hasSyncSecret(req) && !requireRole(req, res, "admin")) return;
   await connectMongo();
 
   // `now` override, for verifying a specific month without waiting for the 1st.

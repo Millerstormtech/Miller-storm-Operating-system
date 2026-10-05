@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { allowMethods } from "../../../src/lib/auth";
+import { TEAM_LEAD_ROLES } from "../../../src/lib/roleLadder";
 
 // Public (no auth): the Sales Team Leads a self-registering rep can pick as their
 // team on the register page. Returns only non-sensitive fields (id, name,
@@ -19,7 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       deleted: { $ne: true },
       suspended: { $ne: true },
       testAccount: { $ne: true },
-      $or: [{ role: "sales-team-lead" }, { role: "branch-manager" }, { roles: "sales-team-lead" }],
+      // Everyone who leads a team: team leads and branch managers (roleLadder.ts).
+      role: { $in: [...TEAM_LEAD_ROLES] },
     },
     { _id: 0, id: 1, name: 1, territory: 1 }
   ).lean();

@@ -35,7 +35,7 @@ const Profile: NextPage = () => {
               const branch = String(userProfile.territory || "").trim().toLowerCase();
               const bm = users.find(
                 (u: any) =>
-                  (u.role === "branch-manager" || (u.roles || []).includes("branch-manager")) &&
+                  u.role === "branch-manager" &&
                   String(u.territory || "").trim().toLowerCase() === branch
               );
               setBranchManagerName(bm?.name || "");

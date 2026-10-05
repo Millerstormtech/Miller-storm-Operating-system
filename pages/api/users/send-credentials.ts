@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Resolve the same details the account email shows.
-    const roles: string[] = (user.roles && user.roles.length > 0) ? user.roles : [user.role];
+    const roles: string[] = [user.role];
     const branch = (user.territory as string) || (Array.isArray(user.branches) ? user.branches[0] : "") || null;
     let managerName: string | null = null;
     if (user.managerId) {
