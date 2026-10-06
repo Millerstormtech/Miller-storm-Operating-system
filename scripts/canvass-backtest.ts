@@ -18,6 +18,9 @@
 //   --explain                  also compare signed and random houses by hail, age and owner,
 //                              and try a few alternative grade settings (for a proposal only;
 //                              changing the grade needs Youssef's approval)
+//   --retune                   option B: try 288 grade settings on the OLDER half of signings,
+//                              rank by how much yellow means, and confirm the best on the NEWER
+//                              half (for a proposal only; GRADE is not changed)
 //   --uri <mongodb>            database, default mongodb://127.0.0.1:27017/millerstorm
 //
 // Prints counts and shares only.
@@ -27,7 +30,7 @@ import { GRADE, type GradeConfig } from "../src/lib/canvass/config";
 import { gradeHome, type HomeFacts } from "../src/lib/canvass/grade";
 import { homeFacts } from "../src/lib/canvass/facts";
 import { biggestHailInWindow } from "../src/lib/canvass/hail";
-import { asOfFacts, isGoodDoor, isGoodOrMaybeDoor, liftSummary, pickRandom } from "../src/lib/canvass/backtest";
+import { asOfFacts, countColor, emptyColorCounts, isGoodDoor, isGoodOrMaybeDoor, liftSummary, pickRandom, rankRetunes, retuneScore, retuneVariants, type RetuneScore } from "../src/lib/canvass/backtest";
 import { centralDay, monthsBefore } from "../src/lib/canvass/dates";
 import { areaForCounty } from "../src/lib/canvass/counties";
 import { CanvassHomeModel } from "../src/lib/models/CanvassHome";
@@ -38,16 +41,17 @@ const DAYS_BEFORE_SIGNING = 30;
 const SIGNED_WITHIN_MONTHS = 12;
 const HAIL_WINDOWS = [12, 18, 24];
 
-type Options = { today: string; randomPerSigned: number; seed: number; explain: boolean; uri: string };
+type Options = { today: string; randomPerSigned: number; seed: number; explain: boolean; retune: boolean; uri: string };
 
 function parseArgs(argv: string[]): Options {
-  const options: Options = { today: centralDay(new Date()) ?? "", randomPerSigned: 10, seed: 42, explain: false, uri: "mongodb://127.0.0.1:27017/millerstorm" };
+  const options: Options = { today: centralDay(new Date()) ?? "", randomPerSigned: 10, seed: 42, explain: false, retune: false, uri: "mongodb://127.0.0.1:27017/millerstorm" };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--today") options.today = argv[++i] ?? "";
     else if (arg === "--random-per-signed") options.randomPerSigned = Number(argv[++i]);
     else if (arg === "--seed") options.seed = Number(argv[++i]);
     else if (arg === "--explain") options.explain = true;
+    else if (arg === "--retune") options.retune = true;
     else if (arg === "--uri") options.uri = argv[++i] ?? options.uri;
     else throw new Error(`Unknown option: ${arg}`);
   }
@@ -156,6 +160,48 @@ async function main() {
       if (good) counts.randomGood++;
     }
   };
+
+  if (options.retune) {
+    // Facts are worked out once per house; only the points and cut-offs change between settings.
+    const asOfDays = pairs.map((pair) => pair.asOf).sort();
+    const splitDay = asOfDays[Math.floor(asOfDays.length / 2)];
+    type Row = { signed: boolean; older: boolean; asOf: string; facts: HomeFacts };
+    const rows: Row[] = [];
+    for (const pair of pairs) {
+      const older = pair.asOf < splitDay;
+      rows.push({ signed: true, older, asOf: pair.asOf, facts: factsAsOf(pair.house, pair.asOf) });
+      for (const id of pair.random) {
+        const house = randomHouses.get(id);
+        if (house) rows.push({ signed: false, older, asOf: pair.asOf, facts: factsAsOf(house, pair.asOf) });
+      }
+    }
+    const scoreHalf = (config: GradeConfig, older: boolean): RetuneScore => {
+      const counts = emptyColorCounts();
+      for (const row of rows) if (row.older === older) countColor(counts, gradeHome(row.facts, row.asOf, config).color, row.signed);
+      return retuneScore(counts);
+    };
+    const signedOlder = rows.filter((r) => r.signed && r.older).length;
+    const signedNewer = rows.filter((r) => r.signed && !r.older).length;
+    console.log(`[retune] older half: ${signedOlder} signed houses graded before ${splitDay}; newer half: ${signedNewer} from ${splitDay} on`);
+    const line = (label: string, score: RetuneScore) =>
+      `${label}: green lift ${score.green.lift ?? "n/a"} (${pct(score.green.randomShare)} of random houses), ` +
+      `yellow lift ${score.yellow.lift ?? "n/a"} (${pct(score.yellow.randomShare)} of random), green or yellow lift ${score.greenOrYellow.lift ?? "n/a"}`;
+    const todayOlder = scoreHalf(GRADE, true);
+    const todayNewer = scoreHalf(GRADE, false);
+    console.log(`[retune] TODAY'S SETTINGS, ${line("older half", todayOlder)}`);
+    console.log(`[retune] TODAY'S SETTINGS, ${line("newer half", todayNewer)}`);
+    const tried = retuneVariants(GRADE).map((variant) => ({ ...variant, score: scoreHalf(variant.config, true) }));
+    const ranked = rankRetunes(tried, todayOlder);
+    console.log(`[retune] ${tried.length} settings tried on the older half; ${ranked.length} keep green at least as good and give yellow a real group`);
+    for (const candidate of ranked.slice(0, 8)) {
+      const newer = scoreHalf(candidate.config, false);
+      console.log(`[retune] ${candidate.name}`);
+      console.log(`[retune]     ${line("older (tuned on)", candidate.score)}`);
+      console.log(`[retune]     ${line("newer (confirm) ", newer)}`);
+    }
+    await mongoose.disconnect();
+    return;
+  }
 
   for (const months of HAIL_WINDOWS) {
     const counts = emptyCounts();
