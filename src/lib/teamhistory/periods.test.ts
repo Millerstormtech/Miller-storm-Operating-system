@@ -52,6 +52,16 @@ describe("advanceHistory", () => {
       expect(validateHistory(h)).toBeNull();
     }
   });
+  it("with a gap, retargets today's period instead of reopening earlier", () => {
+    const h: Period[] = [
+      { ...G, from: HISTORY_START, to: "2026-09-10", source: "initial" },
+      { ...D, from: "2026-09-16", to: null, source: "sync" },
+    ];
+    expect(advanceHistory(h, G, "2026-09-16")).toEqual([
+      { ...G, from: HISTORY_START, to: "2026-09-10", source: "initial" },
+      { ...G, from: "2026-09-16", to: null, source: "sync" },
+    ]);
+  });
 });
 
 describe("moveBoundary", () => {
@@ -71,6 +81,42 @@ describe("moveBoundary", () => {
     expect(code(() => moveBoundary(h, 0, "2026-02-01", "2026-10-07"))).toBe("no-previous");
     const three: Period[] = [h[0], { ...D, from: "2026-09-16", to: "2026-09-20", source: "sync" }, { ...C, from: "2026-09-21", to: null, source: "sync" }];
     expect(code(() => moveBoundary(three, 1, "2026-09-22", "2026-10-07"))).toBe("crosses-next");
+  });
+  it("newFrom === today is allowed", () => {
+    expect(moveBoundary(h, 1, "2026-10-07", "2026-10-07")).toEqual([
+      { ...G, from: HISTORY_START, to: "2026-10-06", source: "initial" },
+      { ...D, from: "2026-10-07", to: null, source: "admin" },
+    ]);
+  });
+  it("moving a boundary LATER than current (forward in time)", () => {
+    const h2: Period[] = [
+      { ...G, from: HISTORY_START, to: "2026-09-15", source: "initial" },
+      { ...D, from: "2026-09-16", to: null, source: "sync" },
+    ];
+    expect(moveBoundary(h2, 1, "2026-09-20", "2026-10-07")).toEqual([
+      { ...G, from: HISTORY_START, to: "2026-09-19", source: "initial" },
+      { ...D, from: "2026-09-20", to: null, source: "admin" },
+    ]);
+  });
+  it("with 3-period history, moving middle boundary respects both neighbors", () => {
+    const three: Period[] = [
+      { ...G, from: HISTORY_START, to: "2026-09-15", source: "initial" },
+      { ...D, from: "2026-09-16", to: "2026-09-20", source: "sync" },
+      { ...C, from: "2026-09-21", to: null, source: "sync" },
+    ];
+    expect(moveBoundary(three, 1, "2026-09-20", "2026-10-07")).toEqual([
+      { ...G, from: HISTORY_START, to: "2026-09-19", source: "initial" },
+      { ...D, from: "2026-09-20", to: "2026-09-20", source: "admin" },
+      { ...C, from: "2026-09-21", to: null, source: "sync" },
+    ]);
+    expect(code(() => moveBoundary(three, 1, "2026-09-21", "2026-10-07"))).toBe("crosses-next");
+  });
+  it("refuses non-adjacent periods (gap case)", () => {
+    const gap: Period[] = [
+      { ...G, from: HISTORY_START, to: "2026-09-10", source: "initial" },
+      { ...D, from: "2026-09-16", to: null, source: "sync" },
+    ];
+    expect(code(() => moveBoundary(gap, 1, "2026-09-14", "2026-10-07"))).toBe("not-adjacent");
   });
 });
 
@@ -104,6 +150,16 @@ describe("helpers", () => {
     ];
     expect(periodsOverlapping(h, "2026-09-01", "2026-09-10")).toHaveLength(1);
     expect(periodsOverlapping(h, "2026-09-01", "2026-09-30")).toHaveLength(2);
+  });
+  it("periodsOverlapping with boundary-exact dates", () => {
+    const h: Period[] = [
+      { ...G, from: HISTORY_START, to: "2026-09-15", source: "initial" },
+      { ...D, from: "2026-09-16", to: null, source: "backup" },
+    ];
+    expect(periodsOverlapping(h, "2026-09-15", "2026-09-15")).toHaveLength(1); // end date of G
+    expect(periodsOverlapping(h, "2026-09-16", "2026-09-16")).toHaveLength(1); // start date of D
+    expect(periodsOverlapping(h, "2026-09-01", "2026-09-15")).toHaveLength(1); // through G's end
+    expect(periodsOverlapping(h, "2026-09-16", "2026-09-20")).toHaveLength(1); // from D's start
   });
   it("validateHistory catches overlap and a non-last open period, allows gaps", () => {
     expect(validateHistory([{ ...G, from: HISTORY_START, to: "2026-02-01", source: "initial" }, { ...D, from: "2026-02-01", to: null, source: "sync" }])).toBe("overlap");
