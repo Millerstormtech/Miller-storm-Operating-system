@@ -7,7 +7,7 @@ import { RepTeamHistoryModel } from "../models/RepTeamHistory";
 import { TeamWarningModel } from "../models/TeamWarning";
 import { loadSharedRosterData, computeSalesRows } from "../leaderboard/compute";
 import { placeRep } from "./placement";
-import { planRecording, diffWarnings, NO_TEAM_NUMBERS_TEXT, type Period, type Placement } from "./periods";
+import { planRecording, diffWarnings, stickyNoTeamKeys, NO_TEAM_NUMBERS_TEXT, type Period, type Placement } from "./periods";
 import { officeToBranch } from "../repcard/branches";
 import { centralDateStr, getWindowRange } from "../acculynx/windows";
 import { normEmail } from "../leaderboard/identity";
@@ -20,7 +20,21 @@ function recipients(): string[] {
     .split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-export async function recordTeamHistory(now: Date = new Date()): Promise<{ changed: number; newWarnings: number; error?: string }> {
+const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const cleanName = (s: string) => String(s || "").replace(/^❌\s*/, "").trim();
+
+async function sendWarningEmail(items: string[]): Promise<boolean> {
+  const html = `<p>The app found ${items.length} team ${items.length === 1 ? "problem" : "problems"} in User Management:</p><ul>${items
+    .map((t) => `<li>${esc(t)}</li>`).join("")}</ul><p>Open User Management or the Team History page in the admin menu. You will not be emailed about the same problem again.</p>`;
+  let anySent = false;
+  for (const to of recipients()) {
+    try { await sendEmail({ to, subject: "Team setup needs attention", html, text: items.map((t) => `- ${t}`).join("\n") }); anySent = true; }
+    catch (e) { console.error("[teamhistory] warning email failed:", e); }
+  }
+  return anySent;
+}
+
+export async function recordTeamHistory(now: Date = new Date()): Promise<{ changed: number; newWarnings: number; failed: number; error?: string }> {
   try {
     const shared = await loadSharedRosterData();
 
@@ -37,7 +51,7 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
         appTeamForRepCardTeam: shared.appTeamForRepCardTeam, officeToBranch,
       });
       placements.set(id, { team: place.team, branch: place.branch });
-      names.set(id, { name: String((rc as any).name || ""), email });
+      names.set(id, { name: cleanName(String((rc as any).name || "")), email });
     }
 
     // 2. Advance histories, version-checked so an admin edit is never overwritten.
@@ -45,14 +59,21 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
     const versions = new Map(docs.map((d) => [String(d.repcardUserId), Number(d.version) || 0]));
     const histories = new Map<string, Period[]>(docs.map((d) => [String(d.repcardUserId), (d.periods || []) as Period[]]));
     const changed = planRecording({ histories, placements, today: centralDateStr(now) });
+    const failedIds: string[] = [];
     for (const [id, periods] of changed) {
       const version = versions.get(id);
       const meta = names.get(id);
-      await RepTeamHistoryModel.updateOne(
-        version === undefined ? { repcardUserId: id, version: { $exists: false } } : { repcardUserId: id, version },
-        { $set: { periods, repName: meta?.name || "", repEmail: meta?.email || "" }, $inc: { version: 1 } },
-        { upsert: version === undefined }
-      ).catch((e: any) => { if (e?.code !== 11000) throw e; });
+      try {
+        await RepTeamHistoryModel.updateOne(
+          version === undefined ? { repcardUserId: id, version: { $exists: false } } : { repcardUserId: id, version },
+          { $set: { periods, repName: meta?.name || "", repEmail: meta?.email || "" }, $inc: { version: 1 } },
+          { upsert: version === undefined }
+        );
+      } catch (e: any) {
+        if (e?.code === 11000) continue;
+        console.error(`[teamhistory] could not save history for rep ${id}:`, e);
+        failedIds.push(id);
+      }
     }
 
     // 3. Warnings: every live org-chart warning, plus D9 for live accounts with
@@ -71,6 +92,19 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
     }
 
     const all = (await TeamWarningModel.find({}).select("key active emailedAt").lean()) as any[];
+    // D9 stays on while the person still has a live account with no team, even
+    // in a month with no numbers yet (so it is not re-emailed monthly).
+    const noTeamIds = new Set<string>();
+    for (const u of shared.byEmail.values()) if (shared.org.teamOf(u) === "") noTeamIds.add(String((u as any).id));
+    const have = new Set(current.map((w) => w.key));
+    for (const key of stickyNoTeamKeys(all.map((w) => ({ key: String(w.key), active: !!w.active })), noTeamIds)) {
+      if (have.has(key)) continue;
+      const userId = key.slice("no-team-numbers:".length);
+      current.push({ key, userId, kind: "no-team-numbers", text: `${nameById.get(userId) || userId}: ${NO_TEAM_NUMBERS_TEXT}` });
+    }
+    if (failedIds.length) {
+      current.push({ key: "teamhistory-write-failed", userId: "", kind: "system", text: `Team history could not be saved for ${failedIds.length} rep(s) this hour. Check the server logs (repcard-sync).` });
+    }
     const firstRun = !all.some((w) => w.key === SEEDED_KEY);
     const existing = all.filter((w) => w.key !== SEEDED_KEY).map((w) => ({ key: String(w.key), active: !!w.active, emailedAt: (w.emailedAt as Date | null) || null }));
     const plan = diffWarnings(existing, current, firstRun);
@@ -87,19 +121,27 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
 
     if (plan.toEmail.length) {
       const items = plan.toEmail.map((k) => byKey.get(k)!.text);
-      const html = `<p>The app found ${items.length} team ${items.length === 1 ? "problem" : "problems"} in User Management:</p><ul>${items
-        .map((t) => `<li>${t.replace(/</g, "&lt;")}</li>`).join("")}</ul><p>Open User Management or the Team History page in the admin menu. You will not be emailed about the same problem again.</p>`;
-      let anySent = false;
-      for (const to of recipients()) {
-        try { await sendEmail({ to, subject: "Team setup needs attention", html, text: items.map((t) => `- ${t}`).join("\n") }); anySent = true; }
-        catch (e) { console.error("[teamhistory] warning email failed:", e); }
-      }
+      const anySent = await sendWarningEmail(items);
       // If every send failed, leave emailedAt empty so the next hour retries.
       if (anySent) await TeamWarningModel.updateMany({ key: { $in: plan.toEmail } }, { $set: { emailedAt: new Date() } });
     }
-    return { changed: changed.size, newWarnings: plan.toEmail.length };
+    return { changed: changed.size, newWarnings: plan.toEmail.length, failed: failedIds.length };
   } catch (e: any) {
     console.error("[teamhistory] recording failed:", e);
-    return { changed: 0, newWarnings: 0, error: String(e?.message || e) };
+    const message = String(e?.message || e);
+    try {
+      const text = `Team history recording failed: ${message}`;
+      const r: any = await TeamWarningModel.updateOne(
+        { key: "teamhistory-step-failed" },
+        { $set: { active: true, kind: "system", userId: "", text }, $setOnInsert: { emailedAt: null } },
+        { upsert: true }
+      );
+      if (r?.upsertedCount === 1) {
+        if (await sendWarningEmail([text])) await TeamWarningModel.updateOne({ key: "teamhistory-step-failed" }, { $set: { emailedAt: new Date() } });
+      }
+    } catch (e2) {
+      console.error("[teamhistory] could not record the step failure:", e2);
+    }
+    return { changed: 0, newWarnings: 0, failed: 0, error: message };
   }
 }

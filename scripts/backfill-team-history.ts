@@ -39,6 +39,12 @@ async function main() {
   const nights = [...new Set(lines.filter((x) => x.k === "app" && x.d >= SEED_NIGHT).map((x) => x.d as string))].sort();
   if (nights[0] !== SEED_NIGHT) throw new Error(`no complete ${SEED_NIGHT} night in the snapshots`);
 
+  const uri = process.env.MONGODB_URI;
+  if (!uri) { console.error("MONGODB_URI is not set. Refusing to connect to a default database."); process.exit(1); }
+  try {
+    const u = new URL(uri);
+    console.log(`Target database: ${u.host}${u.pathname || "/"}`);
+  } catch { console.log("Target database: (MONGODB_URI could not be parsed for display)"); }
   await connectMongo();
   if (!dryRun && (await RepTeamHistoryModel.estimatedDocumentCount()) > 0) {
     throw new Error("repteamhistories is not empty; refusing to overwrite.");

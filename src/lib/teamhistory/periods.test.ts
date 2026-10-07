@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   advanceHistory, moveBoundary, addPastMove, validateHistory, currentPeriod,
-  periodsOverlapping, shiftDay, samePeriods, planRecording, diffWarnings, HISTORY_START, HistoryEditError, type Period,
+  periodsOverlapping, shiftDay, samePeriods, planRecording, diffWarnings, stickyNoTeamKeys, HISTORY_START, HistoryEditError, type Period,
 } from "./periods";
 
 const G = { team: "Gunner McCullough", branch: "Fort Worth" };
@@ -182,6 +182,21 @@ describe("planRecording", () => {
   });
   it("a rep with a history but no placement is left alone", () => {
     expect(planRecording({ histories: new Map([["9", open(G)]]), placements: new Map(), today: "2026-09-16" }).size).toBe(0);
+  });
+});
+
+describe("stickyNoTeamKeys", () => {
+  const existing = [
+    { key: "no-team-numbers:a", active: true },
+    { key: "no-team-numbers:b", active: true },
+    { key: "no-team-numbers:c", active: false },
+    { key: "org:x:a", active: true },
+  ];
+  it("keeps active keys for people still on no team", () => {
+    expect(stickyNoTeamKeys(existing, new Set(["a", "c"]))).toEqual(["no-team-numbers:a"]);
+  });
+  it("drops a key once the person has a team or the account is gone", () => {
+    expect(stickyNoTeamKeys(existing, new Set())).toEqual([]);
   });
 });
 

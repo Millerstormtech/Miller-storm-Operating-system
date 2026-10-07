@@ -2,7 +2,7 @@
 // two fixes: change a move's date, or add a move from before recording began.
 // Every fix previews what shifts between teams, needs a reason, and can be undone.
 // Admins only (enforced by the API). Teams are named by their lead's full name.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { shortDate } from "../../lib/teamhistory/segments";
 
 type Team = { name: string; branch: string };
@@ -21,17 +21,36 @@ export function TeamHistory() {
   const [form, setForm] = useState<{ action: "move-date" | "add-move"; index?: number; date: string; earlierTeam: string; reason: string } | null>(null);
   const [preview, setPreview] = useState<Shift[] | null>(null);
   const [error, setError] = useState("");
+  const [pageError, setPageError] = useState("");
+  const latest = useRef(0);
 
+  // Only the newest request may update the list; older responses are ignored.
   const loadList = useCallback(async (query = "") => {
-    const r = await fetch(`/api/admin/team-history${query ? `?q=${encodeURIComponent(query)}` : ""}`);
-    if (r.ok) setList(await r.json());
+    const mine = ++latest.current;
+    try {
+      const r = await fetch(`/api/admin/team-history${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+      if (mine !== latest.current) return;
+      if (r.ok) { setList(await r.json()); setPageError(""); }
+      else setPageError("Could not load Team History. Please refresh the page or try again in a minute.");
+    } catch {
+      if (mine === latest.current) setPageError("Could not load Team History. Check your connection and try again.");
+    }
   }, []);
-  useEffect(() => { loadList(); }, [loadList]);
+  // Wait 300 ms after the last keystroke before searching (the first load is immediate).
+  useEffect(() => {
+    const t = setTimeout(() => { loadList(q); }, q ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [q, loadList]);
 
   const openRep = async (id: string) => {
     setError(""); setForm(null); setPreview(null);
-    const r = await fetch(`/api/admin/team-history/${encodeURIComponent(id)}`);
-    if (r.ok) setDetail(await r.json());
+    try {
+      const r = await fetch(`/api/admin/team-history/${encodeURIComponent(id)}`);
+      if (r.ok) { setDetail(await r.json()); setPageError(""); }
+      else setPageError("Could not open that rep's history. Please try again.");
+    } catch {
+      setPageError("Could not open that rep's history. Check your connection and try again.");
+    }
   };
 
   const post = async (body: any) => {
@@ -54,10 +73,15 @@ export function TeamHistory() {
   const doSave = async () => { const j = await post({ op: "save", ...payload() }); if (j) { await openRep(detail!.repcardUserId); loadList(q); } };
   const doUndo = async (editId: string) => { const j = await post({ op: "undo", editId }); if (j) { await openRep(detail!.repcardUserId); loadList(q); } };
 
-  if (!list) return <div style={{ padding: 24 }}>Loading...</div>;
+  if (!list) {
+    return pageError
+      ? <div style={{ padding: 24, color: "var(--danger, #c00)" }}>{pageError} <button onClick={() => loadList(q)}>Try again</button></div>
+      : <div style={{ padding: 24 }}>Loading...</div>;
+  }
 
   return (
     <div style={{ padding: 24, display: "grid", gap: 24, maxWidth: 960 }}>
+      {pageError && <p style={{ color: "var(--danger, #c00)", margin: 0 }}>{pageError}</p>}
       {list.warnings.length > 0 && (
         <section style={{ border: "1px solid var(--warning-on-surface)", borderRadius: 8, padding: 16 }}>
           <h2 style={{ marginTop: 0 }}>Needs attention in User Management</h2>
@@ -67,7 +91,7 @@ export function TeamHistory() {
 
       <section>
         <h2>Find a rep</h2>
-        <input value={q} onChange={(e) => { setQ(e.target.value); loadList(e.target.value); }} placeholder="Name" style={{ padding: 8, width: "100%", maxWidth: 360 }} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name" style={{ padding: 8, width: "100%", maxWidth: 360 }} />
         <ul>{list.matches.map((m) => <li key={m.repcardUserId}><button onClick={() => openRep(m.repcardUserId)}>{m.repName}</button></li>)}</ul>
       </section>
 

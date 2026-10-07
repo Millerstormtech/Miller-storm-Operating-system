@@ -74,7 +74,7 @@ export async function runSync(opts: { mode?: "incremental" | "backfill"; dryRun?
       // Team history: record team/branch moves from User Management since the
       // last pass. Never throws (record.ts), so it cannot fail the knock sync.
       const th = await recordTeamHistory();
-      if (th.changed || th.error) console.log(`[repcard-sync] team history: ${th.changed} changed${th.error ? `, error: ${th.error}` : ""}`);
+      if (th.changed || th.failed || th.error) console.log(`[repcard-sync] team history: ${th.changed} changed${th.failed ? `, ${th.failed} failed` : ""}${th.error ? `, error: ${th.error}` : ""}`);
     }
 
     const todayISO = dateOnly(new Date());

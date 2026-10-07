@@ -269,9 +269,10 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
       final r = Map<String, dynamic>.from(raw as Map);
       if (_hideFormer && r['former'] == true) continue;
       if (_appliedReps.isNotEmpty && !_appliedReps.contains((r['id'] ?? '').toString())) continue;
-      // Team-based reporting: a Branch/Team filter is pure row matching — it only
-      // narrows WHO is listed, each rep keeps their full numbers (no metric
-      // rewrite). Multi-select: empty = all, otherwise the value must be ticked.
+      // Team/Branch filters show each rep's share for the selected teams/branches
+      // (team history, 2026-10-07): a rep who moved mid-period shows only what
+      // they earned there, with a short note. Rule in services/team_share.dart
+      // (mirrors the web).
       final shared = shareForSelection(r, _branchSel, _teamSel);
       if (shared == null) continue;
       list.add(shared);
@@ -412,10 +413,6 @@ class _BranchManagerRankingsScreenState extends State<BranchManagerRankingsScree
     if (_hideFormer) parts.add('Active only');
     return parts.join(' · ');
   }
-
-  // Empty selection = show all; otherwise the value must be one of the ticked ones.
-  bool _matchesSelection(String value, Set<String> selected) =>
-      selected.isEmpty || selected.contains(value);
 
   void _resetFilters() {
     setState(() {

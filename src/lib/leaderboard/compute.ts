@@ -275,14 +275,6 @@ export async function computeSalesRows(
     // Does this rep have an AccuLynx account? (roster match by email/phone/name)
     const acctIdent = rcId ? rcIdentityById.get(rcId) : undefined;
     const hasAccount = acctIdent ? hasAcculynxAccount(acctIdent, acctSets) : false;
-    // Team and Branch from the org chart in User Management (org-chart.ts),
-    // whatever RepCard says: the Team Lead decides the team, and the branch
-    // follows the team lead up to their branch manager. A former rep's deleted
-    // account still places them. Only a rep with no app account at all falls
-    // back to RepCard: their RepCard team matched to its app team, and that
-    // team's branch, else their RepCard office.
-    // A former rep's deleted account places them only when it can: older
-    // accounts may hold no usable Team Lead, and then RepCard is the fallback.
     // Team and Branch: one rule shared with the hourly team-history step
     // (teamhistory/placement.ts), so the history records what the board shows.
     const former = !u && m.email ? roster.deletedByEmail.get(m.email) : null;

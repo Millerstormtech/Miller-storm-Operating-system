@@ -161,4 +161,19 @@ export function diffWarnings(
   return { toCreate, toReactivate, toDeactivate, toEmail: firstRun ? [] : [...toCreate, ...toReactivate, ...unsent] };
 }
 
+/**
+ * D9 stickiness: an active "no-team-numbers:<id>" warning stays current while
+ * that person still has a live account with no team, even in a month with no
+ * numbers yet, so it does not deactivate on the 1st and re-email later.
+ */
+export function stickyNoTeamKeys(
+  existing: ReadonlyArray<{ key: string; active: boolean }>,
+  noTeamUserIds: ReadonlySet<string>
+): string[] {
+  const prefix = "no-team-numbers:";
+  return existing
+    .filter((w) => w.active && w.key.startsWith(prefix) && noTeamUserIds.has(w.key.slice(prefix.length)))
+    .map((w) => w.key);
+}
+
 export const NO_TEAM_NUMBERS_TEXT = "Their numbers do not count for any team or branch.";
