@@ -1,5 +1,6 @@
 import type { SalesRow, Totals, Scope, ScoreSegment } from "./types";
 import { pickSegments } from "../teamhistory/segments";
+import { shiftDay } from "../teamhistory/periods";
 
 export function sumTotals(rows: SalesRow[]): Totals {
   return rows.reduce<Totals>(
@@ -45,7 +46,9 @@ export function scopeRows<T extends SalesRow>(rows: T[], scope: Scope): T[] {
     for (const s of inScope) { share.revenue += s.revenue; share.knocks += s.knocks; share.claims += s.claims; share.contracts += s.contracts; }
     const nonZero = share.revenue || share.knocks || share.claims || share.contracts;
     if (!current && !nonZero) continue;
-    out.push({ ...r, ...share, movedOut, joined });
+    // Only the in-scope stretches survive, so a later groupBreakdown cannot
+    // re-bucket out-of-scope shares into other groups.
+    out.push({ ...r, ...share, segments: inScope, movedOut, joined });
   }
   return out;
 }
@@ -55,7 +58,15 @@ export function coversWindow(r: SalesRow, scope: Scope, from: string, to: string
   const match = matcher(scope);
   if (!match) return true;
   if (!r.segments || r.segments.length === 0) return match({ team: r.team || "", branch: r.branch || "" });
-  return pickSegments(r.segments, match).inScope.some((s) => s.from <= from && s.to >= to);
+  // Stretches that touch (a team switch inside one branch) count as one.
+  const sorted = [...pickSegments(r.segments, match).inScope].sort((a, b) => a.from.localeCompare(b.from));
+  const merged: Array<{ from: string; to: string }> = [];
+  for (const s of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && s.from <= shiftDay(last.to, 1)) last.to = s.to > last.to ? s.to : last.to;
+    else merged.push({ from: s.from, to: s.to });
+  }
+  return merged.some((s) => s.from <= from && s.to >= to);
 }
 
 // Rank a set of {key, revenue} groups, highest revenue first; ties broken by key asc

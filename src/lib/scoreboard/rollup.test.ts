@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { sumTotals, scopeRows, rankFor, coversWindow } from "./rollup";
+import { groupBreakdown } from "./dashboard";
 import type { SalesRow } from "./types";
 
 const row = (over: Partial<SalesRow>): SalesRow => ({
@@ -130,5 +131,25 @@ describe("team history: segment-aware scoping", () => {
   });
   it("rankFor ranks teams by segment shares", () => {
     expect(rankFor([jason, idle], { level: "team", team: "Gunner McCullough" })).toEqual({ rank: 1, of: 2 });
+  });
+});
+
+describe("team history: fix round 1", () => {
+  const seg = (team: string, branch: string, from: string, to: string, revenue: number) =>
+    ({ team, branch, from, to, revenue, knocks: 0, claims: 0, contracts: revenue ? 1 : 0 });
+  const mk = (segments: ReturnType<typeof seg>[]) =>
+    ({ repUserId: "r", name: "Rep", team: "Gunner McCullough", branch: "Fort Worth", revenue: 150, knocks: 0, claims: 0, contracts: 2, former: false, segments });
+
+  it("scoped rows keep only in-scope stretches (no stray team cards)", () => {
+    const rep = mk([seg("Cooper Bledsoe", "Dallas", "2026-09-01", "2026-09-15", 100), seg("Gunner McCullough", "Fort Worth", "2026-09-16", "2026-09-30", 50)]);
+    const scoped = scopeRows([rep], { level: "branch", branch: "Fort Worth" });
+    const g = groupBreakdown(scoped, "team");
+    expect(g.map((x) => x.key)).toEqual(["Gunner McCullough"]);
+    expect(g[0].totals).toEqual(sumTotals(scoped));
+  });
+  it("branch scope: switching teams inside the branch still covers the window", () => {
+    const rep = mk([seg("Gunner McCullough", "Fort Worth", "2026-09-01", "2026-09-22", 0), seg("Daniel Reyes", "Fort Worth", "2026-09-23", "2026-09-30", 0)]);
+    expect(coversWindow(rep, { level: "branch", branch: "Fort Worth" }, "2026-09-20", "2026-09-26")).toBe(true);
+    expect(coversWindow(rep, { level: "team", team: "Daniel Reyes" }, "2026-09-20", "2026-09-26")).toBe(false);
   });
 });
