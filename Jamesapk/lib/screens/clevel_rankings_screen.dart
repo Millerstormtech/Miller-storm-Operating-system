@@ -9,6 +9,7 @@ import '../services/dashboard_links.dart';
 import '../widgets/clevel_bottom_nav.dart';
 import '../widgets/celebration.dart';
 import '../services/rank_moves.dart';
+import '../services/team_share.dart';
 import '../theme/app_theme.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
@@ -271,9 +272,9 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
       // Team-based reporting: a Branch/Team filter is pure row matching — it only
       // narrows WHO is listed, each rep keeps their full numbers (no metric
       // rewrite). Multi-select: empty = all, otherwise the value must be ticked.
-      if (!_matchesSelection((r['branch'] ?? '').toString(), _branchSel)) continue;
-      if (!_matchesSelection((r['team'] ?? '').toString(), _teamSel)) continue;
-      list.add(r);
+      final shared = shareForSelection(r, _branchSel, _teamSel);
+      if (shared == null) continue;
+      list.add(shared);
     }
     // Sort by the chosen column, then fall back to overall standing.
     list.sort((a, b) {
@@ -1234,6 +1235,8 @@ class _CLevelRankingsScreenState extends State<CLevelRankingsScreen> {
                       ),
                       if (subtitle.isNotEmpty)
                         Text(subtitle, style: TextStyle(fontSize: 12, color: _textPlaceholder)),
+                      if ((r['_note'] ?? '').toString().isNotEmpty)
+                        Text(r['_note'].toString(), style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
                     ],
                   ),
                 ),
