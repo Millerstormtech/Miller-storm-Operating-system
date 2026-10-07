@@ -17,6 +17,7 @@ import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, isQuizResultPassing } from "../
 import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/quiz-client";
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { courseModules } from "../../lib/training/modules";
+import { scoresVideosOnly } from "../../lib/training/scoring";
 import { formatLessonLength, courseLengthLabel, timeLeftLabel } from "../../lib/training/lesson-length";
 import { newSinceFinished, newItemsLabel } from "../../lib/training/new-since-finished";
 
@@ -682,9 +683,11 @@ export function ManagerOnlineTrainingPage(props: {
         console.log('[VideoSeq] no lesson body on screen');
         return;
       }
-      // Privileged leadership roles may always fast-forward/skip (as if the
-      // video were already completed).
-      const isAlreadyCompleted = isPrivileged || (activePageId ? completedPagesRef.current.has(activePageId) : false);
+      // Privileged leadership roles may always fast-forward/skip, but on a lesson
+      // they have not completed only real playback marks it watched (passed
+      // below as allowFastForward + playbackOnly). Team leads and branch managers
+      // are tracked on videos on the Course Leaderboard, so a skip must not count.
+      const isAlreadyCompleted = activePageId ? completedPagesRef.current.has(activePageId) : false;
       const pageId = activePageId;
       const courseId = selectedCourse.id;
       const cleanup = await initVideoSequence(
@@ -694,12 +697,15 @@ export function ManagerOnlineTrainingPage(props: {
         false, // shouldAutoStartFirst
         isAlreadyCompleted,
         () => setSeekToast("You are only able to fast forward if you already completed the video at least once before."),
-        false, // allowFastForward
+        isPrivileged, // allowFastForward
         {
           getSaved: (videoIndex: number) => savedPositionFor(pageId, videoIndex),
           onProgress: (videoIndex: number, seconds: number) =>
             persistPosition(courseId, pageId, videoIndex, seconds),
-        }
+        },
+        // playbackOnly: for the leaders on the Course Leaderboard, a skip to the
+        // end earns nothing. Admin and C-Level are not ranked, so unchanged.
+        scoresVideosOnly(props.currentUser.role)
       );
       if (cancelled) { cleanup?.(); return; }
       videoCleanupRef.current = cleanup;

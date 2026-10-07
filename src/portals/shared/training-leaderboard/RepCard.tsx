@@ -24,15 +24,27 @@ export type RepCardData = {
   isPodium: boolean;
   videosWatched?: number;
   quizzesPassed?: number;
+  /** Team leads and branch managers: tracked on videos only, quizzes not counted. */
+  videosOnly?: boolean;
   /** Company-rank movement since last week. Nothing renders for null/undefined/0. */
   rankDelta?: number | null;
 };
 
-export function ProgressRing({ pct, size = 52, holeBg = "var(--surface-default)" }: { pct: number; size?: number; holeBg?: string }) {
+export function ProgressRing({
+  pct,
+  size = 52,
+  holeBg = "var(--surface-default)",
+  videosOnly = false,
+}: {
+  pct: number;
+  size?: number;
+  holeBg?: string;
+  videosOnly?: boolean;
+}) {
   const clamped = Math.min(100, Math.max(0, pct));
   const deg = Math.round((clamped / 100) * 360);
   return (
-    <Tooltip text={`Progress: videos watched + quizzes passed (${Math.round(clamped)}%)`}>
+    <Tooltip text={`Progress: ${videosOnly ? "videos watched (quizzes not counted)" : "videos watched + quizzes passed"} (${Math.round(clamped)}%)`}>
       <div
         style={{
           position: "relative",
@@ -192,6 +204,24 @@ export function RepCard({
             <span style={{ fontSize: 11, fontWeight: 700, color: row.rankDelta > 0 ? GREEN : DELTA_DOWN }}>
               {row.rankDelta > 0 ? `▲${row.rankDelta}` : `▼${-row.rankDelta}`}
             </span>
+          )}
+          {row.videosOnly && (
+            <Tooltip text="Leaders are tracked on videos only. Quizzes and tests do not count toward this percentage.">
+              <span
+                style={{
+                  border: "1px solid var(--border-default)",
+                  color: "var(--text-muted)",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  padding: "1px 6px",
+                  borderRadius: 999,
+                  textTransform: "none",
+                  letterSpacing: 0,
+                }}
+              >
+                Videos only
+              </span>
+            </Tooltip>
           )}
           {youTag && (
             <span

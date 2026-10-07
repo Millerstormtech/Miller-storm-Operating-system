@@ -29,6 +29,8 @@ import type VimeoPlayer from '@vimeo/player';
 import {
   resumeSecondsFor,
   shouldPersistPosition,
+  advanceWatchedPoint,
+  watchedToEnd,
 } from '../lib/training/video-position';
 import { vimeoMayAutoplay, vimeoPlayerSrc } from '../lib/training/vimeo-embed';
 
@@ -354,13 +356,31 @@ export async function initVideoSequence(
   // Supplies the saved watch positions and receives updates to them. Omitted
   // (e.g. by a preview surface with nothing to save to) the player still works,
   // it just starts every video at zero the way it always used to.
-  resume?: ResumeHooks
+  resume?: ResumeHooks,
+  // Leaders (team leads, branch managers): free to scrub, but a lesson they have
+  // not completed is only marked watched once they have actually PLAYED its last
+  // video to the end. A jump ahead never moves the watched point (see
+  // advanceWatchedPoint). Has no effect on an already-completed lesson.
+  playbackOnly = false
 ): Promise<(() => void) | undefined> {
   if (typeof window === 'undefined') return;
 
   // Seeking is clamped unless the video was already completed OR this viewer is
   // allowed to fast-forward.
   const skipSeekLock = isAlreadyCompleted || allowFastForward;
+
+  // Credit only real playback for this run (see the playbackOnly parameter).
+  const creditPlaybackOnly = playbackOnly && !isAlreadyCompleted;
+  // Videos whose watched point has reached the end window. Only consulted when
+  // creditPlaybackOnly is on; for everyone else reaching the end IS the proof,
+  // because the seek lock stopped them jumping there.
+  const watchedThrough = new Set<number>();
+  function noteEnd(entry: Entry, duration: number) {
+    if (watchedToEnd(entry.maxTimeWatched, duration)) watchedThrough.add(entry.seqIdx);
+  }
+  function earnedCredit(seqIdx: number): boolean {
+    return !creditPlaybackOnly || watchedThrough.has(seqIdx);
+  }
 
   // Notify the UI at most once every few seconds so a held-down fast-forward
   // (which fires many seek/timeupdate events) only surfaces one message.
@@ -397,7 +417,7 @@ export async function initVideoSequence(
    */
   function noteWatched(entry: Entry, seconds: number) {
     if (!Number.isFinite(seconds) || seconds < 0) return;
-    if (seconds > entry.maxTimeWatched) entry.maxTimeWatched = seconds;
+    entry.maxTimeWatched = advanceWatchedPoint(entry.maxTimeWatched, seconds, creditPlaybackOnly);
     if (!resume) return;
     const last = lastPersisted.get(entry.seqIdx) ?? savedFor(entry.seqIdx);
     if (!shouldPersistPosition(last, entry.maxTimeWatched)) return;
@@ -524,6 +544,9 @@ export async function initVideoSequence(
   const advanced = new Set<number>();
   function unlockNextStep(seqIdx: number) {
     if (seqIdx !== total - 1 || unlockedNextStep) return;
+    // Checked before the flag is set, so a leader who skipped to the end can
+    // still earn the lesson by going back and playing it through.
+    if (!earnedCredit(seqIdx)) return;
     unlockedNextStep = true;
     onAllEnded(false); // mark watched + enable Next, but do NOT navigate
     // Persist the point immediately rather than waiting for the next throttle
@@ -536,6 +559,10 @@ export async function initVideoSequence(
   }
   function finishVideo(seqIdx: number) {
     if (advanced.has(seqIdx)) return;
+    // A leader who jumped to the end of the lesson's last video: no credit, and
+    // no auto-advance either (navigating is what marks the lesson watched).
+    // Not recorded in `advanced`, so playing it through later still counts.
+    if (seqIdx === total - 1 && !earnedCredit(seqIdx)) return;
     advanced.add(seqIdx);
     if (seqIdx === total - 1) {
       // Netflix-style autoplay: auto-advance to the next lesson/quiz ONLY when
@@ -671,6 +698,7 @@ export async function initVideoSequence(
           } else {
             noteWatched(vimeoEntry, data.seconds);
           }
+          if (data.duration) noteEnd(vimeoEntry, data.duration);
           // Reaching the last few seconds only UNLOCKS the next step.
           if (data.duration && data.seconds >= data.duration - UNLOCK_BEFORE_END) {
             unlockNextStep(seqIdx);
@@ -756,6 +784,7 @@ export async function initVideoSequence(
     function tick(durationSecs: number) {
       const elapsed = resumeAt + (Date.now() - startedAt) / 1000;
       noteWatched(loomEntry, elapsed);
+      noteEnd(loomEntry, durationSecs);
       if (elapsed >= durationSecs - UNLOCK_BEFORE_END) {
         unlockNextStep(seqIdx);
       }
@@ -810,6 +839,7 @@ export async function initVideoSequence(
           noteWatched(e, e.video.currentTime);
         }
       }
+      if (e.video.duration) noteEnd(e, e.video.duration);
       // Reaching the last few seconds only UNLOCKS the next step.
       if (e.video.duration && e.video.currentTime >= e.video.duration - UNLOCK_BEFORE_END) {
         unlockNextStep(e.seqIdx);
@@ -899,6 +929,7 @@ export async function initVideoSequence(
                 }
                 // Reaching the last few seconds only UNLOCKS the next step.
                 const dur = player.getDuration ? player.getDuration() : 0;
+                if (dur) noteEnd(ytEntry, dur);
                 if (dur && currentTime >= dur - UNLOCK_BEFORE_END) {
                   unlockNextStep(seqIdx);
                 }

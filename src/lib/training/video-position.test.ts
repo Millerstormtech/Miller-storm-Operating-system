@@ -6,6 +6,8 @@ import {
   shouldPersistPosition,
   END_TOLERANCE_SECONDS,
   type VideoPosition,
+  advanceWatchedPoint,
+  watchedToEnd,
 } from "./video-position";
 
 describe("mergeVideoPosition", () => {
@@ -136,5 +138,48 @@ describe("shouldPersistPosition", () => {
 
   it("does not save while the rep is scrubbing backwards", () => {
     expect(shouldPersistPosition(900, 12, 10)).toBe(false);
+  });
+});
+
+describe("advanceWatchedPoint", () => {
+  it("follows the furthest position for a seek-locked viewer", () => {
+    expect(advanceWatchedPoint(10, 300, false)).toBe(300);
+  });
+
+  it("moves with playback for a playback-only viewer", () => {
+    let w = 0;
+    for (let t = 0.25; t <= 20; t += 0.25) w = advanceWatchedPoint(w, t, true);
+    expect(w).toBe(20);
+  });
+
+  it("ignores a jump ahead for a playback-only viewer", () => {
+    expect(advanceWatchedPoint(100, 600, true)).toBe(100);
+    // Playing on from the jumped-to spot still does not move it.
+    expect(advanceWatchedPoint(100, 601, true)).toBe(100);
+  });
+
+  it("resumes advancing once they play on from the watched point", () => {
+    let w = advanceWatchedPoint(100, 600, true); // jump: stays 100
+    w = advanceWatchedPoint(w, 90, true); // went back: stays 100
+    w = advanceWatchedPoint(w, 101.5, true); // played through it
+    expect(w).toBe(101.5);
+  });
+
+  it("never moves backwards and ignores unusable times", () => {
+    expect(advanceWatchedPoint(50, 10, true)).toBe(50);
+    expect(advanceWatchedPoint(50, NaN, false)).toBe(50);
+    expect(advanceWatchedPoint(50, -1, false)).toBe(50);
+  });
+});
+
+describe("watchedToEnd", () => {
+  it("is true inside the end window", () => {
+    expect(watchedToEnd(297, 300)).toBe(true);
+    expect(watchedToEnd(296.9, 300)).toBe(false);
+  });
+
+  it("is false with no usable duration", () => {
+    expect(watchedToEnd(100, 0)).toBe(false);
+    expect(watchedToEnd(100, NaN)).toBe(false);
   });
 });

@@ -30,6 +30,8 @@ type RepDetail = {
   pct: number;
   itemsCompleted: number;
   totalItems: number;
+  /** Team leads and branch managers: tracked on videos only. */
+  videosOnly?: boolean;
   coursesCompleted: number;
   totalCourses: number;
   credentials?: CredentialProgress[];
@@ -224,11 +226,11 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                       .join(" · ")}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 2 }}>
-                    {data.itemsCompleted} of {data.totalItems} items · {data.coursesCompleted} of{" "}
+                    {data.itemsCompleted} of {data.totalItems} {data.videosOnly ? "videos (quizzes not counted)" : "items"} · {data.coursesCompleted} of{" "}
                     {data.totalCourses} courses finished
                   </div>
                 </div>
-                <ProgressRing pct={data.pct} size={56} />
+                <ProgressRing pct={data.pct} size={56} videosOnly={data.videosOnly} />
               </div>
 
               {/* The three credentials, replacing the four badges retired on
@@ -318,7 +320,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                         <span style={{ fontWeight: 800, fontSize: 12, color: "#10b981", flexShrink: 0 }}>Complete</span>
                       </div>
                       <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>
-                        🎬 {c.videosWatched}/{c.videosTotal} videos · ✅ {c.quizzesPassed}/{c.quizzesTotal} quizzes
+                        🎬 {c.videosWatched}/{c.videosTotal} videos{data.videosOnly ? "" : ` · ✅ ${c.quizzesPassed}/${c.quizzesTotal} quizzes`}
                       </div>
                     </div>
                   ) : c.started ? (
@@ -336,7 +338,7 @@ export function RepDetailModal({ repId, onClose }: { repId: string; onClose: () 
                         <span style={{ fontWeight: 800, fontSize: 12, color: "#e01418", flexShrink: 0 }}>{c.pct}%</span>
                       </div>
                       <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>
-                        🎬 {c.videosWatched}/{c.videosTotal} videos · ✅ {c.quizzesPassed}/{c.quizzesTotal} quizzes
+                        🎬 {c.videosWatched}/{c.videosTotal} videos{data.videosOnly ? "" : ` · ✅ ${c.quizzesPassed}/${c.quizzesTotal} quizzes`}
                       </div>
                       <div style={{ height: 6, background: RING_TRACK, borderRadius: 3, marginTop: 8 }}>
                         <div

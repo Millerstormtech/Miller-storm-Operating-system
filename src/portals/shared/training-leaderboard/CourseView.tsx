@@ -115,6 +115,7 @@ export function CourseView({
       rankDelta: overall?.rankDelta ?? null,
       videosWatched: overall?.videosWatched,
       quizzesPassed: overall?.quizzesPassed,
+      videosOnly: overall?.videosOnly,
       done: r.done,
       total: r.total,
     };

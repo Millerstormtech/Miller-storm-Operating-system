@@ -104,7 +104,7 @@ export function courseOverallFields(filtered: boolean): FieldSpec<OverallRow>[] 
     { key: "branch", label: "Branch", align: "left", value: (r) => r.branch || "" },
     { key: "team", label: "Team", align: "left", value: (r) => teamLabel(r.team) },
     { key: "coursesCompleted", label: "Courses Completed", align: "right", value: (r) => fmtInt(r.coursesCompleted) },
-    { key: "itemsCompleted", label: "Lessons & Quizzes Completed", align: "right", value: (r) => fmtInt(r.itemsCompleted) },
+    { key: "itemsCompleted", label: "Lessons & Quizzes Completed", align: "right", value: (r) => fmtInt(r.itemsCompleted) + (r.videosOnly ? " (videos only)" : "") },
     { key: "pct", label: "Progress", align: "right", value: (r) => fmtPct(r.pct) },
     {
       // Replaces the Badges column, retired 2026-08-15 with the rank titles.

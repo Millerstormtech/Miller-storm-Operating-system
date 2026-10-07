@@ -10,6 +10,7 @@ import {
   computeRankDeltas,
   courseHeaderStats,
   standingsInBranch,
+  compareOverallRows,
 } from "./board";
 import type { CourseStats } from "./scoring";
 
@@ -250,5 +251,37 @@ describe("standingsInBranch", () => {
   });
   it("keeps only teams with a member in the branch, ranks untouched", () => {
     expect(standingsInBranch(standings, rows, "Dallas")).toEqual([{ team: "Cooper Bledsoe", rank: 2 }]);
+  });
+});
+
+describe("compareOverallRows", () => {
+  const row = (name: string, itemsCompleted: number, itemsTotal: number, coursesCompleted = 0) => ({
+    name, itemsCompleted, itemsTotal, coursesCompleted,
+  });
+
+  it("ranks a videos-only leader by share, not by raw count", () => {
+    // Leader: 120 of 145 videos (83%). Rep: 200 of 290 items (69%).
+    const rows = [row("Rep", 200, 290), row("Leader", 120, 145)];
+    rows.sort(compareOverallRows);
+    expect(rows.map((r) => r.name)).toEqual(["Leader", "Rep"]);
+  });
+
+  it("keeps reps in raw-count order (same denominator)", () => {
+    const rows = [row("A", 10, 290), row("B", 30, 290), row("C", 20, 290)];
+    rows.sort(compareOverallRows);
+    expect(rows.map((r) => r.name)).toEqual(["B", "C", "A"]);
+  });
+
+  it("does not let rounding reorder two close shares", () => {
+    // 145/290 = 50.0%, 72/145 = 49.66% -> both round to 50%.
+    const rows = [row("Leader", 72, 145), row("Rep", 145, 290)];
+    rows.sort(compareOverallRows);
+    expect(rows.map((r) => r.name)).toEqual(["Rep", "Leader"]);
+  });
+
+  it("breaks an exact share tie by items done, then courses, then name", () => {
+    expect([row("Leader", 70, 140), row("Rep", 140, 280)].sort(compareOverallRows)[0].name).toBe("Rep");
+    expect([row("B", 10, 100, 1), row("A", 10, 100, 2)].sort(compareOverallRows)[0].name).toBe("A");
+    expect([row("B", 10, 100), row("A", 10, 100)].sort(compareOverallRows)[0].name).toBe("A");
   });
 });

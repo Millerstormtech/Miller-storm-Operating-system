@@ -144,7 +144,11 @@ function passedQuizIds(progress: ProgressLike, quizIds: string[]): Set<string> {
  * (see isQuizResultPassing in ../quiz for why: subset quizzes and edited
  * question counts can leave a genuinely-passed quiz with a low stored score).
  */
-export function courseStats(course: CourseLike, progress: ProgressLike): CourseStats {
+export function courseStats(
+  course: CourseLike,
+  progress: ProgressLike,
+  opts: { videosOnly?: boolean } = {}
+): CourseStats {
   const { videoIds, quizIds, finalTestId } = publishedItems(course);
   const watched = new Set(progress?.completedPages || []);
   const videosWatched = videoIds.filter((id) => watched.has(id)).length;
@@ -152,8 +156,13 @@ export function courseStats(course: CourseLike, progress: ProgressLike): CourseS
   const quizzesPassed = passedQuizIds(progress, quizIds).size;
   const best = bestQuizScores(progress, quizIds);
 
-  const itemsCompleted = videosWatched + quizzesPassed;
-  const itemsTotal = videoIds.length + quizIds.length;
+  // videosOnly (team leads and branch managers on the board, see
+  // scoresVideosOnly): quizzes are still reported but count for nothing, so the
+  // items, the percentage and "complete" are all measured in videos alone.
+  const countedQuizzes = opts.videosOnly ? 0 : quizIds.length;
+  const countedPassed = opts.videosOnly ? 0 : quizzesPassed;
+  const itemsCompleted = videosWatched + countedPassed;
+  const itemsTotal = videoIds.length + countedQuizzes;
 
   return {
     videosWatched,
@@ -166,7 +175,7 @@ export function courseStats(course: CourseLike, progress: ProgressLike): CourseS
     complete:
       videoIds.length > 0 &&
       videosWatched === videoIds.length &&
-      quizzesPassed === quizIds.length,
+      countedPassed === countedQuizzes,
     finalTestPerfect: finalTestId ? (best.get(finalTestId) ?? 0) >= 1 : false,
     started: itemsCompleted > 0,
   };
@@ -207,6 +216,33 @@ export function isRankedRole(role?: string | null): boolean {
 /** Full eligibility: a ranked primary role AND not on the scrub-list. */
 export function isRankedUser(user: { role?: string | null; email?: string | null }): boolean {
   return isRankedRole(user.role) && !isExcludedAccount(user.email);
+}
+
+/**
+ * Who appears on the Course Leaderboard: the ranked roles plus branch managers
+ * (decided 2026-10-07). Wider than RANKED_ROLES on purpose: nudges, Storm Bot
+ * celebrations and the admin override still use RANKED_ROLES, so adding branch
+ * managers to the board does not start texting or announcing them.
+ */
+export const BOARD_ROLES = ["sales", "sales-team-lead", "branch-manager"] as const;
+
+export function isBoardRole(role?: string | null): boolean {
+  return (BOARD_ROLES as readonly string[]).includes(role || "");
+}
+
+/** On the Course Leaderboard: a board role AND not on the scrub-list. */
+export function isBoardUser(user: { role?: string | null; email?: string | null }): boolean {
+  return isBoardRole(user.role) && !isExcludedAccount(user.email);
+}
+
+/**
+ * Leaders are tracked on their videos only (decided 2026-10-07): quizzes and
+ * tests do not count toward a team lead's or branch manager's percentage.
+ * Reps keep videos + quizzes. Everyone ranks by percentage, so the two can share
+ * one list.
+ */
+export function scoresVideosOnly(role?: string | null): boolean {
+  return role === "sales-team-lead" || role === "branch-manager";
 }
 
 /**

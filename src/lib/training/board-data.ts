@@ -9,10 +9,11 @@ import { UserProgressModel } from "../models/UserProgress";
 import {
   courseStats,
   type CourseStats,
-  isRankedUser,
-  RANKED_ROLES,
+  isBoardUser,
+  BOARD_ROLES,
+  scoresVideosOnly,
 } from "./scoring";
-import { aggregateOverall, type OverallRow } from "./board";
+import { aggregateOverall, compareOverallRows, type OverallRow } from "./board";
 import { buildOrgChart, type OrgChart } from "../repcard/org-chart";
 import { BRANCH_ORDER, officeToBranch } from "../repcard/branches";
 
@@ -40,17 +41,18 @@ export async function loadBoardData(): Promise<BoardData> {
     )
     .lean();
 
-  // Ranked = PRIMARY role only (never roles[]), minus deleted/suspended,
-  // minus the scrub-list. Same rule as the legacy ?courseId= branch.
+  // On the board = PRIMARY role only (never roles[]): reps, team leads and
+  // branch managers, minus deleted/suspended, minus the scrub-list. Same rule
+  // as the legacy ?courseId= branch.
   const users = await UserModel.find({
-    role: { $in: [...RANKED_ROLES] },
+    role: { $in: [...BOARD_ROLES] },
     deleted: { $ne: true },
     suspended: { $ne: true },
     testAccount: { $ne: true },
   })
     .select("id name email role headshotUrl territory managerId")
     .lean();
-  const ranked = users.filter((u) => isRankedUser({ role: u.role, email: u.email }));
+  const ranked = users.filter((u) => isBoardUser({ role: u.role, email: u.email }));
 
   // Each rep's team and branch come from the org chart in User Management, the
   // same rules every board uses (src/lib/repcard/org-chart.ts). Deleted accounts
@@ -80,8 +82,10 @@ export async function loadBoardData(): Promise<BoardData> {
   );
 
   const rows: OverallRow[] = ranked.map((u) => {
+    // Team leads and branch managers are tracked on videos only.
+    const videosOnly = scoresVideosOnly(u.role);
     const perCourse = courses.map((c: any) =>
-      courseStats(c, progressByUserCourse.get(`${u.id}:${c.id}`))
+      courseStats(c, progressByUserCourse.get(`${u.id}:${c.id}`), { videosOnly })
     );
     const agg = aggregateOverall(perCourse);
     // Per-credential bars. Built from the SAME per-course stats as the overall
@@ -104,6 +108,8 @@ export async function loadBoardData(): Promise<BoardData> {
       branch,
       team,
       itemsCompleted: agg.itemsCompleted,
+      itemsTotal: agg.itemsTotal,
+      videosOnly,
       videosWatched: agg.videosWatched,
       quizzesPassed: agg.quizzesPassed,
       coursesCompleted: agg.coursesCompleted,
@@ -122,12 +128,9 @@ export async function loadBoardData(): Promise<BoardData> {
   const notStarted = rows
     .filter((r) => r.notStarted)
     .sort((a, b) => a.name.localeCompare(b.name));
-  started.sort(
-    (a, b) =>
-      b.itemsCompleted - a.itemsCompleted ||
-      b.coursesCompleted - a.coursesCompleted ||
-      a.name.localeCompare(b.name)
-  );
+  // By share of each row's own items (board.ts), so a videos-only leader and
+  // a rep can share one ranking.
+  started.sort(compareOverallRows);
   started.forEach((r, i) => {
     r.rank = i + 1;
     r.isPodium = i < 3; // derived from the live sort, never persisted

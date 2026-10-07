@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { publishedItems, courseStats, lessonCount, teamScore, isRankedRole, isRankedUser, isPageComplete, type CourseLike, type ProgressLike } from "./scoring";
+import { publishedItems, courseStats, lessonCount, teamScore, isRankedRole, isRankedUser, isBoardUser, scoresVideosOnly, isPageComplete, type CourseLike, type ProgressLike } from "./scoring";
 import { isExcludedAccount } from "./excluded-accounts";
 
 const course: CourseLike = {
@@ -231,4 +231,68 @@ describe("courseStats", () => {
     expect(courseStats(c, p).complete).toBe(true);
   });
 });
-
+
+
+describe("courseStats videosOnly (leaders on the Course Leaderboard)", () => {
+  const vc: CourseLike = {
+    id: "vc",
+    pages: [
+      { id: "v1", status: "published" },
+      { id: "v2", status: "published" },
+      { id: "q1", status: "published", isQuiz: true },
+      { id: "qf", status: "published", isQuiz: true, isFinalTest: true },
+    ],
+  };
+  const passed = { correct: 9, total: 10 };
+
+  it("measures items and pct in videos alone, ignoring passed quizzes", () => {
+    const p: ProgressLike = { completedPages: ["v1"], quizResults: [{ pageId: "q1", score: passed }] };
+    const s = courseStats(vc, p, { videosOnly: true });
+    expect(s.itemsCompleted).toBe(1);
+    expect(s.itemsTotal).toBe(2);
+    expect(s.pct).toBe(50);
+    // Still reported, just not counted.
+    expect(s.quizzesPassed).toBe(1);
+  });
+
+  it("is complete once every video is watched, with no quizzes passed", () => {
+    const s = courseStats(vc, { completedPages: ["v1", "v2"] }, { videosOnly: true });
+    expect(s.complete).toBe(true);
+    expect(s.pct).toBe(100);
+    // The same progress is NOT complete for a rep.
+    expect(courseStats(vc, { completedPages: ["v1", "v2"] }).complete).toBe(false);
+  });
+
+  it("is not started when only quizzes were passed", () => {
+    const p: ProgressLike = { completedPages: [], quizResults: [{ pageId: "q1", score: passed }] };
+    expect(courseStats(vc, p, { videosOnly: true }).started).toBe(false);
+  });
+});
+
+describe("board eligibility", () => {
+  it("puts reps, team leads and branch managers on the board", () => {
+    expect(isBoardUser({ role: "sales", email: "a@x.com" })).toBe(true);
+    expect(isBoardUser({ role: "sales-team-lead", email: "b@x.com" })).toBe(true);
+    expect(isBoardUser({ role: "branch-manager", email: "c@x.com" })).toBe(true);
+  });
+
+  it("keeps admin, c-level and marketing off the board", () => {
+    expect(isBoardUser({ role: "admin", email: "a@x.com" })).toBe(false);
+    expect(isBoardUser({ role: "c-level", email: "a@x.com" })).toBe(false);
+    expect(isBoardUser({ role: "marketing", email: "a@x.com" })).toBe(false);
+  });
+
+  it("still applies the scrub-list", () => {
+    expect(isBoardUser({ role: "sales", email: "jaymiller@millerstorm.com" })).toBe(false);
+  });
+
+  it("does not widen RANKED_ROLES (nudges and celebrations stay rep + team lead)", () => {
+    expect(isRankedUser({ role: "branch-manager", email: "c@x.com" })).toBe(false);
+  });
+
+  it("scores team leads and branch managers on videos only, reps on both", () => {
+    expect(scoresVideosOnly("sales-team-lead")).toBe(true);
+    expect(scoresVideosOnly("branch-manager")).toBe(true);
+    expect(scoresVideosOnly("sales")).toBe(false);
+  });
+});

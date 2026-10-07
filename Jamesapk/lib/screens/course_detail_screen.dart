@@ -67,6 +67,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   // unlocked and may jump/fast-forward freely — no sequential gating.
   bool get _isPrivileged =>
       _userRole == 'c-level' || _userRole == 'branch-manager' || _userRole == 'sales-team-lead';
+  // Team leads and branch managers are tracked on videos on the Course
+  // Leaderboard, so a skipped video must not count (see LessonPlayerScreen).
+  bool get _creditPlaybackOnly =>
+      _userRole == 'branch-manager' || _userRole == 'sales-team-lead';
   // A rep individually granted fast-forward by their manager/admin/C-Level
   // (User.fastForwardAllowed) — same grant the web's TrainingCenter reads via
   // GET /api/users/:id. Fetched live (not from the cached login session) so a
@@ -138,6 +142,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             playlistModules: widget.playlistModules,
             isPrivileged: _isPrivileged,
             fastForwardAllowed: _fastForwardAllowed,
+            creditPlaybackOnly: _creditPlaybackOnly,
           ),
         ),
       );
@@ -367,6 +372,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   playlistModules: widget.playlistModules,
                   isPrivileged: _isPrivileged,
                   fastForwardAllowed: _fastForwardAllowed,
+                  creditPlaybackOnly: _creditPlaybackOnly,
                 ),
               ),
             );
@@ -697,6 +703,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                     playlistModules: widget.playlistModules,
                                     isPrivileged: _isPrivileged,
                                     fastForwardAllowed: _fastForwardAllowed,
+                                    creditPlaybackOnly: _creditPlaybackOnly,
                                   ),
                                 ),
                               );

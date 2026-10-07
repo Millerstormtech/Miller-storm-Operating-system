@@ -36,7 +36,7 @@ The universal process lives in the skill; this file holds the **project-specific
 - **SIX** role keys (verified 2026-08-05 in `src/lib/roleLabels.ts`): `admin`, `sales-team-lead`, `sales`, `marketing`, `branch-manager`, `c-level`. There is **no `manager` role** — an earlier version of this file said there was.
 - **Keys are not labels.** `sales-team-lead` displays as "Sales Team Lead" via `roleDisplayName()` in `src/lib/roleLabels.ts`. Always mint tokens and write `allowedRoles` with the raw **key**.
 - **The `sales-team-lead` role lives in the `manager/` folders** — it routes to `/manager/rankings` and its screens are in `src/portals/manager/`. Grepping for "sales-team-lead" will not find its UI.
-- Only `sales` and `sales-team-lead` are ranked competitors (`RANKED_ROLES` in `src/lib/training/scoring.ts`); leadership does not compete.
+- The Course Leaderboard shows `sales`, `sales-team-lead` and `branch-manager` (`BOARD_ROLES` in `src/lib/training/scoring.ts`). Team leads and branch managers score on videos only; everyone ranks by percentage. Nudges and Storm Bot celebrations still use `RANKED_ROLES` (reps + team leads only).
 - Server-side gate is `requireUser` / `requireRole` in `src/lib/auth.ts` (401 unauthenticated, 403 wrong role). Client `ProtectedRoute` is UI-only — always verify the **server** rejects, not just the hidden button.
 - "Tenant" scoping that exists: a team lead's reports via `managerId`; DMs (`chatgroups.isDirect`) readable only by their two members (even admins can't moderate DMs — see the IDOR fix on branch `fix/storm-chat-dm-delete-idor`).
 
@@ -73,3 +73,9 @@ The universal process lives in the skill; this file holds the **project-specific
 - Vimeo frames are scriptable from Playwright even though they are cross-origin: page.frames(), then frame.evaluate on the inner video element gives paused, currentTime, muted and getVideoPlaybackQuality, and lets you count waiting, stalled and seeking events. A plain page.setContent iframe of the same video is a clean baseline.
 - To prove a failure branch, page.route the endpoint to answer 500 and count the follow-up requests with page.on request.
 - An old next start can still be answering on port 6790 when you think a new one is up. Compare .next/BUILD_ID with the buildId in the served HTML before trusting any result.
+
+## Gotchas found 2026-10-07 (leaders on the Course Leaderboard smoke)
+- **A local test video beats Vimeo for player smokes.** `ffmpeg -f lavfi -i testsrc=duration=12:size=320x240:rate=15 -pix_fmt yuv420p public/uploads/smoke-12s.mp4` BEFORE `npm run build` (next start only serves public files that existed at build). Seed lesson `body` as `<video src="/uploads/smoke-12s.mp4" controls muted></video>`, then drive it with `page.evaluate` (`currentTime = 11` = a skip; `currentTime = 0; playbackRate = 2; play()` = a real watch). Assert `userprogresses.completedPages` in the DB, not just the Next button. Delete the mp4 afterwards: `public/uploads` is NOT gitignored.
+- **Logging out needs a real click on the header Logout button.** `page.goto('/login')` alone keeps you signed in as the previous user (the session survives in the tab), so the next login silently lands as the wrong person. Check the header name after every switch.
+- **Card selectors: a rep's card contains their team lead's name** ("Team Tom Lead"), so `filter({ hasText: 'Tom Lead' })` can pick a rep's card. Match on the card's first text line instead.
+- Login routes per role: `/branch-manager/training`, `/c-level/training` (both `OnlineTraining`), `/sales/training` (`TrainingCenter`).
