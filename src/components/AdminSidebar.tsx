@@ -21,6 +21,7 @@ export const adminSidebarItems: { id: string; label: string; toggleKey?: string;
   { id: "calendar", label: "Calendar", group: "Manage" },
   { id: "docs-sops", label: "Docs & SOPs", group: "Manage" },
   { id: "repActivity", label: "Rep Activity", path: "/admin/rep-activity", group: "Manage" },
+  { id: "teamHistory", label: "Team History", path: "/admin/team-history", group: "Manage" },
   { id: "myProfile", label: "Profile", path: "/admin/my-profile", group: "Manage" },
 ];
 
