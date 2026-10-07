@@ -146,7 +146,7 @@ export function planRecording(input: {
  * stores everything as already known, so deploy day sends no backlog.
  */
 export function diffWarnings(
-  existing: ReadonlyArray<{ key: string; active: boolean }>,
+  existing: ReadonlyArray<{ key: string; active: boolean; emailedAt: Date | null }>,
   current: ReadonlyArray<{ key: string }>,
   firstRun: boolean
 ): { toCreate: string[]; toReactivate: string[]; toDeactivate: string[]; toEmail: string[] } {
@@ -155,5 +155,10 @@ export function diffWarnings(
   const toCreate = [...now].filter((k) => !byKey.has(k));
   const toReactivate = [...now].filter((k) => byKey.has(k) && !byKey.get(k)!.active);
   const toDeactivate = existing.filter((w) => w.active && !now.has(w.key)).map((w) => w.key);
-  return { toCreate, toReactivate, toDeactivate, toEmail: firstRun ? [] : [...toCreate, ...toReactivate] };
+  // Emailing is driven by emailedAt: a warning still current and never marked
+  // sent is retried every hour until a send succeeds.
+  const unsent = [...now].filter((k) => byKey.has(k) && byKey.get(k)!.active && byKey.get(k)!.emailedAt === null);
+  return { toCreate, toReactivate, toDeactivate, toEmail: firstRun ? [] : [...toCreate, ...toReactivate, ...unsent] };
 }
+
+export const NO_TEAM_NUMBERS_TEXT = "Their numbers do not count for any team or branch.";

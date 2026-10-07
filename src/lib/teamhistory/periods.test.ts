@@ -186,6 +186,7 @@ describe("planRecording", () => {
 });
 
 describe("diffWarnings", () => {
+  const SENT = new Date("2026-10-01");
   it("first run stores everything silently", () => {
     const r = diffWarnings([], [{ key: "a" }, { key: "b" }], true);
     expect(r.toCreate).toEqual(["a", "b"]);
@@ -193,7 +194,7 @@ describe("diffWarnings", () => {
   });
   it("emails new and returning problems once; deactivates solved ones", () => {
     const r = diffWarnings(
-      [{ key: "old", active: true }, { key: "back", active: false }, { key: "solved", active: true }],
+      [{ key: "old", active: true, emailedAt: SENT }, { key: "back", active: false, emailedAt: SENT }, { key: "solved", active: true, emailedAt: SENT }],
       [{ key: "old" }, { key: "back" }, { key: "new" }],
       false
     );
@@ -201,5 +202,21 @@ describe("diffWarnings", () => {
     expect(r.toReactivate).toEqual(["back"]);
     expect(r.toDeactivate).toEqual(["solved"]);
     expect(r.toEmail.sort()).toEqual(["back", "new"]);
+  });
+  it("an active warning never emailed (emailedAt null) and still current is emailed again", () => {
+    const r = diffWarnings([{ key: "x", active: true, emailedAt: null }], [{ key: "x" }], false);
+    expect(r.toEmail).toEqual(["x"]);
+    expect(r.toCreate).toEqual([]);
+  });
+  it("an active warning already emailed is not emailed again", () => {
+    expect(diffWarnings([{ key: "x", active: true, emailedAt: SENT }], [{ key: "x" }], false).toEmail).toEqual([]);
+  });
+  it("a solved warning with emailedAt null is not emailed", () => {
+    expect(diffWarnings([{ key: "x", active: true, emailedAt: null }], [], false).toEmail).toEqual([]);
+  });
+  it("first run emails nothing even with unsent existing and new keys", () => {
+    const r = diffWarnings([{ key: "x", active: true, emailedAt: null }], [{ key: "x" }, { key: "y" }], true);
+    expect(r.toEmail).toEqual([]);
+    expect(r.toCreate).toEqual(["y"]);
   });
 });

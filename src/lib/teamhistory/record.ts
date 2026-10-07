@@ -7,13 +7,13 @@ import { RepTeamHistoryModel } from "../models/RepTeamHistory";
 import { TeamWarningModel } from "../models/TeamWarning";
 import { loadSharedRosterData, computeSalesRows } from "../leaderboard/compute";
 import { placeRep } from "./placement";
-import { planRecording, diffWarnings, type Placement } from "./periods";
+import { planRecording, diffWarnings, NO_TEAM_NUMBERS_TEXT, type Period, type Placement } from "./periods";
 import { officeToBranch } from "../repcard/branches";
 import { centralDateStr, getWindowRange } from "../acculynx/windows";
 import { normEmail } from "../leaderboard/identity";
 import { sendEmail } from "../email";
 
-export const NO_TEAM_NUMBERS_TEXT = "Their numbers do not count for any team or branch.";
+const SEEDED_KEY = "__seeded__";
 
 function recipients(): string[] {
   return (process.env.TEAM_WARNING_EMAILS || "tech@millerstorm.com,youssofradwan@gmail.com")
@@ -41,9 +41,10 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
     }
 
     // 2. Advance histories, version-checked so an admin edit is never overwritten.
-    const docs = (await RepTeamHistoryModel.find({}).select("repcardUserId version").lean()) as any[];
+    const docs = (await RepTeamHistoryModel.find({}).select("repcardUserId periods version").lean()) as any[];
     const versions = new Map(docs.map((d) => [String(d.repcardUserId), Number(d.version) || 0]));
-    const changed = planRecording({ histories: shared.histories, placements, today: centralDateStr(now) });
+    const histories = new Map<string, Period[]>(docs.map((d) => [String(d.repcardUserId), (d.periods || []) as Period[]]));
+    const changed = planRecording({ histories, placements, today: centralDateStr(now) });
     for (const [id, periods] of changed) {
       const version = versions.get(id);
       const meta = names.get(id);
@@ -69,8 +70,10 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
       current.push({ key: `no-team-numbers:${r.repUserId}`, userId: r.repUserId, kind: "no-team-numbers", text: `${r.name}: ${NO_TEAM_NUMBERS_TEXT}` });
     }
 
-    const existing = (await TeamWarningModel.find({}).select("key active").lean()) as any[];
-    const plan = diffWarnings(existing, current, existing.length === 0);
+    const all = (await TeamWarningModel.find({}).select("key active emailedAt").lean()) as any[];
+    const firstRun = !all.some((w) => w.key === SEEDED_KEY);
+    const existing = all.filter((w) => w.key !== SEEDED_KEY).map((w) => ({ key: String(w.key), active: !!w.active, emailedAt: (w.emailedAt as Date | null) || null }));
+    const plan = diffWarnings(existing, current, firstRun);
     const byKey = new Map(current.map((w) => [w.key, w]));
     for (const key of plan.toCreate) {
       const w = byKey.get(key)!;
@@ -80,16 +83,19 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
     if (plan.toDeactivate.length) await TeamWarningModel.updateMany({ key: { $in: plan.toDeactivate } }, { $set: { active: false } });
     // Keep texts current for still-active warnings (names can change).
     for (const w of current) await TeamWarningModel.updateOne({ key: w.key, active: true }, { $set: { text: w.text } });
+    if (firstRun) await TeamWarningModel.create({ key: SEEDED_KEY, userId: "", kind: "marker", text: "First-run marker", active: false, emailedAt: new Date() });
 
     if (plan.toEmail.length) {
       const items = plan.toEmail.map((k) => byKey.get(k)!.text);
       const html = `<p>The app found ${items.length} team ${items.length === 1 ? "problem" : "problems"} in User Management:</p><ul>${items
         .map((t) => `<li>${t.replace(/</g, "&lt;")}</li>`).join("")}</ul><p>Open User Management or the Team History page in the admin menu. You will not be emailed about the same problem again.</p>`;
+      let anySent = false;
       for (const to of recipients()) {
-        try { await sendEmail({ to, subject: "Team setup needs attention", html, text: items.map((t) => `- ${t}`).join("\n") }); }
+        try { await sendEmail({ to, subject: "Team setup needs attention", html, text: items.map((t) => `- ${t}`).join("\n") }); anySent = true; }
         catch (e) { console.error("[teamhistory] warning email failed:", e); }
       }
-      await TeamWarningModel.updateMany({ key: { $in: plan.toEmail } }, { $set: { emailedAt: new Date() } });
+      // If every send failed, leave emailedAt empty so the next hour retries.
+      if (anySent) await TeamWarningModel.updateMany({ key: { $in: plan.toEmail } }, { $set: { emailedAt: new Date() } });
     }
     return { changed: changed.size, newWarnings: plan.toEmail.length };
   } catch (e: any) {

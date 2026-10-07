@@ -21,7 +21,7 @@ import { compareToRepCard, hasDrift } from "../../../src/lib/repcard/appDrift";
 import { buildOrgChart, repcardTeamMatcher, type OrgWarning } from "../../../src/lib/repcard/org-chart";
 import { officeToBranch, BRANCH_ORDER } from "../../../src/lib/repcard/branches";
 import { TeamWarningModel } from "../../../src/lib/models/TeamWarning";
-import { NO_TEAM_NUMBERS_TEXT } from "../../../src/lib/teamhistory/record";
+import { NO_TEAM_NUMBERS_TEXT } from "../../../src/lib/teamhistory/periods";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
