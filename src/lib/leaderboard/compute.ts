@@ -6,6 +6,7 @@ import { RepCardUserModel } from "../models/RepCardUser";
 import { AcculynxUserModel } from "../models/AcculynxUser";
 import { UserModel } from "../models/User";
 import { mergeLeaderboard } from "./merge";
+import { placeRep } from "../teamhistory/placement";
 import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
 import { isDeletedFromRepCard } from "./roster";
@@ -257,17 +258,17 @@ export async function computeSalesRows(
     // team's branch, else their RepCard office.
     // A former rep's deleted account places them only when it can: older
     // accounts may hold no usable Team Lead, and then RepCard is the fallback.
+    // Team and Branch: one rule shared with the hourly team-history step
+    // (teamhistory/placement.ts), so the history records what the board shows.
     const former = !u && m.email ? roster.deletedByEmail.get(m.email) : null;
-    const placed = u || (former && roster.org.teamOf(former) ? former : null);
-    let team: string | null;
-    let branch: string;
-    if (placed) {
-      team = roster.org.teamOf(placed) || null;
-      branch = roster.org.branchOf(placed);
-    } else {
-      team = roster.appTeamForRepCardTeam(rcu?.team) || null;
-      branch = roster.org.branchOfTeam(team) || officeToBranch(rcu?.office);
-    }
+    const place = placeRep({
+      org: roster.org, live: u, former,
+      repcardTeam: rcu?.team, repcardOffice: rcu?.office,
+      appTeamForRepCardTeam: roster.appTeamForRepCardTeam, officeToBranch,
+    });
+    const placed = place.placedBy;
+    const team: string | null = place.team || null;
+    const branch = place.branch;
     // Team-based reporting (decided 2026-08-12, confirmed 2026-08-21): every one
     // of this rep's numbers counts toward their home branch -- the branch their
     // TEAM belongs to -- including sales filed out of another branch's AccuLynx
