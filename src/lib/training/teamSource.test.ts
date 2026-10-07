@@ -75,7 +75,18 @@ describe("the Course Leaderboard takes teams from the app profile only", () => {
       "James Carter": "Luke Huber",
       // RepCard says Gunner, but his profile has no Team Lead.
       "Alan Bieberle": "",
+      // Branch managers are on the board since 2026-10-07, on their own team
+      // like a team lead.
+      "Gunner McCullough": "Gunner McCullough",
     });
+  });
+
+  it("tracks team leads and branch managers on videos only, reps on both", async () => {
+    const { rows } = await loadBoardData();
+    const only = Object.fromEntries(rows.map((r) => [r.name, r.videosOnly]));
+    expect(only["Gunner McCullough"]).toBe(true);
+    expect(only["Luke Huber"]).toBe(true);
+    expect(only["Jose Robles"]).toBe(false);
   });
 
   it("takes the branch from the rep's own territory", async () => {

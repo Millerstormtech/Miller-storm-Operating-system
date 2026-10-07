@@ -65,6 +65,27 @@ export function nextMilestone(coursesCompleted: number, totalCourses: number): s
   return `Legend 🌟 (${more(totalCourses - coursesCompleted)})`;
 }
 
+/**
+ * The Overall board's ranking order. Rows are compared by their EXACT share of
+ * their own items, not by raw item count: a leader is tracked on videos only, so
+ * a leader's count can never reach a rep's, but a leader's percentage can
+ * (decided 2026-10-07). For reps alone this is the same order as before, because
+ * every rep has the same denominator. Ties: more items done, then more courses
+ * finished, then name. Cross-multiplied so no rounding can reorder two rows.
+ */
+export function compareOverallRows(
+  a: { itemsCompleted: number; itemsTotal: number; coursesCompleted: number; name: string },
+  b: { itemsCompleted: number; itemsTotal: number; coursesCompleted: number; name: string }
+): number {
+  const share = b.itemsCompleted * Math.max(a.itemsTotal, 1) - a.itemsCompleted * Math.max(b.itemsTotal, 1);
+  return (
+    share ||
+    b.itemsCompleted - a.itemsCompleted ||
+    b.coursesCompleted - a.coursesCompleted ||
+    a.name.localeCompare(b.name)
+  );
+}
+
 /** One row of the Overall board. Produced by /api/training/leaderboard. */
 export type OverallRow = {
   id: string;
@@ -75,6 +96,11 @@ export type OverallRow = {
   branch: string;
   team: string;
   itemsCompleted: number;
+  /** This row's own denominator: videos + quizzes for a rep, videos alone
+   * for a leader (videosOnly). Rows are compared by itemsCompleted / itemsTotal. */
+  itemsTotal: number;
+  /** Team leads and branch managers: tracked on videos only, quizzes not counted. */
+  videosOnly: boolean;
   videosWatched: number;
   quizzesPassed: number;
   coursesCompleted: number;

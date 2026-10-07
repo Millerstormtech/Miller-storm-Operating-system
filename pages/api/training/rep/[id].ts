@@ -24,7 +24,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!row) return res.status(404).json({ error: "Not found" });
 
   const courses = data.courses.map((c: any) => {
-    const s = courseStats(c, data.progressByUserCourse.get(`${id}:${c.id}`));
+    const s = courseStats(c, data.progressByUserCourse.get(`${id}:${c.id}`), {
+      videosOnly: row.videosOnly,
+    });
     return {
       id: c.id,
       title: c.title,
@@ -49,7 +51,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     isPodium: row.isPodium,
     pct: row.pct,
     itemsCompleted: row.itemsCompleted,
-    totalItems: data.totalItems,
+    // The row's own denominator: a leader's is videos only.
+    totalItems: row.itemsTotal,
+    videosOnly: row.videosOnly,
     coursesCompleted: row.coursesCompleted,
     totalCourses: data.totalCourses,
     credentials: row.credentials,

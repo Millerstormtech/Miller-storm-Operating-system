@@ -10,7 +10,8 @@ import { SalesRankSnapshotModel } from "../../src/lib/models/SalesRankSnapshot";
 import { weekStartMonday, weekKey, monthKey, rankDeltas } from "../../src/lib/scoreboard/rankMoves";
 import type { Window } from "../../src/lib/acculynx/windows";
 import { pickContractKing, pickYtdPodium, kingMonthLabel } from "../../src/lib/leaderboard/contractKing";
-import { courseStats, isRankedUser, RANKED_ROLES } from "../../src/lib/training/scoring";
+import { courseStats, isBoardUser, BOARD_ROLES, scoresVideosOnly } from "../../src/lib/training/scoring";
+import { compareOverallRows } from "../../src/lib/training/board";
 import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -39,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // put branch managers and admins on the board as salespeople: `roles[]`
     // marks leadership who also run a sales team. Leadership does not compete.
     let usersQuery: any = {
-      role: { $in: [...RANKED_ROLES] },
+      role: { $in: [...BOARD_ROLES] },
       deleted: { $ne: true },
       suspended: { $ne: true },
       testAccount: { $ne: true }
@@ -72,10 +73,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Scrub non-sales accounts holding a sales role (Jay, dev/test accounts,
     // shared mailboxes). Branch managers/admins are already gone via the query.
-    const rankedUsers = users.filter((u) => isRankedUser({ role: u.role, email: u.email }));
+    // Branch managers are on this board too (2026-10-07), scored like team leads.
+    const rankedUsers = users.filter((u) => isBoardUser({ role: u.role, email: u.email }));
 
     const rows = rankedUsers.map((u) => {
-      const stats = courseStats(course as any, progressMap.get(u.id));
+      // Team leads and branch managers: videos only, so `total` is their video count.
+      const stats = courseStats(course as any, progressMap.get(u.id), {
+        videosOnly: scoresVideosOnly(u.role),
+      });
       return {
         id: u.id,
         name: u.name || u.email,
@@ -95,8 +100,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // to the course's own itemsTotal.
     const total = courseStats(course as any, undefined).itemsTotal;
 
-    // Sort rows
-    rows.sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+    // By exact share of each row's own items, so rounding cannot reorder rows
+    // and a videos-only leader ranks against reps fairly (board.ts).
+    rows.sort((a, b) =>
+      compareOverallRows(
+        { itemsCompleted: a.done, itemsTotal: a.total, coursesCompleted: 0, name: a.name },
+        { itemsCompleted: b.done, itemsTotal: b.total, coursesCompleted: 0, name: b.name }
+      )
+    );
 
     return res.status(200).json({
       course: {

@@ -9,8 +9,10 @@
 //
 // Pure, import-free. Ask these helpers instead of comparing role strings, so a
 // branch manager is never left out of something meant for team leads or reps.
-// One deliberate exception lives elsewhere: the Course Leaderboard ranks reps
-// and team leads but NOT branch managers (RANKED_ROLES in training/scoring.ts).
+// One deliberate exception lives elsewhere: training nudges and Storm Bot
+// course celebrations cover reps and team leads but NOT branch managers
+// (RANKED_ROLES in training/scoring.ts). The Course Leaderboard itself shows all
+// three, leaders on videos only (BOARD_ROLES, scoresVideosOnly).
 
 /** Everyone who sells: reps, team leads and branch managers. */
 export const REP_ROLES = ["sales", "sales-team-lead", "branch-manager"] as const;

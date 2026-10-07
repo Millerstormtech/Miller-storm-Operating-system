@@ -149,3 +149,33 @@ export function shouldPersistPosition(
   if (current === null) return false;
   return current - last >= intervalSeconds;
 }
+
+// How far a single player tick may move the watched point and still count as
+// playback rather than a jump. The same 2s the seek lock already allows a rep
+// before snapping them back, so "playing" means one thing for both.
+export const PLAYBACK_STEP_SECONDS = 2;
+
+/**
+ * The next watched point, given where the player is now.
+ *
+ * Normally the point is simply the furthest position seen: reps are seek-locked,
+ * so the furthest position IS how far they watched. Leaders (team leads, branch
+ * managers) are allowed to scrub freely, so for them the furthest position says
+ * nothing about watching. With `playbackOnly`, the point moves only when the
+ * player is within a playback step of it: a jump ahead leaves it where it was,
+ * and only playing on from the point (or from before it) moves it forward.
+ * Decided 2026-10-07: leaders can skip around, but only real watching counts on
+ * the Course Leaderboard.
+ */
+export function advanceWatchedPoint(watched: number, seconds: number, playbackOnly: boolean): number {
+  if (!Number.isFinite(seconds) || seconds < 0) return watched;
+  if (seconds <= watched) return watched;
+  if (playbackOnly && seconds > watched + PLAYBACK_STEP_SECONDS) return watched;
+  return seconds;
+}
+
+/** Has the watched point reached the end window that marks a lesson watched? */
+export function watchedToEnd(watched: number, durationSeconds: number): boolean {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return false;
+  return watched >= durationSeconds - END_TOLERANCE_SECONDS;
+}

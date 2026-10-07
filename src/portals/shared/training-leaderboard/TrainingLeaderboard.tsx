@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../../../contexts/AuthContext";
-import { isRankedRole } from "../../../lib/training/scoring";
+import { isBoardRole } from "../../../lib/training/scoring";
 import type { BoardFilters, OverallResponse, OverallRow } from "../../../lib/training/board";
 import { teamSummaryFor, filterRows, filtersActive, teamStandings, standingsInBranch } from "../../../lib/training/board";
 import { ExportReportButton, type ExportRequest, type ExportScope } from "../../../components/report/ExportReportButton";
@@ -137,7 +137,7 @@ export function TrainingLeaderboard() {
   const notStartedRows = useMemo(() => allRows.filter((r) => r.notStarted), [allRows]);
   const overallById = useMemo(() => new Map(allRows.map((r) => [r.id, r] as [string, OverallRow])), [allRows]);
 
-  const youRow = user && isRankedRole(user.role) ? allRows.find((r) => r.id === user.id) || null : null;
+  const youRow = user && isBoardRole(user.role) ? allRows.find((r) => r.id === user.id) || null : null;
   const myTeam =
     user?.role === "sales-team-lead"
       ? teamSummaryFor(allRows, data?.viewer?.team || "")

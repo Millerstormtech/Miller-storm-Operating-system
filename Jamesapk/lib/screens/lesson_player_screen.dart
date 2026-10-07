@@ -47,6 +47,12 @@ class LessonPlayerScreen extends StatefulWidget {
   // before clamping seeks. Independent of isPrivileged: a rank-and-file rep
   // can hold this grant without being leadership.
   final bool fastForwardAllowed;
+  // Team leads and branch managers: free to skip around, but a lesson they have
+  // not completed only counts once they actually PLAY it to the end. A jump
+  // ahead never moves the watched point. They are tracked on videos on the
+  // Course Leaderboard, so a skip must not count. Mirrors the web's
+  // `playbackOnly` in useVideoSequence (advanceWatchedPoint).
+  final bool creditPlaybackOnly;
 
   const LessonPlayerScreen({
     super.key,
@@ -57,6 +63,7 @@ class LessonPlayerScreen extends StatefulWidget {
     this.playlistModules,
     this.isPrivileged = false,
     this.fastForwardAllowed = false,
+    this.creditPlaybackOnly = false,
   });
 
   @override
@@ -436,6 +443,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
     // User.fastForwardAllowed via useVideoSequence's `allowFastForward`, but
     // nothing here ever read that flag, so a granted rep was still clamped to
     // maxTimeWatched and forced to watch the whole video every time.
+    // Decided before isCompleted is widened below: only a lesson this leader has
+    // not completed yet needs real playback to count.
+    final playbackOnly = widget.creditPlaybackOnly && !isCompleted;
     isCompleted = isCompleted || widget.isPrivileged || widget.fastForwardAllowed;
     final isDirectVideo = embedUrl.contains('/uploads/') ||
                           embedUrl.endsWith('.mp4') || 
@@ -478,6 +488,30 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
   var maxTimeWatched = resumeAt > 0 ? resumeAt : 0;
   var isSeeking = false;
   var isCompleted = $isCompleted;
+  // Proof of watching (mirrors the web's useVideoSequence): a seek-locked rep,
+  // or a leader (creditPlaybackOnly) on a lesson not yet completed, is reported
+  // watched only once the WATCHED POINT reaches the end. Reading the playhead
+  // instead let a skip to the end mark the lesson watched in the instant before
+  // the seek lock pulled it back. Only playback moves the watched point.
+  var playbackOnly = $playbackOnly;
+  var mustProve = playbackOnly || !isCompleted;
+  var knownDuration = 0;
+  function advance(t) {
+    if (!mustProve || t <= maxTimeWatched + 2) { maxTimeWatched = Math.max(maxTimeWatched, t); }
+  }
+  // endAt = where the player actually stopped on 'ended'. Judging against it,
+  // not the listed duration, keeps a video whose real end falls short of its
+  // duration from locking out someone who watched it all.
+  // furthest = the furthest the playhead has been, skips included. On 'ended'
+  // the seek lock may already have pulled the playhead back, so the end is
+  // taken from here, never from the player's current time alone.
+  var furthest = 0;
+  function seen(t) { if (typeof t === 'number' && t > furthest) { furthest = t; } }
+  function earned(endAt) {
+    if (!mustProve) return true;
+    var end = (typeof endAt === 'number' && endAt > 0) ? Math.max(endAt, furthest) : knownDuration;
+    return end > 0 && maxTimeWatched >= end - 3;
+  }
   var lastBlockNotice = 0;
   var lastReported = maxTimeWatched;
   function notifyBlocked() {
@@ -507,6 +541,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
 
   video.onseeking = function() {
     isSeeking = true;
+    seen(video.currentTime);
   };
 
   video.onseeked = function() {
@@ -516,20 +551,22 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
   var unlockSent = false, endedSent = false;
   function post(msg) { if (window.VideoEndChannel) { window.VideoEndChannel.postMessage(msg); } }
   // 'unlock' = last 3s reached → mark watched + enable Next (no redirect).
-  function sendUnlock() { if (unlockSent) return; unlockSent = true; post('unlock'); }
+  function sendUnlock() { if (unlockSent || !earned()) return; unlockSent = true; post('unlock'); }
   // 'ended' = video fully finished → mark watched + enable Next (no auto-advance).
-  function sendEnded() { if (endedSent) return; endedSent = true; post('ended'); }
+  function sendEnded(endAt) { if (endedSent || !earned(endAt)) return; endedSent = true; post('ended'); }
   video.ontimeupdate = function() {
+    seen(video.currentTime);
     if (!isCompleted && !isSeeking) {
       if (video.currentTime > maxTimeWatched + 2) {
         video.currentTime = maxTimeWatched;
         notifyBlocked();
       } else {
-        maxTimeWatched = Math.max(maxTimeWatched, video.currentTime);
+        advance(video.currentTime);
       }
     } else if (isCompleted) {
-      maxTimeWatched = Math.max(maxTimeWatched, video.currentTime);
+      advance(video.currentTime);
     }
+    if (video.duration) knownDuration = video.duration;
     reportPosition();
     // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
     if (video.duration && video.currentTime >= video.duration - 3) {
@@ -542,7 +579,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> with WidgetsBin
   };
 
   video.onended = function() {
-    sendEnded();
+    sendEnded(video.currentTime);
   };
 
   // Try to autoplay, but handle user gesture requirement
@@ -595,6 +632,30 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
   var lastReported = maxTimeWatched;
   var checkInterval;
   var isCompleted = $isCompleted;
+  // Proof of watching (mirrors the web's useVideoSequence): a seek-locked rep,
+  // or a leader (creditPlaybackOnly) on a lesson not yet completed, is reported
+  // watched only once the WATCHED POINT reaches the end. Reading the playhead
+  // instead let a skip to the end mark the lesson watched in the instant before
+  // the seek lock pulled it back. Only playback moves the watched point.
+  var playbackOnly = $playbackOnly;
+  var mustProve = playbackOnly || !isCompleted;
+  var knownDuration = 0;
+  function advance(t) {
+    if (!mustProve || t <= maxTimeWatched + 2) { maxTimeWatched = Math.max(maxTimeWatched, t); }
+  }
+  // endAt = where the player actually stopped on 'ended'. Judging against it,
+  // not the listed duration, keeps a video whose real end falls short of its
+  // duration from locking out someone who watched it all.
+  // furthest = the furthest the playhead has been, skips included. On 'ended'
+  // the seek lock may already have pulled the playhead back, so the end is
+  // taken from here, never from the player's current time alone.
+  var furthest = 0;
+  function seen(t) { if (typeof t === 'number' && t > furthest) { furthest = t; } }
+  function earned(endAt) {
+    if (!mustProve) return true;
+    var end = (typeof endAt === 'number' && endAt > 0) ? Math.max(endAt, furthest) : knownDuration;
+    return end > 0 && maxTimeWatched >= end - 3;
+  }
   var lastBlockNotice = 0;
   function notifyBlocked() {
     var now = Date.now();
@@ -611,9 +672,9 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
   var unlockSent = false, endedSent = false;
   function post(msg) { if (window.VideoEndChannel) { window.VideoEndChannel.postMessage(msg); } }
   // 'unlock' = last 3s reached → mark watched + enable Next (no redirect).
-  function sendUnlock() { if (unlockSent) return; unlockSent = true; post('unlock'); }
+  function sendUnlock() { if (unlockSent || !earned()) return; unlockSent = true; post('unlock'); }
   // 'ended' = video fully finished → mark watched + enable Next (no auto-advance).
-  function sendEnded() { if (endedSent) return; endedSent = true; post('ended'); }
+  function sendEnded(endAt) { if (endedSent || !earned(endAt)) return; endedSent = true; post('ended'); }
 
   function initVimeo() {
     if (window.Vimeo) {
@@ -627,16 +688,18 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       }
 
       player.on('timeupdate', function(data) {
+        seen(data.seconds);
         if (!isCompleted) {
           if (data.seconds > maxTimeWatched + 2) {
             player.setCurrentTime(maxTimeWatched);
             notifyBlocked();
           } else {
-            maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
+            advance(data.seconds);
           }
         } else {
-          maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
+          advance(data.seconds);
         }
+        if (data.duration) knownDuration = data.duration;
         reportPosition();
         // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
         if (data.duration && data.seconds >= data.duration - 3) {
@@ -645,14 +708,15 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       });
 
       player.on('seeking', function(data) {
+        seen(data.seconds);
         if (!isCompleted && data.seconds > maxTimeWatched + 1) {
           player.setCurrentTime(maxTimeWatched);
           notifyBlocked();
         }
       });
 
-      player.on('ended', function() {
-        sendEnded();
+      player.on('ended', function(data) {
+        sendEnded(data && data.seconds);
       });
     }
   }
@@ -673,19 +737,21 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       }
       checkInterval = setInterval(function() {
         var currentTime = player.getCurrentTime();
+        seen(currentTime);
         if (!isCompleted) {
           if (currentTime > maxTimeWatched + 2) {
             player.seekTo(maxTimeWatched, true);
             notifyBlocked();
           } else {
-            maxTimeWatched = Math.max(maxTimeWatched, currentTime);
+            advance(currentTime);
           }
         } else {
-          maxTimeWatched = Math.max(maxTimeWatched, currentTime);
+          advance(currentTime);
         }
         reportPosition();
         // Mark watched + enable Next once within the last 3 seconds — no auto-advance.
         var dur = player.getDuration ? player.getDuration() : 0;
+        if (dur) knownDuration = dur;
         if (dur && currentTime >= dur - 3) {
           sendUnlock();
         }
@@ -694,7 +760,9 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
 
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.ENDED) {
-        sendEnded();
+        var endAt = 0;
+        try { endAt = player.getCurrentTime(); } catch (e) {}
+        sendEnded(endAt);
       }
     }
   }
@@ -732,14 +800,15 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
 
     function loomTick(durationSecs) {
       var elapsed = resumeAt + (Date.now() - loomStartedAt) / 1000;
-      maxTimeWatched = Math.max(maxTimeWatched, elapsed);
+      advance(elapsed);
+      knownDuration = durationSecs;
       reportPosition();
       if (elapsed >= durationSecs - 3) {
         sendUnlock();
       }
       if (elapsed >= durationSecs && !loomFinished) {
         loomFinished = true;
-        sendEnded();
+        sendEnded(elapsed);
         clearInterval(checkInterval);
       }
     }
@@ -1029,6 +1098,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           playlistModules: widget.playlistModules,
           isPrivileged: widget.isPrivileged,
           fastForwardAllowed: widget.fastForwardAllowed,
+          creditPlaybackOnly: widget.creditPlaybackOnly,
         ),
       ),
     );
@@ -1173,6 +1243,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
               playlistModules: widget.playlistModules,
               isPrivileged: widget.isPrivileged,
               fastForwardAllowed: widget.fastForwardAllowed,
+              creditPlaybackOnly: widget.creditPlaybackOnly,
             ),
           ),
         );
