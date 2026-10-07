@@ -61,8 +61,9 @@ Map<String, dynamic>? shareForSelection(Map<String, dynamic> row, Set<String> br
 
 const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// "16 Sep", joined by a non-breaking space so a wrapped note never splits the date.
 String _shortDate(String day) {
   final p = day.split('-');
   if (p.length != 3) return day;
-  return '${int.parse(p[2])} ${_months[int.parse(p[1]) - 1]}';
+  return '${int.parse(p[2])} ${_months[int.parse(p[1]) - 1]}';
 }

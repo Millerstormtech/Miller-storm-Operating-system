@@ -1233,7 +1233,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                       if (subtitle.isNotEmpty)
                         Text(subtitle, style: TextStyle(fontSize: 12, color: _textPlaceholder)),
                       if ((r['_note'] ?? '').toString().isNotEmpty)
-                        Text(r['_note'].toString(), style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+                        Text(r['_note'].toString(), style: TextStyle(fontSize: 12, color: _textPlaceholder)),
                     ],
                   ),
                 ),

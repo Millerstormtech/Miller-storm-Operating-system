@@ -43,6 +43,49 @@ Future<void> openTeamFilter(WidgetTester tester) async {
   await settle(tester);
 }
 
+// Ticks one team, then closes both sheets to look at the board.
+Future<void> pickTeam(WidgetTester tester, String team) async {
+  await openTeamFilter(tester);
+  await tester.tap(find.text(team).last);
+  await settle(tester);
+  await tester.tapAt(const Offset(180, 20));
+  await settle(tester);
+  await tester.tapAt(const Offset(180, 20));
+  await settle(tester);
+}
+
+// Team history: Jose moved from Luke Huber's team to Daniel Reyes's on 16 Sep.
+// The server splits his month into one segment per team.
+Map<String, Object> segment(String team, String from, String to, num revenue, num knocks, num won) => {
+      'team': team,
+      'branch': 'Fort Worth',
+      'from': from,
+      'to': to,
+      'revenue': revenue,
+      'verifiedKnocks': knocks,
+      'leadsCreated': 0,
+      'filed': 0,
+      'won': won,
+    };
+
+final movedMidMonth = {
+  'leaderboard': [
+    {
+      ...repOn('j', 'Jose Robles', 'Daniel Reyes', 10000),
+      'verifiedKnocks': 100,
+      'won': 3,
+      'segments': [
+        segment('Luke Huber', '2026-09-01', '2026-09-15', 4000, 40, 1),
+        segment('Daniel Reyes', '2026-09-16', '2026-09-30', 6000, 60, 2),
+      ],
+    },
+    // No segments: an older server, or a rep who never moved.
+    repOn('a', 'Alan Bieberle', 'Luke Huber', 9000),
+    repOn('t', 'Trace Lutteringer', 'Daniel Reyes', 2000),
+  ],
+  'teams': ['Daniel Reyes', 'Luke Huber'],
+};
+
 // Each account type has its own copy of the Sales Leaderboard.
 final screens = <String, Widget>{
   'Sales': const RankingsScreen(),
@@ -85,14 +128,7 @@ void main() {
         },
       });
       expect(find.text('Alan Bieberle'), findsOneWidget);
-      await openTeamFilter(tester);
-      await tester.tap(find.text('Luke Huber').last);
-      await settle(tester);
-      // Close the sheets and look at the board.
-      await tester.tapAt(const Offset(180, 20));
-      await settle(tester);
-      await tester.tapAt(const Offset(180, 20));
-      await settle(tester);
+      await pickTeam(tester, 'Luke Huber');
       expect(find.text('Trace Lutteringer'), findsOneWidget);
       expect(find.text('Alan Bieberle'), findsNothing);
     });
@@ -104,6 +140,32 @@ void main() {
       await openTeamFilter(tester);
       expect(find.text('Gunner McCullough'), findsWidgets);
       expect(find.text('Luke Huber'), findsWidgets);
+    });
+
+    testWidgets('$who: a rep who moved counts toward his old team until the move, with a note', (tester) async {
+      await showBoard(tester, screen, {'/api/leaderboard': movedMidMonth});
+      await pickTeam(tester, 'Luke Huber');
+      expect(find.text('Jose Robles'), findsOneWidget);
+      expect(find.text('\$4,000'), findsOneWidget, reason: "Jose's share before the move");
+      expect(find.text('Moved to Daniel Reyes, 16\u00A0Sep'), findsOneWidget);
+      expect(find.text('\$13,000'), findsWidgets, reason: 'team total = Alan 9,000 + Jose 4,000');
+      expect(find.text('Trace Lutteringer'), findsNothing);
+    });
+
+    testWidgets('$who: and toward his new team from the move on', (tester) async {
+      await showBoard(tester, screen, {'/api/leaderboard': movedMidMonth});
+      await pickTeam(tester, 'Daniel Reyes');
+      expect(find.text('\$6,000'), findsOneWidget, reason: "Jose's share since the move");
+      expect(find.text('Joined 16\u00A0Sep'), findsOneWidget);
+      expect(find.text('\$8,000'), findsWidgets, reason: 'team total = Jose 6,000 + Trace 2,000');
+      expect(find.text('Alan Bieberle'), findsNothing);
+    });
+
+    testWidgets('$who: with no filter a rep who moved keeps his whole month and no note', (tester) async {
+      await showBoard(tester, screen, {'/api/leaderboard': movedMidMonth});
+      expect(find.text('\$10,000'), findsOneWidget);
+      expect(find.textContaining('Moved to'), findsNothing);
+      expect(find.textContaining('Joined'), findsNothing);
     });
   }
 }
