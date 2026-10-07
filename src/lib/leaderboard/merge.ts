@@ -15,13 +15,29 @@ export interface MergedRow { id: string; name: string; branch: string; email: st
 
 interface Bucket { id: string; name: string; branch: string; email: string; phone: string; nameKey: string; verifiedKnocks: number; lead: number; filed: number; won: number; revenue: number; matched: boolean; }
 
-// key -> the single bucket that owns it (only if exactly one bucket has that key).
-function uniqueIndex(buckets: Bucket[], pick: (b: Bucket) => string): Map<string, Bucket> {
-  const counts = new Map<string, number>();
-  for (const b of buckets) { const k = pick(b); if (k) counts.set(k, (counts.get(k) || 0) + 1); }
-  const idx = new Map<string, Bucket>();
-  for (const b of buckets) { const k = pick(b); if (k && counts.get(k) === 1) idx.set(k, b); }
-  return idx;
+/**
+ * Which RepCard row each AccuLynx rep merges into, by the same cascade the board
+ * uses (email, then phone, then exact name, each only when it names exactly one
+ * person). Exposed so team history can split a moved rep's AccuLynx numbers by day.
+ */
+export function matchAcxToRc(acx: readonly AcxAgg[], rc: RcAgg[]): Map<string, string> {
+  const ids = rc.map((r) => ({ id: `rc:${r.repcardUserId}`, email: r.email, phone: r.phone, nameKey: r.nameKey }));
+  const index = (pick: (b: typeof ids[number]) => string) => {
+    const counts = new Map<string, number>();
+    for (const b of ids) { const k = pick(b); if (k) counts.set(k, (counts.get(k) || 0) + 1); }
+    const idx = new Map<string, string>();
+    for (const b of ids) { const k = pick(b); if (k && counts.get(k) === 1) idx.set(k, b.id); }
+    return idx;
+  };
+  const byEmail = index((b) => b.email);
+  const byPhone = index((b) => b.phone);
+  const byName = index((b) => b.nameKey);
+  const out = new Map<string, string>();
+  for (const a of acx) {
+    const id = (a.email && byEmail.get(a.email)) || (a.phone && byPhone.get(a.phone)) || (a.nameKey && byName.get(a.nameKey)) || "";
+    if (id) out.set(a.repExternalId, id);
+  }
+  return out;
 }
 
 export function mergeLeaderboard(acx: readonly AcxAgg[], rc: RcAgg[]): MergedRow[] {
@@ -31,25 +47,17 @@ export function mergeLeaderboard(acx: readonly AcxAgg[], rc: RcAgg[]): MergedRow
     verifiedKnocks: r.verifiedKnocks, lead: 0, filed: 0, won: 0, revenue: 0, matched: false,
   }));
 
-  const byEmail = uniqueIndex(buckets, (b) => b.email);
-  const byPhone = uniqueIndex(buckets, (b) => b.phone);
-  const byName = uniqueIndex(buckets, (b) => b.nameKey);
-
+  const target = matchAcxToRc(acx, rc);
+  const bucketById = new Map(buckets.map((b) => [b.id, b] as [string, Bucket]));
   for (const a of acx) {
-    const target =
-      (a.email && byEmail.get(a.email)) ||
-      (a.phone && byPhone.get(a.phone)) ||
-      (a.nameKey && byName.get(a.nameKey)) ||
-      null;
-    if (target) {
-      target.lead += a.lead; target.filed += a.filed; target.won += a.won; target.revenue += a.revenue; target.matched = true;
-      // RepCard doesn't carry a branch/office, so its spine rows are branchless.
-      // Adopt the AccuLynx branch for any matched rep that has one — this is what
-      // fills the Branch column for everyone with AccuLynx sales.
-      if (!target.branch && a.branch) target.branch = a.branch;
-    }
-    // No `else`: AccuLynx credits with no RepCard rep are intentionally dropped —
+    const b = bucketById.get(target.get(a.repExternalId) || "");
+    // No match: AccuLynx credits with no RepCard rep are intentionally dropped --
     // they aren't door-knocking sales reps, so they don't belong on the board.
+    if (!b) continue;
+    b.lead += a.lead; b.filed += a.filed; b.won += a.won; b.revenue += a.revenue; b.matched = true;
+    // RepCard doesn't carry a branch/office, so its spine rows are branchless.
+    // Adopt the AccuLynx branch for any matched rep that has one.
+    if (!b.branch && a.branch) b.branch = a.branch;
   }
 
   // Return EVERY bucket the caller supplied (the roster is the gate, applied upstream).

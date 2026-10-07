@@ -5,7 +5,8 @@ import { shouldCelebrateRankMove, rankMoveCopy } from "../lib/scoreboard/rankMov
 import { useRouter } from "next/router";
 import { BRANCHES, BRANCH_ORDER } from "../lib/repcard/branches";
 import { parseSalesLink } from "../lib/scoreboard/links";
-import { NO_VALUE, matchesSelection, selectedNames, selectionChipLabel } from "../lib/leaderboard/filters";
+import { NO_VALUE, shareForSelection, selectedNames, selectionChipLabel } from "../lib/leaderboard/filters";
+import { moveNote } from "../lib/teamhistory/segments";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { SALES_LEADERBOARD_TOUR } from "../portals/shared/guided-tour/definitions/salesLeaderboard";
 import { compareStanding } from "../lib/leaderboard/ranking";
@@ -272,20 +273,19 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const repList = useMemo(() => buildRepOptions(rows, { hideFormer }), [rows, hideFormer]);
 
   const visible = useMemo(() => {
-    // Row filtering only. Since branch reporting became team-based, a branch
-    // filter selects reps and never rewrites a number, so a rep's row reads the
-    // same whichever filters are on. The old code rewrote every metric here.
-    const filtered = rows.filter((r: any) => {
-      // "Hide former reps" toggle. isFormerRep() reads BOTH signals (RepCard's
-      // status flag and a cross mark in the synced name), the same call the Rep
-      // dropdown makes, so the table and the dropdown can never disagree about
-      // who has left. Rank is unaffected: this only hides rows.
-      if (hideFormer && isFormerRep(r)) return false;
-      if (appliedReps.size > 0 && !appliedReps.has(r.id)) return false; // Rep multi-select
-      if (!matchesSelection(r.branch, branchSel)) return false;
-      if (!matchesSelection(r.team, teamSel)) return false;
-      return true;
-    });
+    // Team history: with a Branch or Team filter on, a rep who moved teams shows
+    // only the share earned inside the selection, with a move note (shareForSelection).
+    // "Hide former reps" uses isFormerRep(), which reads BOTH signals (RepCard's
+    // status flag and a cross mark in the synced name), the same call the Rep
+    // dropdown makes, so the table and the dropdown can never disagree about
+    // who has left. Rank is unaffected: this only hides rows.
+    const filtered = rows
+      .filter((r: any) => !(hideFormer && isFormerRep(r)) && !(appliedReps.size > 0 && !appliedReps.has(r.id))) // Rep multi-select
+      .map((r: any) => {
+        const s = shareForSelection(r, branchSel, teamSel);
+        return s ? { ...s, note: moveNote(s) } : null;
+      })
+      .filter(Boolean) as any[];
 
     const col = COLUMNS.find((c) => c.key === sortKey);
     const dir = sortDir === "asc" ? 1 : -1;
@@ -421,7 +421,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     // Mirror the screen: marker drawn from the status flag, not from whatever the
     // synced name happens to carry. A PDF outlives the screen it came from, so it
     // must not disagree with it about who has left.
-    name: `${isFormerRep(r) ? "❌ " : ""}${stripFormerMarker(r.name)}`,
+    name: `${isFormerRep(r) ? "❌ " : ""}${stripFormerMarker(r.name)}${r.note ? ` (${r.note})` : ""}`,
     branch: r.branch || "",
     team: r.team || "",
     verifiedKnocks: r.verifiedKnocks ?? 0,
@@ -790,6 +790,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                           <span title={`Top Contract Amount this month (${contractKing.monthLabel})`}>&#128081;</span>
                         ) : null}
                       </span>
+                      {r.note ? <div className="sl__note">{r.note}</div> : null}
                     </td>
                     <td className="sl__muted">{r.branch || "—"}</td>
                     <td className="sl__muted">{r.team || "—"}</td>
@@ -867,6 +868,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
                       {stripFormerMarker(r.name)}{isYou ? " (You)" : ""}
                     </div>
                     {subtitle ? <div className="sl__card-sub">{subtitle}</div> : null}
+                    {r.note ? <div className="sl__note">{r.note}</div> : null}
                   </div>
                   <div className="sl__card-amount">{fmtMoney(r.revenue)}</div>
                 </div>
@@ -1111,6 +1113,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__rep { padding: 12px 16px; font-weight: 700; }
         .sl__rep-inner { display: inline-flex; align-items: center; gap: 10px; }
         .sl__rep-name { color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; font-size: 14px; }
+        .sl__note { color: var(--muted); font-size: 12px; margin-top: 2px; }
         .sl__muted { padding: 12px 16px; color: var(--muted); font-size: 14px; }
         .sl__num { padding: 12px 16px; text-align: center; font-weight: 600; color: var(--num); font-variant-numeric: tabular-nums; font-size: 15px; }
         .sl__amount { padding: 12px 16px; text-align: right; font-weight: 800; color: var(--amount); font-variant-numeric: tabular-nums; font-size: 17px; white-space: nowrap; }

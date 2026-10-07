@@ -9,6 +9,7 @@ import { normEmail, normPhone } from "../leaderboard/identity";
 import { REPCARD_LEADERBOARD_ID, REPCARD_LEADERBOARD_NAME, REPCARD_VDK_FIELD } from "./config";
 import { getWindowRange } from "../acculynx/windows";
 import { shouldAlertSyncFailure, alertSyncFailure } from "../ops/syncAlert";
+import { recordTeamHistory } from "../teamhistory/record";
 
 function dateOnly(d: Date): string { return d.toISOString().slice(0, 10); }
 
@@ -69,6 +70,11 @@ export async function runSync(opts: { mode?: "incremental" | "backfill"; dryRun?
         },
       }));
       await RepCardUserModel.bulkWrite(ops, { ordered: false });
+
+      // Team history: record team/branch moves from User Management since the
+      // last pass. Never throws (record.ts), so it cannot fail the knock sync.
+      const th = await recordTeamHistory();
+      if (th.changed || th.failed || th.error) console.log(`[repcard-sync] team history: ${th.changed} changed${th.failed ? `, ${th.failed} failed` : ""}${th.error ? `, error: ${th.error}` : ""}`);
     }
 
     const todayISO = dateOnly(new Date());

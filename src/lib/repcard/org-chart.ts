@@ -51,7 +51,7 @@ export interface RepCardRecord {
 
 /** Something in User Management an admin should fix. */
 export interface OrgWarning {
-  kind: "no-branch-manager" | "team-lead-deleted" | "team-lead-invalid" | "branch-differs";
+  kind: "no-branch-manager" | "no-team-numbers" | "team-lead-deleted" | "team-lead-invalid" | "branch-differs";
   message: string;
 }
 

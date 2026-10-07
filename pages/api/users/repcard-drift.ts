@@ -20,6 +20,8 @@ import { requireRole, allowMethods } from "../../../src/lib/auth";
 import { compareToRepCard, hasDrift } from "../../../src/lib/repcard/appDrift";
 import { buildOrgChart, repcardTeamMatcher, type OrgWarning } from "../../../src/lib/repcard/org-chart";
 import { officeToBranch, BRANCH_ORDER } from "../../../src/lib/repcard/branches";
+import { TeamWarningModel } from "../../../src/lib/models/TeamWarning";
+import { NO_TEAM_NUMBERS_TEXT } from "../../../src/lib/teamhistory/periods";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -91,6 +93,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // from their team lead's). Advisory, like the RepCard notes.
   const warnings: Record<string, OrgWarning[]> = {};
   for (const [id, list] of org.warnings) warnings[id] = list;
+
+  // Team history's warning (2026-10-07): people with numbers this month but no
+  // team. Computed hourly by teamhistory/record.ts; shown with the others.
+  const stored = await TeamWarningModel.find({ active: true, kind: "no-team-numbers" }).select("userId").lean();
+  for (const s of stored as any[]) {
+    if (!s.userId) continue;
+    (warnings[s.userId] = warnings[s.userId] || []).push({ kind: "no-team-numbers", message: NO_TEAM_NUMBERS_TEXT });
+  }
 
   return res.status(200).json({ drift, compared, warnings });
 }

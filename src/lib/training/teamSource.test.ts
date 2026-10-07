@@ -27,6 +27,7 @@ vi.mock("../models/User", () => ({
 vi.mock("../models/ScoringFact", () => ({ ScoringFactModel: { aggregate: async () => [] } }));
 vi.mock("../models/AcculynxUser", () => ({ AcculynxUserModel: { find: () => query(() => []) } }));
 vi.mock("../models/RepCardUser", () => ({ RepCardUserModel: { find: () => query(() => db.repcardUsers) } }));
+vi.mock("../models/RepTeamHistory", () => ({ RepTeamHistoryModel: { find: () => query(() => []) } }));
 vi.mock("../models/RepCardKnockFact", () => ({
   // Both the all-time knocker query and the in-range one: every rep has knocked.
   RepCardKnockFactModel: {

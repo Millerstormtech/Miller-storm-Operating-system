@@ -17,5 +17,9 @@ export function toSalesRow(r: SalesLeaderRow): SalesRow {
     // rule is one rule, and an inverted copy of it is how the two boards would
     // start disagreeing about who is ranked.
     former: r.former,
+    segments: (r.segments || []).map((s) => ({
+      team: s.team, branch: s.branch, from: s.from, to: s.to,
+      revenue: s.revenue, knocks: s.verifiedKnocks, claims: s.filed, contracts: s.won,
+    })),
   };
 }

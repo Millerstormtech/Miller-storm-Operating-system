@@ -1,7 +1,7 @@
 // src/lib/leaderboard/merge.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mergeLeaderboard } from "./merge.ts";
+import { mergeLeaderboard, matchAcxToRc } from "./merge.ts";
 
 const rc = (o: any) => ({ repcardUserId: "", email: "", phone: "", nameKey: "", name: "", branch: "", verifiedKnocks: 0, ...o });
 const ax = (o: any) => ({ repExternalId: "", email: "", phone: "", nameKey: "", name: "", branch: "", lead: 0, filed: 0, won: 0, revenue: 0, ...o });
@@ -94,4 +94,20 @@ test("does not mutate the acx array it was given", () => {
   const snapshot = JSON.parse(JSON.stringify(acx));
   mergeLeaderboard(acx, [rc({ repcardUserId: "r1", email: "alan@ms.com", name: "Alan", verifiedKnocks: 300 })]);
   assert.deepEqual(acx, snapshot);
+});
+
+test("matchAcxToRc maps each AccuLynx id to the RepCard row it merges into", () => {
+  const acx = [
+    { repExternalId: "A1", email: "a@x.com", phone: "", nameKey: "a", name: "A", branch: "", lead: 0, filed: 1, won: 0, revenue: 0 },
+    { repExternalId: "A2", email: "", phone: "5551234567", nameKey: "b", name: "B", branch: "", lead: 0, filed: 0, won: 1, revenue: 9 },
+    { repExternalId: "A3", email: "z@x.com", phone: "", nameKey: "z", name: "Z", branch: "", lead: 0, filed: 0, won: 0, revenue: 0 },
+  ];
+  const rc = [
+    { repcardUserId: "1", email: "a@x.com", phone: "", nameKey: "a", name: "A", branch: "", verifiedKnocks: 3 },
+    { repcardUserId: "2", email: "b@x.com", phone: "5551234567", nameKey: "b", name: "B", branch: "", verifiedKnocks: 0 },
+  ];
+  const m = matchAcxToRc(acx, rc);
+  assert.equal(m.get("A1"), "rc:1");
+  assert.equal(m.get("A2"), "rc:2");
+  assert.equal(m.has("A3"), false);
 });

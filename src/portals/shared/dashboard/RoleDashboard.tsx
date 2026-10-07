@@ -74,7 +74,7 @@ interface DashboardPayload {
   breakdown: {
     kind: BreakdownKind;
     groups?: GroupPayload[];
-    reps?: RepLine[];
+    reps?: Array<RepLine & { note?: string }>;
     months?: MonthLine[];
     best?: Record<Metric, { label: string; value: number; pct: number } | null>;
   };
@@ -392,7 +392,7 @@ function DataTable(props: {
   sub: string;
   head: string;
   href: string;
-  rows: Array<{ label: string; href?: string; pill?: { text: string; strong?: boolean }; values: Array<[Metric, number]> }>;
+  rows: Array<{ label: string; href?: string; pill?: { text: string; strong?: boolean }; note?: string; values: Array<[Metric, number]> }>;
 }): JSX.Element {
   return (
     <div style={{ ...CARD, marginBottom: 11 }}>
@@ -419,6 +419,7 @@ function DataTable(props: {
                     r.label
                   )}
                   {r.pill ? <Pill text={r.pill.text} strong={r.pill.strong} /> : null}
+                  {r.note ? <div style={{ fontSize: 12, marginTop: 2, color: "var(--text-muted)", fontWeight: 400 }}>{r.note}</div> : null}
                 </td>
                 {r.values.map(([m, v]) => (
                   <td key={m} style={m === "revenue" ? { ...TD, color: "var(--text-primary)", fontWeight: 500 } : TD}>
@@ -608,6 +609,7 @@ export function RoleDashboard(): JSX.Element {
             rows={bd.reps.map((r) => ({
               label: r.name,
               pill: r.former ? { text: "Former" } : undefined,
+              note: r.note || undefined,
               values: CARD_ORDER.map((m) => [m, (r as unknown as Record<Metric, number>)[m]] as [Metric, number]),
             }))}
           />

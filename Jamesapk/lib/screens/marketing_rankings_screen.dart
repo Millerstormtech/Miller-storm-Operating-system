@@ -11,6 +11,7 @@ import '../widgets/notification_bell.dart';
 import '../widgets/marketing_bottom_nav.dart';
 import '../widgets/celebration.dart';
 import '../services/rank_moves.dart';
+import '../services/team_share.dart';
 import '../theme/app_theme.dart';
 
 // Sales Leaderboard for reps — Period / Branch / Team filters + Custom range,
@@ -277,12 +278,13 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
       final r = Map<String, dynamic>.from(raw as Map);
       if (_hideFormer && r['former'] == true) continue;
       if (_appliedReps.isNotEmpty && !_appliedReps.contains((r['id'] ?? '').toString())) continue;
-      // Team-based reporting: a Branch/Team filter is pure row matching — it only
-      // narrows WHO is listed, each rep keeps their full numbers (no metric
-      // rewrite). Multi-select: empty = all, otherwise the value must be ticked.
-      if (!_matchesSelection((r['branch'] ?? '').toString(), _branchSel)) continue;
-      if (!_matchesSelection((r['team'] ?? '').toString(), _teamSel)) continue;
-      list.add(r);
+      // Team/Branch filters show each rep's share for the selected teams/branches
+      // (team history, 2026-10-07): a rep who moved mid-period shows only what
+      // they earned there, with a short note. Rule in services/team_share.dart
+      // (mirrors the web).
+      final shared = shareForSelection(r, _branchSel, _teamSel);
+      if (shared == null) continue;
+      list.add(shared);
     }
     // Sort by the chosen column, then fall back to overall standing.
     list.sort((a, b) {
@@ -420,10 +422,6 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
     if (_hideFormer) parts.add('Active only');
     return parts.join(' · ');
   }
-
-  // Empty selection = show all; otherwise the value must be one of the ticked ones.
-  bool _matchesSelection(String value, Set<String> selected) =>
-      selected.isEmpty || selected.contains(value);
 
   void _resetFilters() {
     setState(() {
@@ -1281,6 +1279,8 @@ class _MarketingRankingsScreenState extends State<MarketingRankingsScreen> {
                       ),
                       if (subtitle.isNotEmpty)
                         Text(subtitle, style: TextStyle(fontSize: 12, color: _textPlaceholder)),
+                      if ((r['_note'] ?? '').toString().isNotEmpty)
+                        Text(r['_note'].toString(), style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
                     ],
                   ),
                 ),
