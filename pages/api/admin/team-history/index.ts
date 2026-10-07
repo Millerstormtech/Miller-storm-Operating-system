@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       moves.push({ repcardUserId: d.repcardUserId, repName: d.repName, fromTeam: p[i - 1].team, toTeam: p[i].team, on: p[i].from, source: p[i].source });
     }
   }
-  moves.sort((a, b) => b.on.localeCompare(a.on) || a.repName.localeCompare(b.repName));
+  moves.sort((a, b) => b.on.localeCompare(a.on) || String(a.repName || "").localeCompare(String(b.repName || "")));
 
   const q = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : "";
   const matches = q

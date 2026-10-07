@@ -2,6 +2,7 @@
 // and save a date fix or an earlier move; undo. Admins only. Every save is
 // version-checked, so neither an admin nor the hourly step overwrites the other.
 import type { NextApiRequest, NextApiResponse } from "next";
+import { isValidObjectId } from "mongoose";
 import { connectMongo } from "../../../../src/lib/mongodb";
 import { requireRole, allowMethods } from "../../../../src/lib/auth";
 import { RepTeamHistoryModel } from "../../../../src/lib/models/RepTeamHistory";
@@ -77,6 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const before: Period[] = doc.periods || [];
 
   if (body.op === "undo") {
+    if (!isValidObjectId(body.editId)) return res.status(400).json({ error: "not-undoable" });
     const edit: any = await TeamHistoryEditModel.findOne({ _id: body.editId, repcardUserId: id }).lean();
     if (!edit || edit.undoneBy || edit.action === "undo") return res.status(400).json({ error: "not-undoable" });
     if (!samePeriods(before, edit.after)) return res.status(409).json({ error: "changed", message: "This rep's history changed after that edit. Undo the later changes first." });
@@ -91,10 +93,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (Number(body.version) !== Number(doc.version)) return res.status(409).json({ error: "changed", message: "This rep's history changed. Reload and try again." });
   const date = String(body.date || "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "bad-date" });
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return res.status(400).json({ error: "bad-date" });
 
   let after: Period[];
   try {
-    if (body.action === "move-date") after = moveBoundary(before, Number(body.index), date, today);
+    if (body.action === "move-date") {
+      const idx = Number(body.index);
+      if (body.index == null || body.index === "" || !Number.isInteger(idx)) return res.status(400).json({ error: "bad-index" });
+      after = moveBoundary(before, idx, date, today);
+    }
     else if (body.action === "add-move") {
       const team = String(body.earlierTeam || "");
       if (!team) return res.status(400).json({ error: "bad-team" });
