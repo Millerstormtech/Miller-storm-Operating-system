@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   advanceHistory, moveBoundary, addPastMove, validateHistory, currentPeriod,
-  periodsOverlapping, shiftDay, samePeriods, HISTORY_START, HistoryEditError, type Period,
+  periodsOverlapping, shiftDay, samePeriods, planRecording, diffWarnings, HISTORY_START, HistoryEditError, type Period,
 } from "./periods";
 
 const G = { team: "Gunner McCullough", branch: "Fort Worth" };
@@ -169,5 +169,37 @@ describe("helpers", () => {
   it("samePeriods compares values", () => {
     expect(samePeriods(open(G), [{ ...open(G)[0] }])).toBe(true);
     expect(samePeriods(open(G), open(D))).toBe(false);
+  });
+});
+
+describe("planRecording", () => {
+  it("returns only reps whose history changed, plus new reps", () => {
+    const histories = new Map([["1", open(G)], ["2", open(G)]]);
+    const placements = new Map([["1", G], ["2", D], ["3", C]]);
+    const r = planRecording({ histories, placements, today: "2026-09-16" });
+    expect([...r.keys()].sort()).toEqual(["2", "3"]);
+    expect(r.get("3")![0].source).toBe("initial");
+  });
+  it("a rep with a history but no placement is left alone", () => {
+    expect(planRecording({ histories: new Map([["9", open(G)]]), placements: new Map(), today: "2026-09-16" }).size).toBe(0);
+  });
+});
+
+describe("diffWarnings", () => {
+  it("first run stores everything silently", () => {
+    const r = diffWarnings([], [{ key: "a" }, { key: "b" }], true);
+    expect(r.toCreate).toEqual(["a", "b"]);
+    expect(r.toEmail).toEqual([]);
+  });
+  it("emails new and returning problems once; deactivates solved ones", () => {
+    const r = diffWarnings(
+      [{ key: "old", active: true }, { key: "back", active: false }, { key: "solved", active: true }],
+      [{ key: "old" }, { key: "back" }, { key: "new" }],
+      false
+    );
+    expect(r.toCreate).toEqual(["new"]);
+    expect(r.toReactivate).toEqual(["back"]);
+    expect(r.toDeactivate).toEqual(["solved"]);
+    expect(r.toEmail.sort()).toEqual(["back", "new"]);
   });
 });

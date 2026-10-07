@@ -124,3 +124,36 @@ export function addPastMove(
     ...periods.slice(i + 1),
   ];
 }
+
+/** One hourly pass. Pure: the caller loads and saves. Reps with no placement are left alone. */
+export function planRecording(input: {
+  histories: ReadonlyMap<string, Period[]>;
+  placements: ReadonlyMap<string, Placement>;
+  today: string;
+}): Map<string, Period[]> {
+  const changed = new Map<string, Period[]>();
+  for (const [id, placement] of input.placements) {
+    const before = input.histories.get(id) || [];
+    const after = advanceHistory(before, placement, input.today);
+    if (after !== before) changed.set(id, after);
+  }
+  return changed;
+}
+
+/**
+ * Which warnings to store and email. Each key is emailed once; a solved one is
+ * deactivated and emailed again only if it comes back. The very first run
+ * stores everything as already known, so deploy day sends no backlog.
+ */
+export function diffWarnings(
+  existing: ReadonlyArray<{ key: string; active: boolean }>,
+  current: ReadonlyArray<{ key: string }>,
+  firstRun: boolean
+): { toCreate: string[]; toReactivate: string[]; toDeactivate: string[]; toEmail: string[] } {
+  const byKey = new Map(existing.map((w) => [w.key, w]));
+  const now = new Set(current.map((w) => w.key));
+  const toCreate = [...now].filter((k) => !byKey.has(k));
+  const toReactivate = [...now].filter((k) => byKey.has(k) && !byKey.get(k)!.active);
+  const toDeactivate = existing.filter((w) => w.active && !now.has(w.key)).map((w) => w.key);
+  return { toCreate, toReactivate, toDeactivate, toEmail: firstRun ? [] : [...toCreate, ...toReactivate] };
+}
