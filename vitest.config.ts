@@ -25,6 +25,9 @@ export default defineConfig({
       "src/lib/stormbot/**/*.test.ts",
       "src/lib/stormchat/**/*.test.ts",
       "src/lib/scoreboard/**/*.test.ts",
+      // Team history (2026-10-07): pure rules deciding which team gets credit
+      // for every sale, same reasoning as the scoreboard rules.
+      "src/lib/teamhistory/**/*.test.ts",
       "src/lib/businessPlan/**/*.test.ts",
       "src/lib/pageTitle.test.ts",
       "src/lib/subdomain.test.ts",
