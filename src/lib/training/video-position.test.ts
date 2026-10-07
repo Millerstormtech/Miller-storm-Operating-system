@@ -178,6 +178,12 @@ describe("watchedToEnd", () => {
     expect(watchedToEnd(296.9, 300)).toBe(false);
   });
 
+  it("judged against where the player really stopped, a short real end still credits", () => {
+    // Listed as 64s, but the video actually ended at 59s and they watched it all.
+    expect(watchedToEnd(58.8, 64)).toBe(false); // by listed duration: would lock them out
+    expect(watchedToEnd(58.8, 59)).toBe(true); // by the real end: credited
+  });
+
   it("is false with no usable duration", () => {
     expect(watchedToEnd(100, 0)).toBe(false);
     expect(watchedToEnd(100, NaN)).toBe(false);
