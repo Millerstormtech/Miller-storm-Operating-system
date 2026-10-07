@@ -5,12 +5,17 @@ import { RepCardKnockFactModel } from "../models/RepCardKnockFact";
 import { RepCardUserModel } from "../models/RepCardUser";
 import { AcculynxUserModel } from "../models/AcculynxUser";
 import { UserModel } from "../models/User";
-import { mergeLeaderboard } from "./merge";
+import { mergeLeaderboard, matchAcxToRc } from "./merge";
+import { RepTeamHistoryModel } from "../models/RepTeamHistory";
+import { loadDailyTotals } from "../teamhistory/daily";
+import { splitIntoSegments, wholeSegment, type Segment } from "../teamhistory/segments";
+import { periodsOverlapping, type Period } from "../teamhistory/periods";
+import { centralDateStr } from "../acculynx/windows";
 import { placeRep } from "../teamhistory/placement";
 import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
 import { isDeletedFromRepCard } from "./roster";
-import { officeToBranch, attributeToBranch, BRANCH_ORDER } from "../repcard/branches";
+import { officeToBranch, BRANCH_ORDER } from "../repcard/branches";
 import { buildOrgChart, repcardTeamMatcher, type OrgChart } from "../repcard/org-chart";
 
 export interface SalesLeaderRow {
@@ -32,12 +37,11 @@ export interface SalesLeaderRow {
   // `former` off this endpoint. Unknown/blank status counts as CURRENT, so a rep
   // is never hidden on a missing field.
   former: boolean;
-  // Team-based reporting: a rep's numbers count toward the branch their TEAM
-  // belongs to, not the branch each job was filed in. So this holds exactly one
-  // entry -- the rep's home branch, carrying their FULL totals -- or none at all
-  // when no branch resolves. The branch filter is therefore a roster filter.
-  // The rule and its history live in repcard/branches.ts (attributeToBranch).
-  byBranch: Record<string, { verifiedKnocks: number; leadsCreated: number; filed: number; won: number; revenue: number }>;
+  // The rep's numbers split by the team/branch they were on each day (team
+  // history, 2026-10-07). One segment for a rep who did not move in the range;
+  // segments always sum exactly to the totals above. Team and branch views sum
+  // the in-scope segments; company-wide views use the full totals.
+  segments: Segment[];
 }
 
 // Normalize all-time AccuLynx identities (no date filter, purely a function of the
@@ -75,6 +79,8 @@ export interface SharedRosterData {
   readonly org: OrgChart;
   // RepCard team label -> app team, only for reps with no app account.
   readonly appTeamForRepCardTeam: (repcardTeam: string | null | undefined) => string;
+  // Team history by repcardUserId (teamhistory/periods.ts).
+  readonly histories: ReadonlyMap<string, Period[]>;
 }
 
 export async function loadSharedRosterData(): Promise<SharedRosterData> {
@@ -137,7 +143,12 @@ export async function loadSharedRosterData(): Promise<SharedRosterData> {
     org.teams
   );
 
-  return { acxAll, allTimeKnockers, rcById, acctSets, byEmail, deletedByEmail, org, appTeamForRepCardTeam };
+  const historyDocs = await RepTeamHistoryModel.find({}).select("repcardUserId periods").lean();
+  const histories = new Map<string, Period[]>(
+    (historyDocs as any[]).map((h) => [String(h.repcardUserId), (h.periods || []) as Period[]])
+  );
+
+  return { acxAll, allTimeKnockers, rcById, acctSets, byEmail, deletedByEmail, org, appTeamForRepCardTeam, histories };
 }
 
 export async function computeSalesRows(
@@ -223,6 +234,20 @@ export async function computeSalesRows(
   }
 
   const merged = mergeLeaderboard(acx, rc);
+
+  // Team history: reps with more than one period in this range have their
+  // numbers fetched by day so they can be split; everyone else is one segment.
+  const rangeDays = { from: centralDateStr(start), to: centralDateStr(end) };
+  const movers = new Set(
+    merged.map((x) => x.id.slice(3))
+      .filter((id) => periodsOverlapping(roster.histories.get(id) || [], rangeDays.from, rangeDays.to).length > 1)
+  );
+  const acxIdsByRc = new Map<string, string[]>();
+  for (const [acxId, rowId] of matchAcxToRc(acx, rc)) {
+    const id = rowId.slice(3);
+    if (movers.has(id)) acxIdsByRc.set(id, [...(acxIdsByRc.get(id) || []), acxId]);
+  }
+  const daily = await loadDailyTotals({ rcIds: [...movers], acxIdsByRc, start, end });
   // All-time link flag: which roster reps match ANY all-time AccuLynx account.
   const linked = new Map<string, boolean>(
     mergeLeaderboard(acxAll, rc).map((r) => [r.id, r.source === "both"] as [string, boolean])
@@ -269,17 +294,12 @@ export async function computeSalesRows(
     const placed = place.placedBy;
     const team: string | null = place.team || null;
     const branch = place.branch;
-    // Team-based reporting (decided 2026-08-12, confirmed 2026-08-21): every one
-    // of this rep's numbers counts toward their home branch -- the branch their
-    // TEAM belongs to -- including sales filed out of another branch's AccuLynx
-    // sub-account while storm-chasing. The rule itself lives in branches.ts.
-    const byBranch = attributeToBranch(branch, {
-      verifiedKnocks: m.verifiedKnocks,
-      leadsCreated: m.lead,
-      filed: m.filed,
-      won: m.won,
-      revenue: m.revenue,
-    });
+    const periods = rcId ? roster.histories.get(rcId) || [] : [];
+    const totals = { verifiedKnocks: m.verifiedKnocks, leadsCreated: m.lead, filed: m.filed, won: m.won, revenue: m.revenue };
+    const fallback = { team: place.team, branch: place.branch };
+    const segments = daily.has(rcId)
+      ? splitIntoSegments(daily.get(rcId)!, periods, rangeDays, fallback)
+      : [wholeSegment(totals, periods, rangeDays, fallback)];
     return {
       id: m.id, name: m.name, branch,
       verifiedKnocks: m.verifiedKnocks, leadsCreated: m.lead, filed: m.filed, won: m.won, revenue: m.revenue,
@@ -295,9 +315,7 @@ export async function computeSalesRows(
       // the Scoreboard. Case-insensitive, and a blank/absent status counts as CURRENT,
       // so an unknown status never silently un-ranks a real rep.
       former: !!(rcu?.status && String(rcu.status).toUpperCase() !== "ACTIVE"),
-      // The rep's numbers under their home branch, so a branch filter shows that
-      // branch's roster with their full totals. One entry, or none if no branch.
-      byBranch,
+      segments,
     };
   });
 
