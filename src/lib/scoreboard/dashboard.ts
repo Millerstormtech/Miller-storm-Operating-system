@@ -35,6 +35,8 @@ export interface RepLine {
   claims: number;
   knocks: number;
   former: boolean;
+  movedOut?: SalesRow["movedOut"];
+  joined?: SalesRow["joined"];
 }
 
 export interface MonthLine {
@@ -118,11 +120,22 @@ export function topN(rows: SalesRow[], metric: Metric, n = 3): Leader[] {
 export function groupBreakdown(rows: SalesRow[], level: "branch" | "team"): GroupBreakdown[] {
   const buckets = new Map<string, SalesRow[]>();
   for (const r of rows) {
-    const key = (level === "branch" ? r.branch : r.team) || "";
-    if (!key) continue;
-    const bucket = buckets.get(key);
-    if (bucket) bucket.push(r);
-    else buckets.set(key, [r]);
+    if (!r.segments || r.segments.length === 0) {
+      const key = (level === "branch" ? r.branch : r.team) || "";
+      if (!key) continue;
+      buckets.set(key, [...(buckets.get(key) || []), r]);
+      continue;
+    }
+    // Team history: a rep who moved mid-period contributes to each group only
+    // the share earned while in it.
+    const shares = new Map<string, SalesRow>();
+    for (const s of r.segments) {
+      const key = level === "branch" ? s.branch : s.team;
+      if (!key) continue;
+      const p = shares.get(key) || { ...r, revenue: 0, knocks: 0, claims: 0, contracts: 0 };
+      shares.set(key, { ...p, revenue: p.revenue + s.revenue, knocks: p.knocks + s.knocks, claims: p.claims + s.claims, contracts: p.contracts + s.contracts });
+    }
+    for (const [key, share] of shares) buckets.set(key, [...(buckets.get(key) || []), share]);
   }
 
   const out: GroupBreakdown[] = [];
@@ -159,6 +172,8 @@ export function repLines(rows: SalesRow[]): RepLine[] {
       claims: r.claims,
       knocks: r.knocks,
       former: r.former,
+      movedOut: r.movedOut ?? null,
+      joined: r.joined ?? null,
     }))
     .sort((a, b) => b.revenue - a.revenue || a.name.localeCompare(b.name));
 }

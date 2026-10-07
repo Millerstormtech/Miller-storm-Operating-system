@@ -10,6 +10,7 @@ const rep = (over: Partial<KnockCandidate>): KnockCandidate => ({
   isLeader: false,
   firstKnockDay: "2026-01-05",
   lastKnockDay: "2026-09-10",
+  coversWindow: true,
   ...over,
 });
 
@@ -111,4 +112,14 @@ describe("lowestKnocks", () => {
     const [r] = lowestKnocks([rep({ name: "A", repUserId: "u1", knocks: 2 })], WIN);
     expect(r).toEqual({ id: "rc:A", repUserId: "u1", name: "A", knocks: 2, lastKnockDay: "2026-09-10" });
   });
+});
+
+it("a rep who joined the team mid-window is never named (team history)", () => {
+  const window = { from: "2026-09-20", to: "2026-09-26" };
+  const base = { repUserId: null, former: false, isLeader: false, firstKnockDay: "2026-01-05", lastKnockDay: "2026-09-26" };
+  const out = lowestKnocks([
+    { ...base, id: "rc:1", name: "Joined Midweek", knocks: 0, coversWindow: false },
+    { ...base, id: "rc:2", name: "Full Week", knocks: 5, coversWindow: true },
+  ], window);
+  expect(out.map((r) => r.name)).toEqual(["Full Week"]);
 });

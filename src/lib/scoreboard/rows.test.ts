@@ -13,7 +13,7 @@ describe("toSalesRow", () => {
   it("maps leaderboard vocabulary onto scoreboard vocabulary", () => {
     expect(toSalesRow(leaderRow)).toEqual({
       repUserId: "u1", name: "A Rep", team: "Gunner", branch: "Fort Worth",
-      revenue: 28400, knocks: 210, claims: 6, contracts: 2, former: false,
+      revenue: 28400, knocks: 210, claims: 6, contracts: 2, former: false, segments: [],
     });
   });
   it("carries the departed-rep flag through", () => {

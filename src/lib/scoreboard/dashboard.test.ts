@@ -227,3 +227,16 @@ describe("personalBest", () => {
     expect(personalBest(tied, "revenue", "2026-08")?.label).toBe("July");
   });
 });
+
+describe("groupBreakdown with team history", () => {
+  it("credits each team with its segment share", () => {
+    const row = { repUserId: "j", name: "Jason Nguyen", team: "Daniel Reyes", branch: "Fort Worth", revenue: 150, knocks: 0, claims: 0, contracts: 2, former: false,
+      segments: [
+        { team: "Gunner McCullough", branch: "Fort Worth", from: "2026-09-01", to: "2026-09-15", revenue: 100, knocks: 0, claims: 0, contracts: 1 },
+        { team: "Daniel Reyes", branch: "Fort Worth", from: "2026-09-16", to: "2026-09-30", revenue: 50, knocks: 0, claims: 0, contracts: 1 },
+      ] };
+    const g = groupBreakdown([row], "team");
+    expect(g.map((x) => [x.key, x.totals.revenue])).toEqual([["Gunner McCullough", 100], ["Daniel Reyes", 50]]);
+    expect(g[0].leaders.revenue).toMatchObject({ name: "Jason Nguyen", value: 100 });
+  });
+});

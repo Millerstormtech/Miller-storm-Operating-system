@@ -1,3 +1,6 @@
+// One stretch of a rep's numbers on one team (team history, 2026-10-07).
+export interface ScoreSegment { team: string; branch: string; from: string; to: string; revenue: number; knocks: number; claims: number; contracts: number }
+
 export interface SalesRow {
   repUserId: string | null; // the Miller Storm user id, when the rep is matched to an app account
   name: string;
@@ -7,6 +10,9 @@ export interface SalesRow {
   knocks: number;           // verifiedKnocks
   claims: number;           // filed
   contracts: number;        // won
+  segments?: ScoreSegment[];                                     // absent = one stretch equal to the row
+  movedOut?: { team: string; branch: string; on: string } | null; // set by scopeRows
+  joined?: { from: string } | null;                                // set by scopeRows
   former: boolean;          // deactivated in RepCard; kept in totals, excluded from ranking. Same field name and semantics the API already returns (see leaderboard/compute.ts)
 }
 

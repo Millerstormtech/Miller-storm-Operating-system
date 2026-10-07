@@ -23,11 +23,12 @@ import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, customRange, centralDateStr } from "../../src/lib/acculynx/windows";
 import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
-import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
+import { scopeRows, sumTotals, rankFor, coversWindow } from "../../src/lib/scoreboard/rollup";
 import { scopeLabel, scopeResolved } from "../../src/lib/scoreboard/display";
 import { trend } from "../../src/lib/scoreboard/metrics";
 import { previousSlice } from "../../src/lib/scoreboard/periods";
 import { toSalesRow } from "../../src/lib/scoreboard/rows";
+import { moveNote } from "../../src/lib/teamhistory/segments";
 import { normEmail } from "../../src/lib/leaderboard/identity";
 import { loadBoardData } from "../../src/lib/training/board-data";
 import { lowestKnocks, lastCompleteDays, LEADER_ROLES } from "../../src/lib/scoreboard/lowestKnocks";
@@ -281,6 +282,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   isLeader: r.isTeamLead || (r.repUserId != null && leaderIds.has(r.repUserId)),
                   firstKnockDay: knockSpans.get(r.id)?.first ?? null,
                   lastKnockDay: knockSpans.get(r.id)?.last ?? null,
+                  coversWindow: coversWindow(toSalesRow(r), scope, lowWindow.from, lowWindow.to),
                 })),
                 scope
               ),
@@ -304,7 +306,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         yearTotals: yearByKey.get(g.key) ?? { revenue: 0, knocks: 0, claims: 0, contracts: 0 },
       }));
     } else if (kind === "rep") {
-      breakdown.reps = repLines(monthRows);
+      breakdown.reps = repLines(monthRows).map((r) => ({ ...r, note: moveNote({ movedOut: r.movedOut ?? null, joined: r.joined ?? null }) }));
     } else {
       const months = await loadMonthHistory(user.id, normEmail(user.email), now);
       const currentKey = monthKeys(now, 1)[0];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sumTotals, scopeRows, rankFor } from "./rollup";
+import { sumTotals, scopeRows, rankFor, coversWindow } from "./rollup";
 import type { SalesRow } from "./types";
 
 const row = (over: Partial<SalesRow>): SalesRow => ({
@@ -91,5 +91,44 @@ describe("rankFor", () => {
     ];
     // Gunner = 100 + 200 + 500 = 800 (incl. departed) vs Cooper = 300 -> Gunner #1.
     expect(rankFor(withFormer, { level: "team", team: "Gunner" })).toEqual({ rank: 1, of: 2 });
+  });
+});
+
+describe("team history: segment-aware scoping", () => {
+  const seg = (team: string, branch: string, from: string, to: string, revenue: number) =>
+    ({ team, branch, from, to, revenue, knocks: 0, claims: 0, contracts: revenue ? 1 : 0 });
+  const jason = { repUserId: "j", name: "Jason Nguyen", team: "Daniel Reyes", branch: "Fort Worth", revenue: 150, knocks: 0, claims: 0, contracts: 2, former: false,
+    segments: [seg("Gunner McCullough", "Fort Worth", "2026-09-01", "2026-09-15", 100), seg("Daniel Reyes", "Fort Worth", "2026-09-16", "2026-09-30", 50)] };
+  const idle = { repUserId: "i", name: "Idle Rep", team: "Gunner McCullough", branch: "Fort Worth", revenue: 0, knocks: 0, claims: 0, contracts: 0, former: false,
+    segments: [seg("Gunner McCullough", "Fort Worth", "2026-09-01", "2026-09-30", 0)] };
+  const leftEmpty = { repUserId: "l", name: "Left Empty", team: "Cooper Bledsoe", branch: "Dallas", revenue: 5, knocks: 0, claims: 0, contracts: 1, former: false,
+    segments: [seg("Gunner McCullough", "Fort Worth", "2026-09-01", "2026-09-10", 0), seg("Cooper Bledsoe", "Dallas", "2026-09-11", "2026-09-30", 5)] };
+
+  it("old team sees the pre-move share, moved out", () => {
+    expect(scopeRows([jason], { level: "team", team: "Gunner McCullough" })[0]).toMatchObject({ revenue: 100, contracts: 1, movedOut: { team: "Daniel Reyes", on: "2026-09-16" } });
+  });
+  it("new team sees the post-move share, joined", () => {
+    expect(scopeRows([jason], { level: "team", team: "Daniel Reyes" })[0]).toMatchObject({ revenue: 50, joined: { from: "2026-09-16" } });
+  });
+  it("branch with both teams inside: whole, no tag", () => {
+    expect(scopeRows([jason], { level: "branch", branch: "Fort Worth" })[0]).toMatchObject({ revenue: 150, movedOut: null, joined: null });
+  });
+  it("idle current members stay; zero-share former members hidden", () => {
+    expect(scopeRows([jason, idle, leftEmpty], { level: "team", team: "Gunner McCullough" }).map((r) => r.name)).toEqual(["Jason Nguyen", "Idle Rep"]);
+  });
+  it("team totals add up to the branch", () => {
+    const t = (team: string) => sumTotals(scopeRows([jason], { level: "team", team })).revenue;
+    expect(t("Gunner McCullough") + t("Daniel Reyes")).toBe(sumTotals(scopeRows([jason], { level: "branch", branch: "Fort Worth" })).revenue);
+  });
+  it("rows without segments behave as before", () => {
+    const plain = { repUserId: "p", name: "P", team: "Gunner McCullough", branch: "Fort Worth", revenue: 9, knocks: 0, claims: 0, contracts: 0, former: false };
+    expect(scopeRows([plain], { level: "team", team: "Gunner McCullough" })[0].revenue).toBe(9);
+  });
+  it("coversWindow only when the in-scope stretch spans the window", () => {
+    expect(coversWindow(jason, { level: "team", team: "Daniel Reyes" }, "2026-09-20", "2026-09-26")).toBe(true);
+    expect(coversWindow(jason, { level: "team", team: "Daniel Reyes" }, "2026-09-12", "2026-09-18")).toBe(false);
+  });
+  it("rankFor ranks teams by segment shares", () => {
+    expect(rankFor([jason, idle], { level: "team", team: "Gunner McCullough" })).toEqual({ rank: 1, of: 2 });
   });
 });

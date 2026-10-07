@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NO_VALUE, matchesSelection, selectedNames, selectionChipLabel } from "./filters";
+import { NO_VALUE, matchesSelection, selectedNames, selectionChipLabel, shareForSelection } from "./filters";
 import { BRANCH_ORDER } from "../repcard/branches";
 
 const set = (...v: string[]) => new Set(v);
@@ -74,4 +74,18 @@ describe("selectionChipLabel", () => {
     expect(selectionChipLabel(["Fort Worth", "Dallas"], "All branches", "branches")).toBe("2 branches");
     expect(selectionChipLabel(["a", "b", "c"], "All teams", "teams")).toBe("3 teams");
   });
+});
+
+describe("shareForSelection (team history)", () => {
+  const seg = (team: string, branch: string, from: string, to: string, revenue: number) =>
+    ({ team, branch, from, to, revenue, verifiedKnocks: 0, leadsCreated: 0, filed: 0, won: revenue ? 1 : 0 });
+  const jason = { id: "rc:1", team: "Daniel Reyes", branch: "Fort Worth", revenue: 150, verifiedKnocks: 0, leadsCreated: 0, filed: 0, won: 2,
+    segments: [seg("Gunner McCullough", "Fort Worth", "2026-09-01", "2026-09-15", 100), seg("Daniel Reyes", "Fort Worth", "2026-09-16", "2026-09-30", 50)] };
+  it("no filter: untouched", () => expect(shareForSelection(jason, new Set(), new Set())).toMatchObject({ revenue: 150, movedOut: null, joined: null }));
+  it("old team: pre-move share, moved out", () =>
+    expect(shareForSelection(jason, new Set(), new Set(["Gunner McCullough"]))).toMatchObject({ revenue: 100, won: 1, movedOut: { team: "Daniel Reyes" } }));
+  it("both teams ticked: once, whole, no tag", () =>
+    expect(shareForSelection(jason, new Set(), new Set(["Gunner McCullough", "Daniel Reyes"]))).toMatchObject({ revenue: 150, movedOut: null, joined: null }));
+  it("branch AND team must both match", () => expect(shareForSelection(jason, new Set(["Dallas"]), new Set(["Gunner McCullough"]))).toBeNull());
+  it("(No team) matches blank-team stretches only", () => expect(shareForSelection(jason, new Set(), new Set([NO_VALUE]))).toBeNull());
 });

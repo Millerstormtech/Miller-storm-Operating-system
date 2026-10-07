@@ -24,6 +24,7 @@
 //     NOTE: this rule does not know who has LEFT. It only sees that someone has
 //     not knocked in 30 days; leaving, leave of absence and a role change all look
 //     the same to it.
+//   - (2026-10-07) reps not on the team for the whole window are left out.
 // Sales reps never get this card; that is decided by the API, not here.
 import { centralDateStr } from "../acculynx/windows";
 
@@ -40,6 +41,8 @@ export interface KnockCandidate {
   /** First and last days with a verified knock, as Central YYYY-MM-DD. */
   firstKnockDay: string | null;
   lastKnockDay: string | null;
+  /** In the viewer scope every day of the window (team history). */
+  coversWindow: boolean;
 }
 
 export interface LowKnocker {
@@ -76,6 +79,7 @@ export function lowestKnocks(rows: KnockCandidate[], window: { from: string; to:
     // for the whole window, so they are treated like a new rep, not as a zero.
     .filter((r) => !r.former && r.firstKnockDay != null && r.firstKnockDay <= window.from)
     .filter((r) => !r.isLeader)
+    .filter((r) => r.coversWindow)
     .filter((r) => r.lastKnockDay != null && r.lastKnockDay >= staleBefore)
     .sort(
       (a, b) =>
