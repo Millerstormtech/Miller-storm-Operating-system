@@ -196,6 +196,29 @@ module.exports = {
       time: true
     },
     {
+      // DMO reminders (Youssef, 2026-10-05): weekly DMO on Thursday 6 PM and
+      // Friday 9 AM, then each Team Lead and Branch Manager is told at Friday
+      // 1 PM who has not sent theirs; monthly DMO on the last day 6 PM and the
+      // 1st 9 AM, leaders told on the 2nd 9 AM (all Central). Checks every 5
+      // minutes and POSTs http://localhost:$PORT/api/dmo/reminders-cron, which
+      // does the work and never double-sends (unique index per person and
+      // reminder). DMO_REMINDERS_MODE in the app's .env: on (default), dry, off.
+      name: 'dmo-reminders',
+      script: 'scripts/dmo-reminders-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 6790
+      },
+      error_file: '/var/www/millerstorm/logs/dmo-reminders-err.log',
+      out_file: '/var/www/millerstorm/logs/dmo-reminders-out.log',
+      merge_logs: true,
+      time: true
+    },
+    {
       // Daily refresh of the Canvass Map at CANVASS_HOUR (default 08:00) CENTRAL:
       // new hail days from NOAA, every RepCard door, every AccuLynx job and its
       // signing date, then the matching, the house colours and the zoomed-out

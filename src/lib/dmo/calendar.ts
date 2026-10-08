@@ -120,3 +120,13 @@ export function monthlyDeadlines(month: string): { opens: Date; due: Date } {
     due: centralInstant(addDays(first, 1), 0),
   };
 }
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** "2026-11" -> "November". */
+export function monthName(month: string): string {
+  return MONTH_NAMES[Number(month.slice(5, 7)) - 1] || month;
+}

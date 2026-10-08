@@ -2,8 +2,8 @@
 // One person's DMO, and the roll-up of many into a team, branch or company.
 // Pure: the loader (load.ts) fetches the numbers and forms, this decides what
 // they mean. The same output feeds the rep's own screen and their leaders'.
-import { MONTHLY_FIELDS, WEEKLY_FIELDS, type WeeklyField } from "./config";
-import { monthlyDeadlines, nextMonth, weeklyDeadlines, type DmoClock } from "./calendar";
+import { FIRST_MONTH, FIRST_WEEKLY_WEEK_OF, MONTHLY_FIELDS, WEEKLY_FIELDS, type WeeklyField } from "./config";
+import { addDays, monthName, monthlyDeadlines, nextMonth, weeklyDeadlines, type DmoClock } from "./calendar";
 import {
   bars, formState, groupColour, incomePlan, minimumChip, monthlyContractAverage, originalCommitment,
   sumCommitments, weekPeriod, type Adjustment, type Away, type Bar, type Colour, type Commitment,
@@ -104,6 +104,22 @@ export function formMonthFor(clock: DmoClock, now: Date): string {
   return now.getTime() >= monthlyDeadlines(upcoming).opens.getTime() ? upcoming : clock.month;
 }
 
+/**
+ * Is the weekly form filled in during the week starting `weekOf` (it commits to
+ * the week after) open, due, late or done? Forms from before the launch
+ * (FIRST_WEEKLY_WEEK_OF) are never due: missing ones read "not-open".
+ */
+export function weeklyFormState(weekOf: string, now: Date, submittedAt: Date | null): FormState {
+  if (!submittedAt && addDays(weekOf, 7) < FIRST_WEEKLY_WEEK_OF) return "not-open";
+  return formState(now, weeklyDeadlines(weekOf), submittedAt);
+}
+
+/** The same for the monthly form of `month` ("YYYY-MM"); months before FIRST_MONTH are never due. */
+export function monthlyFormState(month: string, now: Date, submittedAt: Date | null): FormState {
+  if (!submittedAt && month < FIRST_MONTH) return "not-open";
+  return formState(now, monthlyDeadlines(month), submittedAt);
+}
+
 export function personDmo(p: PersonInput, clock: DmoClock, now: Date): PersonDmo {
   const period = weekPeriod(clock.weekOf, clock.dayOfWeek, p.thisWeek?.away);
   const chip = minimumChip({
@@ -158,7 +174,7 @@ export function personDmo(p: PersonInput, clock: DmoClock, now: Date): PersonDmo
     },
     weeklyForm: {
       forWeekOf: clock.nextWeekOf,
-      state: formState(now, weekly, p.nextWeek ? new Date(p.nextWeek.submittedAt) : null),
+      state: weeklyFormState(clock.weekOf, now, p.nextWeek ? new Date(p.nextWeek.submittedAt) : null),
       due: weekly.due.toISOString(),
       lock: weekly.lock.toISOString(),
       canAdjust: now.getTime() < weekly.lock.getTime(),
@@ -167,7 +183,7 @@ export function personDmo(p: PersonInput, clock: DmoClock, now: Date): PersonDmo
     },
     monthlyForm: {
       month: formMonth,
-      state: formState(now, monthly, p.formMonth ? new Date(p.formMonth.submittedAt) : null),
+      state: monthlyFormState(formMonth, now, p.formMonth ? new Date(p.formMonth.submittedAt) : null),
       due: monthly.due.toISOString(),
       plan: p.formMonth,
     },
@@ -190,6 +206,8 @@ export interface GroupDmo {
   nextWeek: { commitment: Commitment; submitted: number };
   weeklyDone: number;
   monthlyDone: number;
+  /** False only before the first monthly DMO (launch month), when nobody owes one. */
+  monthlyDue: boolean;
 }
 
 const DONE: FormState[] = ["done", "late"];
@@ -221,6 +239,7 @@ export function groupDmo(key: string, owner: string, people: PersonDmo[], clock:
     nextWeek: { commitment: next, submitted: people.filter((p) => p.weeklyForm.commitment).length },
     weeklyDone: people.filter((p) => DONE.includes(p.weeklyForm.state)).length,
     monthlyDone: people.filter((p) => DONE.includes(p.monthlyForm.state)).length,
+    monthlyDue: people.some((p) => p.monthlyForm.state !== "not-open"),
   };
 }
 
@@ -240,4 +259,29 @@ export function sortGroups(groups: GroupDmo[]): GroupDmo[] {
   return [...groups].sort(
     (a, b) => COLOUR_ORDER[String(a.colour)] - COLOUR_ORDER[String(b.colour)] || a.key.localeCompare(b.key)
   );
+}
+
+// ---------------------------------------------------------------------------
+// The one DMO line on the Dashboard
+// ---------------------------------------------------------------------------
+
+/**
+ * The Dashboard shows one line about the viewer's own DMO, linking to the DMO
+ * page (Youssef, 2026-10-08: two pages, two jobs; nothing else repeats). The
+ * most urgent thing wins: late first, then due, then all good.
+ */
+export function dmoLine(
+  weekly: { state: FormState },
+  monthly: { state: FormState; month: string },
+  clock: DmoClock
+): { text: string; urgent: boolean } {
+  const m = monthName(monthly.month);
+  if (monthly.state === "overdue") return { text: `Your ${m} DMO is late.`, urgent: true };
+  if (weekly.state === "overdue") return { text: "Your weekly DMO was due Friday at 1 PM.", urgent: true };
+  if (monthly.state === "due") return { text: `Your ${m} DMO is due before midnight on ${m} 1.`, urgent: false };
+  if (weekly.state === "due") {
+    return { text: `Your weekly DMO is due ${clock.dayOfWeek === 7 ? "today" : "Friday"} at 1 PM.`, urgent: false };
+  }
+  if (weekly.state === "not-open") return { text: "Your next weekly DMO opens Thursday.", urgent: false };
+  return { text: "Your DMO is up to date.", urgent: false };
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { dmoClock } from "./calendar";
-import { personDmo, groupDmo, sortPeople, formMonthFor, ZERO, type PersonInput } from "./view";
+import { personDmo, groupDmo, sortPeople, formMonthFor, dmoLine, ZERO, type PersonInput } from "./view";
 
 // Wed 2026-10-07 10:00 CDT: day 5 of the week that began Sat 2026-10-03.
 const now = new Date("2026-10-07T15:00:00Z");
@@ -74,5 +74,18 @@ describe("groupDmo", () => {
     expect(g.weeklyDone).toBe(1);
     expect(g).toMatchObject({ colour: "red", green: 1, counted: 2 });
     expect(sortPeople([a, b]).map((p) => p.name)).toEqual(["Rep Two", "Rep One"]);
+  });
+});
+
+describe("the Dashboard's DMO line", () => {
+  const thu = dmoClock(new Date("2026-10-15T23:00:00Z"));
+  const fri = dmoClock(new Date("2026-10-16T15:00:00Z"));
+  it("late beats due beats done", () => {
+    expect(dmoLine({ state: "overdue" }, { state: "overdue", month: "2026-11" }, fri)).toEqual({ text: "Your November DMO is late.", urgent: true });
+    expect(dmoLine({ state: "overdue" }, { state: "done", month: "2026-11" }, fri).text).toBe("Your weekly DMO was due Friday at 1 PM.");
+    expect(dmoLine({ state: "due" }, { state: "due", month: "2026-11" }, thu).text).toBe("Your November DMO is due before midnight on November 1.");
+    expect(dmoLine({ state: "due" }, { state: "done", month: "2026-11" }, thu).text).toBe("Your weekly DMO is due Friday at 1 PM.");
+    expect(dmoLine({ state: "due" }, { state: "done", month: "2026-11" }, fri).text).toBe("Your weekly DMO is due today at 1 PM.");
+    expect(dmoLine({ state: "done" }, { state: "not-open", month: "2026-10" }, fri)).toEqual({ text: "Your DMO is up to date.", urgent: false });
   });
 });

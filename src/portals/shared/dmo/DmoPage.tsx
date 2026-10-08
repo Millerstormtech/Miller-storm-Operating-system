@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fmtMoney, fmtCount } from "../../../lib/scoreboard/display";
-import { FIELD_LABELS, DEFAULT_COMMISSION_PER_ROOF, MIN_WEEKLY_DOORS, MIN_WEEKLY_CLAIMS, type WeeklyField } from "../../../lib/dmo/config";
+import { FIELD_LABELS, FIRST_MONTH, DEFAULT_COMMISSION_PER_ROOF, MIN_WEEKLY_DOORS, MIN_WEEKLY_CLAIMS, type WeeklyField } from "../../../lib/dmo/config";
 import { incomePlan, type Bar, type Colour, type FormState, type ChipState } from "../../../lib/dmo/rules";
-import { daysInMonth, addDays } from "../../../lib/dmo/calendar";
+import { daysInMonth, addDays, monthName } from "../../../lib/dmo/calendar";
 import type { DmoBoard } from "../../../lib/dmo/load";
 import type { GroupDmo, PersonDmo, CommitmentView } from "../../../lib/dmo/view";
 
@@ -492,7 +492,9 @@ function MyDmo(props: { me: PersonDmo; names: Record<string, string>; reload: ()
               {me.thisMonth.bars.map((b) => <BarRow key={b.field} bar={b} />)}
             </>
           ) : (
-            <div style={{ marginTop: 10, fontSize: 14, color: "var(--text-muted)" }}>No monthly DMO for this month yet.</div>
+            <div style={{ marginTop: 10, fontSize: 14, color: "var(--text-muted)" }}>
+              {me.thisMonth.month < FIRST_MONTH ? `Monthly DMOs start in ${monthName(FIRST_MONTH)}.` : "No monthly DMO for this month yet."}
+            </div>
           )}
         </div>
       </div>
@@ -546,7 +548,7 @@ function GroupCard(props: { g: GroupDmo; title: string; ownerLabel?: string; act
       {props.ownerLabel && <div style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 2 }}>{props.ownerLabel}</div>}
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8, fontSize: 13, color: "var(--text-muted)" }}>
         <span>Weekly DMOs <b style={{ color: "var(--text-primary)" }}>{g.weeklyDone} / {g.members}</b></span>
-        <span>Monthly <b style={{ color: "var(--text-primary)" }}>{g.monthlyDone} / {g.members}</b></span>
+        {g.monthlyDue && <span>Monthly <b style={{ color: "var(--text-primary)" }}>{g.monthlyDone} / {g.members}</b></span>}
       </div>
       {g.thisWeek.bars.length > 0 ? (
         g.thisWeek.bars.map((b) => <BarRow key={b.field} bar={b} />)

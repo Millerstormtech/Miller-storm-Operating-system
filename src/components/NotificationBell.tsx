@@ -4,6 +4,7 @@ import { Toast } from "./Toast";
 import { useAuth } from "../contexts/AuthContext";
 import { trainingRouteForRole } from "../lib/trainingRoute";
 import { calendarRouteForRole } from "../lib/calendarRoute";
+import { dmoRouteForRole } from "../lib/dmoRoute";
 
 type Notification = {
   id: string;
@@ -146,6 +147,10 @@ export function NotificationBell({ userId }: { userId: string }) {
       // generic watchUrl branch, which is hardcoded to Training Center.
       setShowDropdown(false);
       router.push(calendarRouteForRole(user?.role));
+    } else if (notif.type === 'dmo_reminder' && dmoRouteForRole(user?.role)) {
+      // A DMO reminder opens the recipient's OWN DMO page, by role.
+      setShowDropdown(false);
+      router.push(dmoRouteForRole(user?.role)!);
     } else if (notif.metadata?.watchUrl || notif.metadata?.courseId) {
       // Training notifications (e.g. an unlocked lesson) always open the
       // recipient's OWN Training Center, resolved from their role — NOT the

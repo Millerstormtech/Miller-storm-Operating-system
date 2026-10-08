@@ -47,3 +47,31 @@ export const FIELD_LABELS: Record<WeeklyField, string> = {
   contracts: "Contracts",
   contractDollars: "Contract $",
 };
+
+/**
+ * Launch (Youssef, 2026-10-08): the first weekly DMO is due Friday 2026-10-09 at
+ * 1:00 PM and commits to the week starting Saturday 2026-10-10. The first
+ * monthly DMO is November's. Forms before these are never "late", never
+ * reminded and never reported missing; they show as not open yet.
+ */
+export const FIRST_WEEKLY_WEEK_OF = "2026-10-10";
+export const FIRST_MONTH = "2026-11";
+
+/**
+ * Reminders (Youssef, 2026-10-05): two to the person, then their Team Lead and
+ * Branch Manager are told who has not sent it. Central time. A reminder only
+ * goes out within REMINDER_WINDOW_HOURS of its time, so a server that was down
+ * never sends a stale one hours later.
+ */
+export const WEEKLY_REMINDERS = [
+  { id: "weekly-open", daysIntoWeek: 5, hour: 18 }, // Thursday 6:00 PM
+  { id: "weekly-last", daysIntoWeek: 6, hour: 9 }, // Friday 9:00 AM
+] as const;
+export const WEEKLY_MISSING = { id: "weekly-missing", daysIntoWeek: 6, hour: 13 } as const; // Friday 1:00 PM
+/** Days are counted from the 1st of the month the form is for (-1 = the last day of the month before). */
+export const MONTHLY_REMINDERS = [
+  { id: "monthly-open", dayOffset: -1, hour: 18 }, // last day of the month, 6:00 PM
+  { id: "monthly-last", dayOffset: 0, hour: 9 }, // the 1st, 9:00 AM
+] as const;
+export const MONTHLY_MISSING = { id: "monthly-missing", dayOffset: 1, hour: 9 } as const; // the 2nd, 9:00 AM
+export const REMINDER_WINDOW_HOURS = 3;
