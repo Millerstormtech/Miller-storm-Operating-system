@@ -105,6 +105,8 @@ export type FilterState = {
   hailSince: string | null;
   ownerOnly: boolean;
   showHail: boolean;
+  /** "team:<lead>" or "branch:<name>": only that team's or branch's knocks mark a house as knocked; null for everyone's. */
+  knocksBy: string | null;
 };
 
 export const DEFAULT_FILTERS: FilterState = {
@@ -113,6 +115,7 @@ export const DEFAULT_FILTERS: FilterState = {
   hailSince: null,
   ownerOnly: false,
   showHail: true,
+  knocksBy: null,
 };
 
 /** The houses request for a view and filters, exactly as the API reads it (query.ts). */
@@ -122,6 +125,7 @@ export function homesUrl(bbox: Bbox, filters: FilterState): string {
   if (filters.hideKnockedDays !== null) params.set("hideKnockedDays", String(filters.hideKnockedDays));
   if (filters.hailSince) params.set("hailSince", filters.hailSince);
   if (filters.ownerOnly) params.set("ownerOnly", "1");
+  if (filters.knocksBy) params.set("knocksBy", filters.knocksBy);
   return `/api/canvass/homes?${params.toString()}`;
 }
 

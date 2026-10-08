@@ -1,15 +1,16 @@
 // src/portals/shared/canvass-map/Filters.tsx
 // The map's filters (spec A3): colours to show, hide houses knocked recently,
-// only houses with hail since a day, only owner-occupied houses, and the hail
-// layer on or off. Purely a form: the values go straight into the request that
+// only houses with hail since a day, only owner-occupied houses, the hail
+// layer on or off, and whose knocks count (a team or branch, teamKnocks.ts). Purely a form: the values go straight into the request that
 // src/lib/canvass/mapView.ts builds. No em dashes on screen.
 
 import type { Color } from "../../../lib/canvass/grade";
 import { DOT_RGB, LEGEND, type FilterState } from "../../../lib/canvass/mapView";
+import { scopeParam, type ScopeOptions } from "../../../lib/canvass/teamKnocks";
 
 const rgb = (c: readonly number[]) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 
-export function Filters({ value, onChange, today }: { value: FilterState; onChange: (next: FilterState) => void; today: string }) {
+export function Filters({ value, onChange, today, scopes }: { value: FilterState; onChange: (next: FilterState) => void; today: string; scopes: ScopeOptions | null }) {
   const toggleColor = (color: Color) => {
     const has = value.colors.includes(color);
     const colors = has ? value.colors.filter((c) => c !== color) : [...value.colors, color];
@@ -69,6 +70,36 @@ export function Filters({ value, onChange, today }: { value: FilterState; onChan
           Show hail
         </label>
       </div>
+
+      <label style={label}>
+        Knocked by
+        <select
+          id="canvass-knocks-by"
+          value={value.knocksBy ?? ""}
+          onChange={(e) => onChange({ ...value, knocksBy: e.target.value || null })}
+          style={{ padding: "2px 6px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--surface-default)", color: "var(--text-primary)", maxWidth: "100%" }}
+        >
+          <option value="">Everyone</option>
+          {scopes && scopes.branches.length > 0 && (
+            <optgroup label="Branch">
+              {scopes.branches.map((name) => (
+                <option key={`b-${name}`} value={scopeParam({ kind: "branch", name })}>
+                  {name} branch
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {scopes && scopes.teams.length > 0 && (
+            <optgroup label="Team">
+              {scopes.teams.map((team) => (
+                <option key={`t-${team.name}`} value={scopeParam({ kind: "team", name: team.name })}>
+                  {team.name}&apos;s team{team.branch ? ` (${team.branch})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </label>
     </div>
   );
 }

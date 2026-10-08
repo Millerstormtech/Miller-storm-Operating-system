@@ -34,6 +34,16 @@ describe("parseHomesQuery", () => {
     expect(parsed.query.hideKnockedDays).toBeNull();
     expect(parsed.query.hailSince).toBeNull();
     expect(parsed.query.ownerOnly).toBe(false);
+    expect(parsed.query.knocksBy).toBeNull();
+  });
+
+  it("reads the knocks-by team or branch, and refuses anything else", () => {
+    const team = parseHomesQuery({ bbox: FW, knocksBy: "team:Luke Huber" });
+    expect(team.ok && team.query.knocksBy).toEqual({ kind: "team", name: "Luke Huber" });
+    const branch = parseHomesQuery({ bbox: FW, knocksBy: "branch:Fort Worth" });
+    expect(branch.ok && branch.query.knocksBy).toEqual({ kind: "branch", name: "Fort Worth" });
+    expect(parseHomesQuery({ bbox: FW, knocksBy: "rep:Someone" }).ok).toBe(false);
+    expect(parseHomesQuery({ bbox: FW, knocksBy: "team:" }).ok).toBe(false);
   });
 
   it("reads every filter", () => {

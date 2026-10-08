@@ -49,6 +49,14 @@ describe("requests the screen makes", () => {
     if (parsed.ok) expect(parsed.query.colors).toEqual(["green", "yellow"]);
   });
 
+  it("carries the knocks-by choice to the API", () => {
+    const url = homesUrl(bbox, { ...DEFAULT_FILTERS, knocksBy: "team:Luke Huber" });
+    const query = Object.fromEntries(new URL(url, "http://x").searchParams);
+    expect(query.knocksBy).toBe("team:Luke Huber");
+    const parsed = parseHomesQuery(query);
+    expect(parsed.ok && parsed.query.knocksBy).toEqual({ kind: "team", name: "Luke Huber" });
+  });
+
   it("builds a hail request the API accepts", () => {
     const query = Object.fromEntries(new URL(hailUrl(bbox, "2025-09-17"), "http://x").searchParams);
     expect(parseHailQuery(query).ok).toBe(true);
