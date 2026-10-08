@@ -44,8 +44,8 @@ const input: StepInput = {
 };
 
 describe("dailySteps", () => {
-  it("runs the ten steps in dependency order", () => {
-    expect(dailySteps(input).map((s) => s.name)).toEqual(["hail-fetch", "hail-load", "hail-assign", "doors", "jobs", "jobs-signed", "match", "parker-owner", "grade", "grid"]);
+  it("runs the eleven steps in dependency order", () => {
+    expect(dailySteps(input).map((s) => s.name)).toEqual(["hail-fetch", "hail-load", "hail-assign", "doors", "jobs", "jobs-signed", "match", "parker-owner", "parker-age", "grade", "grid"]);
   });
 
   it("fetches with the hail reader's Python and gives only the requested days to the houses", () => {
@@ -68,12 +68,12 @@ describe("dailySteps", () => {
   });
 
   it("skips the hail steps when hail is up to date", () => {
-    expect(dailySteps({ ...input, hail: null }).map((s) => s.name)).toEqual(["doors", "jobs", "jobs-signed", "match", "parker-owner", "grade", "grid"]);
+    expect(dailySteps({ ...input, hail: null }).map((s) => s.name)).toEqual(["doors", "jobs", "jobs-signed", "match", "parker-owner", "parker-age", "grade", "grid"]);
   });
 
   it("a dry run counts only: every script gets --dry-run and nothing is fetched", () => {
     const steps = dailySteps({ ...input, dryRun: true });
-    expect(steps.map((s) => s.name)).toEqual(["doors", "jobs", "jobs-signed", "match", "parker-owner", "grade", "grid"]);
+    expect(steps.map((s) => s.name)).toEqual(["doors", "jobs", "jobs-signed", "match", "parker-owner", "parker-age", "grade", "grid"]);
     for (const step of steps) expect(step.args).toContain("--dry-run");
   });
 });
