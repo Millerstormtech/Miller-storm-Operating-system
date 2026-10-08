@@ -16,7 +16,7 @@ import { sendEmail } from "../email";
 const SEEDED_KEY = "__seeded__";
 
 function recipients(): string[] {
-  return (process.env.TEAM_WARNING_EMAILS || "tech@millerstorm.com")
+  return (process.env.TEAM_WARNING_EMAILS || "tech@millerstorm.com,youssef@millerstorm.com")
     .split(",").map((s) => s.trim()).filter(Boolean);
 }
 
