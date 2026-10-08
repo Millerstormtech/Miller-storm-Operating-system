@@ -7,7 +7,7 @@ import { RepTeamHistoryModel } from "../models/RepTeamHistory";
 import { TeamWarningModel } from "../models/TeamWarning";
 import { loadSharedRosterData, computeSalesRows } from "../leaderboard/compute";
 import { placeRep } from "./placement";
-import { planRecording, diffWarnings, stickyNoTeamKeys, NO_TEAM_NUMBERS_TEXT, type Period, type Placement } from "./periods";
+import { planRecording, diffWarnings, stickyNoTeamKeys, wantsNoTeamWarning, NO_TEAM_NUMBERS_TEXT, type Period, type Placement } from "./periods";
 import { officeToBranch } from "../repcard/branches";
 import { centralDateStr, getWindowRange } from "../acculynx/windows";
 import { normEmail } from "../leaderboard/identity";
@@ -16,7 +16,7 @@ import { sendEmail } from "../email";
 const SEEDED_KEY = "__seeded__";
 
 function recipients(): string[] {
-  return (process.env.TEAM_WARNING_EMAILS || "tech@millerstorm.com,youssofradwan@gmail.com")
+  return (process.env.TEAM_WARNING_EMAILS || "tech@millerstorm.com,youssef@millerstorm.com")
     .split(",").map((s) => s.trim()).filter(Boolean);
 }
 
@@ -80,14 +80,18 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
     //    numbers this month but no team.
     const current: Array<{ key: string; userId: string; kind: string; text: string }> = [];
     const nameById = new Map<string, string>();
-    for (const u of shared.byEmail.values()) nameById.set(String((u as any).id), String((u as any).name || ""));
+    const roleById = new Map<string, string>();
+    for (const u of shared.byEmail.values()) {
+      nameById.set(String((u as any).id), String((u as any).name || ""));
+      roleById.set(String((u as any).id), String((u as any).role || ""));
+    }
     for (const [userId, list] of shared.org.warnings) {
       for (const w of list) current.push({ key: `org:${w.kind}:${userId}`, userId, kind: w.kind, text: `${nameById.get(userId) || userId}: ${w.message}` });
     }
     const month = await computeSalesRows(getWindowRange("month", now), shared);
     for (const r of month) {
       const busy = r.verifiedKnocks || r.leadsCreated || r.filed || r.won || r.revenue;
-      if (r.team || !busy || !r.repUserId) continue;
+      if (r.team || !busy || !r.repUserId || !wantsNoTeamWarning(roleById.get(r.repUserId))) continue;
       current.push({ key: `no-team-numbers:${r.repUserId}`, userId: r.repUserId, kind: "no-team-numbers", text: `${r.name}: ${NO_TEAM_NUMBERS_TEXT}` });
     }
 
@@ -95,7 +99,7 @@ export async function recordTeamHistory(now: Date = new Date()): Promise<{ chang
     // D9 stays on while the person still has a live account with no team, even
     // in a month with no numbers yet (so it is not re-emailed monthly).
     const noTeamIds = new Set<string>();
-    for (const u of shared.byEmail.values()) if (shared.org.teamOf(u) === "") noTeamIds.add(String((u as any).id));
+    for (const u of shared.byEmail.values()) if (shared.org.teamOf(u) === "" && wantsNoTeamWarning((u as any).role)) noTeamIds.add(String((u as any).id));
     const have = new Set(current.map((w) => w.key));
     for (const key of stickyNoTeamKeys(all.map((w) => ({ key: String(w.key), active: !!w.active })), noTeamIds)) {
       if (have.has(key)) continue;
