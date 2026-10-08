@@ -75,3 +75,56 @@ export function parkerReadings(parcels: Iterable<ParkerParcel>): Map<string, boo
   }
   return readings;
 }
+
+// ---- Year built, from Parker CAD's public property pages (Youssef, 8 Oct 2026) ----
+// Parker CAD publishes no bulk file with year built, and its map service has none
+// (checked 8 Oct 2026, every layer of all three services). Each property's page
+// on its official search site does show it, in the "Improvement / Buildings"
+// table, so scripts/canvass-parker-age.ts reads the pages slowly, one at a time.
+
+export const PARKER_PAGE = "https://iswdataclient.azurewebsites.net/webProperty.aspx?dbkey=PARKERCAD&id=";
+
+/** The search site's id for a property: "R" and the property id padded to 9 digits (59280 is R000059280). */
+export function parkerPageId(propId: string | number): string | null {
+  const digits = String(propId).trim();
+  if (!/^\d{1,9}$/.test(digits)) return null;
+  return `R${digits.padStart(9, "0")}`;
+}
+
+export type ParkerBuildings = {
+  /** False when the page holds no property at all (the id is unknown to the site). */
+  found: boolean;
+  /** The main dwelling's year: the earliest year on a living-area or mobile-home row. */
+  yearBuilt: number | null;
+  mobileHome: boolean;
+};
+
+const cellText = (html: string) =>
+  html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+
+/**
+ * Reads the building table (tbody id="tableBld"): one row per building part,
+ * cells sequence, code, description, year built, square feet, perimeter. The
+ * house is the LIVING AREA rows (code LA) or a MOBILE HOME row (code MH); a
+ * second story, garage, porch, pool or shed is not, and their years (often a
+ * later addition) are ignored. A year outside 1800 to next year is ignored.
+ */
+export function parkerBuildings(html: string, thisYear: number): ParkerBuildings {
+  const found = /Property ID:\s*(<[^>]*>\s*)*R\d{9}/.test(html);
+  const body = /<tbody[^>]*id=["']tableBld["'][^>]*>([\s\S]*?)<\/tbody>/i.exec(html)?.[1] ?? "";
+  let yearBuilt: number | null = null;
+  let mobileHome = false;
+  for (const row of body.match(/<tr[\s\S]*?<\/tr>/gi) ?? []) {
+    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => cellText(m[1]));
+    if (cells.length < 4) continue;
+    const [, code, description, yearText] = cells;
+    const isLiving = code.toUpperCase() === "LA" || /^LIVING AREA$/i.test(description);
+    const isMobile = code.toUpperCase() === "MH" || /^MOBILE HOME/i.test(description);
+    if (!isLiving && !isMobile) continue;
+    if (isMobile) mobileHome = true;
+    const year = Number(yearText);
+    if (!Number.isInteger(year) || year < 1800 || year > thisYear + 1) continue;
+    if (yearBuilt === null || year < yearBuilt) yearBuilt = year;
+  }
+  return { found, yearBuilt, mobileHome };
+}

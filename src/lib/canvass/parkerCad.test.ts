@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parkerMailingLine, parkerOwnerReading, parkerReadings, parkerSitusLine } from "./parkerCad";
+import { parkerBuildings, parkerMailingLine, parkerOwnerReading, parkerPageId, parkerReadings, parkerSitusLine } from "./parkerCad";
 
 describe("Parker CAD addresses", () => {
   it("joins the situs parts in order and skips blanks", () => {
@@ -55,5 +55,56 @@ describe("parkerReadings", () => {
 
   it("skips parcels with no property id", () => {
     expect(parkerReadings([{ prop_id: null, ...here }, { ...here }]).size).toBe(0);
+  });
+});
+
+// Trimmed from real Parker CAD pages (8 Oct 2026), owner details left out.
+const page = (id: string, rows: string[][]) =>
+  `<td>Property ID:</td> <td id="ucidentification_webprop_id" nowrap="nowrap" valign="top">${id}</td>` +
+  `<table><thead><tr><th>Year Built</th></tr></thead><tbody id="tableBld">` +
+  rows.map((cells, i) => `<tr${i % 2 ? " bgcolor='#E7E7EF'" : ""}>${cells.map((c) => `<td align='left'>${c}</td>`).join("")}</tr>`).join("") +
+  `</tbody></table>`;
+
+describe("Parker CAD property pages", () => {
+  it("builds the search site's id from the property id", () => {
+    expect(parkerPageId(59280)).toBe("R000059280");
+    expect(parkerPageId("10018")).toBe("R000010018");
+    expect(parkerPageId("0")).toBe("R000000000");
+    expect(parkerPageId("12A")).toBeNull();
+    expect(parkerPageId("")).toBeNull();
+  });
+
+  it("takes the living area's year, not the pool, shed or outbuilding added later", () => {
+    const html = page("R000094441", [
+      ["1", "LA", "LIVING AREA", "2010", "2,307", "216"],
+      ["2", "AG", "ATTACHED GARAGE", "2010", "420", "82"],
+      ["5", "PO20", "SWIMMING POOL", "2018", "0", "\n"],
+      ["7", "OB20", "OUTBLDG", "2025", "1,200", "140"],
+    ]);
+    expect(parkerBuildings(html, 2026)).toEqual({ found: true, yearBuilt: 2010, mobileHome: false });
+  });
+
+  it("takes the earliest living-area year when the house was added to, and ignores a second story", () => {
+    const html = page("R000033744", [
+      ["1", "LA", "LIVING AREA", "1981", "1,788", "208"],
+      ["2", "LT", "LIVING AREA 2ND STORY", "1975", "289", "68"],
+      ["3", "LA", "LIVING AREA", "1995", "66", "34"],
+    ]);
+    expect(parkerBuildings(html, 2026).yearBuilt).toBe(1981);
+  });
+
+  it("reads a mobile home, with or without a year", () => {
+    expect(parkerBuildings(page("R000071823", [["1", "MH", "MOBILE HOME", "2005", "2,100", "206"]]), 2026)).toEqual({ found: true, yearBuilt: 2005, mobileHome: true });
+    expect(parkerBuildings(page("R000010018", [["1", "MH", "MOBILE HOME", "\n", "1,700", "168"]]), 2026)).toEqual({ found: true, yearBuilt: null, mobileHome: true });
+  });
+
+  it("finds no year on bare land, and ignores a year that cannot be right", () => {
+    expect(parkerBuildings(page("R000096157", []), 2026)).toEqual({ found: true, yearBuilt: null, mobileHome: false });
+    expect(parkerBuildings(page("R000000001", [["1", "LA", "LIVING AREA", "1900", "1", "1"], ["2", "LA", "LIVING AREA", "0", "1", "1"]]), 2026).yearBuilt).toBe(1900);
+    expect(parkerBuildings(page("R000000002", [["1", "LA", "LIVING AREA", "2031", "1", "1"]]), 2026).yearBuilt).toBeNull();
+  });
+
+  it("knows when the site has no such property", () => {
+    expect(parkerBuildings(page("&nbsp;", []), 2026).found).toBe(false);
   });
 });
