@@ -4,7 +4,7 @@
 // and the cap all live in src/lib/canvass/query.ts, which is tested; this route
 // only does the database calls and the guards.
 //
-//   GET /api/canvass/homes?bbox=w,s,e,n&colors=&hideKnockedDays=&hailSince=&ownerOnly=
+//   GET /api/canvass/homes?bbox=w,s,e,n&colors=&hideKnockedDays=&hailSince=&ownerOnly=&knocksBy=team:<lead>|branch:<name>
 //   -> { asOf, homes: [{ id, lat, lng, color, knocked }] }
 //   -> { asOf, tooMany: true, clusters: [{ lat, lng, count, green }] }
 //
@@ -23,6 +23,9 @@ import { latestKnockDayByHome, type CardDoor } from "../../../src/lib/canvass/ca
 import { clustersFromGrid, gridCellsFilter, type GridCell } from "../../../src/lib/canvass/grid";
 import { CanvassGridCellModel } from "../../../src/lib/models/CanvassGridCell";
 import { centralDay } from "../../../src/lib/canvass/dates";
+import { knockUserIds, latestScopedKnockDay } from "../../../src/lib/canvass/teamKnocks";
+import { RepTeamHistoryModel } from "../../../src/lib/models/RepTeamHistory";
+import type { Period } from "../../../src/lib/teamhistory/periods";
 
 /**
  * Who may use the map right now. Youssef, 17 Sep 2026: admin and C-Level only for
@@ -80,7 +83,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     { homeId: 1, status: 1, statusAt: 1, knocks: 1, statusChanges: 1 }
   ).lean()) as CardDoor[];
 
+  // "Knocks by" a team or branch: only knocks by reps who were on it ON THE DAY mark a
+  // house as knocked (src/lib/canvass/teamKnocks.ts). Every house stays on the map.
+  let knockDays = latestKnockDayByHome(doors);
+  if (query.knocksBy) {
+    const histories = (await RepTeamHistoryModel.find({ repcardUserId: { $in: knockUserIds(doors) } }, { _id: 0, repcardUserId: 1, periods: 1 }).lean()) as Array<{ repcardUserId: string; periods: Period[] }>;
+    knockDays = latestScopedKnockDay(doors, new Map(histories.map((h) => [h.repcardUserId, h.periods])), query.knocksBy);
+  }
+
   // The knocked-recently filter runs after the cap, so a busy street can show fewer than 3,000 dots; that is fine.
-  const homes = toMapHomes(rows, latestKnockDayByHome(doors), asOf, query.hideKnockedDays);
+  const homes = toMapHomes(rows, knockDays, asOf, query.hideKnockedDays);
   return res.status(200).json({ asOf, homes });
 }

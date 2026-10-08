@@ -11,6 +11,7 @@
 
 import type { Color } from "./grade";
 import { daysBetween } from "./dates";
+import { parseScope, type KnockScope } from "./teamKnocks";
 
 /** The most houses one request draws. Past this the map shows clusters instead (spec B5). */
 export const HOMES_LIMIT = 3000;
@@ -59,6 +60,8 @@ export type HomesQuery = {
   hailSince: string | null;
   /** Only houses where the owner appears to live there. */
   ownerOnly: boolean;
+  /** Mark as knocked (and hide as recently knocked) only knocks by this team or branch; null for everyone's. */
+  knocksBy: KnockScope | null;
 };
 
 export type ParsedHomesQuery = { ok: true; query: HomesQuery } | { ok: false; error: string };
@@ -116,7 +119,14 @@ export function parseHomesQuery(raw: Record<string, unknown>): ParsedHomesQuery 
   const ownerText = first(raw.ownerOnly).trim().toLowerCase();
   const ownerOnly = ownerText === "1" || ownerText === "true" || ownerText === "yes";
 
-  return { ok: true, query: { bbox: { west, south, east, north }, colors, hideKnockedDays, hailSince, ownerOnly } };
+  let knocksBy: KnockScope | null = null;
+  const scopeText = first(raw.knocksBy).trim();
+  if (scopeText) {
+    knocksBy = parseScope(scopeText);
+    if (!knocksBy) return { ok: false, error: 'knocksBy must be "team:<lead name>" or "branch:<branch name>"' };
+  }
+
+  return { ok: true, query: { bbox: { west, south, east, north }, colors, hideKnockedDays, hailSince, ownerOnly, knocksBy } };
 }
 
 /**

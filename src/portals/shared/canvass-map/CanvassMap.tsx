@@ -14,6 +14,7 @@ import { DEFAULT_FILTERS, canRequestHouses, hailUrl, homesUrl, type FilterState 
 import { centralDay, monthsBefore } from "../../../lib/canvass/dates";
 import { GRADE } from "../../../lib/canvass/config";
 import type { HouseCard as HouseCardData } from "../../../lib/canvass/card";
+import { parseScope, scopeLabel, type ScopeOptions } from "../../../lib/canvass/teamKnocks";
 import { HouseCard } from "./HouseCard";
 import { Filters } from "./Filters";
 import { Legend } from "./Legend";
@@ -55,6 +56,7 @@ export function CanvassMap() {
   const [card, setCard] = useState<HouseCardData | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [scopes, setScopes] = useState<ScopeOptions | null>(null);
   const inFlight = useRef<AbortController | null>(null);
 
   const today = useMemo(() => centralDay(new Date()) ?? "", []);
@@ -63,6 +65,13 @@ export function CanvassMap() {
   const tooWide = view !== null && !canRequestHouses(view.bbox);
 
   const onViewChange = useCallback((bbox: Bbox, zoom: number) => setView({ bbox, zoom }), []);
+
+  useEffect(() => {
+    fetch("/api/canvass/teams")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => data && setScopes(data))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/canvass/status")
@@ -142,11 +151,16 @@ export function CanvassMap() {
         : homes.length === 0 && view
           ? "No houses in this view with these filters."
           : `${homes.length.toLocaleString()} houses in view`;
+  const scope = filters.knocksBy ? parseScope(filters.knocksBy) : null;
+  const scopeHint = scope ? `Knocked marks show only knocks by ${scopeLabel(scope)}.` : "";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "calc(100vh - 170px)", minHeight: 480 }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-        <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{hint}</span>
+        <span style={{ color: "var(--text-muted)", fontSize: 13 }}>
+          {hint}
+          {scopeHint && !tooWide && !tooMany ? `. ${scopeHint}` : ""}
+        </span>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={() => setFiltersOpen((open) => !open)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: filtersOpen ? "var(--surface-subtle)" : "var(--surface-default)", color: "var(--text-primary)", cursor: "pointer", fontSize: 13 }}>
           Filters
@@ -155,7 +169,7 @@ export function CanvassMap() {
 
       {filtersOpen && (
         <div style={{ ...panel, padding: 12 }}>
-          <Filters value={filters} onChange={setFilters} today={today} />
+          <Filters value={filters} onChange={setFilters} today={today} scopes={scopes} />
         </div>
       )}
 
