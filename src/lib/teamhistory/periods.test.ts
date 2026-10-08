@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   advanceHistory, moveBoundary, addPastMove, validateHistory, currentPeriod,
-  periodsOverlapping, shiftDay, samePeriods, planRecording, diffWarnings, stickyNoTeamKeys, HISTORY_START, HistoryEditError, type Period,
+  periodsOverlapping, shiftDay, samePeriods, planRecording, diffWarnings, stickyNoTeamKeys, wantsNoTeamWarning, HISTORY_START, HistoryEditError, type Period,
 } from "./periods";
 
 const G = { team: "Gunner McCullough", branch: "Fort Worth" };
@@ -233,5 +233,12 @@ describe("diffWarnings", () => {
     const r = diffWarnings([{ key: "x", active: true, emailedAt: null }], [{ key: "x" }, { key: "y" }], true);
     expect(r.toEmail).toEqual([]);
     expect(r.toCreate).toEqual(["y"]);
+  });
+});
+
+describe("wantsNoTeamWarning", () => {
+  it("skips C-level, warns every other role", () => {
+    expect(wantsNoTeamWarning("c-level")).toBe(false);
+    for (const r of ["sales", "sales-team-lead", "branch-manager", "admin", "marketing", "", undefined]) expect(wantsNoTeamWarning(r)).toBe(true);
   });
 });

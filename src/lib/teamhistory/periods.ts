@@ -177,3 +177,11 @@ export function stickyNoTeamKeys(
 }
 
 export const NO_TEAM_NUMBERS_TEXT = "Their numbers do not count for any team or branch.";
+
+/**
+ * D9 is for people taken off the sales side by mistake. Leadership with no
+ * team is deliberate, so it is never warned about (Youssef, 2026-10-08).
+ */
+export function wantsNoTeamWarning(role: unknown): boolean {
+  return String(role || "") !== "c-level";
+}
