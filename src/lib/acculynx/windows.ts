@@ -58,14 +58,14 @@ function centralOffsetMs(d: Date): number {
 }
 
 // Convert a Central wall-clock time to the matching UTC instant.
-function centralWallToUtc(y: number, mo: number, da: number, h = 0, mi = 0, s = 0): Date {
+export function centralWallToUtc(y: number, mo: number, da: number, h = 0, mi = 0, s = 0): Date {
   const guess = Date.UTC(y, mo - 1, da, h, mi, s);
   const offset = centralOffsetMs(new Date(guess));
   return new Date(guess - offset);
 }
 
 // Central calendar parts (+ weekday) for an instant.
-function centralParts(d: Date) {
+export function centralParts(d: Date) {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone: ZONE, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short",
   });

@@ -9,6 +9,8 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // so an admin can hide any page for this user from User Management.
 export const cLevelSidebarItems: { id: string; label: string; toggleKey?: string; href?: string }[] = [
   { id: "dashboard", label: "My Dashboard", href: "/c-level/dashboard", toggleKey: "dashboard" },
+  // Monthly + weekly DMO (Jay, 2026-10-02). No toggleKey yet: shown to everyone in this role.
+  { id: "dmo", label: "DMO", href: "/c-level/dmo" },
   { id: "canvass-map", label: "Canvass Map", href: "/c-level/canvass-map", toggleKey: "canvassMap" },
   { id: "course-leaderboard", label: "Course Leaderboard", href: "/c-level/course-leaderboard", toggleKey: "trainingCenter" },
   { id: "user-management", label: "User Management", href: "/c-level/user-management", toggleKey: "userManagement" },

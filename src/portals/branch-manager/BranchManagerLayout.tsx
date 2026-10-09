@@ -25,6 +25,7 @@ const BRANCH_MANAGER_VIEW_TOGGLE: Record<string, string> = {
 };
 
 type BranchManagerViewId =
+  | "dmo"
   | "dashboard"
   | "storm-chat"
   | "course-leaderboard"

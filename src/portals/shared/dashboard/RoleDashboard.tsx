@@ -58,12 +58,6 @@ interface GroupPayload {
   leaders: Record<Metric, Leader | null>;
 }
 
-interface LowestKnocksPayload {
-  from: string;
-  to: string;
-  reps: Array<{ id: string; repUserId: string | null; name: string; knocks: number; lastKnockDay: string | null }>;
-}
-
 interface DashboardPayload {
   variant?: string;
   dashboard?: null;
@@ -85,7 +79,6 @@ interface DashboardPayload {
     credentials: Array<{ key: string; pct: number; earned: boolean }> | null;
   };
   news: Array<{ text: string; at: string }> | null;
-  lowestKnocks: LowestKnocksPayload | null;
   crowning: Crowning | null;
 }
 
@@ -323,36 +316,54 @@ function GroupCards(props: { kind: "branch" | "team"; groups: GroupPayload[]; le
   );
 }
 
-function LowestKnocksCard(props: { level: ScopeLevel; filter: RowFilter; card: LowestKnocksPayload; style: React.CSSProperties }): JSX.Element {
-  const { card } = props;
-  const period = { from: card.from, to: card.to };
+interface DmoStatus {
+  text: string;
+  urgent: boolean;
+  href: string;
+  action: string;
+}
+
+/**
+ * The Dashboard's only DMO content: one line about the viewer's own DMO, linking
+ * to the DMO page (Youssef, 2026-10-08: "two pages, two jobs", nothing else
+ * repeats). Fetched on its own so the Dashboard never waits on it, and drawn
+ * only once it arrives: a failure simply leaves the line out.
+ */
+function DmoStatusLine(): JSX.Element | null {
+  const [status, setStatus] = useState<DmoStatus | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/dmo/status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!cancelled && json?.line) setStatus(json.line);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (!status) return null;
   return (
-    <div style={{ ...CARD, ...props.style }}>
-      <CardHead
-        title="Lowest Knocks"
-        sub={`Last 7 days, ${fmtDay(card.from)} to ${fmtDay(card.to)}`}
-        // Lowest first, so the board continues the card's list instead of
-        // flipping it upside down.
-        href={salesLink(props.level, { period, sort: "verifiedKnocks", dir: "asc", filter: props.filter })}
-      />
-      <div style={{ marginTop: 12, paddingTop: 11, borderTop: "1px solid var(--border-default)", display: "flex", flexDirection: "column", gap: 9 }}>
-        {card.reps.map((r, i) => (
-          <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: "var(--text-subtle)", width: 10, flex: "none" }}>{i + 1}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
-              <Link
-                href={salesLink(props.level, { period, sort: "verifiedKnocks", dir: "asc", filter: props.filter, focus: r.id })}
-                style={NAME_LINK}
-              >
-                {stripFormerMarker(r.name)}
-              </Link>
-            </span>
-            <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none" }}>
-              {fmtCount(r.knocks)} {r.knocks === 1 ? "knock" : "knocks"}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div
+      style={{
+        ...CARD,
+        marginBottom: 11,
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        flexWrap: "wrap",
+        borderColor: status.urgent ? "var(--trend-down)" : "var(--border-default)",
+      }}
+    >
+      <span style={{ fontSize: 14, color: status.urgent ? "var(--trend-down)" : "var(--text-muted)" }}>
+        {status.text}
+      </span>
+      <Link href={status.href} style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-fill)", textDecoration: "none" }}>
+        {status.action}
+      </Link>
     </div>
   );
 }
@@ -521,15 +532,11 @@ export function RoleDashboard(): JSX.Element {
   const filter = scopeFilter(scopeRef);
   const month = { window: "month" as const };
 
-  // C-Level reads it before the branch cards; a branch manager or team lead
-  // gets it at the very bottom (Youssef, 2026-09-13). The API never sends it to
-  // a rep, and a card with nobody on it is not drawn.
-  const lowest =
-    data.lowestKnocks && data.lowestKnocks.reps.length > 0 ? data.lowestKnocks : null;
-
   return (
     <div>
       {moment && <WinMoment mark={moment.mark} title={moment.title} line={moment.line} onClose={() => setMoment(null)} />}
+
+      <DmoStatusLine />
 
       {/* Headline: the year, always, whatever the cards below are showing. */}
       <div style={{ ...CARD, marginBottom: 11 }}>
@@ -584,10 +591,6 @@ export function RoleDashboard(): JSX.Element {
           />
         ))}
       </div>
-
-      {lowest && level === "company" ? (
-        <LowestKnocksCard level={level} filter={filter} card={lowest} style={{ marginBottom: 11 }} />
-      ) : null}
 
       {(bd.kind === "branch" || bd.kind === "team") && bd.groups ? (
         bd.groups.length > 0 ? (
@@ -695,9 +698,6 @@ export function RoleDashboard(): JSX.Element {
         ) : null}
       </div>
 
-      {lowest && level !== "company" ? (
-        <LowestKnocksCard level={level} filter={filter} card={lowest} style={{ marginTop: 11 }} />
-      ) : null}
     </div>
   );
 }

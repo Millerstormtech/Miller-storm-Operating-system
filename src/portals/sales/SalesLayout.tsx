@@ -7,7 +7,7 @@ import { resolvePageTitle } from "../../lib/pageTitle";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 
-type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "my-tasks" | "rankings" | "team-structure" | "storm-chat" | "course-leaderboard" | "calendar" | "docs-sops";
+type SalesViewId = "dashboard" | "dmo" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools" | "my-tasks" | "rankings" | "team-structure" | "storm-chat" | "course-leaderboard" | "calendar" | "docs-sops";
 
 type SalesLayoutProps = {
   children: React.ReactNode;

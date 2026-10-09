@@ -26,6 +26,7 @@ const C_LEVEL_VIEW_TOGGLE: Record<string, string> = {
 };
 
 type CLevelViewId =
+  | "dmo"
   | "canvass-map"
   | "dashboard"
   | "storm-chat"

@@ -15,6 +15,8 @@ import { useFeatureToggles } from "../hooks/useFeatureToggles";
 // Goals launches.
 export const salesTeamLeadSidebarItems = [
   { id: "dashboard", label: "My Dashboard", href: "/manager/dashboard", toggleKey: "dashboard" },
+  // Monthly + weekly DMO (Jay, 2026-10-02). No toggleKey yet: shown to everyone in this role.
+  { id: "dmo", label: "My DMO", href: "/manager/dmo" },
   { id: "storm-chat", label: "StormChat", href: "/manager/storm-chat", toggleKey: "stormChat" },
   { id: "course-leaderboard", label: "Course Leaderboard", href: "/manager/course-leaderboard", toggleKey: "trainingCenter" },
   { id: "apps-tools", label: "Tools & Products", href: "/manager/apps-tools", toggleKey: "appsTools" },
