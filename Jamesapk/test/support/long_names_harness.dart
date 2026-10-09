@@ -74,18 +74,33 @@ void expectShownInFull(WidgetTester tester, List<String> names) {
 }
 
 // The app creates its API client once and keeps it, so a single fake server
-// answers every test, from whichever routes the current test set.
+// answers every test, from whichever routes the current test set. A route set
+// to an http.Response is sent as it is (an error reply, say).
 Map<String, Object> _routes = {};
+
+/// Every request the fake server answered in this test, oldest first, so a
+/// test can check what a form sent.
+final sentRequests = <http.Request>[];
+
 final _client = MockClient((req) async {
+  sentRequests.add(req);
   for (final e in _routes.entries) {
-    if (req.url.path == e.key) return http.Response(jsonEncode(e.value), 200, headers: {'content-type': 'application/json'});
+    if (req.url.path != e.key) continue;
+    final reply = e.value;
+    if (reply is http.Response) return reply;
+    return http.Response(jsonEncode(reply), 200, headers: {'content-type': 'application/json'});
   }
   return http.Response('[]', 200);
 });
 
+/// Points the fake server at new routes mid-test (what the next request gets).
+void setRoutes(Map<String, Object> routes) => _routes = routes;
+
 /// Opens [screen] at a typical phone width (360) with the API answered by
 /// [routes]. [height] can be raised so a long list builds every item at once.
-Future<void> pumpScreen(WidgetTester tester, Widget screen, Map<String, Object> routes, {double height = 780}) async {
+/// [appRoutes] are named routes the screen may push (pushNamed('/dmo')).
+Future<void> pumpScreen(WidgetTester tester, Widget screen, Map<String, Object> routes,
+    {double height = 780, Map<String, WidgetBuilder> appRoutes = const {}}) async {
   tester.view.physicalSize = Size(360, height);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -96,8 +111,9 @@ Future<void> pumpScreen(WidgetTester tester, Widget screen, Map<String, Object> 
     'user': jsonEncode({'id': 'me', 'name': longName, 'email': 'me@example.com', 'role': 'sales'}),
   });
   _routes = routes;
+  sentRequests.clear();
   await http.runWithClient(() async {
-    await tester.pumpWidget(MaterialApp(theme: appLightTheme, home: screen));
+    await tester.pumpWidget(MaterialApp(theme: appLightTheme, home: screen, routes: appRoutes));
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }

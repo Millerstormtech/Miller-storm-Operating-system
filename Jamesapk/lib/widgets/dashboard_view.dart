@@ -38,6 +38,11 @@ class _DashboardViewState extends State<DashboardView> {
   String? _userId;
   final GlobalKey<NotificationBellState> _bellKey = GlobalKey<NotificationBellState>();
 
+  // The one DMO line at the top ("Your weekly DMO is due Friday at 1 PM."),
+  // from /api/dmo/status. Fetched on its own so the board never waits on it;
+  // a failure simply leaves the line out, like the web's DmoStatusLine.
+  Map<String, dynamic>? _dmoLine;
+
   // The one celebration on screen right now, if any — crowning ceremony or
   // "your contracts rose", never both at once. Port of RoleDashboard.tsx's
   // moment effect: crowning takes priority, and only a rep (scope "self")
@@ -68,6 +73,7 @@ class _DashboardViewState extends State<DashboardView> {
     // otherwise only ever fetches once, in its own initState. Fire-and-forget
     // so a slow notifications call never delays the dashboard board itself.
     _bellKey.currentState?.refresh();
+    _fetchDmoLine();
     try {
       final res = await api.get(Uri.parse('https://millerstorm.tech/api/dashboard'));
       if (res.statusCode == 200) {
@@ -92,6 +98,46 @@ class _DashboardViewState extends State<DashboardView> {
       // "nobody sold anything", a worse claim than "this didn't load".
       if (mounted) setState(() { _error = true; _loading = false; });
     }
+  }
+
+  Future<void> _fetchDmoLine() async {
+    try {
+      final res = await api.get(Uri.parse('https://millerstorm.tech/api/dmo/status'));
+      if (res.statusCode != 200) return;
+      final line = (jsonDecode(res.body) as Map)['line'];
+      if (mounted) setState(() => _dmoLine = line is Map ? Map<String, dynamic>.from(line) : null);
+    } catch (_) {}
+  }
+
+  // Tapping it opens the DMO screen (the line's web href is for the website).
+  Widget _dmoStatusLine(Map<String, dynamic> line) {
+    final urgent = line['urgent'] == true;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: () => Navigator.pushNamed(context, '/dmo'),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: urgent ? _down : AppColors.border.withOpacity(0.6)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text((line['text'] ?? '').toString(),
+                    style: TextStyle(fontSize: 14, color: urgent ? _down : AppColors.textLight)),
+              ),
+              const SizedBox(width: 12),
+              Text((line['action'] ?? 'Open My DMO').toString(),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _primary)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // Port of RoleDashboard.tsx's celebration effect. "Seen" state lives in
@@ -251,6 +297,7 @@ class _DashboardViewState extends State<DashboardView> {
             ],
           ),
         ),
+        if (_dmoLine != null) _dmoStatusLine(_dmoLine!),
         _heroCard(
           hero,
           rank,

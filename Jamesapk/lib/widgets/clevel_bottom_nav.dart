@@ -47,6 +47,8 @@ class CLevelBottomNav extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 children: [
                   _item(context, Icons.dashboard_outlined, 'My Dashboard', 'dashboard', '/clevel-dashboard'),
+                  // The DMO, right after the Dashboard like the web sidebar (one screen for every role).
+                  _item(context, Icons.checklist_outlined, 'DMO', 'dmo', '/dmo'),
                   _item(context, Icons.leaderboard_outlined, 'Sales Leaderboard', 'leaderboard', '/clevel-rankings'),
                   _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/clevel-stormchat'),
                   _item(context, Icons.apps_outlined, 'Apps & Tools', 'apps', '/clevel-apps-tools-items'),

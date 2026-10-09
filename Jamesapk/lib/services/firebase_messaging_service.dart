@@ -327,6 +327,13 @@ class FirebaseMessagingService {
       return;
     }
 
+    // A weekly or monthly DMO reminder (or "who hasn't sent it", to leaders)
+    // -> open My DMO.
+    if (type == 'dmo_reminder') {
+      _navigatorKey!.currentState!.pushNamed('/dmo');
+      return;
+    }
+
     // StormChat message/mention -> open the chat room (existing behavior).
     final groupId = data['groupId'];
     if (groupId != null && _navigatorKey != null) {

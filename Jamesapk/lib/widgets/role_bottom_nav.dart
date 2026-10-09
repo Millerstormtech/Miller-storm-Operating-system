@@ -14,7 +14,10 @@ import 'marketing_bottom_nav.dart';
 /// role from cache and renders that role's own drawer widget, matching the
 /// same left slide-in menu every other screen shows.
 class RoleBottomNav extends StatefulWidget {
-  const RoleBottomNav({super.key});
+  /// The highlighted item, for a shared screen that has one in every role's
+  /// menu (My DMO); '' for screens reached only as actions.
+  final String active;
+  const RoleBottomNav({super.key, this.active = ''});
 
   @override
   State<RoleBottomNav> createState() => _RoleBottomNavState();
@@ -44,15 +47,15 @@ class _RoleBottomNavState extends State<RoleBottomNav> {
   Widget build(BuildContext context) {
     switch (_role) {
       case 'c-level':
-        return const CLevelBottomNav(active: '');
+        return CLevelBottomNav(active: widget.active);
       case 'branch-manager':
-        return const BranchManagerBottomNav(active: '');
+        return BranchManagerBottomNav(active: widget.active);
       case 'sales-team-lead':
-        return const SalesTeamLeadBottomNav(active: '');
+        return SalesTeamLeadBottomNav(active: widget.active);
       case 'marketing':
-        return const MarketingBottomNav(active: '');
+        return MarketingBottomNav(active: widget.active);
       case 'sales':
-        return const SalesBottomNav(active: '');
+        return SalesBottomNav(active: widget.active);
       default:
         // Still resolving the cached role (or none found) — an empty drawer
         // beats a flash of the wrong role's menu items.

@@ -45,6 +45,8 @@ class BranchManagerBottomNav extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 children: [
                   _item(context, Icons.dashboard_outlined, 'My Dashboard', 'dashboard', '/bm-dashboard'),
+                  // The DMO, right after the Dashboard like the web sidebar (one screen for every role).
+                  _item(context, Icons.checklist_outlined, 'My DMO', 'dmo', '/dmo'),
                   _item(context, Icons.leaderboard_outlined, 'Sales Leaderboard', 'leaderboard', '/bm-rankings'),
                   _item(context, Icons.chat_bubble_outline, 'StormChat', 'stormchat', '/bm-stormchat'),
                   _item(context, Icons.apps_outlined, 'Apps & Tools', 'apps', '/bm-apps-tools-items'),

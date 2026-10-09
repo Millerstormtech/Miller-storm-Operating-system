@@ -108,6 +108,9 @@ class NotificationBellState extends State<NotificationBell> {
           ),
         );
       }
+    } else if (notification.type == 'dmo_reminder' && mounted) {
+      // A DMO reminder opens the recipient's own DMO.
+      Navigator.pushNamed(context, '/dmo');
     }
   }
 
