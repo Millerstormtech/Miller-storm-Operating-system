@@ -1,19 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { monthKey, weekKey, rankDeltas, shouldCelebrateRankMove, rankMoveCopy, weekStartMonday } from "./rankMoves";
+import { monthKey, weekKey, rankDeltas, shouldCelebrateRankMove, rankMoveCopy, weekStartUtc } from "./rankMoves";
 
 describe("monthKey and weekKey", () => {
   it("cuts a day down to its month", () => {
     expect(monthKey("2026-09-16")).toBe("2026-09");
     expect(monthKey("")).toBe("");
   });
-  it("names a week by its Monday", () => {
-    expect(weekKey(new Date(Date.UTC(2026, 8, 14)))).toBe("2026-09-14");
+  it("names a week by its first day", () => {
+    expect(weekKey(new Date(Date.UTC(2026, 8, 12)))).toBe("2026-09-12");
   });
-  it("uses the app's Monday rule", () => {
-    // Wednesday 16 September 2026 belongs to the week of Monday the 14th.
-    expect(weekKey(weekStartMonday(new Date(Date.UTC(2026, 8, 16, 13, 30))))).toBe("2026-09-14");
-    // Sunday belongs to the week that started six days earlier, not the next one.
-    expect(weekKey(weekStartMonday(new Date(Date.UTC(2026, 8, 20, 23, 0))))).toBe("2026-09-14");
+  it("uses the app's Saturday rule", () => {
+    // Wednesday 16 September 2026 belongs to the week of Saturday the 12th.
+    expect(weekKey(weekStartUtc(new Date(Date.UTC(2026, 8, 16, 13, 30))))).toBe("2026-09-12");
+    // Friday belongs to the week that started six days earlier, not the next one.
+    expect(weekKey(weekStartUtc(new Date(Date.UTC(2026, 8, 18, 23, 0))))).toBe("2026-09-12");
   });
 });
 

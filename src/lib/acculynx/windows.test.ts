@@ -1,11 +1,14 @@
 // src/lib/acculynx/windows.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getWindowRange, customRange, previousMonthRange } from "./windows.ts";
+import {
+  getWindowRange, customRange, previousMonthRange,
+  WEEK_START_DAY, WEEK_RESET_CAPTION, daysIntoWeek, weekStartUtc,
+} from "./windows.ts";
 
 // 2026-06-18T15:00:00Z is a Thursday. In US Central (CDT, UTC-5) that is
-// Thu 2026-06-18 10:00 local. Week (Mon start) began Mon 2026-06-15 00:00 CDT
-// = 2026-06-15T05:00:00Z. Month began 2026-06-01 00:00 CDT = 2026-06-01T05:00:00Z.
+// Thu 2026-06-18 10:00 local. Week (Saturday start) began Sat 2026-06-13 00:00
+// CDT = 2026-06-13T05:00:00Z. Month began 2026-06-01 00:00 CDT = 2026-06-01T05:00:00Z.
 const now = new Date("2026-06-18T15:00:00Z");
 
 test("day range starts today 00:00 Central", () => {
@@ -15,10 +18,50 @@ test("day range starts today 00:00 Central", () => {
   assert.equal(end.getTime(), now.getTime());
 });
 
-test("week range starts Monday 00:00 Central", () => {
+test("the reporting week starts on Saturday (Jay, 2026-10-02)", () => {
+  assert.equal(WEEK_START_DAY, "Sat");
+  assert.equal(WEEK_RESET_CAPTION, "Resets Saturdays at 12:00 AM CT.");
+});
+
+test("week range starts Saturday 00:00 Central", () => {
   const { start, end } = getWindowRange("week", now);
-  assert.equal(start.toISOString(), "2026-06-15T05:00:00.000Z");
+  assert.equal(start.toISOString(), "2026-06-13T05:00:00.000Z");
   assert.equal(end.getTime(), now.getTime());
+});
+
+test("on Saturday itself the week starts that midnight", () => {
+  // Sat 2026-06-20 09:00 CDT
+  const { start } = getWindowRange("week", new Date("2026-06-20T14:00:00Z"));
+  assert.equal(start.toISOString(), "2026-06-20T05:00:00.000Z");
+});
+
+test("Friday night still belongs to the week that began the Saturday before", () => {
+  // Fri 2026-06-19 23:30 CDT = 2026-06-20T04:30Z: already Saturday in UTC, still Friday in Central
+  const { start } = getWindowRange("week", new Date("2026-06-20T04:30:00Z"));
+  assert.equal(start.toISOString(), "2026-06-13T05:00:00.000Z");
+});
+
+test("a week that straddles the November DST change starts at the CDT midnight", () => {
+  // Thu 2026-11-05 10:00 CST. The week began Sat 2026-10-31 00:00 CDT (UTC-5).
+  const { start } = getWindowRange("week", new Date("2026-11-05T16:00:00Z"));
+  assert.equal(start.toISOString(), "2026-10-31T05:00:00.000Z");
+});
+
+test("daysIntoWeek counts from Saturday", () => {
+  assert.equal(daysIntoWeek("Sat"), 0);
+  assert.equal(daysIntoWeek("Sun"), 1);
+  assert.equal(daysIntoWeek("Fri"), 6);
+  assert.equal(daysIntoWeek("Mon", "Mon"), 0); // the start day is a parameter
+});
+
+test("weekStartUtc keys a week by its Saturday, at UTC midnight", () => {
+  // Wed 2026-09-16 -> Sat 2026-09-12
+  assert.equal(weekStartUtc(new Date(Date.UTC(2026, 8, 16, 13, 30))).toISOString(), "2026-09-12T00:00:00.000Z");
+  // Saturday maps to itself; Friday to the Saturday before
+  assert.equal(weekStartUtc(new Date(Date.UTC(2026, 8, 19, 0, 0))).toISOString(), "2026-09-19T00:00:00.000Z");
+  assert.equal(weekStartUtc(new Date(Date.UTC(2026, 8, 18, 23, 0))).toISOString(), "2026-09-12T00:00:00.000Z");
+  // across a month boundary: Tue 2026-09-01 -> Sat 2026-08-29
+  assert.equal(weekStartUtc(new Date(Date.UTC(2026, 8, 1))).toISOString(), "2026-08-29T00:00:00.000Z");
 });
 
 test("month range starts day 1 00:00 Central", () => {

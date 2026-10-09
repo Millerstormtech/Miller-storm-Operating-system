@@ -17,6 +17,7 @@ import { RankStrip } from "./RankStrip";
 // ConversionStrip is deliberately not imported: see the note where it used to
 // render, further down this file.
 import { MarketingHome } from "./MarketingHome";
+import { WEEK_RESET_CAPTION } from "../../../lib/acculynx/windows";
 
 // The three-period toggle deliberately excludes "day" even though the API's
 // Window type supports it (spec §5: "Week / Month / Year, defaulting to Month").
@@ -449,7 +450,7 @@ export function ScoreboardHome(props: ScoreboardHomeProps = {}): JSX.Element {
 
         {windowSel === "week" && (
           <div style={{ fontSize: 12.5, color: "var(--text-muted)", textAlign: "right", marginTop: -8 }}>
-            Resets Mondays at 12:00 AM CT.
+            {WEEK_RESET_CAPTION}
           </div>
         )}
 

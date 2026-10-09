@@ -11,7 +11,7 @@ import { LeaderboardSnapshotModel } from "../../../src/lib/models/LeaderboardSna
 import { UserModel } from "../../../src/lib/models/User";
 import { publishedItems } from "../../../src/lib/training/scoring";
 import {
-  weekStartMonday,
+  weekStartUtc,
   computeRankDeltas,
   type OverallResponse,
 } from "../../../src/lib/training/board";
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Weekly snapshot: written by the FIRST board load of each week (decided
   // 2026-07-23; deliberately no cron). The unique {weekOf,userId} index makes
   // concurrent first-loads collide harmlessly. Must never fail the request.
-  const weekOf = weekStartMonday(new Date());
+  const weekOf = weekStartUtc(new Date());
   try {
     const exists = await LeaderboardSnapshotModel.exists({ weekOf });
     if (!exists && data.started.length > 0) {

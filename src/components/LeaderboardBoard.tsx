@@ -20,6 +20,7 @@ import {
   type SalesExportContext,
   type SalesExportRow,
 } from "../lib/report/salesBoard";
+import { WEEK_RESET_CAPTION } from "../lib/acculynx/windows";
 
 type Window = "day" | "week" | "month" | "year";
 // YTD podium places. Keyed by place number rather than array index so the
@@ -704,7 +705,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
 
       {!isCustom && window === "week" && (
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: -6, marginBottom: 14 }}>
-          Resets Mondays at 12:00 AM CT.
+          {WEEK_RESET_CAPTION}
         </div>
       )}
 

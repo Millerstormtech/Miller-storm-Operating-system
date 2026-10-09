@@ -6,7 +6,7 @@ import {
   teamStandings,
   teamMembers,
   teamSummaryFor,
-  weekStartMonday,
+  weekStartUtc,
   computeRankDeltas,
   courseHeaderStats,
   standingsInBranch,
@@ -155,29 +155,29 @@ describe("teamMembers", () => {
   });
 });
 
-describe("weekStartMonday", () => {
-  it("maps every weekday to that week's Monday at UTC midnight", () => {
-    // Wed 2026-07-22 15:30 UTC -> Mon 2026-07-20 00:00 UTC
-    expect(weekStartMonday(new Date(Date.UTC(2026, 6, 22, 15, 30))).toISOString()).toBe(
-      "2026-07-20T00:00:00.000Z"
+describe("weekStartUtc (training snapshots)", () => {
+  it("maps every weekday to that week's Saturday at UTC midnight", () => {
+    // Wed 2026-07-22 15:30 UTC -> Sat 2026-07-18 00:00 UTC
+    expect(weekStartUtc(new Date(Date.UTC(2026, 6, 22, 15, 30))).toISOString()).toBe(
+      "2026-07-18T00:00:00.000Z"
     );
-    // Monday maps to itself
-    expect(weekStartMonday(new Date(Date.UTC(2026, 6, 20, 0, 0))).toISOString()).toBe(
-      "2026-07-20T00:00:00.000Z"
+    // Saturday maps to itself
+    expect(weekStartUtc(new Date(Date.UTC(2026, 6, 18, 0, 0))).toISOString()).toBe(
+      "2026-07-18T00:00:00.000Z"
     );
   });
 
-  it("maps Sunday to the PREVIOUS Monday (weeks start Monday)", () => {
-    // Sun 2026-07-26 -> Mon 2026-07-20
-    expect(weekStartMonday(new Date(Date.UTC(2026, 6, 26, 10, 0))).toISOString()).toBe(
-      "2026-07-20T00:00:00.000Z"
+  it("maps Friday to the PREVIOUS Saturday (weeks run Saturday to Friday)", () => {
+    // Fri 2026-07-24 -> Sat 2026-07-18
+    expect(weekStartUtc(new Date(Date.UTC(2026, 6, 24, 10, 0))).toISOString()).toBe(
+      "2026-07-18T00:00:00.000Z"
     );
   });
 
   it("crosses month boundaries correctly", () => {
-    // Sat 2026-08-01 -> Mon 2026-07-27
-    expect(weekStartMonday(new Date(Date.UTC(2026, 7, 1))).toISOString()).toBe(
-      "2026-07-27T00:00:00.000Z"
+    // Thu 2026-10-01 -> Sat 2026-09-26
+    expect(weekStartUtc(new Date(Date.UTC(2026, 9, 1))).toISOString()).toBe(
+      "2026-09-26T00:00:00.000Z"
     );
   });
 });
