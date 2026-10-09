@@ -181,11 +181,12 @@ export function CanvassMap() {
 
       <div style={{ position: "relative", flex: 1, minHeight: 360, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-default)" }}>
         <MapCanvas homes={homes} clusters={clusters} clusterCellDegrees={clusterCellDegrees} hail={hail} selectedId={selectedId} onViewChange={onViewChange} onSelectHome={setSelectedId} />
-        <div style={{ position: "absolute", left: 10, bottom: 28, maxWidth: "min(320px, calc(100% - 20px))" }}>
+        {/* zIndex: above the dots and hail, which the map draws in its own positioned layer. */}
+        <div style={{ position: "absolute", left: 10, bottom: 28, maxWidth: "min(320px, calc(100% - 20px))", zIndex: 3 }}>
           <Legend />
         </div>
         {card && (
-          <div style={{ position: "absolute", right: 10, top: 10, bottom: 28, width: "min(360px, calc(100% - 20px))", overflowY: "auto", ...panel }}>
+          <div style={{ position: "absolute", right: 10, top: 10, bottom: 28, width: "min(360px, calc(100% - 20px))", overflowY: "auto", zIndex: 3, ...panel }}>
             <HouseCard card={card} onClose={() => setSelectedId(null)} />
           </div>
         )}
