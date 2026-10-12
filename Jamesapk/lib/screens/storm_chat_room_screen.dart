@@ -1639,8 +1639,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 minLines: 1,
                                 maxLines: 4,
                                 keyboardType: TextInputType.multiline,
-                                textInputAction: TextInputAction.send,
-                                onSubmitted: (_) => _sendMessage(),
+                                // The keyboard's key is Return (a new line);
+                                // only the red button sends.
+                                textInputAction: TextInputAction.newline,
                               ),
                             ),
                           ),

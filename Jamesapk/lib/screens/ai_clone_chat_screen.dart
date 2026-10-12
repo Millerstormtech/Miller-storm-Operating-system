@@ -767,8 +767,9 @@ class _AiCloneChatScreenState extends State<AiCloneChatScreen> {
                         fillColor: _surfaceAlt,
                       ),
                       maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
+                      keyboardType: TextInputType.multiline,
+                      // Return adds a new line, like Storm Chat; the send button sends.
+                      textInputAction: TextInputAction.newline,
                     ),
                   ),
                   ),
