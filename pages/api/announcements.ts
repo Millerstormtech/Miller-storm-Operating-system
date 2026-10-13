@@ -6,6 +6,7 @@ import { requireUser, allowMethods } from "../../src/lib/auth";
 import { sendPushNotificationToMultiple } from "../../src/lib/firebase-admin";
 import { resolveAudience, isResolveError, type TeamLeadCandidate } from "../../src/lib/announcements/audience";
 import { BRANCHES } from "../../src/lib/repcard/branches";
+import { pastAnnouncementsFor, toPastAnnouncement } from "../../src/lib/announcements/history";
 
 // Company-wide (or scoped) announcements.
 //
@@ -18,6 +19,7 @@ import { BRANCHES } from "../../src/lib/repcard/branches";
 //   GET  ?options=1                  → audience picker options for THIS caller's role
 //   GET  ?audienceType=...&branches=...&teamLeadIds=...  → the audience size, for the composer's confirm step
 //   GET  ?history=1                  → every announcement ever sent, newest first
+//   GET  ?history=1&mine=1           → the bell's Past Announcements: company-wide ones plus any sent to the caller
 //   POST                             → send the announcement; returns the recipient + push counts
 //
 // AUDIENCE RULES — the actual scoping logic lives in
@@ -43,6 +45,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // rows back to one entry per stamp (per-user rows may have been dismissed and
   // deleted, but an announcement survives as long as ANY recipient's row does).
   if (req.method === "GET" && req.query.history) {
+    // ?mine=1 (the bell): company-wide announcements plus the ones the caller
+    // was sent, never another team's or branch's. `received` marks the
+    // caller's own row, so the viewer filter runs before the cap (rules:
+    // src/lib/announcements/history.ts).
+    const mine = !!req.query.mine;
     const history = await NotificationModel.aggregate([
       { $match: { type: "announcement" } },
       { $addFields: { stamp: { $arrayElemAt: [{ $split: ["$id", "-"] }, 1] } } },
@@ -55,19 +62,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           postedByName: { $first: "$metadata.postedByName" },
           audienceLabel: { $first: "$metadata.audienceLabel" },
           createdAt: { $first: "$createdAt" },
+          received: { $max: { $cond: [{ $eq: ["$userId", auth.sub] }, 1, 0] } },
         },
       },
       { $sort: { createdAt: -1 } },
-      { $limit: 100 },
+      ...(mine ? [] : [{ $limit: 100 }]),
     ]);
-    return res.status(200).json(history.map((h: any) => ({
-      title: h.title,
-      message: h.message,
-      link: h.link || "",
-      postedByName: h.postedByName || "",
-      audienceLabel: h.audienceLabel || "Everyone",
-      createdAt: h.createdAt,
-    })));
+    return res.status(200).json(mine ? pastAnnouncementsFor(history) : history.map(toPastAnnouncement));
   }
 
   // Composer roles: leadership only. Everyone else (sales, marketing) only

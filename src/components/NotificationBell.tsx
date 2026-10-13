@@ -27,6 +27,27 @@ type Notification = {
   };
 };
 
+// An announcement as the "Past Announcements" tab lists it (from
+// /api/announcements?history=1&mine=1): company-wide ones, plus any team or
+// branch announcement this person was sent, kept after they've been read.
+type PastAnnouncement = {
+  title: string;
+  message: string;
+  link: string;
+  postedByName: string;
+  audienceLabel: string;
+  createdAt: string;
+};
+
+// An announcement's link opens inside the app when it is one of our pages,
+// otherwise in a new tab; anything that isn't a web address is not offered.
+function announcementLinkKind(link: string): "internal" | "external" | null {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  if (link.startsWith("/") || (origin && link.startsWith(origin))) return "internal";
+  if (/^https?:\/\//i.test(link)) return "external";
+  return null;
+}
+
 // How often (ms) we re-check the server for newly-arrived notifications.
 const POLL_INTERVAL = 20000;
 
@@ -35,6 +56,9 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  const [tab, setTab] = useState<"notifications" | "announcements">("notifications");
+  const [past, setPast] = useState<PastAnnouncement[] | null>(null);
+  const [pastFailed, setPastFailed] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -54,6 +78,36 @@ export function NotificationBell({ userId }: { userId: string }) {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // Past Announcements loads each time its tab is shown, so a new one is there
+  // without a page refresh.
+  useEffect(() => {
+    if (showDropdown && tab === "announcements") fetchPastAnnouncements();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDropdown, tab]);
+
+  async function fetchPastAnnouncements() {
+    try {
+      const res = await fetch("/api/announcements?history=1&mine=1");
+      if (!res.ok) throw new Error(String(res.status));
+      setPast(await res.json());
+      setPastFailed(false);
+    } catch (error) {
+      console.error('Failed to fetch past announcements:', error);
+      setPastFailed(true);
+    }
+  }
+
+  function openAnnouncementLink(link: string) {
+    const kind = announcementLinkKind(link);
+    if (kind === "internal") {
+      setShowDropdown(false);
+      const origin = window.location.origin;
+      router.push(link.startsWith("/") ? link : link.slice(origin.length) || "/");
+    } else if (kind === "external") {
+      window.open(link, "_blank", "noopener,noreferrer");
+    }
+  }
 
   async function fetchNotifications() {
     try {
@@ -240,17 +294,92 @@ export function NotificationBell({ userId }: { userId: string }) {
           zIndex: 1000,
           marginTop: 8
         }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Notifications</span>
-            {notifications.length > 0 && (
+          {/* Two tabs: what's new, and every announcement kept for later. Sticky so
+              they stay in reach while the list scrolls. */}
+          <div style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--surface-default)', display: 'flex', borderBottom: '1px solid var(--border-default)' }}>
+            {([
+              ["notifications", unreadCount > 0 ? `Notifications (${unreadCount > 99 ? '99+' : unreadCount})` : "Notifications"],
+              ["announcements", "Past Announcements"],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                style={{
+                  flex: 1,
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: `2px solid ${tab === key ? 'var(--brand-fill)' : 'transparent'}`,
+                  padding: '12px 8px 10px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: tab === key ? 'var(--text-primary)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {tab === "announcements" ? (
+            past === null ? (
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-subtle)', fontSize: 14 }}>
+                {pastFailed ? (
+                  <>
+                    Couldn't load past announcements.{" "}
+                    <button
+                      type="button"
+                      onClick={fetchPastAnnouncements}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--brand-fill)', padding: 0 }}
+                    >
+                      Try again
+                    </button>
+                  </>
+                ) : (
+                  "Loading..."
+                )}
+              </div>
+            ) : past.length === 0 ? (
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-subtle)', fontSize: 14 }}>
+                No announcements yet
+              </div>
+            ) : (
+              past.map((a, i) => (
+                <div key={`${a.createdAt}-${i}`} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>
+                    📢 {a.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                    {a.message}
+                  </div>
+                  {a.link && announcementLinkKind(a.link) && (
+                    <button
+                      type="button"
+                      onClick={() => openAnnouncementLink(a.link)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--brand-fill)', padding: 0, marginBottom: 6 }}
+                    >
+                      Learn more
+                    </button>
+                  )}
+                  <div style={{ fontSize: 11, color: 'var(--text-subtle)' }}>
+                    {[a.postedByName && `From ${a.postedByName}`, a.audienceLabel, new Date(a.createdAt).toLocaleString()].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+              ))
+            )
+          ) : (
+          <>
+          {notifications.length > 0 && (
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={markAllAsRead}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--brand-fill)', padding: 0 }}
               >
                 Mark all as read
               </button>
-            )}
-          </div>
+            </div>
+          )}
           {notifications.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-subtle)', fontSize: 14 }}>
               No notifications
@@ -285,6 +414,8 @@ export function NotificationBell({ userId }: { userId: string }) {
                 </div>
               </div>
             ))
+          )}
+          </>
           )}
         </div>
       )}
