@@ -159,8 +159,13 @@ export function NewCoursePopup() {
       : "Got it"
     : "▶ Check it out";
 
+  // Never taller than the window: a long announcement scrolls inside the
+  // message (class ncp-body) while the heading, Close and the action button
+  // stay on screen. The height cap lives in the class below (100dvh where
+  // supported, so a phone's browser bar can't hide the button).
   return (
     <div
+      className="ncp"
       style={{
         position: "fixed",
         top: 84,
@@ -168,6 +173,8 @@ export function NewCoursePopup() {
         zIndex: 4000,
         width: 340,
         maxWidth: "calc(100vw - 32px)",
+        display: "flex",
+        flexDirection: "column",
         background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
         color: "var(--text-inverse)",
         borderRadius: 14,
@@ -204,20 +211,36 @@ export function NewCoursePopup() {
       </button>
 
       {isAnnouncement && (
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, opacity: 0.9, marginBottom: 4, paddingRight: 56 }}>
+        <div style={{ flex: "none", fontSize: 11, fontWeight: 800, letterSpacing: 0.6, opacity: 0.9, marginBottom: 4, paddingRight: 56 }}>
           📢 ANNOUNCEMENT{notif.metadata?.postedByName ? ` · ${notif.metadata.postedByName}` : ""}
         </div>
       )}
 
-      <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6, paddingRight: isAnnouncement ? 4 : 56 }}>
+      <div style={{ flex: "none", fontSize: 17, fontWeight: 800, marginBottom: 6, paddingRight: isAnnouncement ? 4 : 56 }}>
         {notif.title}
       </div>
-      <div style={{ fontSize: 13.5, lineHeight: 1.5, opacity: 0.95, marginBottom: courseName ? 8 : 14, whiteSpace: "pre-wrap" }}>
+      <div
+        className="ncp-body"
+        style={{
+          flex: "1 1 auto",
+          minHeight: 0,
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          paddingRight: 6,
+          fontSize: 13.5,
+          lineHeight: 1.5,
+          opacity: 0.95,
+          marginBottom: courseName ? 8 : 14,
+          whiteSpace: "pre-wrap",
+          overflowWrap: "anywhere",
+        }}
+      >
         {notif.message}
       </div>
       {courseName && (
         <div
           style={{
+            flex: "none",
             fontSize: 13,
             fontWeight: 700,
             background: "rgb(var(--white-rgb) / 0.18)",
@@ -234,6 +257,7 @@ export function NewCoursePopup() {
         type="button"
         onClick={onAction}
         style={{
+          flex: "none",
           width: "100%",
           background: "var(--surface-default)",
           color: "#b91c1c",
@@ -249,6 +273,24 @@ export function NewCoursePopup() {
       </button>
 
       <style jsx>{`
+        .ncp {
+          max-height: calc(100vh - 108px);
+          max-height: calc(100dvh - 108px);
+        }
+        /* A visible scrollbar, so a long message reads as "there's more". */
+        .ncp-body::-webkit-scrollbar {
+          width: 6px;
+        }
+        .ncp-body::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.45);
+          border-radius: 3px;
+        }
+        @supports (-moz-appearance: none) {
+          .ncp-body {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.45) transparent;
+          }
+        }
         @keyframes ncpSlideIn {
           from {
             opacity: 0;
