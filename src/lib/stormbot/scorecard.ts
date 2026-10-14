@@ -28,6 +28,12 @@ export function scorecardWindow(now: Date): { start: Date; end: Date; date: stri
   return { start, end, date };
 }
 
+// True once the window's end (22:00 Central) has passed. Before that the window
+// reaches into the future and a post would be a partial day.
+export function scorecardDue(now: Date): boolean {
+  return now.getTime() >= scorecardWindow(now).end.getTime();
+}
+
 export function scorecardDateLabel(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
   // Noon UTC is the same calendar day in Central, so formatting in UTC is safe.

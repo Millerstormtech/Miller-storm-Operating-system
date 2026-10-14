@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  buildScorecard, scorecardWindow, scorecardDateLabel,
+  buildScorecard, scorecardWindow, scorecardDateLabel, scorecardDue,
   SCORECARD_HYPE, SCORECARD_SIGNOFFS,
 } from "./scorecard";
 
@@ -117,5 +117,17 @@ describe("buildScorecard", () => {
     const s = buildScorecard({ date, wins: [w("a", "Ann", "filed")], knockers: [] })!;
     const last = s.text.trim().split("\n").pop()!;
     expect(SCORECARD_SIGNOFFS).toContain(last);
+  });
+});
+
+describe("scorecardDue", () => {
+  it("is false at 21:59 Central (window end is still in the future)", () => {
+    expect(scorecardDue(new Date("2026-10-15T02:59:00Z"))).toBe(false);
+  });
+  it("is true at exactly 22:00 Central", () => {
+    expect(scorecardDue(new Date("2026-10-15T03:00:00Z"))).toBe(true);
+  });
+  it("is true at 23:30 Central", () => {
+    expect(scorecardDue(new Date("2026-10-15T04:30:00Z"))).toBe(true);
   });
 });

@@ -93,3 +93,10 @@ export function monthlyContractKingMessage(
   const closer = pickCloser(KING_CLOSERS, seed);
   return `👑 ${monthLabel} Contract King: ${name.trim()}, with ${formatAmount(amountDollars)} in contracts. ${closer}`;
 }
+
+// First `max` characters of a push preview. Counts by code point (Array.from),
+// not UTF-16 unit like substring, so an emoji at the cut is kept whole instead
+// of being split into a lone surrogate that phones show as a "�".
+export function pushPreview(text: string, max = 100): string {
+  return Array.from(text).slice(0, max).join("");
+}

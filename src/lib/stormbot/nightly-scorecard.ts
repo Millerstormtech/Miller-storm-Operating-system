@@ -9,14 +9,15 @@ import { logToDb } from "../models/SystemLog";
 import { computeSalesRows } from "../leaderboard/compute";
 import { getWindowRange } from "../acculynx/windows";
 import { isAnnounceableRep } from "./eligibility";
-import { buildScorecard, scorecardWindow, type ScorecardWin, type ScorecardKnocker } from "./scorecard";
+import { buildScorecard, scorecardWindow, scorecardDue, type ScorecardWin, type ScorecardKnocker } from "./scorecard";
 import { announce } from "./announce";
 
 export interface NightlyScorecardResult {
-  status: "posted" | "quiet" | "already-posted" | "off" | "post-failed" | "error";
+  status: "posted" | "quiet" | "already-posted" | "off" | "too-early" | "post-failed" | "error";
   date: string;
   text?: string;
   error?: string;
+  mentionIds?: string[];
 }
 
 // Kill switch only; on by default (live on deploy, Youssef 2026-10-14).
@@ -28,6 +29,9 @@ export async function runNightlyScorecard(now: Date = new Date()): Promise<Night
   const { start, end, date } = scorecardWindow(now);
   try {
     if (!scorecardEnabled()) return { status: "off", date };
+    // A manual call before 22:00 Central would post a partial day and burn the
+    // date's row, so the real 22:00 run would be refused as already-posted.
+    if (!scorecardDue(now)) return { status: "too-early", date };
     if (await ScorecardPostModel.exists({ date })) return { status: "already-posted", date };
 
     // Wins = exactly what Storm Bot already announced in the window, so the
@@ -89,7 +93,7 @@ export async function runNightlyScorecard(now: Date = new Date()): Promise<Night
 
     const posted = await announce(card.text, card.mentionIds);
     await logToDb(posted ? "info" : "error", "SCORECARD", `${date}: ${posted ? "posted" : "post failed"}: ${card.text}`);
-    return { status: posted ? "posted" : "post-failed", date, text: card.text };
+    return { status: posted ? "posted" : "post-failed", date, text: card.text, mentionIds: card.mentionIds };
   } catch (e: any) {
     try { await logToDb("error", "SCORECARD", `${date}: failed: ${e?.message}`); } catch { console.error("[SCORECARD]", e); }
     return { status: "error", date, error: e?.message };

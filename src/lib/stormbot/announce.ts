@@ -14,6 +14,7 @@ import ChatMessage from "../models/ChatMessage";
 import { UserModel } from "../models/User";
 import { sendPushNotificationToMultiple } from "../firebase-admin";
 import { logToDb } from "../models/SystemLog";
+import { pushPreview } from "./copy";
 
 // Main Chat 2026 (public, top-level, whole company), targeted by _id so renaming
 // the group never breaks this. Verified against production 2026-08-03.
@@ -51,7 +52,7 @@ export async function announce(text: string, mentionIds: string[] = []): Promise
     // phone gets the push.
     const memberIds: string[] = group.members || [];
     const title = `New message in ${group.name}`;
-    const body = `Miller Storm: ${text.substring(0, 100)}`;
+    const body = `Miller Storm: ${pushPreview(text)}`;
 
     try {
       const tokenUsers: any[] = await UserModel.find({

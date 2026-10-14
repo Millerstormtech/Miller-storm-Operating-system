@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   pickCloser,
+  pushPreview,
   formatAmount,
   courseCelebrationMessage,
   claimFiledMessage,
@@ -150,5 +151,20 @@ describe("mentionTag", () => {
   });
   it("claim post: the tag is followed by a space (chat matcher needs \\s after the name)", () => {
     expect(claimFiledMessage(" Jett Miller ", 1, "j")).toMatch(/@Jett Miller\s/);
+  });
+});
+
+describe("pushPreview", () => {
+  it("keeps an emoji whole at the cut point", () => {
+    expect(pushPreview("a".repeat(99) + "🔒xyz")).toBe("a".repeat(99) + "🔒");
+  });
+  it("counts code points, never ending on a lone high surrogate", () => {
+    const r = pushPreview("🔒".repeat(150));
+    expect(Array.from(r).length).toBe(100);
+    const last = r.charCodeAt(r.length - 1);
+    expect(last >= 0xd800 && last <= 0xdbff).toBe(false);
+  });
+  it("returns short text unchanged", () => {
+    expect(pushPreview("hello")).toBe("hello");
   });
 });

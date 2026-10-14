@@ -28,8 +28,11 @@ const PORT = process.env.PORT || 6790;
 const URL = `http://127.0.0.1:${PORT}/api/stormbot/nightly-scorecard`;
 const SECRET = process.env.ACCULYNX_SYNC_SECRET;
 
-const SCORECARD_HOUR = Number(process.env.SCORECARD_HOUR ?? 22); // 24h, Central
-const CHECK_INTERVAL = 60 * 1000;                                 // re-check every minute
+// Must match SCORECARD_HOUR in src/lib/stormbot/scorecard.ts (the scorecard
+// window's end). Deliberately not an env knob: if the two differ, wins between
+// the two times would land in no scorecard.
+const SCORECARD_HOUR = 22;            // 24h, Central
+const CHECK_INTERVAL = 60 * 1000;     // re-check every minute
 
 // Central wall-clock parts, read explicitly rather than via the server's local
 // time. The VPS timezone is not guaranteed to be Central, and "10pm Central" is
