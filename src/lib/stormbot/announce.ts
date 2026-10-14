@@ -24,13 +24,18 @@ export const CELEBRATION_GROUP_ID =
 
 // Returns true if the message was posted. Never throws: a failed celebration
 // must not take down the save or sync that triggered it.
-export async function announce(text: string): Promise<boolean> {
+export async function announce(text: string, mentionIds: string[] = []): Promise<boolean> {
   try {
     const group: any = await ChatGroup.findById(CELEBRATION_GROUP_ID).lean();
     if (!group) {
       await logToDb("error", "CELEBRATION", `Celebration group ${CELEBRATION_GROUP_ID} not found; skipping`);
       return false;
     }
+
+    // Only members can be mentioned (same rule as a person's post). The ids are
+    // User Mongo _ids, matching what the chat API stores in `mentions`.
+    const memberSet = new Set((group.members || []).map((m: any) => String(m)));
+    const mentions = mentionIds.filter((id) => memberSet.has(String(id)));
 
     const msg: any = await ChatMessage.create({
       groupId: CELEBRATION_GROUP_ID,
@@ -39,6 +44,7 @@ export async function announce(text: string): Promise<boolean> {
       senderRole: "system",
       message: text,
       messageType: "text",
+      mentions,
     });
 
     // group.members hold Mongo _ids; the bot is not a member, so every member's

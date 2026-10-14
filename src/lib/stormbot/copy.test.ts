@@ -6,6 +6,7 @@ import {
   claimFiledMessage,
   contractSignedMessage,
   monthlyContractKingMessage,
+  mentionTag,
   COURSE_CLOSERS,
   CLAIM_CLOSERS,
   CONTRACT_CLOSERS,
@@ -70,7 +71,7 @@ describe("courseCelebrationMessage", () => {
 describe("claimFiledMessage", () => {
   it("renders the plural form", () => {
     const msg = claimFiledMessage("Jett Miller", 7, "job-1");
-    expect(msg).toContain("📋 Jett Miller just filed a claim! That's 7 claims this month. ");
+    expect(msg).toContain("📋 @Jett Miller just filed a claim! That's 7 claims this month. ");
     expect(CLAIM_CLOSERS).toContain(msg.split("month. ")[1]);
   });
 
@@ -86,13 +87,13 @@ describe("claimFiledMessage", () => {
 describe("contractSignedMessage", () => {
   it("includes the dollar amount when it is known", () => {
     const msg = contractSignedMessage("Jett Miller", 4, 28400, "job-1");
-    expect(msg).toContain("💰 Jett Miller just signed a $28,400 contract! That's 4 contracts this month. ");
+    expect(msg).toContain("💰 @Jett Miller just signed a $28,400 contract! That's 4 contracts this month. ");
     expect(CONTRACT_CLOSERS).toContain(msg.split("month. ")[1]);
   });
 
   it("falls back to the amount-free wording when financials are not entered yet", () => {
     const msg = contractSignedMessage("Jett Miller", 4, 0, "job-1");
-    expect(msg).toContain("✍️ Jett Miller just signed a contract! That's 4 contracts this month. ");
+    expect(msg).toContain("✍️ @Jett Miller just signed a contract! That's 4 contracts this month. ");
     expect(msg).not.toContain("$");
   });
 
@@ -140,5 +141,14 @@ describe("monthlyContractKingMessage", () => {
 
   it("never contains an em dash", () => {
     expect(monthlyContractKingMessage("A", 100, "August 2026", "s")).not.toContain("—");
+  });
+});
+
+describe("mentionTag", () => {
+  it("prefixes @ and trims so the chat's @Name matcher finds it", () => {
+    expect(mentionTag("  Jett Miller ")).toBe("@Jett Miller");
+  });
+  it("claim post: the tag is followed by a space (chat matcher needs \\s after the name)", () => {
+    expect(claimFiledMessage(" Jett Miller ", 1, "j")).toMatch(/@Jett Miller\s/);
   });
 });

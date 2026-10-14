@@ -46,10 +46,17 @@ export function courseCelebrationMessage(
   return `🎉 ${name.trim()} just passed the ${courseTitle.trim()} Course! That's ${done} of ${total} courses done. ${closer}`;
 }
 
+// Storm Chat recognises a mention as "@<exact User.name>" followed by a space or
+// the end of the text (pages/api/storm-chat/messages/[groupId].ts). Callers must
+// keep a space after the tag; never glue punctuation to it.
+export function mentionTag(name: string): string {
+  return `@${name.trim()}`;
+}
+
 export function claimFiledMessage(name: string, monthCount: number, seed: string): string {
   const closer = pickCloser(CLAIM_CLOSERS, seed);
   const noun = plural(monthCount, "claim", "claims");
-  return `📋 ${name.trim()} just filed a claim! That's ${monthCount} ${noun} this month. ${closer}`;
+  return `📋 ${mentionTag(name)} just filed a claim! That's ${monthCount} ${noun} this month. ${closer}`;
 }
 
 // amountDollars <= 0 means AccuLynx has no approved value on the job yet. Announce
@@ -64,9 +71,9 @@ export function contractSignedMessage(
   const noun = plural(monthCount, "contract", "contracts");
   const tail = `That's ${monthCount} ${noun} this month. ${closer}`;
   if (amountDollars > 0) {
-    return `💰 ${name.trim()} just signed a ${formatAmount(amountDollars)} contract! ${tail}`;
+    return `💰 ${mentionTag(name)} just signed a ${formatAmount(amountDollars)} contract! ${tail}`;
   }
-  return `✍️ ${name.trim()} just signed a contract! ${tail}`;
+  return `✍️ ${mentionTag(name)} just signed a contract! ${tail}`;
 }
 
 // The month's Contract King, posted on the 1st for the month that just ended.

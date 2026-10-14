@@ -34,7 +34,7 @@ export async function celebrateSalesFact(fact: {
     if (!repUserId) return;
 
     const user: any = await UserModel.findOne({ id: repUserId })
-      .select("id name email deleted suspended")
+      .select("_id id name email deleted suspended")
       .lean();
     if (!isAnnounceableRep(user)) return;
 
@@ -69,11 +69,15 @@ export async function celebrateSalesFact(fact: {
       occurredAt: { $gte: monthStart(new Date(occurredAt)) },
     });
 
-    const name = user.name || user.email || "";
-    const text =
+    // Tag only a real name: an email fallback can never match the chat's
+    // @Name matcher, so it is printed plain.
+    const hasName = !!(user.name && String(user.name).trim());
+    const name = hasName ? user.name : user.email || "";
+    let text =
       metric === "filed"
         ? claimFiledMessage(name, monthCount, jobId)
         : contractSignedMessage(name, monthCount, amount, jobId);
+    if (!hasName) text = text.replace(`@${name.trim()}`, name.trim());
 
     // The flag is checked HERE, not at the top, and deliberately so. Checking it
     // first would skip the dry run entirely and produce no measurement. Writing
@@ -105,7 +109,7 @@ export async function celebrateSalesFact(fact: {
       throw e;
     }
 
-    const posted = await announce(text);
+    const posted = await announce(text, hasName ? [String(user._id)] : []);
     if (posted) {
       await logToDb("info", "CELEBRATION", `announced ${factKey}: ${text}`);
     }
