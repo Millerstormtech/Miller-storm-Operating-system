@@ -282,13 +282,13 @@ export function NewCoursePopup() {
           width: 6px;
         }
         .ncp-body::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.45);
+          background: rgb(var(--white-rgb) / 0.45);
           border-radius: 3px;
         }
         @supports (-moz-appearance: none) {
           .ncp-body {
             scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.45) transparent;
+            scrollbar-color: rgb(var(--white-rgb) / 0.45) transparent;
           }
         }
         @keyframes ncpSlideIn {

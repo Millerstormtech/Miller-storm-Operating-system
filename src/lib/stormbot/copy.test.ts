@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   pickCloser,
+  pushPreview,
   formatAmount,
   courseCelebrationMessage,
   claimFiledMessage,
   contractSignedMessage,
   monthlyContractKingMessage,
+  mentionTag,
   COURSE_CLOSERS,
   CLAIM_CLOSERS,
   CONTRACT_CLOSERS,
@@ -70,7 +72,7 @@ describe("courseCelebrationMessage", () => {
 describe("claimFiledMessage", () => {
   it("renders the plural form", () => {
     const msg = claimFiledMessage("Jett Miller", 7, "job-1");
-    expect(msg).toContain("📋 Jett Miller just filed a claim! That's 7 claims this month. ");
+    expect(msg).toContain("📋 @Jett Miller just filed a claim! That's 7 claims this month. ");
     expect(CLAIM_CLOSERS).toContain(msg.split("month. ")[1]);
   });
 
@@ -86,13 +88,13 @@ describe("claimFiledMessage", () => {
 describe("contractSignedMessage", () => {
   it("includes the dollar amount when it is known", () => {
     const msg = contractSignedMessage("Jett Miller", 4, 28400, "job-1");
-    expect(msg).toContain("💰 Jett Miller just signed a $28,400 contract! That's 4 contracts this month. ");
+    expect(msg).toContain("💰 @Jett Miller just signed a $28,400 contract! That's 4 contracts this month. ");
     expect(CONTRACT_CLOSERS).toContain(msg.split("month. ")[1]);
   });
 
   it("falls back to the amount-free wording when financials are not entered yet", () => {
     const msg = contractSignedMessage("Jett Miller", 4, 0, "job-1");
-    expect(msg).toContain("✍️ Jett Miller just signed a contract! That's 4 contracts this month. ");
+    expect(msg).toContain("✍️ @Jett Miller just signed a contract! That's 4 contracts this month. ");
     expect(msg).not.toContain("$");
   });
 
@@ -140,5 +142,29 @@ describe("monthlyContractKingMessage", () => {
 
   it("never contains an em dash", () => {
     expect(monthlyContractKingMessage("A", 100, "August 2026", "s")).not.toContain("—");
+  });
+});
+
+describe("mentionTag", () => {
+  it("prefixes @ and trims so the chat's @Name matcher finds it", () => {
+    expect(mentionTag("  Jett Miller ")).toBe("@Jett Miller");
+  });
+  it("claim post: the tag is followed by a space (chat matcher needs \\s after the name)", () => {
+    expect(claimFiledMessage(" Jett Miller ", 1, "j")).toMatch(/@Jett Miller\s/);
+  });
+});
+
+describe("pushPreview", () => {
+  it("keeps an emoji whole at the cut point", () => {
+    expect(pushPreview("a".repeat(99) + "🔒xyz")).toBe("a".repeat(99) + "🔒");
+  });
+  it("counts code points, never ending on a lone high surrogate", () => {
+    const r = pushPreview("🔒".repeat(150));
+    expect(Array.from(r).length).toBe(100);
+    const last = r.charCodeAt(r.length - 1);
+    expect(last >= 0xd800 && last <= 0xdbff).toBe(false);
+  });
+  it("returns short text unchanged", () => {
+    expect(pushPreview("hello")).toBe("hello");
   });
 });
