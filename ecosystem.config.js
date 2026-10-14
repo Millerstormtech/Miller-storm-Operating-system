@@ -127,6 +127,26 @@ module.exports = {
       time: true
     },
     {
+      // Nightly Storm Bot SCORECARD into Storm Chat at 22:00 CENTRAL (the script
+      // reads America/Chicago explicitly). PORT must be the MAIN app's port
+      // (6790): the cron POSTs to http://127.0.0.1:$PORT/api/stormbot/nightly-scorecard.
+      // Kill switch: STORMBOT_NIGHTLY_SCORECARD=off on the millerstorm process.
+      name: 'nightly-scorecard',
+      script: 'scripts/nightly-scorecard-cron.js',
+      cwd: '/var/www/millerstorm',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 6790
+      },
+      error_file: '/var/www/millerstorm/logs/nightly-scorecard-err.log',
+      out_file: '/var/www/millerstorm/logs/nightly-scorecard-out.log',
+      merge_logs: true,
+      time: true
+    },
+    {
       // Nightly MongoDB backup. There was NO backup of any kind before this: a
       // disk failure would lose every training record, quiz result, and chat.
       // Dumps each collection to gzipped NDJSON under BACKUP_DIR (default
