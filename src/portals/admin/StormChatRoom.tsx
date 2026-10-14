@@ -1062,7 +1062,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-                  <div style={{ fontSize: 14, flex: 1 }}>
+                  <div style={{ fontSize: 14, flex: 1, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                     {renderTextWithLinks(msg.message, isMyMessage ? '#fff' : '#111827' /* tokens-guard-ignore: persisted-value, string equality on textColor */)}
                   </div>
                   <div style={{ 
