@@ -32,6 +32,7 @@ type GroupDoc = {
   myRights: ChatRights;
   myMongoId?: string;
   muted?: boolean;
+  subgroupCount?: number;
 };
 
 type Person = { _id: string; id?: string; name: string; role?: string; headshotUrl?: string };
@@ -208,7 +209,9 @@ export function StormChatGroupInfo({ groupId, myMongoId, onClose, onChanged, onG
   }
 
   async function deleteGroup() {
-    if (!(await appConfirm(`Delete "${group?.name}" for everyone? This can't be undone.`))) return;
+    const subs = group?.subgroupCount || 0;
+    const extra = subs ? ` and its ${subs} ${subs === 1 ? 'subgroup' : 'subgroups'}` : '';
+    if (!(await appConfirm(`Delete "${group?.name}"${extra} for everyone, with all messages? This can't be undone.`))) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/storm-chat/groups/${groupId}`, { method: "DELETE" });

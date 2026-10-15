@@ -510,6 +510,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       await ChatMessage.findByIdAndDelete(messageId);
+      // Its bell alerts go too, so the deleted text doesn't live on in
+      // everyone's bell (readiness test item 17). Stored as an ObjectId.
+      await NotificationModel.deleteMany({
+        'metadata.messageId': { $in: [String(messageId), (msg as any)._id] },
+      });
       return res.status(200).json({ success: true });
     } catch (error) {
       console.error('Error deleting message:', error);

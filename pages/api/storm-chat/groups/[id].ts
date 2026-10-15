@@ -5,6 +5,10 @@ import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canSeeGroupInList, canManageGroup, canDeleteGroup, chatRights } from '../../../../src/lib/stormchat/access';
 import { viewerIdsFor, isCreatorActive } from '../../../../src/lib/stormchat/viewer';
+import ChatMessage from '../../../../src/lib/models/ChatMessage';
+import GroupJoinRequest from '../../../../src/lib/models/GroupJoinRequest';
+import GroupReadReceipt from '../../../../src/lib/models/GroupReadReceipt';
+import { NotificationModel } from '../../../../src/lib/models/Notification';
 import mongoose from 'mongoose';
 
 // One group: read it (with the caller's rights), edit it, delete it.
@@ -45,7 +49,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // myMongoId: the web session only knows the app id, so the screen needs
       // this to tell which member row is the viewer's own.
       const muted = (group.mutedBy || []).map(String).some((m: string) => myIds.includes(m));
-      return res.status(200).json({ ...group, myRights: rights, myMongoId: myIds[1] || '', muted });
+      // How many subgroups go with it if this group is deleted (the confirm says so).
+      const subgroupCount = rights.canDelete ? await ChatGroup.countDocuments({ parentGroupId: String(group._id) }) : 0;
+      return res.status(200).json({ ...group, myRights: rights, myMongoId: myIds[1] || '', muted, subgroupCount });
     }
 
     if (isDmGroup(group)) {
@@ -121,8 +127,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!canDeleteGroup(group, myIds, auth.role, creatorActive)) {
       return res.status(403).json({ error: 'Only the person who created this group can delete it' });
     }
-    await ChatGroup.findByIdAndDelete(id);
-    return res.status(200).json({ message: 'Group deleted successfully' });
+    // Delete the group AND everything that belongs to it, its subgroups
+    // included (Youssef, 2026-10-15): messages, join requests, read status
+    // and bell alerts used to be left behind, and subgroups were orphaned.
+    // Uploaded files stay: a forwarded copy elsewhere may still point at them.
+    const subgroups = await ChatGroup.find({ parentGroupId: String(group._id) }, { _id: 1 }).lean() as any[];
+    const ids = [String(group._id), ...subgroups.map((g) => String(g._id))];
+    await Promise.all([
+      ChatMessage.deleteMany({ groupId: { $in: ids } }),
+      GroupJoinRequest.deleteMany({ groupId: { $in: ids } }),
+      GroupReadReceipt.deleteMany({ groupId: { $in: ids } }),
+      NotificationModel.deleteMany({ 'metadata.groupId': { $in: ids } }),
+    ]);
+    await ChatGroup.deleteMany({ _id: { $in: ids } });
+    return res.status(200).json({ message: 'Group deleted successfully', deletedGroups: ids.length });
   } catch (error) {
     console.error('Error in group handler:', error);
     return res.status(500).json({ error: 'Something went wrong with this group' });
