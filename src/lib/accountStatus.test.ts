@@ -5,7 +5,7 @@ import {
 import { signSession, getAuthUser } from "./auth";
 
 // Stand-in "database" of accounts.
-let db: Record<string, { id: string; deleted?: boolean; suspended?: boolean; deletionRequested?: boolean }>;
+let db: Record<string, { id: string; role?: string; deleted?: boolean; suspended?: boolean; deletionRequested?: boolean }>;
 const install = () => __setAccountLoadersForTests(
   async () => Object.values(db),
   async (id) => db[id] ?? null,
@@ -14,7 +14,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
   db = {
-    "user-ok": { id: "user-ok" },
+    "user-ok": { id: "user-ok", role: "sales" },
     "user-fired": { id: "user-fired", deleted: true },
     "user-susp": { id: "user-susp", suspended: true },
     "user-leaving": { id: "user-leaving", deletionRequested: true },
@@ -86,6 +86,23 @@ describe("getAuthUser honours the list (every route's login check)", () => {
   it("a valid token for an active account works", async () => {
     await refreshIfStale();
     expect(getAuthUser(reqWith(signSession({ id: "user-ok", role: "sales" })))?.sub).toBe("user-ok");
+  });
+
+  it("a demoted account gets its CURRENT role, not the token's", async () => {
+    await refreshIfStale();
+    // Token issued while they were admin; the account is a rep now.
+    expect(getAuthUser(reqWith(signSession({ id: "user-ok", role: "admin" })))?.role).toBe("sales");
+  });
+
+  it("a role change made by an admin applies on the next request", async () => {
+    await refreshIfStale();
+    db["user-ok"].role = "sales-team-lead";
+    await syncAccount("user-ok");
+    expect(getAuthUser(reqWith(signSession({ id: "user-ok", role: "sales" })))?.role).toBe("sales-team-lead");
+  });
+
+  it("an account not loaded yet keeps the token's role", () => {
+    expect(getAuthUser(reqWith(signSession({ id: "user-unknown", role: "sales" })))?.role).toBe("sales");
   });
 
   it("a still-valid token for a fired or suspended account is refused", async () => {

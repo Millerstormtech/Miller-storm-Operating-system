@@ -17,7 +17,7 @@
 // looked up, then decided like any other. Right after a restart nothing is
 // blocked until the first load completes (a second or two).
 
-type AccountRow = { id?: string; deleted?: boolean; suspended?: boolean; deletionRequested?: boolean };
+type AccountRow = { id?: string; role?: string; deleted?: boolean; suspended?: boolean; deletionRequested?: boolean };
 type Loader = () => Promise<AccountRow[]>;
 type OneLoader = (appId: string) => Promise<AccountRow | null>;
 
@@ -25,7 +25,9 @@ const REFRESH_MS = 60_000;
 const RETRY_AFTER_ERROR_MS = 10_000;
 
 let blocked = new Set<string>();
-let active = new Set<string>();
+// Active accounts and their CURRENT role (a login carries the role it was
+// issued with for a year; a demotion must take effect without a re-login).
+let active = new Map<string, string>();
 let loaded = false;
 let loadedAt = 0;
 let loading: Promise<void> | null = null;
@@ -39,14 +41,14 @@ async function loadAllFromDb(): Promise<AccountRow[]> {
   const { connectMongo } = await import("./mongodb");
   await connectMongo();
   const { UserModel } = await import("./models/User");
-  return (await UserModel.find({}, { id: 1, deleted: 1, suspended: 1, deletionRequested: 1 }).lean()) as AccountRow[];
+  return (await UserModel.find({}, { id: 1, role: 1, deleted: 1, suspended: 1, deletionRequested: 1 }).lean()) as AccountRow[];
 }
 
 async function loadOneFromDb(appId: string): Promise<AccountRow | null> {
   const { connectMongo } = await import("./mongodb");
   await connectMongo();
   const { UserModel } = await import("./models/User");
-  return (await UserModel.findOne({ id: appId }, { id: 1, deleted: 1, suspended: 1, deletionRequested: 1 }).lean()) as AccountRow | null;
+  return (await UserModel.findOne({ id: appId }, { id: 1, role: 1, deleted: 1, suspended: 1, deletionRequested: 1 }).lean()) as AccountRow | null;
 }
 
 let loadAll: Loader = loadAllFromDb;
@@ -60,14 +62,15 @@ export function refreshIfStale(now = Date.now(), force = false): Promise<void> |
   loading = loadAll()
     .then((rows) => {
       const nextBlocked = new Set<string>();
-      const nextActive = new Set<string>();
+      const nextActive = new Map<string, string>();
       for (const u of rows) {
         if (!u.id) continue;
-        (isBlockedRow(u) ? nextBlocked : nextActive).add(u.id);
+        if (isBlockedRow(u)) nextBlocked.add(u.id);
+        else nextActive.set(u.id, u.role || "");
       }
       // An account we knew about that is no longer in the database was
       // erased: keep it blocked rather than treating it as never seen.
-      for (const id of [...active, ...blocked]) {
+      for (const id of [...active.keys(), ...blocked]) {
         if (!nextActive.has(id) && !nextBlocked.has(id)) nextBlocked.add(id);
       }
       blocked = nextBlocked;
@@ -86,18 +89,19 @@ export function refreshIfStale(now = Date.now(), force = false): Promise<void> |
   return loading;
 }
 
-/** Record one account's state now. */
-export function setAccountState(appId: string, isBlockedNow: boolean): void {
+/** Record one account's state (and current role) now. */
+export function setAccountState(appId: string, isBlockedNow: boolean, role = ""): void {
   if (!appId) return;
   if (isBlockedNow) { blocked.add(appId); active.delete(appId); }
-  else { active.add(appId); blocked.delete(appId); }
+  else { active.set(appId, role); blocked.delete(appId); }
 }
 
 /** Re-read one account and update the list; call after changing a user. */
 export async function syncAccount(appId: string): Promise<void> {
   if (!appId || !autoLoadOne()) return;
   try {
-    setAccountState(appId, isBlockedRow(await loadOne(appId)));
+    const u = await loadOne(appId);
+    setAccountState(appId, isBlockedRow(u), u?.role || "");
   } catch (e) {
     console.error("[account-status] sync failed:", e);
   }
@@ -127,12 +131,21 @@ export function isAccountBlocked(appId: string): boolean {
   return false;
 }
 
+/**
+ * The account's current role, when known; null means "use the token's".
+ * Unknown accounts (not loaded yet) fall back to the token.
+ */
+export function currentRoleOf(appId: string): string | null {
+  const role = active.get(appId);
+  return role ? role : null;
+}
+
 // --- test hooks -------------------------------------------------------------
 export function __setAccountLoadersForTests(all: Loader | null, one: OneLoader | null): void {
   loadAll = all || loadAllFromDb;
   loadOne = one || loadOneFromDb;
   blocked = new Set();
-  active = new Set();
+  active = new Map();
   loaded = false;
   loadedAt = 0;
   loading = null;
