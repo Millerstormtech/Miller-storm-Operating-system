@@ -76,3 +76,30 @@ export function messageProblem(
 // How fast one person may post into one chat: 10 messages per 10 seconds.
 // Per chat, so forwarding one message to many people still works.
 export const SEND_BURST = { max: 10, windowMs: 10_000 };
+
+// Where a photo / video / file attachment may point (readiness test item 20):
+// only Miller Storm's own uploads, plus GIPHY for GIFs and stickers. Any
+// other link (a fake "commission sheet.pdf" to a phishing site, a
+// javascript: link) is refused. GroupMe likewise only serves attachments
+// from its own servers.
+const OWN_HOSTS = new Set(['millerstorm.tech', 'www.millerstorm.tech']);
+
+export function attachmentProblem(type: UserMessageType, mediaUrl: unknown): string | null {
+  if (type === 'text' || type === 'poll') return null; // no attachment used
+  const url = typeof mediaUrl === 'string' ? mediaUrl.trim() : '';
+  if (!url) return 'This attachment is missing its file';
+  const ownPath = (p: string) => p.startsWith('/uploads/') && !p.includes('..') && !p.includes('//', 1);
+  if (url.startsWith('/')) return ownPath(url) ? null : "That attachment isn't allowed";
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { return "That attachment isn't allowed"; }
+  if (parsed.protocol !== 'https:') return "That attachment isn't allowed";
+  if (OWN_HOSTS.has(parsed.hostname) && ownPath(parsed.pathname)) return null;
+  if (type === 'image' && /(^|\.)giphy\.com$/.test(parsed.hostname)) return null;
+  return "That attachment isn't allowed";
+}
+
+/** A link safe to put in an href on screen (old messages included). */
+export function safeHref(url: unknown): string | undefined {
+  const u = typeof url === 'string' ? url.trim() : '';
+  return /^(\/(?!\/)|https:\/\/)/.test(u) ? u : undefined;
+}

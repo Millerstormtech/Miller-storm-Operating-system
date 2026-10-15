@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { userMessageType, replyQuoteFrom, messageProblem } from './compose';
+import { userMessageType, replyQuoteFrom, messageProblem, attachmentProblem, safeHref } from './compose';
 
 describe('userMessageType', () => {
   it.each(['text', 'image', 'video', 'file', 'poll'])('a person may send %s', (t) => {
@@ -58,5 +58,43 @@ describe('messageProblem (item 16 limits)', () => {
     expect(messageProblem('poll', '', { question: 'Q', options: Array.from({ length: 11 }, (_, i) => `o${i}`) })).toMatch(/2 to 10/);
     expect(messageProblem('poll', '', { question: 'Q', options: ['A', 'x'.repeat(101)] })).toMatch(/100/);
     expect(messageProblem('poll', '', null)).toMatch(/question/);
+  });
+});
+
+describe('attachmentProblem (item 20)', () => {
+  it.each([
+    ['image', '/uploads/abc.png'],
+    ['file', '/uploads/q3.pdf'],
+    ['video', 'https://millerstorm.tech/uploads/clip.mp4'],
+    ['image', 'https://media2.giphy.com/media/xyz/200.gif'],
+    ['image', 'https://i.giphy.com/xyz.gif'],
+  ])('%s at %s is allowed', (type, url) => {
+    expect(attachmentProblem(type as any, url)).toBeNull();
+  });
+  it.each([
+    ['file', 'javascript:alert(1)'],
+    ['file', 'https://evil.example/phish'],
+    ['file', 'http://millerstorm.tech/uploads/x.pdf'],
+    ['file', 'https://millerstorm.tech.evil.com/uploads/x.pdf'],
+    ['file', 'https://millerstorm.tech/api/users'],
+    ['file', '/uploads/../.env'],
+    ['file', '//evil.example/x'],
+    ['video', 'https://media.giphy.com/x.gif'],
+    ['image', ''],
+    ['image', 'data:image/png;base64,AAAA'],
+  ])('%s at %s is refused', (type, url) => {
+    expect(attachmentProblem(type as any, url)).not.toBeNull();
+  });
+  it('text and polls carry no attachment', () => {
+    expect(attachmentProblem('text', 'javascript:alert(1)')).toBeNull();
+  });
+});
+
+describe('safeHref', () => {
+  it('keeps own paths and https links, drops anything else', () => {
+    expect(safeHref('/uploads/a.pdf')).toBe('/uploads/a.pdf');
+    expect(safeHref('https://x.com/a')).toBe('https://x.com/a');
+    expect(safeHref('javascript:alert(1)')).toBeUndefined();
+    expect(safeHref('//evil.example')).toBeUndefined();
   });
 });

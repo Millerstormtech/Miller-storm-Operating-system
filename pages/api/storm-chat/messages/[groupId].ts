@@ -11,7 +11,7 @@ import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canReadMessages, canSendMessage, isGroupAdmin, canModerateMessages, chatRights, dmParticipants } from '../../../../src/lib/stormchat/access';
 import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
 import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess';
-import { userMessageType, replyQuoteFrom, messageProblem, SEND_BURST } from '../../../../src/lib/stormchat/compose';
+import { userMessageType, replyQuoteFrom, messageProblem, attachmentProblem, SEND_BURST } from '../../../../src/lib/stormchat/compose';
 import { rateLimit } from '../../../../src/lib/rateLimit';
 import { mentionedIds, mentionsAll, alertPlan } from '../../../../src/lib/stormchat/mentions';
 import mongoose from 'mongoose';
@@ -138,7 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // No empty text, at most 2,000 characters, polls need 2-10 options.
-      const problem = messageProblem(messageType, message, poll);
+      const problem = messageProblem(messageType, message, poll) || attachmentProblem(messageType, mediaUrl);
       if (problem) return res.status(400).json({ error: problem });
 
       await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderId, messageType });
@@ -225,7 +225,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         senderRole,
         message: message || '',
         messageType,
-        mediaUrl: mediaUrl || '',
+        // Text and polls carry no attachment; others were checked above.
+        mediaUrl: messageType === 'text' || messageType === 'poll' ? '' : String(mediaUrl).trim(),
         mentions: mentionedUserIds
       };
 

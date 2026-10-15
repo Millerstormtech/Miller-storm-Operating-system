@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { enterSendsMessage } from "../../lib/stormchat/enterKey";
 import { StormChatGroupInfo, type ChatRights } from "../../components/StormChatGroupInfo";
 import { mergeNewestPage, prependOlderPage } from "../../lib/stormchat/messagePages";
+import { safeHref } from "../../lib/stormchat/compose";
 
 type ChatMessage = {
   _id: string;
@@ -1328,7 +1329,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               }}>
                 {renderMenu(msg, isMyMessage, showMenu)}
                 <a 
-                  href={msg.mediaUrl} 
+                  href={safeHref(msg.mediaUrl)} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ 
