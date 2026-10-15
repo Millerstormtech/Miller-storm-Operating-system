@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { userMessageType, replyQuoteFrom } from './compose';
+import { userMessageType, replyQuoteFrom, messageProblem } from './compose';
 
 describe('userMessageType', () => {
   it.each(['text', 'image', 'video', 'file', 'poll'])('a person may send %s', (t) => {
@@ -35,5 +35,28 @@ describe('replyQuoteFrom', () => {
     expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep', messageType: 'video' }, 'g1')?.replyToMessage).toBe('🎬 Video');
     expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep', messageType: 'file', message: 'Q3.pdf' }, 'g1')?.replyToMessage).toBe('📎 Q3.pdf');
     expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep', messageType: 'poll', poll: { question: 'Lunch?' } }, 'g1')?.replyToMessage).toBe('📊 Lunch?');
+  });
+});
+
+describe('messageProblem (item 16 limits)', () => {
+  it('refuses empty or whitespace-only text', () => {
+    expect(messageProblem('text', '')).toMatch(/empty/);
+    expect(messageProblem('text', '   \n ')).toMatch(/empty/);
+  });
+  it('allows up to 2,000 characters, refuses more', () => {
+    expect(messageProblem('text', 'x'.repeat(2000))).toBeNull();
+    expect(messageProblem('text', 'x'.repeat(2001))).toMatch(/2,000/);
+  });
+  it('a photo needs no text', () => {
+    expect(messageProblem('image', '')).toBeNull();
+  });
+  it('a poll needs a question and 2 to 10 options', () => {
+    expect(messageProblem('poll', '', { question: 'Lunch?', options: ['A', 'B'] })).toBeNull();
+    expect(messageProblem('poll', '', { question: '', options: ['A', 'B'] })).toMatch(/question/);
+    expect(messageProblem('poll', '', { question: 'Q', options: ['A'] })).toMatch(/2 to 10/);
+    expect(messageProblem('poll', '', { question: 'Q', options: ['A', ' ', ''] })).toMatch(/2 to 10/);
+    expect(messageProblem('poll', '', { question: 'Q', options: Array.from({ length: 11 }, (_, i) => `o${i}`) })).toMatch(/2 to 10/);
+    expect(messageProblem('poll', '', { question: 'Q', options: ['A', 'x'.repeat(101)] })).toMatch(/100/);
+    expect(messageProblem('poll', '', null)).toMatch(/question/);
   });
 });

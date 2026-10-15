@@ -1838,6 +1838,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                   sendMessage();
                 }
               }}
+              maxLength={2000}
               placeholder="Type a message..."
               disabled={sending}
               style={{
@@ -1856,6 +1857,11 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               }}
               rows={1}
             />
+            {newMessage.length > 1800 && (
+              <span aria-live="polite" style={{ alignSelf: 'center', fontSize: 11, whiteSpace: 'nowrap', color: newMessage.length >= 2000 ? '#dc2626' : 'var(--text-subtle)' }}>
+                {newMessage.length.toLocaleString('en-US')} / 2,000
+              </span>
+            )}
             
             <button
               type="button"

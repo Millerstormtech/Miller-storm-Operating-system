@@ -11,7 +11,8 @@ import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canReadMessages, canSendMessage, isGroupAdmin, canModerateMessages, chatRights, dmParticipants } from '../../../../src/lib/stormchat/access';
 import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
 import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess';
-import { userMessageType, replyQuoteFrom } from '../../../../src/lib/stormchat/compose';
+import { userMessageType, replyQuoteFrom, messageProblem, SEND_BURST } from '../../../../src/lib/stormchat/compose';
+import { rateLimit } from '../../../../src/lib/rateLimit';
 import { mentionedIds, mentionsAll, alertPlan } from '../../../../src/lib/stormchat/mentions';
 import mongoose from 'mongoose';
 
@@ -136,6 +137,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "That kind of message can't be sent" });
       }
 
+      // No empty text, at most 2,000 characters, polls need 2-10 options.
+      const problem = messageProblem(messageType, message, poll);
+      if (problem) return res.status(400).json({ error: problem });
+
       await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderId, messageType });
 
       // Check if group exists
@@ -169,6 +174,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Job titles like C-level grant nothing here (GroupMe model).
       if (group.onlyAdminCanChat && !isDmGroup(group) && !isGroupAdmin(group, senderIds, senderRole)) {
         return res.status(403).json({ error: 'Only admins can send messages in this group' });
+      }
+
+      // At most 10 messages per 10 seconds from one person into one chat
+      // (a burst of 100 once produced 900 alerts). Per chat, so forwarding
+      // one message to many people still works.
+      const burst = rateLimit(`chat:send:${senderId}:${groupId}`, SEND_BURST.max, SEND_BURST.windowMs);
+      if (!burst.ok) {
+        res.setHeader('Retry-After', String(burst.retryAfterSec));
+        return res.status(429).json({ error: 'Slow down: too many messages at once. Try again in a few seconds.' });
       }
 
       // Extract mentions from message text

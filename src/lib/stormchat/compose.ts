@@ -41,3 +41,38 @@ export function replyQuoteFrom(
     : String(original.message ?? '');
   return { replyToMessage: quote, replyToSender: String(original.senderName ?? '') };
 }
+
+// Limits on what one message may hold (readiness test item 16, Youssef's
+// choices 2026-10-15): no empty text (each one alerted everyone), at most
+// 2,000 characters (GroupMe allows 1,000), and a poll needs a question and
+// 2 to 10 options. Returns an error message for the person, or null.
+export const MAX_MESSAGE_CHARS = 2000;
+export const POLL_MIN_OPTIONS = 2;
+export const POLL_MAX_OPTIONS = 10;
+
+export function messageProblem(
+  type: UserMessageType,
+  text: unknown,
+  poll?: { question?: unknown; options?: unknown } | null,
+): string | null {
+  const body = typeof text === 'string' ? text : '';
+  if (body.length > MAX_MESSAGE_CHARS) return `Messages can be up to ${MAX_MESSAGE_CHARS.toLocaleString('en-US')} characters`;
+  if (type === 'text' && !body.trim()) return "You can't send an empty message";
+  if (type === 'poll') {
+    const question = typeof poll?.question === 'string' ? poll.question.trim() : '';
+    if (!question) return 'A poll needs a question';
+    if (question.length > 300) return 'A poll question can be up to 300 characters';
+    const options = Array.isArray(poll?.options)
+      ? (poll!.options as unknown[]).map((o: any) => String((typeof o === 'string' ? o : o?.text) ?? '').trim()).filter(Boolean)
+      : [];
+    if (options.length < POLL_MIN_OPTIONS || options.length > POLL_MAX_OPTIONS) {
+      return `A poll needs ${POLL_MIN_OPTIONS} to ${POLL_MAX_OPTIONS} options`;
+    }
+    if (options.some((o) => o.length > 100)) return 'Poll options can be up to 100 characters';
+  }
+  return null;
+}
+
+// How fast one person may post into one chat: 10 messages per 10 seconds.
+// Per chat, so forwarding one message to many people still works.
+export const SEND_BURST = { max: 10, windowMs: 10_000 };
