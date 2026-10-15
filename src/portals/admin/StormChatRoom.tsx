@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
+import { enterSendsMessage } from "../../lib/stormchat/enterKey";
 
 type ChatMessage = {
   _id: string;
@@ -124,6 +125,21 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const gifInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  // Touch screens have no Shift key, so there Enter is always a new line and
+  // only the Send button sends (see src/lib/stormchat/enterKey.ts).
+  const [touchScreen, setTouchScreen] = useState(false);
+  useEffect(() => {
+    setTouchScreen(window.matchMedia('(pointer: coarse)').matches);
+  }, []);
+  // Grow the box with each new line (up to its maxHeight, then it scrolls),
+  // and shrink it back after sending.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, [newMessage]);
   const [blinkingMessageId, setBlinkingMessageId] = useState<string | null>(null);
   const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -1558,6 +1574,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             />
             
             <textarea
+              ref={composerRef}
               value={newMessage}
               onChange={(e) => {
                 const val = e.target.value;
@@ -1567,7 +1584,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 setMentionQuery(!isDirect && m ? m[1] : null);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (enterSendsMessage({ key: e.key, shiftKey: e.shiftKey, touchScreen })) {
                   e.preventDefault();
                   sendMessage();
                 }
@@ -1609,6 +1626,11 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               {sending ? '⏳' : '➤'}
             </button>
           </div>
+          {!touchScreen && (
+            <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 4, textAlign: 'right' }}>
+              Enter to send, Shift + Enter for a new line
+            </div>
+          )}
             </div>
           </div>
         )}
