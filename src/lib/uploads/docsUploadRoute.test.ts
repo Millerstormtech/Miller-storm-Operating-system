@@ -164,16 +164,27 @@ describe("POST /api/docs", () => {
       expect((await res.json()).error).toBe("That file is empty");
     }));
 
+  // Uses its own empty directory rather than a before/after snapshot of the
+  // shared one. A refused upload is deleted only AFTER its error response is
+  // sent (formidable removes the half-written file on a timer, and the route's
+  // own unlink isn't awaited), so the previous test's empty file can vanish
+  // from the shared directory mid-test and fail a snapshot comparison.
   it("refuses a raw octet-stream upload, whose parser would skip the allowlist filter", () =>
     withServer(async (url) => {
-      const before = fs.readdirSync(TEST_DOCS_DIR).sort();
-      const res = await fetch(`${url}/api/docs`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/octet-stream", "x-file-name": "evil.html" },
-        body: "<script>alert(1)</script>",
-      });
-      expect(res.status).toBe(415);
-      expect(fs.readdirSync(TEST_DOCS_DIR).sort()).toEqual(before);
+      const ownDir = fs.mkdtempSync(path.join(os.tmpdir(), "sop-docs-octet-"));
+      process.env.SOP_DOCS_DIR = ownDir;
+      try {
+        const res = await fetch(`${url}/api/docs`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/octet-stream", "x-file-name": "evil.html" },
+          body: "<script>alert(1)</script>",
+        });
+        expect(res.status).toBe(415);
+        expect(fs.readdirSync(ownDir)).toEqual([]);
+      } finally {
+        process.env.SOP_DOCS_DIR = TEST_DOCS_DIR;
+        fs.rmSync(ownDir, { recursive: true, force: true });
+      }
     }));
 
   it("stores a type from the extension, not the one the client claimed", () =>
