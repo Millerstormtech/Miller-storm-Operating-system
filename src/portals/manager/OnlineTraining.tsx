@@ -18,6 +18,7 @@ import { submitQuizAttempt, reviewToCorrectnessMap } from "../../lib/training/qu
 import { groupCoursesByCategory, UNCATEGORIZED_LABEL } from "../../lib/training/categories";
 import { courseModules } from "../../lib/training/modules";
 import { scoresVideosOnly } from "../../lib/training/scoring";
+import { opensAllTraining } from "../../lib/training/access";
 import { formatLessonLength, courseLengthLabel, timeLeftLabel } from "../../lib/training/lesson-length";
 import { newSinceFinished, newItemsLabel } from "../../lib/training/new-since-finished";
 
@@ -120,7 +121,7 @@ export function ManagerOnlineTrainingPage(props: {
   // Leadership roles review training freely: every lesson is unlocked (no
   // sequential gating) and they can fast-forward / skip videos without first
   // completing them.
-  const isPrivileged = ["admin", "c-level", "branch-manager", "sales-team-lead"].includes(props.currentUser.role);
+  const isPrivileged = opensAllTraining(props.currentUser.role);
   // Company-wide (C-Level) → EVERY user except admins (sales + managers + more);
   // otherwise scoped to this manager's own sales team.
   // lite=1 → only the light fields (id/name/role/photo/status) the roster needs;
