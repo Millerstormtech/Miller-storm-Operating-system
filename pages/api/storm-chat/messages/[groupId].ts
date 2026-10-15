@@ -11,6 +11,8 @@ import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canReadMessages, canSendMessage, isGroupAdmin, canModerateMessages, chatRights, dmParticipants } from '../../../../src/lib/stormchat/access';
 import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
 import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess';
+import { userMessageType, replyQuoteFrom } from '../../../../src/lib/stormchat/compose';
+import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST', 'PATCH', 'DELETE'])) return;
@@ -90,15 +92,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'POST') {
     // Send a message
     try {
-      const { senderName, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender, poll } = req.body;
+      // The app also sends senderName / replyToMessage / replyToSender, but
+      // they are NOT trusted: the name comes from the sender's account and a
+      // reply quote from the real original (src/lib/stormchat/compose.ts).
+      const { message, mediaUrl, replyTo, poll } = req.body;
       const senderId = auth.sub;
       const senderRole = auth.role;
 
-      await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderName, senderId, messageType });
-
-      if (!senderName) {
-        return res.status(400).json({ error: 'Sender information is required' });
+      // People send text/image/video/file/poll; grey "system" notices are the
+      // server's alone.
+      const messageType = userMessageType(req.body.messageType);
+      if (!messageType) {
+        return res.status(400).json({ error: "That kind of message can't be sent" });
       }
+
+      await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderId, messageType });
 
       // Check if group exists
       // .lean() returns the raw doc so newly-added fields like isDirect are
@@ -109,8 +117,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Group not found' });
       }
 
-      // Resolve sender _id (group.members store Mongo _ids; senderId is app id).
-      const sender = await UserModel.findOne({ id: senderId }, { _id: 1 }).lean() as any;
+      // Resolve sender _id (group.members store Mongo _ids; senderId is app id)
+      // and their real name, which is what everyone sees (GroupMe: your name
+      // is your account's).
+      const sender = await UserModel.findOne({ id: senderId }, { _id: 1, name: 1 }).lean() as any;
+      if (!sender) {
+        return res.status(403).json({ error: 'Your account was not found' });
+      }
+      const senderName: string = sender.name || 'Unknown';
       const senderIds = [senderId, sender?._id?.toString()].filter(Boolean) as string[];
 
       // Send authorization (unit-tested in access.test.ts): for a DM, ONLY the
@@ -161,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         senderName,
         senderRole,
         message: message || '',
-        messageType: messageType || 'text',
+        messageType,
         mediaUrl: mediaUrl || '',
         mentions: mentionedUserIds
       };
@@ -177,11 +191,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
       }
 
-      // Add reply fields if they exist
+      // Reply: quote the REAL original, which must be in this same chat.
       if (replyTo) {
-        messageData.replyTo = replyTo;
-        messageData.replyToMessage = replyToMessage || '';
-        messageData.replyToSender = replyToSender || '';
+        const original = mongoose.isValidObjectId(String(replyTo))
+          ? await ChatMessage.findById(String(replyTo)).select('groupId message senderName').lean() as any
+          : null;
+        const quote = replyQuoteFrom(original, String(groupId));
+        if (!quote) {
+          return res.status(400).json({ error: "That message can't be replied to here" });
+        }
+        messageData.replyTo = String(replyTo);
+        messageData.replyToMessage = quote.replyToMessage;
+        messageData.replyToSender = quote.replyToSender;
       }
 
       const newMessage = await ChatMessage.create(messageData);
@@ -377,8 +398,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     // Add or remove a reaction on a message
     try {
-      const { messageId, emoji, userName } = req.body;
+      const { messageId, emoji } = req.body;
       const userId = auth.sub;
+      // The name shown on a reaction is the reactor's account name, never
+      // whatever the request says.
+      const reactor = await UserModel.findOne({ id: userId }, { name: 1 }).lean() as any;
+      const userName: string = reactor?.name || 'Unknown';
 
       if (!messageId || !emoji) {
         return res.status(400).json({ error: 'messageId and emoji are required' });
