@@ -44,7 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       // myMongoId: the web session only knows the app id, so the screen needs
       // this to tell which member row is the viewer's own.
-      return res.status(200).json({ ...group, myRights: rights, myMongoId: myIds[1] || '' });
+      const muted = (group.mutedBy || []).map(String).some((m: string) => myIds.includes(m));
+      return res.status(200).json({ ...group, myRights: rights, myMongoId: myIds[1] || '', muted });
     }
 
     if (isDmGroup(group)) {

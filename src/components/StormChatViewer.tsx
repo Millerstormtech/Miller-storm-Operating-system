@@ -366,7 +366,9 @@ export function StormChatViewer() {
           {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(titleFor(g))}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{titleFor(g)}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {titleFor(g)}{(g as any).isMuted ? <span title="Muted" aria-label="Muted" style={{ marginLeft: 6, fontSize: 13 }}>🔕</span> : null}
+          </div>
           {notMember ? (
             <div style={{ fontSize: 13, marginTop: 3, fontWeight: 500, color: status === 'denied' ? "var(--text-muted)" : status === 'pending' ? "#10b981" : "#e5484d" }}>
               {status === 'denied' ? "🚫 Rejected · no access" : status === 'pending' ? "✓ Request pending" : (g as any).visibility === 'public' ? "Company-wide · tap to ask to rejoin" : "🔒 Private · tap to request to join"}

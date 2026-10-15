@@ -133,6 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // "Delete chat for me": a member who hid a DM stops seeing it until the
           // other person sends a new message (which clears hiddenFor).
           .filter((g: any) => !(isDmGroup(g) && Array.isArray(g.hiddenFor) && g.hiddenFor.some((h: string) => myIds.includes(h))))
+          .map((g: any) => ({ ...g, isMuted: (g.mutedBy || []).map(String).some((m: string) => myIds.includes(m)) }))
           .map((g: any) => (isDmGroup(g) ? { ...g, isDirect: true } : { ...g, isMember: isMemberOf(g) }));
 
         // Attach the caller's join-request status for private groups they aren't

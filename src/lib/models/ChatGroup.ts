@@ -29,6 +29,9 @@ export interface IChatGroup extends Document {
   // account; these are skipped so a leaver stays out (GroupMe: a removed person
   // only comes back if someone adds them). Adding them again clears the entry.
   leftMembers?: string[];
+  // Mongo _ids of people who muted this chat: no alert for ordinary messages,
+  // mentions (and @all from an admin) still come through (GroupMe-style).
+  mutedBy?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +97,9 @@ const ChatGroupSchema = new Schema<IChatGroup>(
       type: String
     }],
     leftMembers: [{
+      type: String
+    }],
+    mutedBy: [{
       type: String
     }]
   },

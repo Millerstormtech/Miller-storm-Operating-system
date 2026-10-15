@@ -12,6 +12,7 @@ import { canReadMessages, canSendMessage, isGroupAdmin, canModerateMessages, cha
 import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
 import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess';
 import { userMessageType, replyQuoteFrom } from '../../../../src/lib/stormchat/compose';
+import { mentionedIds, mentionsAll, alertPlan } from '../../../../src/lib/stormchat/mentions';
 import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -186,16 +187,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         console.log(`[CHAT] Group Members Found: ${groupMembers.length}/${group.members.length}`);
         
-        // For each member, check if their name is mentioned with @
-        for (const member of groupMembers) {
-          const memberName = member.name;
-          // Create regex to match @Name (case insensitive, with word boundary or space after)
-          const nameRegex = new RegExp(`@${memberName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i');
-          if (nameRegex.test(message)) {
-            mentionedUserIds.push(member._id.toString());
-          }
-        }
+        // "@Name" followed by a space, punctuation or the end (src/lib/stormchat/mentions.ts).
+        mentionedUserIds.push(...mentionedIds(message, groupMembers as any[]));
       }
+
+      // Who gets which alert: @all from a group admin mentions everyone; people
+      // who muted the chat only hear about mentions (GroupMe-style).
+      const plan = alertPlan({
+        members: isDmGroup(group) ? (dmParticipants(group) || []) : (group.members || []).map(String),
+        senderIds,
+        mentioned: mentionedUserIds,
+        atAll: messageType === 'text' && mentionsAll(message || ''),
+        senderIsAdmin: isGroupAdmin(group, senderIds, senderRole),
+        mutedBy: (group.mutedBy || []).map(String),
+      });
+      mentionedUserIds.splice(0, mentionedUserIds.length, ...plan.mention);
 
       // Create message with reply fields if provided
       const messageData: any = {
@@ -279,12 +285,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // 2. New message notifications for other members. A DM alerts ONLY its two
       // canonical participants (dmKey), never whoever was written into members[].
-      const recipientPool: string[] = isDmGroup(group)
-        ? (dmParticipants(group) || [])
-        : (group.members || []);
-      const otherMemberIds = recipientPool.filter(
-        (id: string) => !senderIds.includes(id) && !mentionedUserIds.includes(id)
-      );
+      // (alertPlan already used the DM's two participants and dropped the
+      // sender, the mentioned and anyone who muted the chat.)
+      const otherMemberIds = plan.ordinary;
       
       console.log(`[CHAT] Notifying ${otherMemberIds.length} other members (Sender: ${senderId})`);
 

@@ -31,6 +31,7 @@ type GroupDoc = {
   visibility?: "public" | "private";
   myRights: ChatRights;
   myMongoId?: string;
+  muted?: boolean;
 };
 
 type Person = { _id: string; id?: string; name: string; role?: string; headshotUrl?: string };
@@ -137,6 +138,19 @@ export function StormChatGroupInfo({ groupId, myMongoId, onClose, onChanged, onG
       await load();
       await refreshRoom();
       return true;
+    } finally { setBusy(false); }
+  }
+
+  async function setMute(m: boolean) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/storm-chat/groups/${groupId}/mute`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ muted: m }),
+      });
+      if (!res.ok) { notify("Couldn't change notifications", "error"); return; }
+      notify(m ? "Group muted. You'll still get @mentions." : "Group unmuted", "success");
+      await load();
+      await refreshRoom();
     } finally { setBusy(false); }
   }
 
@@ -258,6 +272,18 @@ export function StormChatGroupInfo({ groupId, myMongoId, onClose, onChanged, onG
                     )}
                   </>
                 )}
+              </div>
+            </div>
+
+            {/* Notifications: anyone in the group */}
+            <div style={SECTION}>
+              <div style={LABEL}>Notifications</div>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, cursor: "pointer" }}>
+                <input type="checkbox" checked={!!group.muted} disabled={busy} onChange={(e) => setMute(e.target.checked)} />
+                Mute this group
+              </label>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>
+                You still get alerts when someone @mentions you.
               </div>
             </div>
 

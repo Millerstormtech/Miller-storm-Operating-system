@@ -114,6 +114,16 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     return () => document.body.classList.remove('storm-chat-room-open');
   }, []);
   const [rights, setRights] = useState<ChatRights | null>(null);
+  // Muted by this viewer: no alerts for ordinary messages, mentions still come.
+  const [muted, setMuted] = useState(false);
+  async function toggleMute() {
+    const next = !muted;
+    setMuted(next);
+    const res = await fetch(`/api/storm-chat/groups/${groupProp._id}/mute`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: next }),
+    }).catch(() => null);
+    if (!res || !res.ok) { setMuted(!next); alert("Couldn't change notifications. Please try again."); }
+  }
   // Read receipts (GroupMe-style): whatever this open chat has shown on a
   // visible screen counts as read, including messages that arrive while you're
   // in it. Sent "up to" the newest message shown, so nothing unseen is marked
@@ -144,7 +154,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     let alive = true;
     fetch(`/api/storm-chat/groups/${groupProp._id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((g) => { if (alive && g?.myRights) setRights(g.myRights); })
+      .then((g) => { if (alive && g?.myRights) { setRights(g.myRights); setMuted(!!g.muted); } })
       .catch(() => {});
     return () => { alive = false; };
   }, [groupProp._id]);
@@ -812,7 +822,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     // Highlight @Name mentions using the group's member names (longest first so
     // "@John Doe" wins over "@John"). Names come from the mention autocomplete list.
     const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const names = members.map(m => m.name).filter(Boolean).sort((a, b) => b.length - a.length);
+    const names = [...members.map(m => m.name), 'all'].filter(Boolean).sort((a, b) => b.length - a.length);
     const mentionSet = new Set(names.map(n => '@' + n));
     const mentionRegex = names.length ? new RegExp(`(@(?:${names.map(esc).join('|')}))`, 'g') : null;
     const onColoredBubble = textColor === '#fff';  /* tokens-guard-ignore: persisted-value, string equality on textColor */
@@ -1419,6 +1429,14 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
             {!isDirect && ' • Tap for group info'}
           </div>
         </div>
+        <button
+          onClick={toggleMute}
+          aria-label={muted ? 'Unmute notifications' : 'Mute notifications'}
+          title={muted ? 'Muted: only @mentions alert you. Tap to unmute.' : 'Mute notifications'}
+          style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: 4, color: 'var(--text-primary)', opacity: muted ? 1 : 0.6 }}
+        >
+          {muted ? '🔕' : '🔔'}
+        </button>
         {!isDirect && (
           <button
             onClick={() => setShowInfo(true)}
@@ -1439,6 +1457,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
           onChanged={(g: any) => {
             setGroup((prev) => ({ ...prev, ...g, members: g.members || prev.members, admins: g.admins || prev.admins } as ChatGroup));
             if (g?.myRights) setRights(g.myRights);
+            if (typeof g?.muted === 'boolean') setMuted(g.muted);
           }}
           onGone={() => { setShowInfo(false); onBack(); }}
         />
@@ -1564,7 +1583,11 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
             <div style={{ position: 'relative' }}>
             {mentionQuery !== null && (() => {
               const q = (mentionQuery || '').toLowerCase();
-              const matches = members.filter(mm => (mm.name || '').toLowerCase().includes(q)).slice(0, 6);
+              // Group admins can mention everyone with @all (alerts even people
+              // who muted the chat). Regular members don't get the option.
+              const everyone = rights?.isGroupAdmin && !isDirect && 'all'.startsWith(q)
+                ? [{ _id: '__all__', name: 'all', headshotUrl: '' }] : [];
+              const matches = [...everyone, ...members.filter(mm => (mm.name || '').toLowerCase().includes(q))].slice(0, 6);
               if (matches.length === 0) return null;
               return (
                 <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 200, overflowY: 'auto', zIndex: 60 }}>
@@ -1576,7 +1599,9 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4b5563', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 12 }}>
                         {mm.headshotUrl ? <img src={mm.headshotUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (mm.name?.[0]?.toUpperCase() || '?')}
                       </div>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{mm.name}</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                        {mm._id === '__all__' ? 'all (everyone in this group)' : mm.name}
+                      </span>
                     </button>
                   ))}
                 </div>
