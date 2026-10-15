@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pastAnnouncementsFor, toPastAnnouncement, type AnnouncementGroup } from "./history";
+import { pastAnnouncementsFor, seesEveryAnnouncement, toPastAnnouncement, type AnnouncementGroup } from "./history";
 
 const at = (day: string) => new Date(`${day}T15:00:00.000Z`);
 
@@ -22,9 +22,26 @@ describe("pastAnnouncementsFor (the bell's Past Announcements)", () => {
     expect(pastAnnouncementsFor([otherTeam, { ...otherTeam, audienceLabel: "Branch: Dallas" }])).toEqual([]);
   });
 
+  it("keeps an announcement the viewer sent, even when they were not a recipient", () => {
+    expect(pastAnnouncementsFor([{ ...otherTeam, sent: 1 }]).map((a) => a.title)).toEqual(["Cooper's huddle"]);
+  });
+
   it("counts the cap after the viewer's filter, so another team's posts never crowd theirs out", () => {
     const many = Array.from({ length: 5 }, () => otherTeam);
     expect(pastAnnouncementsFor([...many, everyone, myTeam], 2).map((a) => a.title)).toEqual(["Holiday hours", "Team huddle"]);
+  });
+});
+
+describe("seesEveryAnnouncement (the full, unfiltered history)", () => {
+  it("is only for admin and c-level, who can send to any audience", () => {
+    expect(seesEveryAnnouncement("admin")).toBe(true);
+    expect(seesEveryAnnouncement("c-level")).toBe(true);
+  });
+
+  it("is not for anyone else, so another team's or branch's posts stay hidden", () => {
+    for (const role of ["branch-manager", "sales-team-lead", "sales", "marketing", "", undefined]) {
+      expect(seesEveryAnnouncement(role)).toBe(false);
+    }
   });
 });
 

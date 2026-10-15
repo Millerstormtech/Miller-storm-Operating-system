@@ -6,7 +6,7 @@ import { requireUser, allowMethods } from "../../src/lib/auth";
 import { sendPushNotificationToMultiple } from "../../src/lib/firebase-admin";
 import { resolveAudience, isResolveError, type TeamLeadCandidate } from "../../src/lib/announcements/audience";
 import { BRANCHES } from "../../src/lib/repcard/branches";
-import { pastAnnouncementsFor, toPastAnnouncement } from "../../src/lib/announcements/history";
+import { pastAnnouncementsFor, seesEveryAnnouncement, toPastAnnouncement } from "../../src/lib/announcements/history";
 
 // Company-wide (or scoped) announcements.
 //
@@ -18,8 +18,9 @@ import { pastAnnouncementsFor, toPastAnnouncement } from "../../src/lib/announce
 //
 //   GET  ?options=1                  → audience picker options for THIS caller's role
 //   GET  ?audienceType=...&branches=...&teamLeadIds=...  → the audience size, for the composer's confirm step
-//   GET  ?history=1                  → every announcement ever sent, newest first
-//   GET  ?history=1&mine=1           → the bell's Past Announcements: company-wide ones plus any sent to the caller
+//   GET  ?history=1                  → admin / c-level: every announcement ever sent, newest first;
+//                                      anyone else: the same list as ?mine=1
+//   GET  ?history=1&mine=1           → the bell's Past Announcements: company-wide ones plus any sent to or by the caller
 //   POST                             → send the announcement; returns the recipient + push counts
 //
 // AUDIENCE RULES — the actual scoping logic lives in
@@ -31,8 +32,8 @@ import { pastAnnouncementsFor, toPastAnnouncement } from "../../src/lib/announce
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET", "POST"])) return;
 
-  // History is readable by ANY signed-in user (announcements are company-wide
-  // or scoped, but everyone should see what's already gone out); composing —
+  // History is readable by ANY signed-in user, but each sees only what they
+  // were meant to (see the history block below); composing —
   // and the audience picker/count for the composer — stays with leadership.
   const auth = requireUser(req, res);
   if (!auth) return;
@@ -46,10 +47,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // deleted, but an announcement survives as long as ANY recipient's row does).
   if (req.method === "GET" && req.query.history) {
     // ?mine=1 (the bell): company-wide announcements plus the ones the caller
-    // was sent, never another team's or branch's. `received` marks the
-    // caller's own row, so the viewer filter runs before the cap (rules:
-    // src/lib/announcements/history.ts).
-    const mine = !!req.query.mine;
+    // was sent or posted, never another team's or branch's. `received` marks
+    // the caller's own row, so the viewer filter runs before the cap (rules:
+    // src/lib/announcements/history.ts). Only admin / c-level can read the
+    // full list; anyone else asking for it (the phone app sends plain
+    // ?history=1) gets the filtered one.
+    const mine = !!req.query.mine || !seesEveryAnnouncement(auth.role);
     const history = await NotificationModel.aggregate([
       { $match: { type: "announcement" } },
       { $addFields: { stamp: { $arrayElemAt: [{ $split: ["$id", "-"] }, 1] } } },
@@ -63,6 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           audienceLabel: { $first: "$metadata.audienceLabel" },
           createdAt: { $first: "$createdAt" },
           received: { $max: { $cond: [{ $eq: ["$userId", auth.sub] }, 1, 0] } },
+          sent: { $max: { $cond: [{ $eq: ["$metadata.postedBy", auth.sub] }, 1, 0] } },
         },
       },
       { $sort: { createdAt: -1 } },

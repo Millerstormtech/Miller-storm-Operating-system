@@ -39,6 +39,7 @@ type BranchManagerViewId =
   | "my-tasks"
   | "rep-activity"
   | "announcements"
+  | "past-announcements"
   | "calendar"
   | "docs-sops";
 
