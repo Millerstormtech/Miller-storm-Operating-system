@@ -20,7 +20,10 @@ export default function Document() {
         <meta name="application-name" content="Miller Storm" />
 
         {/* iOS: enables "Add to Home Screen" as a standalone app + icon.
-            (iOS 16.4+ also needs this standalone install for web push.) */}
+            (iOS 16.4+ also needs this standalone install for web push.)
+            The standard name sits beside the Apple one: Chrome warns that the
+            Apple name alone is deprecated, and older iPhones still read it. */}
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Miller Storm" />
