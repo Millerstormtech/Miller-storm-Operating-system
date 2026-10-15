@@ -3,6 +3,10 @@ import { connectMongo } from '../../../src/lib/mongodb';
 import ChatMessage from '../../../src/lib/models/ChatMessage';
 import GroupReadReceipt from '../../../src/lib/models/GroupReadReceipt';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
+import ChatGroup from '../../../src/lib/models/ChatGroup';
+import { canReadMessages } from '../../../src/lib/stormchat/access';
+import { viewerIdsFor } from '../../../src/lib/stormchat/viewer';
+import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET'])) return;
@@ -20,7 +24,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'groupIds are required' });
     }
 
-    const groupIdArray = (groupIds as string).split(',');
+    // Count only chats the caller can read: a DM or private group id they
+    // aren't in answers 0 instead of leaking how busy it is.
+    const requested = (groupIds as string).split(',').filter((g) => mongoose.isValidObjectId(g));
+    const myIds = await viewerIdsFor(userId);
+    const groups = await ChatGroup.find({ _id: { $in: requested } }).lean() as any[];
+    const readable = new Set(groups.filter((g) => canReadMessages(g, myIds, auth.role)).map((g) => String(g._id)));
+    const groupIdArray = requested.filter((g) => readable.has(g));
     
     // Batch instead of the old N+1 loop (which ran 2 queries PER group). One
     // query pulls every read receipt; one aggregation counts unread messages per
@@ -39,14 +49,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // System messages ("X joined the group") are informational: they show in
       // the thread when the group is opened, but never count as unread — no
       // red badge on web or mobile for a join.
-      const cond: any = { groupId, senderId: { $ne: userId }, messageType: { $ne: 'system' } };
+      // Storm Bot posts (celebrations, nightly scorecard) show in the chat
+      // but don't add to the red number either (Youssef, 2026-10-15).
+      const cond: any = { groupId, senderId: { $nin: [userId, 'storm-bot'] }, messageType: { $ne: 'system' } };
       if (lastReadAt) cond.createdAt = { $gt: lastReadAt };
       return cond;
     });
 
     // Default every requested group to 0 so groups with no unread still appear.
     const unreadCounts: { [key: string]: number } = {};
-    groupIdArray.forEach((g) => { unreadCounts[g] = 0; });
+    requested.forEach((g) => { unreadCounts[g] = 0; });
 
     if (orConditions.length > 0) {
       const grouped = await ChatMessage.aggregate([

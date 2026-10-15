@@ -113,6 +113,31 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     return () => document.body.classList.remove('storm-chat-room-open');
   }, []);
   const [rights, setRights] = useState<ChatRights | null>(null);
+  // Read receipts (GroupMe-style): whatever this open chat has shown on a
+  // visible screen counts as read, including messages that arrive while you're
+  // in it. Sent "up to" the newest message shown, so nothing unseen is marked
+  // read. Every way of opening a chat goes through here.
+  const markedUpTo = useRef<string>('');
+  const markRead = () => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    const newest = messagesRef.current[messagesRef.current.length - 1];
+    const upTo = newest ? new Date(newest.createdAt).toISOString() : '';
+    if (!upTo || upTo === markedUpTo.current || !(rightsRef.current?.canRead ?? true)) return;
+    markedUpTo.current = upTo;
+    fetch('/api/storm-chat/mark-read', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId: groupProp._id, upTo }),
+    }).catch(() => { markedUpTo.current = ''; });
+  };
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const rightsRef = useRef<ChatRights | null>(null);
+  useEffect(() => { rightsRef.current = rights; }, [rights]);
+  useEffect(() => {
+    const onVisible = () => markRead();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupProp._id]);
   const [showInfo, setShowInfo] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -124,6 +149,12 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   }, [groupProp._id]);
   const isDirect = !!group.isDirect;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // New messages on screen (first load, a poll, or your own send): mark read.
+  useEffect(() => {
+    messagesRef.current = messages;
+    markRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, rights]);
   const [newMessage, setNewMessage] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   // GIPHY GIF / sticker picker

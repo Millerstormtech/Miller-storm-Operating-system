@@ -19,10 +19,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'groupId is required' });
     }
 
-    // Update or create read receipt
+    // Read up to `upTo` (the newest message the screen actually showed), so a
+    // message that lands a moment after the screen refreshed is never marked
+    // read unseen. Without upTo, "now". Never in the future, and never moves
+    // backwards ($max), so an older tab can't un-read newer messages.
+    const now = new Date();
+    const asked = req.body.upTo ? new Date(req.body.upTo) : now;
+    const readTo = isNaN(asked.getTime()) || asked > now ? now : asked;
     await GroupReadReceipt.findOneAndUpdate(
-      { userId, groupId },
-      { lastReadAt: new Date() },
+      { userId, groupId: String(groupId) },
+      { $max: { lastReadAt: readTo } },
       { upsert: true, new: true }
     );
 
