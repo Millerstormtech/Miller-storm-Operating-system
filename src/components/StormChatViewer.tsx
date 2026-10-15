@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { appConfirm } from "../lib/appDialogs";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { STORM_CHAT_TOUR } from "../portals/shared/guided-tour/definitions/stormChat";
 import { TourButton } from "../portals/shared/guided-tour/TourButton";
@@ -49,6 +50,9 @@ export function StormChatViewer() {
   const [users, setUsers] = useState<PickUser[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [opening, setOpening] = useState(false);
+  // Long-press on a DM row (touch): see GroupRow.
+  const longPressRef = useRef(false);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // "Create group" (only the roles allowed to create groups see the button).
   const [creating, setCreating] = useState(false);
   // Request-to-join (private groups the user isn't a member of yet)
@@ -247,7 +251,7 @@ export function StormChatViewer() {
   // LIST — the other person keeps the thread, and a new message brings it back.
   async function deleteDm(g: ChatGroup) {
     if (!g.isDirect) return;
-    if (!window.confirm(`Delete this chat with ${titleFor(g)}?\n\nIt's removed from your list only; a new message will bring it back.`)) return;
+    if (!(await appConfirm(`Delete this chat with ${titleFor(g)}? It's removed from your list only; a new message will bring it back.`))) return;
     try {
       const res = await fetch(`/api/storm-chat/groups/${g._id}/hide`, { method: "POST" });
       if (!res.ok) throw new Error("failed");
@@ -308,14 +312,25 @@ export function StormChatViewer() {
   const dragEnabled = q.length === 0;
 
   function GroupRow({ g }: { g: ChatGroup }) {
-    const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const longPressed = useRef(false);
+    // The long-press flag lives in the LIST (longPressRef), not in this row:
+    // rows are rebuilt on every refresh, which reset a per-row flag, so the
+    // tap that ended a long press could open whichever chat was now under the
+    // finger (readiness test item 19).
     const startPress = () => {
+      longPressRef.current = false; // every new touch starts fresh
       if (!g.isDirect) return;
-      longPressed.current = false;
-      pressTimer.current = setTimeout(() => { longPressed.current = true; deleteDm(g); }, 550);
+      if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = setTimeout(() => { longPressRef.current = true; deleteDm(g); }, 550);
     };
-    const cancelPress = () => { if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; } };
+    const cancelPress = (e?: React.TouchEvent) => {
+      if (pressTimerRef.current) { clearTimeout(pressTimerRef.current); pressTimerRef.current = null; }
+      // Ending a long press must not also count as a tap; then clear the flag
+      // so the NEXT tap works (some browsers still send a late click).
+      if (longPressRef.current && e?.type === 'touchend') {
+        e.preventDefault();
+        setTimeout(() => { longPressRef.current = false; }, 400);
+      }
+    };
     const count = unread[g._id] || 0;
     const img = imageFor(g);
     const notMember = g.isMember === false && !g.isDirect;
@@ -326,7 +341,7 @@ export function StormChatViewer() {
     return (
       <button
         key={g._id}
-        onClick={() => { if (longPressed.current) { longPressed.current = false; return; } openGroup(g); }}
+        onClick={() => { if (longPressRef.current) { longPressRef.current = false; return; } openGroup(g); }}
         onContextMenu={g.isDirect ? (e) => { e.preventDefault(); deleteDm(g); } : undefined}
         onTouchStart={startPress}
         onTouchEnd={cancelPress}
