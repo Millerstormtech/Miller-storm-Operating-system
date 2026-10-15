@@ -229,7 +229,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Reply: quote the REAL original, which must be in this same chat.
       if (replyTo) {
         const original = mongoose.isValidObjectId(String(replyTo))
-          ? await ChatMessage.findById(String(replyTo)).select('groupId message senderName').lean() as any
+          ? await ChatMessage.findById(String(replyTo)).select('groupId message senderName messageType poll').lean() as any
           : null;
         const quote = replyQuoteFrom(original, String(groupId));
         if (!quote) {

@@ -30,7 +30,10 @@ describe('replyQuoteFrom', () => {
   it('refuses a missing original', () => {
     expect(replyQuoteFrom(null, 'g1')).toBeNull();
   });
-  it('keeps an empty quote for a photo with no caption', () => {
-    expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep' }, 'g1')).toEqual({ replyToMessage: '', replyToSender: 'Rep' });
+  it('quotes a photo, video, file or poll by what it is', () => {
+    expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep', messageType: 'image' }, 'g1')?.replyToMessage).toBe('📷 Photo');
+    expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep', messageType: 'video' }, 'g1')?.replyToMessage).toBe('🎬 Video');
+    expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep', messageType: 'file', message: 'Q3.pdf' }, 'g1')?.replyToMessage).toBe('📎 Q3.pdf');
+    expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep', messageType: 'poll', poll: { question: 'Lunch?' } }, 'g1')?.replyToMessage).toBe('📊 Lunch?');
   });
 });

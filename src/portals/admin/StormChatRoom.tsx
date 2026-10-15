@@ -945,6 +945,169 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     );
   }
 
+  // The ⋮ menu for ANY message type (text, photo, video, file, poll), so
+  // every message can be replied to, forwarded, pinned and deleted the same
+  // way (readiness test item 14: files had no menu at all). Placed just
+  // outside the bubble; the bubble's wrapper must be position: relative.
+  function renderMenu(msg: ChatMessage, isMyMessage: boolean, showMenu: boolean) {
+    return (
+      <>
+                  {/* Always-visible menu button, positioned just OUTSIDE the
+                      bubble (on the inner side) so it never overlaps the text. */}
+                  <button
+                    onClick={() => setMenuMessageId(showMenu ? null : msg._id)}
+                    title="More"
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      ...(isMyMessage ? { left: -26 } : { right: -26 }),
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-subtle)',
+                      cursor: 'pointer',
+                      padding: 4,
+                      fontSize: 18,
+                      lineHeight: 1,
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ⋮
+                  </button>
+                
+                  {/* Popup menu */}
+                  {showMenu && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 28,
+                        ...(isMyMessage ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }),
+                        backgroundColor: 'var(--surface-inverse-raised)',
+                        borderRadius: 8,
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                        zIndex: 1000,
+                        minWidth: 150,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {/* Message this sender privately (groups only, others' messages) */}
+                      {!isDirect && !isMyMessage && onMessagePrivately && (
+                        <button
+                          onClick={() => { onMessagePrivately(msg.senderId, msg.senderName); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          ✉️ Message privately
+                        </button>
+                      )}
+                      {canSendMessage && (
+                      <button
+                        onClick={() => {
+                          setReplyingTo(msg);
+                          setMenuMessageId(null);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 16px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-inverse)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontSize: 14,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        ↩ Reply
+                      </button>
+                      )}
+                      <button
+                        onClick={() => openForward(msg)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 16px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-inverse)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontSize: 14,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        ➦ Forward
+                      </button>
+                      {msg.messageType === 'text' && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.message);
+                          setMenuMessageId(null);
+                          alert('Message copied!');
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 16px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-inverse)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontSize: 14,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        📋 Copy
+                      </button>
+                      )}
+                      {(msg.messageType === 'image' || msg.messageType === 'video' || msg.messageType === 'file') && msg.mediaUrl && (
+                        <button
+                          onClick={() => { downloadMedia(msg.mediaUrl!); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          ⬇ Save
+                        </button>
+                      )}
+                      {canPin && (
+                        <button
+                          onClick={() => { togglePin(msg); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          {msg.pinned ? '📌 Unpin' : '📌 Pin'}
+                        </button>
+                      )}
+                      {(isMyMessage || canModerate) && (
+                        <button
+                          onClick={() => { deleteMessage(msg._id); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          🗑 Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
+      </>
+    );
+  }
+
   function renderMessage(msg: ChatMessage, index: number) {
     const isMyMessage = msg.senderId === (user?._id || user?.id);
     const showDate = index === 0 ||
@@ -1029,15 +1192,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               const myId = user?._id || user?.id || '';
               return (
                 <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)', color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
-                  {(isMyMessage || canModerate) && (
-                    <button
-                      onClick={() => deleteMessage(msg._id)}
-                      title="Delete poll"
-                      style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: '50%', border: 'none', background: isMyMessage ? 'rgb(var(--white-rgb) / 0.25)' : 'rgba(0,0,0,0.08)', color: 'inherit', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      🗑
-                    </button>
-                  )}
+                  {renderMenu(msg, isMyMessage, showMenu)}
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, paddingRight: (isMyMessage || canModerate) ? 28 : 0 }}>📊 {msg.poll.question}</div>
                   {msg.poll.options.map((opt, i) => {
                     const votes = opt.votes?.length || 0;
@@ -1070,147 +1225,8 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                   wordBreak: 'break-word',
                   position: 'relative'
                 }}>
-                {/* Always-visible menu button, positioned just OUTSIDE the
-                    bubble (on the inner side) so it never overlaps the text. */}
-                <button
-                  onClick={() => setMenuMessageId(showMenu ? null : msg._id)}
-                  title="More"
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    ...(isMyMessage ? { left: -26 } : { right: -26 }),
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-subtle)',
-                    cursor: 'pointer',
-                    padding: 4,
-                    fontSize: 18,
-                    lineHeight: 1,
-                    fontWeight: 'bold'
-                  }}
-                >
-                  ⋮
-                </button>
-                
-                {/* Popup menu */}
-                {showMenu && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 28,
-                      ...(isMyMessage ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }),
-                      backgroundColor: 'var(--surface-inverse-raised)',
-                      borderRadius: 8,
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                      zIndex: 1000,
-                      minWidth: 150,
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {/* Message this sender privately (groups only, others' messages) */}
-                    {!isDirect && !isMyMessage && onMessagePrivately && (
-                      <button
-                        onClick={() => { onMessagePrivately(msg.senderId, msg.senderName); setMenuMessageId(null); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        ✉️ Message privately
-                      </button>
-                    )}
-                    {canSendMessage && (
-                    <button
-                      onClick={() => {
-                        setReplyingTo(msg);
-                        setMenuMessageId(null);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 16px',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-inverse)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      ↩ Reply
-                    </button>
-                    )}
-                    <button
-                      onClick={() => openForward(msg)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 16px',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-inverse)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      ➦ Forward
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(msg.message);
-                        setMenuMessageId(null);
-                        alert('Message copied!');
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 16px',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-inverse)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      📋 Copy
-                    </button>
-                    {canPin && (
-                      <button
-                        onClick={() => { togglePin(msg); setMenuMessageId(null); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        {msg.pinned ? '📌 Unpin' : '📌 Pin'}
-                      </button>
-                    )}
-                    {(isMyMessage || canModerate) && (
-                      <button
-                        onClick={() => { deleteMessage(msg._id); setMenuMessageId(null); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        🗑 Delete
-                      </button>
-                    )}
-                  </div>
-                )}
-                
+                {renderMenu(msg, isMyMessage, showMenu)}
+
                 {/* Reply preview */}
                 {msg.replyTo && msg.replyToMessage && (
                   <div 
@@ -1261,6 +1277,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
             
             {msg.messageType === 'image' && msg.mediaUrl && (
               <div style={{ position: 'relative', display: 'inline-block' }}>
+                {renderMenu(msg, isMyMessage, showMenu)}
                 <img
                   src={msg.mediaUrl}
                   alt="Image"
@@ -1268,10 +1285,6 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                   style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block', cursor: 'pointer' }}
                 />
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-                  {(isMyMessage || canModerate) && (
-                    <button onClick={() => deleteMessage(msg._id)} title="Delete"
-                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
-                  )}
                   <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
                     style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
                 </div>
@@ -1280,16 +1293,13 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
 
             {msg.messageType === 'video' && msg.mediaUrl && (
               <div style={{ position: 'relative', display: 'inline-block' }}>
+                {renderMenu(msg, isMyMessage, showMenu)}
                 <video
                   src={msg.mediaUrl}
                   controls
                   style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block' }}
                 />
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-                  {(isMyMessage || canModerate) && (
-                    <button onClick={() => deleteMessage(msg._id)} title="Delete"
-                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
-                  )}
                   <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
                     style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
                 </div>
@@ -1298,6 +1308,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
             
             {msg.messageType === 'file' && msg.mediaUrl && (
               <div style={{ 
+                position: 'relative',
                 backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)',
                 color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
                 padding: '10px 14px',
@@ -1306,6 +1317,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 borderTopLeftRadius: isMyMessage ? 16 : 4,
                 wordBreak: 'break-word'
               }}>
+                {renderMenu(msg, isMyMessage, showMenu)}
                 <a 
                   href={msg.mediaUrl} 
                   target="_blank" 

@@ -24,12 +24,20 @@ export function userMessageType(requested: unknown): UserMessageType | null {
  * or reveal, a message from somewhere else).
  */
 export function replyQuoteFrom(
-  original: { groupId?: unknown; message?: unknown; senderName?: unknown } | null | undefined,
+  original: {
+    groupId?: unknown; message?: unknown; senderName?: unknown;
+    messageType?: unknown; poll?: { question?: unknown } | null;
+  } | null | undefined,
   groupId: string,
 ): { replyToMessage: string; replyToSender: string } | null {
   if (!original || String(original.groupId) !== String(groupId)) return null;
-  return {
-    replyToMessage: String(original.message ?? ''),
-    replyToSender: String(original.senderName ?? ''),
-  };
+  const text = String(original.message ?? '').trim();
+  // Photos, videos, files and polls have little or no text: quote what they are.
+  const quote =
+    original.messageType === 'image' ? (text ? `📷 ${text}` : '📷 Photo')
+    : original.messageType === 'video' ? (text ? `🎬 ${text}` : '🎬 Video')
+    : original.messageType === 'file' ? `📎 ${text || 'File'}`
+    : original.messageType === 'poll' ? `📊 ${String(original.poll?.question ?? text ?? 'Poll') || 'Poll'}`
+    : String(original.message ?? '');
+  return { replyToMessage: quote, replyToSender: String(original.senderName ?? '') };
 }
