@@ -35,7 +35,7 @@ export const SUPPORT_CATEGORIES: SupportCategory[] = [
     label: "Billing",
     reason: "Commission issues",
     department: "Billing",
-    emails: ["billing@millerstorm.com", "office@millerstorm.com"],
+    emails: ["billing@millerstorm.com", "office@millerstorm.com", "mo@millerstorm.com"],
     fields: [ACCULYNX_JOB],
   },
   {
