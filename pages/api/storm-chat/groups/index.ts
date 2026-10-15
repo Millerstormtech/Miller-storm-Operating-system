@@ -130,6 +130,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // stray fields) stays members-only because it has no visibility.
         groups = groups
           .filter((g: any) => canSeeGroupInList(g, myIds))
+          // View As never lists someone's private DMs (Youssef, 2026-10-15).
+          .filter((g: any) => effectiveUserId === auth.sub || !isDmGroup(g))
           // "Delete chat for me": a member who hid a DM stops seeing it until the
           // other person sends a new message (which clears hiddenFor).
           .filter((g: any) => !(isDmGroup(g) && Array.isArray(g.hiddenFor) && g.hiddenFor.some((h: string) => myIds.includes(h))))

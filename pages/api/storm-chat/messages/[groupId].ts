@@ -52,6 +52,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const me = await UserModel.findOne({ id: effectiveUserId }, { _id: 1, role: 1 }).lean() as any;
       const myIds = [effectiveUserId, me?._id?.toString()].filter(Boolean) as string[];
       const effectiveRole = effectiveUserId === auth.sub ? auth.role : me?.role;
+      // View As never opens someone's private DMs (Youssef, 2026-10-15): DMs
+      // stay between their two people, admins included.
+      if (effectiveUserId !== auth.sub && isDmGroup(group)) {
+        return res.status(403).json({ error: 'Direct messages are private, even in View As' });
+      }
 
       // DM: only the two canonical participants (dmKey). Group: members, or a
       // system admin. Enforced by the shared, unit-tested helper.
