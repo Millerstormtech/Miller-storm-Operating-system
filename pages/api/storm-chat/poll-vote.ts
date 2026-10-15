@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
-import ChatMessage from '../../../src/lib/models/ChatMessage';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
+import { findReadableMessage } from '../../../src/lib/stormchat/messageAccess';
 
 // Toggle the caller's vote on a poll message option.
 // Body: { messageId, optionIndex }
@@ -17,7 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'messageId and optionIndex are required' });
   }
 
-  const msg: any = await ChatMessage.findById(messageId);
+  // Only someone who can read the poll's chat may vote (and see it back).
+  const msg: any = await findReadableMessage(messageId, auth);
   if (!msg || msg.messageType !== 'poll' || !msg.poll) {
     return res.status(404).json({ error: 'Poll not found' });
   }

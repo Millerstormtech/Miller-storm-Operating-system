@@ -10,6 +10,7 @@ import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canReadMessages, canSendMessage } from '../../../../src/lib/stormchat/access';
 import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
+import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST', 'PATCH', 'DELETE'])) return;
@@ -385,7 +386,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'messageId and emoji are required' });
       }
 
-      const msg = await ChatMessage.findById(messageId);
+      // Only someone who can read the message's chat may react (and see it back).
+      const msg = await findReadableMessage(messageId, auth);
       if (!msg) return res.status(404).json({ error: 'Message not found' });
 
       const reactions = (msg as any).reactions || [];
