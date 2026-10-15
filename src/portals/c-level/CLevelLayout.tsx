@@ -39,6 +39,7 @@ type CLevelViewId =
   | "my-profile"
   | "user-management"
   | "announcements"
+  | "past-announcements"
   | "my-tasks"
   | "rep-activity"
   | "calendar"

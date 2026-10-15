@@ -36,6 +36,7 @@ type AdminViewId =
   | "teamStructure"
   | "tickets"
   | "announcements"
+  | "past-announcements"
   | "calendar"
   | "docs-sops";
 
