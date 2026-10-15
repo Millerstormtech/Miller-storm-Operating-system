@@ -408,28 +408,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!messageId || !emoji) {
         return res.status(400).json({ error: 'messageId and emoji are required' });
       }
+      if (typeof emoji !== 'string' || emoji.length > 16) {
+        return res.status(400).json({ error: 'A reaction is a single emoji' });
+      }
 
       // Only someone who can read the message's chat may react (and see it back).
       const msg = await findReadableMessage(messageId, auth);
       if (!msg) return res.status(404).json({ error: 'Message not found' });
 
-      const reactions = (msg as any).reactions || [];
-      const existingIndex = reactions.findIndex(
-        (r: any) => r.userId === userId && r.emoji === emoji
+      // Toggle as single add/remove operations on the database, so people
+      // reacting at the same moment can't overwrite each other (readiness
+      // test item 9: 8 at once kept 1).
+      const removed = await ChatMessage.updateOne(
+        { _id: (msg as any)._id, reactions: { $elemMatch: { userId, emoji } } },
+        { $pull: { reactions: { userId, emoji } } },
       );
-
-      if (existingIndex !== -1) {
-        // Toggle off — remove existing reaction
-        reactions.splice(existingIndex, 1);
-      } else {
-        // Add new reaction
-        reactions.push({ emoji, userId, userName });
+      if (removed.modifiedCount === 0) {
+        await ChatMessage.updateOne(
+          { _id: (msg as any)._id, reactions: { $not: { $elemMatch: { userId, emoji } } } },
+          { $push: { reactions: { emoji, userId, userName } } },
+        );
       }
 
-      (msg as any).reactions = reactions;
-      await msg.save();
-
-      return res.status(200).json(msg);
+      return res.status(200).json(await ChatMessage.findById((msg as any)._id).lean());
     } catch (error) {
       console.error('Error saving reaction:', error);
       res.status(500).json({ error: 'Failed to save reaction' });
