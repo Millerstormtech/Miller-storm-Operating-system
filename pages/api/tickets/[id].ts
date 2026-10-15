@@ -16,12 +16,6 @@ const STATUS_MSG: Record<string, { title: string; message: string }> = {
   completed: { title: "Ticket Completed 🎉", message: "Your ticket has been completed successfully — please check further." },
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  bug: "Bug / Issue Fix",
-  feature: "Request New Feature",
-  other: "Other",
-};
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
@@ -233,7 +227,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status,
         name: ticket.name,
         email: ticket.email,
-        type: TYPE_LABEL[ticket.type] || ticket.type,
+        // The readable name ("Draw Request"), not the stored key ("draw_request").
+        type: supportTypeLabel(ticket.type),
         adminNote: ticket.adminNote,
         ticketNumber: await ticketNumberFor((ticket as any).createdAt),
       });
