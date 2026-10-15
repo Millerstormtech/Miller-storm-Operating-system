@@ -3,6 +3,7 @@ import crypto from "crypto";
 import formidable, { multipart } from "formidable";
 import fs from "fs";
 import path from "path";
+import { Writable } from "stream";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { SopDocumentModel } from "../../../src/lib/models/SopDocument";
 import { SopFolderModel } from "../../../src/lib/models/SopFolder";
@@ -75,7 +76,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // as a baffling "No file uploaded" — keep the refused name so the admin is
   // told the real reason.
   const refused: string[] = [];
-  const written: string[] = [];
+
+  // Every file formidable writes goes through a stream made here, so a refused
+  // upload can wait for each one to finish closing and only then delete it.
+  // Left to itself, formidable deletes a refused file on a timer AFTER the
+  // error is reported, and opens files asynchronously — so a plain unlink
+  // could run before the file even exists and leave an orphan behind.
+  const streams: fs.WriteStream[] = [];
+  let discarding = false;
+  const discardUpload = async () => {
+    discarding = true; // any part that starts from here on writes nothing
+    await Promise.all(
+      streams.map(async (ws) => {
+        if (!ws.closed) {
+          const closed = new Promise<void>((resolve) => ws.once("close", () => resolve()));
+          ws.destroy();
+          await closed;
+        }
+        await fs.promises.unlink(ws.path as string).catch((err) => {
+          if (err?.code !== "ENOENT") console.error("[docs] could not delete refused upload", ws.path, err);
+        });
+      })
+    );
+  };
+
   const form = formidable({
     // Multipart only: the octet-stream parser never runs `filter`.
     // (@types/formidable still types this as string[].)
@@ -90,8 +114,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!ok) refused.push(originalFilename || "That file");
       return ok;
     },
+    fileWriteStreamHandler: (file) => {
+      if (discarding) return new Writable({ write: (_chunk, _enc, cb) => cb() });
+      const ws = fs.createWriteStream((file as unknown as formidable.File).filepath);
+      streams.push(ws);
+      return ws;
+    },
   });
-  form.on("fileBegin", (_name, f) => written.push(f.filepath));
 
   try {
     const { fields, files } = await new Promise<{ fields: formidable.Fields; files: formidable.Files }>(
@@ -102,14 +131,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
     if (!file || !isAllowedUploadName(file.originalFilename || "")) {
-      if (file) fs.unlink(file.filepath, () => {});
+      await discardUpload();
       const name = refused[0] ?? file?.originalFilename;
       res.status(400).json({ error: name ? `"${name}" isn't an allowed file type` : "No file uploaded" });
       return;
     }
     const title = cleanName(Array.isArray(fields.title) ? fields.title[0] : fields.title, MAX_TITLE_LENGTH);
     if (!title) {
-      fs.unlink(file.filepath, () => {});
+      await discardUpload();
       res.status(400).json({ error: "Title is required" });
       return;
     }
@@ -158,7 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (err: any) {
     // Nothing was saved, so nothing on disk should outlive this request.
-    for (const p of written) fs.unlink(p, () => {});
+    await discardUpload();
     if (EMPTY_FILE_ERRORS.includes(err?.code)) {
       res.status(400).json({ error: "That file is empty" });
       return;

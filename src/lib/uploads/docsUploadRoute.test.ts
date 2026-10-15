@@ -41,7 +41,10 @@ vi.mock("../models/SopDocument", () => ({
 }));
 vi.mock("../models/SopFolder", () => ({
   SopFolderModel: {
-    exists: vi.fn(async ({ id }: { id: string }) => (id === "sopfolder-known" ? { _id: "x" } : null)),
+    exists: vi.fn(async ({ id }: { id: string }) => {
+      if (id === "sopfolder-db-down") throw new Error("database unavailable");
+      return id === "sopfolder-known" ? { _id: "x" } : null;
+    }),
   },
 }));
 vi.mock("../models/User", () => ({
@@ -89,10 +92,10 @@ function startServer() {
 
 const token = () => signSession({ id: "test-admin", role: "admin" });
 
-async function upload(url: string, opts: { name?: string; bytes?: string; type?: string; folderId?: string } = {}) {
+async function upload(url: string, opts: { name?: string; bytes?: string; type?: string; folderId?: string; title?: string } = {}) {
   const name = opts.name ?? "test.pdf";
   const body = new FormData();
-  body.append("title", name);
+  body.append("title", opts.title ?? name);
   body.append("description", "");
   if (opts.folderId) body.append("folderId", opts.folderId);
   body.append("file", new Blob([Buffer.from(opts.bytes ?? "%PDF-1.4 fake pdf bytes")], { type: opts.type ?? "application/pdf" }), name);
@@ -106,6 +109,25 @@ async function withServer<T>(fn: (url: string) => Promise<T>): Promise<T> {
   } finally {
     server.close();
   }
+}
+
+// Makes file creation (fs.open, which write streams use) and deletion
+// (fs.unlink, fs.promises.unlink) land `ms` late, the way they do on a busy
+// machine. Returns a function that puts the real calls back.
+function slowDisk(ms: number) {
+  const real = { open: fs.open, unlink: fs.unlink, promisesUnlink: fs.promises.unlink };
+  const later = (fn: (...a: any[]) => any) => (...a: any[]) => { setTimeout(() => fn(...a), ms); };
+  (fs as any).open = later(real.open);
+  (fs as any).unlink = later(real.unlink);
+  (fs.promises as any).unlink = async (...a: any[]) => {
+    await new Promise((r) => setTimeout(r, ms));
+    return (real.promisesUnlink as any)(...a);
+  };
+  return () => {
+    (fs as any).open = real.open;
+    (fs as any).unlink = real.unlink;
+    (fs.promises as any).unlink = real.promisesUnlink;
+  };
 }
 
 afterAll(() => {
@@ -186,6 +208,51 @@ describe("POST /api/docs", () => {
         fs.rmSync(ownDir, { recursive: true, force: true });
       }
     }));
+
+  // A refused upload must be off the disk BEFORE the refusal is sent, even on
+  // a busy machine where creating and deleting files lands late. Each case gets
+  // its own empty directory, read the instant the response arrives and again
+  // after the slowed disk calls have had time to land.
+  it("deletes every half-written file before answering a refused upload, even when the disk is slow", () =>
+    withServer(async (url) => {
+      const octet = () =>
+        fetch(`${url}/api/docs`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/octet-stream", "x-file-name": "evil.pdf" },
+          body: "%PDF-1.4 raw",
+        });
+      const refusals: [string, number, () => Promise<Response>][] = [
+        ["empty file", 400, () => upload(url, { name: "empty.pdf", bytes: "" })],
+        ["missing title", 400, () => upload(url, { name: "notitle.pdf", title: "" })],
+        ["database error after the file was written", 500, () => upload(url, { folderId: "sopfolder-db-down" })],
+        ["file type not allowed", 400, () => upload(url, { name: "page.html" })],
+        ["raw octet-stream", 415, octet],
+      ];
+      const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        for (const delayMs of [0, 1, 3, 8, 20]) {
+          for (const [label, status, send] of refusals) {
+            const ownDir = fs.mkdtempSync(path.join(os.tmpdir(), "sop-docs-refused-"));
+            process.env.SOP_DOCS_DIR = ownDir;
+            const restoreDisk = slowDisk(delayMs);
+            try {
+              const res = await send();
+              const atResponse = fs.readdirSync(ownDir);
+              expect(res.status, `${label} @ ${delayMs}ms`).toBe(status);
+              expect(atResponse, `${label} @ ${delayMs}ms, when the response arrived`).toEqual([]);
+              await new Promise((r) => setTimeout(r, delayMs + 30));
+              expect(fs.readdirSync(ownDir), `${label} @ ${delayMs}ms, a moment later`).toEqual([]);
+            } finally {
+              restoreDisk();
+              process.env.SOP_DOCS_DIR = TEST_DOCS_DIR;
+              fs.rmSync(ownDir, { recursive: true, force: true });
+            }
+          }
+        }
+      } finally {
+        quiet.mockRestore();
+      }
+    }), 30000);
 
   it("stores a type from the extension, not the one the client claimed", () =>
     withServer(async (url) => {
