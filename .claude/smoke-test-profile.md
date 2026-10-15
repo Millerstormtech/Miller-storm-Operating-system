@@ -52,6 +52,15 @@ The universal process lives in the skill; this file holds the **project-specific
 - **jsPDF's built-in fonts are WinAnsi-encoded** and silently DROP characters they lack, e.g. `→` (U+2192) printed a header as "Lead  Filed". Verify exported PDFs by extracting their text operators, not by trusting the on-screen label:
   `python -c "import re;d=open('x.pdf','rb').read();print(re.findall(rb'\((.*?)\)\s*Tj',d,re.S))"`
 
+## Gotchas found 2026-10-01 (Email Config / Send Login Details smoke)
+- **`next dev` (Turbopack) inside a worktree under `.claude/worktrees/` 404s EVERY dynamic API route** (`/api/tickets/[id]`, `/api/users/[id]`, `/api/public-profile/[username]`) with Next's HTML 404 page; static routes work. Cause: two lockfiles, so Turbopack picks the parent repo as root. Start it with **`next dev --webpack -p 6790`** from the worktree (run the binary from the main checkout's `node_modules`, the worktree has none). An HTML 404 from an API URL means routing, not the handler: the handler answers JSON.
+- **Catch outgoing email without sending any:** the `resend` SDK honours `RESEND_BASE_URL`. Run a tiny local HTTP server that appends each `POST /emails` body to a file and answers `{"id":"mock-1"}`, then start the app with `RESEND_API_KEY=re_test_fake RESEND_BASE_URL=http://localhost:6799`. Assert subject/text/html per recipient from that file.
+- **`innerText` follows CSS `text-transform`:** panel headers are uppercase, so "Login details emailed to …" reads as "LOGIN DETAILS EMAILED TO …". Match with `textContent` or case-insensitively.
+- **Creating a user through `POST /api/users` needs `featureToggles` and `publicProfile`** (the User model requires both; the screen always sends them). Without them it 500s with a ValidationError.
+- **Do not click a sidebar item by text on User Management:** the feature-toggle list has same-named labels ("Email Config"). Use `window.next.router.push('/admin/email-config')`.
+- With no `NEXT_PUBLIC_APP_URL` set, email links fall back to `https://millerstorm.tech`, not localhost.
+- **`alert()` is NOT a browser dialog in this app.** `src/components/AppDialogs.tsx` replaces `window.alert` with a toast card (top right). `page.on("dialog")` never fires for it; read the toast text from the DOM instead. A "no pop-ups" check that listens for dialogs proves nothing.
+
 ## ID gotchas (bite every time)
 - Users have BOTH an app `id` (e.g. `"user-123"`, = `auth.sub`) and a Mongo `_id`. `chatgroups.members/admins` may store either; the messages handler resolves both. Progress/notifications/leaderboard key off the **app `id`**.
 - `courses` pages: `?summary=1` **drops `pages` entirely**; `?list=1` **keeps light page metadata** (id/title/status/folderId/isQuiz) but strips `pages.body/transcript/quizQuestions`. No flag = full heavy payload. Pick the flag by what the screen actually reads.

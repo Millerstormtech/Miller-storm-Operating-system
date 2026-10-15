@@ -45,3 +45,6 @@ scripts/dev/
 # Docs & SOPs library uploads — deliberately outside /public (see
 # pages/api/docs/), never committed.
 private-uploads/
+
+# Playwright MCP browser-test screenshots and logs (local scratch, never committed).
+.playwright-mcp/
