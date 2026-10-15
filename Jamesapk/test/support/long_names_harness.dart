@@ -100,7 +100,7 @@ void setRoutes(Map<String, Object> routes) => _routes = routes;
 /// [routes]. [height] can be raised so a long list builds every item at once.
 /// [appRoutes] are named routes the screen may push (pushNamed('/dmo')).
 Future<void> pumpScreen(WidgetTester tester, Widget screen, Map<String, Object> routes,
-    {double height = 780, Map<String, WidgetBuilder> appRoutes = const {}}) async {
+    {double height = 780, Map<String, WidgetBuilder> appRoutes = const {}, String role = 'sales'}) async {
   tester.view.physicalSize = Size(360, height);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -108,7 +108,7 @@ Future<void> pumpScreen(WidgetTester tester, Widget screen, Map<String, Object> 
     'token': 'test-token',
     'tour_seen_apps_tools_v1': true,
     'tour_seen_sales_leaderboard_v1': true,
-    'user': jsonEncode({'id': 'me', 'name': longName, 'email': 'me@example.com', 'role': 'sales'}),
+    'user': jsonEncode({'id': 'me', 'name': longName, 'email': 'me@example.com', 'role': role}),
   });
   _routes = routes;
   sentRequests.clear();

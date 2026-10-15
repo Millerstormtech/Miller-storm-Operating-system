@@ -39,8 +39,8 @@ class LessonPlayerScreen extends StatefulWidget {
   final String lessonId;
   final String lessonTitle;
   final List<String>? playlistModules;
-  // Leadership roles (c-level / branch-manager / sales-team-lead) get every
-  // lesson unlocked — same as the web's `!isPrivileged` rule.
+  // Leadership roles (c-level / branch-manager / sales-team-lead) and marketing
+  // get every lesson unlocked and free seeking — the web's opensAllTraining.
   final bool isPrivileged;
   // This rep was individually granted fast-forward by a manager/admin/C-Level
   // (User.fastForwardAllowed) — same grant the web's video player checks

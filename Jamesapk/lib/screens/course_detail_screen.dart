@@ -63,10 +63,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _progressPercent = 0;
   String? _userId;
   String? _userRole;
-  // Leadership roles (same as web's `isPrivileged`) get every lesson & quiz
-  // unlocked and may jump/fast-forward freely — no sequential gating.
+  // Roles that review training freely get every lesson & quiz unlocked and may
+  // jump/fast-forward freely — no sequential gating. Same list as the web's
+  // OPEN_TRAINING_ROLES (src/lib/training/access.ts); change both together.
+  // Marketing joined leadership on 2026-10-15 (Nadine). Admin is on the web
+  // list too but cannot sign in to the app.
   bool get _isPrivileged =>
-      _userRole == 'c-level' || _userRole == 'branch-manager' || _userRole == 'sales-team-lead';
+      _userRole == 'c-level' ||
+      _userRole == 'branch-manager' ||
+      _userRole == 'sales-team-lead' ||
+      _userRole == 'marketing';
   // Team leads and branch managers are tracked on videos on the Course
   // Leaderboard, so a skipped video must not count (see LessonPlayerScreen).
   bool get _creditPlaybackOnly =>
@@ -492,8 +498,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     // first incomplete item locks everything after it, so a newly-inserted
     // lesson/quiz re-locks the rest until it's done.
     bool isPageUnlocked(String pageId) {
-      // Leadership (C-Level / Branch Manager / Sales Team Lead) always has every
-      // lesson & quiz unlocked — same as the web's `isPrivileged` rule.
+      // Leadership (C-Level / Branch Manager / Sales Team Lead) and Marketing
+      // always have every lesson & quiz unlocked — the web's opensAllTraining.
       if (_isPrivileged) return true;
       // "Unlock all" on the course opens every lesson & quiz for everyone.
       if (_course?['unlockAll'] == true) return true;
