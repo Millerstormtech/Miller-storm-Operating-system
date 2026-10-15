@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
 import { enterSendsMessage } from "../../lib/stormchat/enterKey";
 import { StormChatGroupInfo, type ChatRights } from "../../components/StormChatGroupInfo";
+import { mergeNewestPage, prependOlderPage } from "../../lib/stormchat/messagePages";
 
 type ChatMessage = {
   _id: string;
@@ -149,6 +150,8 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   }, [groupProp._id]);
   const isDirect = !!group.isDirect;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Every pinned message in the chat (the banner), loaded on its own.
+  const [pinnedList, setPinnedList] = useState<ChatMessage[]>([]);
   // New messages on screen (first load, a poll, or your own send): mark read.
   useEffect(() => {
     messagesRef.current = messages;
@@ -258,10 +261,9 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   const canPin = rights ? rights.canPin : (isDirect ? isGroupMember : canSendMessage);
   // Delete other people's messages: this group's admins (never in a DM).
   const canModerate = rights ? rights.canModerate : (isAdmin && !isDirect);
-  // The banner lists every pinned message, newest pin first.
-  const pinnedMessages = messages
-    .filter((m) => m.pinned)
-    .sort((a, b) => new Date(b.pinnedAt || 0).getTime() - new Date(a.pinnedAt || 0).getTime());
+  // The banner lists every pinned message in the chat, newest pin first,
+  // however old (loaded separately: the screen only holds recent pages).
+  const pinnedMessages = pinnedList;
 
   // Pin or unpin a message; updates the list in place on success.
   async function togglePin(msg: ChatMessage) {
@@ -276,6 +278,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
         setMessages((prev) => prev.map((m) => (m._id === msg._id
           ? { ...m, pinned: updated.pinned, pinnedByName: updated.pinnedByName, pinnedAt: updated.pinnedAt }
           : m)));
+        loadPinned();
       } else {
         alert('Failed to pin message');
       }
@@ -286,8 +289,14 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000); // Poll every 3 seconds
+    loadPinned();
+    let ticks = 0;
+    const interval = setInterval(() => {
+      fetchMessages();
+      if (++ticks % 5 === 0) loadPinned(); // pins change rarely: every 15s
+    }, 3000); // Poll every 3 seconds
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group._id]);
 
   // Load the group's members for @mention autocomplete (not needed in a DM).
@@ -317,7 +326,17 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
-  function scrollToMessage(messageId: string) {
+  async function scrollToMessage(messageId: string) {
+    // A quote can point at a message older than what's loaded: load earlier
+    // pages until it's there (up to about 2,000 messages back).
+    if (!messageRefs.current[messageId]) {
+      const found = await loadOlderUntil(messageId);
+      if (!found) { alert('That message is too far back to jump to.'); return; }
+      // Wait until the loaded pages are drawn and the message exists on screen.
+      for (let i = 0; i < 40 && !messageRefs.current[messageId]; i++) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    }
     const messageElement = messageRefs.current[messageId];
     if (messageElement) {
       messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -337,20 +356,98 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
       const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
       const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
       setShouldAutoScroll(isAtBottom);
+      // Near the top: load the previous page (GroupMe-style history).
+      if (scrollTop < 80) loadOlder();
     }
+  }
+
+  // Message pages (readiness test item 12): the chat opens with the newest
+  // PAGE messages and refreshes only that page every few seconds; scrolling up
+  // loads OLDER_PAGE more at a time. Before, only the newest 500 ever loaded.
+  const PAGE = 100;
+  const OLDER_PAGE = 50;
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const loadingOlderRef = useRef(false);
+  const firstPageLoaded = useRef(false);
+  // Opening a chat lands on the newest message; loading earlier pages is only
+  // allowed after that, or the brief moment the list starts at the top would
+  // trigger it (and stop the chat from opening at the bottom).
+  const olderEnabled = useRef(false);
+  // Keep the reader's place when older messages are added above.
+  const keepScroll = useRef<{ height: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = messagesContainerRef.current;
+    if (el && keepScroll.current) {
+      el.scrollTop = el.scrollHeight - keepScroll.current.height + keepScroll.current.top;
+      keepScroll.current = null;
+    }
+  }, [messages]);
+
+  async function fetchOlder(beforeId: string, limit: number): Promise<ChatMessage[] | null> {
+    const res = await fetch(`/api/storm-chat/messages/${group._id}?beforeId=${beforeId}&limit=${limit}`);
+    return res.ok ? res.json() : null;
+  }
+
+  async function loadOlder() {
+    const oldest = messagesRef.current[0];
+    if (!olderEnabled.current || !hasOlder || loadingOlderRef.current || !oldest) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    try {
+      const older = await fetchOlder(oldest._id, OLDER_PAGE);
+      if (!older) return;
+      setHasOlder(older.length === OLDER_PAGE);
+      if (older.length) {
+        const el = messagesContainerRef.current;
+        if (el) keepScroll.current = { height: el.scrollHeight, top: el.scrollTop };
+        setMessages((prev) => prependOlderPage(prev, older));
+      }
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }
+
+  // Load earlier pages until a given message is on screen (reply jumps).
+  async function loadOlderUntil(messageId: string): Promise<boolean> {
+    let oldestId = messagesRef.current[0]?._id;
+    let more = hasOlder;
+    for (let i = 0; i < 20 && more && oldestId; i++) {
+      const older = await fetchOlder(oldestId, PAGE);
+      if (!older || older.length === 0) { more = false; break; }
+      more = older.length === PAGE;
+      setMessages((prev) => prependOlderPage(prev, older));
+      oldestId = older[0]._id;
+      if (older.some((m) => m._id === messageId)) { setHasOlder(more); return true; }
+    }
+    setHasOlder(more);
+    return false;
+  }
+
+  async function loadPinned() {
+    try {
+      const res = await fetch(`/api/storm-chat/messages/${group._id}?pinned=1`);
+      if (res.ok) setPinnedList(await res.json());
+    } catch { /* keep the last banner */ }
   }
 
   async function fetchMessages() {
     try {
-      const userId = user?._id || user?.id;
-      const userRole = user?.role;
-      const response = await fetch(`/api/storm-chat/messages/${group._id}?userId=${userId}&userRole=${userRole}`);
+      const response = await fetch(`/api/storm-chat/messages/${group._id}?limit=${PAGE}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data.length > messages.length) {
-          console.log(`[STORM-CHAT] 📥 Received ${data.length - messages.length} new messages`);
+        const data: ChatMessage[] = await response.json();
+        setMessages((prev) => mergeNewestPage(prev, data, PAGE));
+        if (!firstPageLoaded.current) {
+          firstPageLoaded.current = true;
+          setHasOlder(data.length === PAGE);
+          // Jump (not smooth-scroll) to the newest message, then allow
+          // scrolling up to load history.
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ block: 'end' });
+            setTimeout(() => { olderEnabled.current = true; }, 400);
+          }, 50);
         }
-        setMessages(data);
       } else {
         const error = await response.json();
         console.error(`[STORM-CHAT] ❌ Failed to fetch messages:`, error);
@@ -1397,7 +1494,15 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
             <div>No messages yet. Start the conversation!</div>
           </div>
         ) : (
-          messages.map((msg, index) => renderMessage(msg, index))
+          <>
+            {loadingOlder && (
+              <div style={{ textAlign: 'center', padding: 8, fontSize: 12, color: 'var(--text-subtle)' }}>Loading earlier messages…</div>
+            )}
+            {!hasOlder && messages.length >= PAGE && (
+              <div style={{ textAlign: 'center', padding: 8, fontSize: 12, color: 'var(--text-subtle)' }}>Start of the chat</div>
+            )}
+            {messages.map((msg, index) => renderMessage(msg, index))}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>

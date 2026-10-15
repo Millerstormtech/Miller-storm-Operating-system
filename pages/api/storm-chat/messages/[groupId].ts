@@ -62,11 +62,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 500 — so any group past 500 messages never showed recent chat. Uses the
       // existing {groupId, createdAt:-1} index; .lean() skips Mongoose hydration
       // of 500 docs on every 3s poll (same JSON shape — no toJSON transforms).
-      const messages = await ChatMessage.find({ groupId })
-        .sort({ createdAt: -1 })
-        .limit(500)
-        .lean() as any[];
-      messages.reverse();
+      //
+      // Paging (readiness test item 12: older messages were unreachable):
+      //   ?limit=N          newest N (1-500). With no options: newest 500, as
+      //                     before, so older app builds keep working.
+      //   ?beforeId=<id>    the N messages just before that one (scroll up).
+      //   ?pinned=1         every pinned message in the chat, newest pin first.
+      const rawLimit = parseInt(String(req.query.limit || ''), 10);
+      const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 500;
+      let messages: any[];
+      if (req.query.pinned === '1') {
+        messages = await ChatMessage.find({ groupId, pinned: true })
+          .sort({ pinnedAt: -1 })
+          .limit(100)
+          .lean() as any[];
+      } else {
+        const filter: any = { groupId };
+        const beforeId = typeof req.query.beforeId === 'string' ? req.query.beforeId : '';
+        if (beforeId) {
+          const ref = mongoose.isValidObjectId(beforeId)
+            ? await ChatMessage.findOne({ _id: beforeId, groupId }).select('createdAt').lean() as any
+            : null;
+          if (!ref) return res.status(200).json([]);
+          // Strictly older, with _id breaking ties between equal timestamps.
+          filter.$or = [
+            { createdAt: { $lt: ref.createdAt } },
+            { createdAt: ref.createdAt, _id: { $lt: ref._id } },
+          ];
+        }
+        messages = await ChatMessage.find(filter)
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(limit)
+          .lean() as any[];
+        messages.reverse();
+      }
 
       // Attach each sender's current avatar (headshotUrl) so message bubbles show
       // the person's uploaded photo, not just initials. One lookup for all distinct
