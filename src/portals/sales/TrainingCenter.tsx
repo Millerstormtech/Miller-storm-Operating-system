@@ -18,6 +18,7 @@ import {
 } from "../../lib/training/video-position";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 import { lessonCount } from "../../lib/training/scoring";
+import { opensAllTraining } from "../../lib/training/access";
 import { formatLessonLength, courseLengthLabel, timeLeftLabel } from "../../lib/training/lesson-length";
 import { newSinceFinished, newItemsLabel } from "../../lib/training/new-since-finished";
 import { courseModules } from "../../lib/training/modules";
@@ -107,6 +108,9 @@ type Playlist = {
 
 export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }) {
   const { user } = useAuth();
+  // Marketing (and an admin previewing this screen) review training freely:
+  // every lesson and quiz open, videos free to fast-forward. Reps stay in order.
+  const opensAll = opensAllTraining(user?.role);
   const router = useRouter();
   const courses = props.courses;
   const isLoading = props.isLoading || false;
@@ -425,11 +429,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       selectedCourse.folders ?? []
     );
     if (!ordered.some(p => p.id === target)) { pendingDeepLinkRef.current = null; return; }
-    const unlocked = selectedCourse?.unlockAll || isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
+    const unlocked = selectedCourse?.unlockAll || opensAll || isPageUnlockedFor(target, ordered, unlockedPages, completedPages, savedQuizResults);
     setActivePageId(target);
     setMobileCourseScreen(unlocked ? 'lesson' : 'overview');
     pendingDeepLinkRef.current = null;
-  }, [progressLoadedCourseId, selectedCourse, unlockedPages, completedPages, savedQuizResults]);
+  }, [progressLoadedCourseId, selectedCourse, unlockedPages, completedPages, savedQuizResults, opensAll]);
 
   // Collapse all folders by default when entering a course; expand only the active lesson's folder
   // Collapse all folders by default when entering a course
@@ -616,7 +620,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         shouldAutoStart,
         isAlreadyCompleted,
         () => setSeekToast("You are only able to fast forward if you already completed the video at least once before."),
-        fastForwardRef.current,
+        fastForwardRef.current || opensAll,
         {
           getSaved: (videoIndex: number) => savedPositionFor(pageId, videoIndex),
           onProgress: (videoIndex: number, seconds: number) =>
@@ -667,7 +671,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // destroyed the video mid-playback, right at the end. That is why the website
   // never fired the "video truly ended" event and never auto-advanced, while
   // the phone app (which does not rebuild its player) did.
-  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen, isNarrow]);
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen, isNarrow, opensAll]);
 
   const filteredCourses = useMemo(() => {
     const term = search.toLowerCase();
@@ -1227,8 +1231,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     pages = orderPagesByFolder(pages, folders);
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
     const isPageUnlocked = (pageId: string) => {
-      // "Unlock all" on the course opens every lesson & quiz for everyone.
-      if (selectedCourse?.unlockAll) return true;
+      // "Unlock all" on the course opens every lesson & quiz for everyone;
+      // marketing (opensAll) has every course open.
+      if (selectedCourse?.unlockAll || opensAll) return true;
       // A manager can manually unlock this specific page — it then opens without
       // the preceding items done (only THIS page, nothing after it, is unlocked).
       if (unlockedPages.has(pageId)) return true;
