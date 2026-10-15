@@ -13,6 +13,8 @@ export interface AnnouncementGroup {
   createdAt: Date | string;
   /** 1 when the viewer was one of the recipients (their row may since be read or deleted). */
   received?: number | boolean | null;
+  /** 1 when the viewer posted it (an admin sending to a team is not a recipient). */
+  sent?: number | boolean | null;
 }
 
 export interface PastAnnouncement {
@@ -41,15 +43,24 @@ export function toPastAnnouncement(g: AnnouncementGroup): PastAnnouncement {
 }
 
 /**
+ * Who may read the full, unfiltered history: the roles that can send to any
+ * audience. Everyone else gets pastAnnouncementsFor, whatever they ask for.
+ */
+export function seesEveryAnnouncement(role: string | null | undefined): boolean {
+  return role === "admin" || role === "c-level";
+}
+
+/**
  * The bell's Past Announcements: every company-wide announcement, plus any
- * team or branch announcement the viewer was sent. Another team's or branch's
- * announcements stay out. Company-wide ones show even when the viewer's own
- * copy was deleted (the phone deletes a notification when it is tapped) or
- * they joined after it went out. Input is newest first; so is the output.
+ * team or branch announcement the viewer was sent or posted. Another team's or
+ * branch's announcements stay out. Company-wide ones show even when the
+ * viewer's own copy was deleted (the phone deletes a notification when it is
+ * tapped) or they joined after it went out. Input is newest first; so is the
+ * output.
  */
 export function pastAnnouncementsFor(groups: AnnouncementGroup[], limit = 100): PastAnnouncement[] {
   return groups
-    .filter((g) => audienceOf(g) === "Everyone" || !!g.received)
+    .filter((g) => audienceOf(g) === "Everyone" || !!g.received || !!g.sent)
     .slice(0, limit)
     .map(toPastAnnouncement);
 }
