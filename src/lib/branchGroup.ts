@@ -38,7 +38,7 @@ export async function addUserToBranchGroups(userMongoId: string, branches: Array
     const groups = await groupsCol
       .find(
         { visibility: { $in: ['public', 'private'] } },
-        { projection: { name: 1, members: 1, visibility: 1 } }
+        { projection: { name: 1, members: 1, visibility: 1, leftMembers: 1 } }
       )
       .toArray();
     if (groups.length === 0) return;
@@ -99,6 +99,9 @@ export async function addUserToBranchGroups(userMongoId: string, branches: Array
 
       if (!match) continue;
       if ((match.members || []).map(String).includes(uid)) continue; // already a member
+      // They left or were removed from this group: don't pull them back in
+      // (GroupMe rule, same as public groups; see ChatGroup.leftMembers).
+      if ((match.leftMembers || []).map(String).includes(uid)) continue;
 
       await groupsCol.updateOne({ _id: match._id }, { $addToSet: { members: uid } });
       console.log(`[branch-group] Added user ${uid} to branch group "${match.name}" (branch: ${branch})`);

@@ -133,9 +133,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Import User model
         const { UserModel } = await import('../../../../src/lib/models/User');
         
-        // Get all group members
+        // Who can be mentioned: the group's members, or in a DM ONLY its two
+        // canonical participants, so a stray id in members[] can never be
+        // mentioned (and alerted with the private text).
+        const mentionPool: string[] = isDmGroup(group) ? (dmParticipants(group) || []) : (group.members || []);
         const groupMembers = await UserModel.find({
-          _id: { $in: group.members }
+          _id: { $in: mentionPool }
         }).select('_id id name');
         
         console.log(`[CHAT] Group Members Found: ${groupMembers.length}/${group.members.length}`);

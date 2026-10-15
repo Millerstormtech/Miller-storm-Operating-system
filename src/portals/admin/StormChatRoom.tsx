@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
 import { enterSendsMessage } from "../../lib/stormchat/enterKey";
+import { StormChatGroupInfo, type ChatRights } from "../../components/StormChatGroupInfo";
 
 type ChatMessage = {
   _id: string;
@@ -97,8 +98,24 @@ function SenderAvatar({ url, name }: { url?: string; name: string }) {
   );
 }
 
-export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivately }: Props) {
+export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMessagePrivately }: Props) {
   const { user } = useAuth();
+  // Local copy so Group info edits (rename, admin-only...) show at once.
+  const [group, setGroup] = useState<ChatGroup>(groupProp);
+  useEffect(() => { setGroup(groupProp); }, [groupProp]);
+  // What the server says this viewer may do here (post, pin, moderate, manage).
+  // The web used to guess from ids it doesn't have, which locked C-level and
+  // team-lead group admins out of groups the server let them post in.
+  const [rights, setRights] = useState<ChatRights | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/storm-chat/groups/${groupProp._id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((g) => { if (alive && g?.myRights) setRights(g.myRights); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [groupProp._id]);
   const isDirect = !!group.isDirect;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -198,9 +215,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const isAdmin = user?.role === 'admin';
   const isGroupAdmin = group.admins.includes(user?._id || user?.id || '');
 
-  const canSendMessage = isAdmin || isGroupAdmin || (group.onlyAdminCanChat ? false : isGroupMember);
+  // Server rights win once loaded; the old guess only covers the first moment.
+  const canSendMessage = rights ? rights.canSend : (isAdmin || isGroupAdmin || (group.onlyAdminCanChat ? false : isGroupMember));
   // Anyone who can SEND a message here can also pin one (DMs: either member).
-  const canPin = isDirect ? isGroupMember : canSendMessage;
+  const canPin = rights ? rights.canPin : (isDirect ? isGroupMember : canSendMessage);
+  // Delete other people's messages: this group's admins (never in a DM).
+  const canModerate = rights ? rights.canModerate : (isAdmin && !isDirect);
   // The banner lists every pinned message, newest pin first.
   const pinnedMessages = messages
     .filter((m) => m.pinned)
@@ -865,7 +885,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               const myId = user?._id || user?.id || '';
               return (
                 <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)', color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
-                  {(isMyMessage || (isAdmin && !isDirect)) && (
+                  {(isMyMessage || canModerate) && (
                     <button
                       onClick={() => deleteMessage(msg._id)}
                       title="Delete poll"
@@ -874,7 +894,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       🗑
                     </button>
                   )}
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, paddingRight: (isMyMessage || (isAdmin && !isDirect)) ? 28 : 0 }}>📊 {msg.poll.question}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, paddingRight: (isMyMessage || canModerate) ? 28 : 0 }}>📊 {msg.poll.question}</div>
                   {msg.poll.options.map((opt, i) => {
                     const votes = opt.votes?.length || 0;
                     const pct = Math.round((votes / totalMembers) * 100);
@@ -955,6 +975,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         ✉️ Message privately
                       </button>
                     )}
+                    {canSendMessage && (
                     <button
                       onClick={() => {
                         setReplyingTo(msg);
@@ -978,6 +999,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                     >
                       ↩ Reply
                     </button>
+                    )}
                     <button
                       onClick={() => openForward(msg)}
                       style={{
@@ -1032,7 +1054,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                         {msg.pinned ? '📌 Unpin' : '📌 Pin'}
                       </button>
                     )}
-                    {(isMyMessage || (isAdmin && !isDirect)) && (
+                    {(isMyMessage || canModerate) && (
                       <button
                         onClick={() => { deleteMessage(msg._id); setMenuMessageId(null); }}
                         style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
@@ -1102,7 +1124,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block', cursor: 'pointer' }}
                 />
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-                  {(isMyMessage || (isAdmin && !isDirect)) && (
+                  {(isMyMessage || canModerate) && (
                     <button onClick={() => deleteMessage(msg._id)} title="Delete"
                       style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
                   )}
@@ -1120,7 +1142,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block' }}
                 />
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-                  {(isMyMessage || (isAdmin && !isDirect)) && (
+                  {(isMyMessage || canModerate) && (
                     <button onClick={() => deleteMessage(msg._id)} title="Delete"
                       style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
                   )}
@@ -1245,16 +1267,48 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
           {!group.imageUrl && '👥'}
         </div>
         
-        <div style={{ flex: 1 }}>
+        {/* Tap the name for Group info (GroupMe-style); DMs have none. */}
+        <div
+          style={{ flex: 1, minWidth: 0, cursor: isDirect ? 'default' : 'pointer' }}
+          onClick={isDirect ? undefined : () => setShowInfo(true)}
+          role={isDirect ? undefined : 'button'}
+          aria-label={isDirect ? undefined : 'Group info'}
+          title={isDirect ? undefined : 'Group info'}
+        >
           <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-            {title || group.name}
+            {/* title is the DM partner's name; a group shows its live name. */}
+            {isDirect ? (title || group.name) : group.name}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            {isDirect ? 'Private message' : `${group.members.length} members`}
+            {isDirect ? 'Private message' : `${group.members.length} ${group.members.length === 1 ? 'member' : 'members'}`}
             {!isDirect && group.onlyAdminCanChat && ' • Admin-only chat'}
+            {!isDirect && ' • Tap for group info'}
           </div>
         </div>
+        {!isDirect && (
+          <button
+            onClick={() => setShowInfo(true)}
+            aria-label="Group info"
+            title="Group info"
+            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 4, color: 'var(--text-primary)' }}
+          >
+            ⓘ
+          </button>
+        )}
       </div>
+
+      {showInfo && !isDirect && (
+        <StormChatGroupInfo
+          groupId={group._id}
+          myMongoId={user?._id}
+          onClose={() => setShowInfo(false)}
+          onChanged={(g: any) => {
+            setGroup((prev) => ({ ...prev, ...g, members: g.members || prev.members, admins: g.admins || prev.admins } as ChatGroup));
+            if (g?.myRights) setRights(g.myRights);
+          }}
+          onGone={() => { setShowInfo(false); onBack(); }}
+        />
+      )}
 
       {/* Pinned messages banner — every pinned message, scrolls if many. */}
       {pinnedMessages.length > 0 && (

@@ -5,6 +5,8 @@ import { STORM_CHAT_TOUR } from "../portals/shared/guided-tour/definitions/storm
 import { TourButton } from "../portals/shared/guided-tour/TourButton";
 import { useActiveTourId } from "../portals/shared/guided-tour/tourRegistry";
 import { StormChatRoom } from "../portals/admin/StormChatRoom";
+import { StormChatCreateGroup } from "./StormChatCreateGroup";
+import { canCreateGroup } from "../lib/stormchat/access";
 
 // User-facing StormChat for sales/manager web panels: lists the groups the
 // current user belongs to plus their private 1-on-1 DMs (server-filtered with
@@ -47,6 +49,8 @@ export function StormChatViewer() {
   const [users, setUsers] = useState<PickUser[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [opening, setOpening] = useState(false);
+  // "Create group" (only the roles allowed to create groups see the button).
+  const [creating, setCreating] = useState(false);
   // Request-to-join (private groups the user isn't a member of yet)
   const [joinTarget, setJoinTarget] = useState<ChatGroup | null>(null);
   const [joinSending, setJoinSending] = useState(false);
@@ -365,7 +369,7 @@ export function StormChatViewer() {
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{titleFor(g)}</div>
           {notMember ? (
             <div style={{ fontSize: 13, marginTop: 3, fontWeight: 500, color: status === 'denied' ? "var(--text-muted)" : status === 'pending' ? "#10b981" : "#e5484d" }}>
-              {status === 'denied' ? "🚫 Rejected · no access" : status === 'pending' ? "✓ Request pending" : "🔒 Private · tap to request to join"}
+              {status === 'denied' ? "🚫 Rejected · no access" : status === 'pending' ? "✓ Request pending" : (g as any).visibility === 'public' ? "Company-wide · tap to ask to rejoin" : "🔒 Private · tap to request to join"}
             </div>
           ) : (
             <div style={{ fontSize: 13.5, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>{preview}</div>
@@ -421,6 +425,12 @@ export function StormChatViewer() {
               New message
             </button>
           )}
+          {!impersonating && canCreateGroup(user?.role) && (
+            <button onClick={() => setCreating(true)}
+              style={{ padding: "13px 20px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+              + Create group
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -449,6 +459,14 @@ export function StormChatViewer() {
         )}
       </div>
       <GuidedTour tour={STORM_CHAT_TOUR} ready={!loading} />
+
+      {creating && (
+        <StormChatCreateGroup
+          myId={user?.id}
+          onClose={() => setCreating(false)}
+          onCreated={(g) => { setCreating(false); setGroups(prev => [g, ...prev.filter(x => x._id !== g._id)]); openGroup(g); loadGroups(); }}
+        />
+      )}
 
       {/* New-message user picker */}
       {pickerOpen && (
@@ -495,7 +513,7 @@ export function StormChatViewer() {
             <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
             <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Join “{joinTarget.name}”?</div>
             <div style={{ fontSize: 13.5, color: "var(--text-muted)", marginBottom: 20 }}>
-              This is a private group. Your request will be sent to the group admin — you’ll be added once it’s approved.
+              {(joinTarget as any).visibility === 'public' ? "You left this group. Your request goes to its admins, and you're back in once they approve." : "This is a private group. Your request goes to the group admin, and you'll be added once it's approved."}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setJoinTarget(null)} disabled={joinSending}

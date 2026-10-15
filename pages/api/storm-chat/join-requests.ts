@@ -40,8 +40,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'POST') {
       const { groupId } = req.body || {};
       if (!groupId) return res.status(400).json({ error: 'groupId is required' });
+      if (!mongoose.isValidObjectId(String(groupId))) return res.status(404).json({ error: 'Group not found' });
       const group = await ChatGroup.findById(groupId).lean() as any;
-      if (!group) return res.status(404).json({ error: 'Group not found' });
+      // A DM can't be joined: answer as if it doesn't exist, so a request
+      // neither alerts anyone nor confirms the DM is there.
+      if (!group || isDmGroup(group)) return res.status(404).json({ error: 'Group not found' });
 
       const memberIds = (group.members || []).map(String);
       if (myMongoId && memberIds.includes(myMongoId)) {

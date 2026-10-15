@@ -39,10 +39,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'GET') {
       // Non-members of a discoverable group see the card, not who is in it.
       if (!rights.canRead) {
-        const { members, admins, dmKey, hiddenFor, ...card } = group;
+        const { members, admins, dmKey, hiddenFor, leftMembers, ...card } = group;
         return res.status(200).json({ ...card, memberCount: (members || []).length, myRights: rights });
       }
-      return res.status(200).json({ ...group, myRights: rights });
+      // myMongoId: the web session only knows the app id, so the screen needs
+      // this to tell which member row is the viewer's own.
+      return res.status(200).json({ ...group, myRights: rights, myMongoId: myIds[1] || '' });
     }
 
     if (isDmGroup(group)) {
@@ -90,6 +92,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Removing someone also drops their admin role.
         const inGroup = new Set(update.members);
         update.admins = (group.admins || []).map(String).filter((a: string) => inGroup.has(a));
+      }
+
+      // A group with people in it always keeps at least one admin. To step
+      // down as the last admin, use Leave (it makes you hand over first).
+      const finalMembers: string[] = update.members ?? (group.members || []).map(String);
+      const finalAdmins: string[] = update.admins ?? (group.admins || []).map(String);
+      const hadAdmins = (group.admins || []).length > 0; // older groups may have none
+      if (hadAdmins && finalMembers.length > 0 && finalAdmins.length === 0) {
+        return res.status(400).json({ error: 'A group needs at least one admin. Make someone else admin first.' });
       }
 
       const saved = await ChatGroup.findByIdAndUpdate(id, update, { new: true });
