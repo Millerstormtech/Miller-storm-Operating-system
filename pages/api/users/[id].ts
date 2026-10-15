@@ -5,6 +5,8 @@ import { UserModel } from "../../../src/lib/models/User";
 import { validateUserPayload } from "../../../src/lib/sanitize";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { syncAccount } from "../../../src/lib/accountStatus";
+import { rememberDevice } from "../../../src/lib/pushDevices";
+import { dropDeviceFrom } from "../../../src/lib/firebase-admin";
 import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
 import { resolveBusinessPlanForProfileWrite } from "../../../src/lib/businessPlan/profileWrite";
 import { NotificationModel } from "../../../src/lib/models/Notification";
@@ -217,9 +219,16 @@ export default async function handler(
       // in on the same phone), clear it there first — otherwise that device
       // receives a duplicate push for every notification.
       if (typeof fcmToken === 'string' && fcmToken) {
-        await UserModel.updateMany({ id: { $ne: id }, fcmToken }, { $set: { fcmToken: '' } });
+        // The device now belongs to this person: take it off anyone else.
+        await dropDeviceFrom(UserModel, { id: { $ne: id }, $or: [{ fcmToken }, { fcmTokens: fcmToken }] }, fcmToken);
+        // Add this device to the person's list instead of replacing the
+        // previous one, so the phone keeps getting alerts after the website
+        // registers (and vice versa).
+        const me = await UserModel.findOne({ id }, { fcmTokens: 1 }).lean() as any;
+        await UserModel.findOneAndUpdate({ id }, { fcmToken, fcmTokens: rememberDevice(me?.fcmTokens, fcmToken) });
+      } else {
+        await UserModel.findOneAndUpdate({ id }, { fcmToken });
       }
-      await UserModel.findOneAndUpdate({ id }, { fcmToken });
       console.log(`[FCM] Token updated for user ${id}`);
       res.status(200).json({ success: true });
       return;

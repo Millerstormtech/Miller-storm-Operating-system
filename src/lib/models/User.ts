@@ -128,6 +128,9 @@ const userSchema = new Schema(
     featureToggles: { type: Schema.Types.Mixed, required: true },
     acculynxUserId: { type: String, default: null, index: true },
     fcmToken: { type: String, default: '' },
+    // Every device that gets this person's push alerts (phone, browser...),
+    // newest last; fcmToken mirrors the newest (src/lib/pushDevices.ts).
+    fcmTokens: { type: [String], default: [] },
     googleCalendar: googleCalendarSchema
   },
   { timestamps: true }

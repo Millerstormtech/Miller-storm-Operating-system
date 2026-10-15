@@ -36,6 +36,8 @@ export default defineConfig({
       "src/lib/rateLimit.test.ts",
       // Blocked accounts (deleted/suspended) lose their logins app-wide (2026-10-15).
       "src/lib/accountStatus.test.ts",
+      // Push alerts reach every device a person uses (2026-10-15).
+      "src/lib/pushDevices.test.ts",
       "src/lib/emailTemplates.test.ts",
       "src/lib/ops/**/*.test.ts",
       "src/lib/uploads/**/*.test.ts",
