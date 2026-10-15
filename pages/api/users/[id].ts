@@ -4,6 +4,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { validateUserPayload } from "../../../src/lib/sanitize";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
+import { syncAccount } from "../../../src/lib/accountStatus";
 import { addUserToBranchGroups } from "../../../src/lib/branchGroup";
 import { resolveBusinessPlanForProfileWrite } from "../../../src/lib/businessPlan/profileWrite";
 import { NotificationModel } from "../../../src/lib/models/Notification";
@@ -39,6 +40,10 @@ export default async function handler(
   }
 
   const targetId = id;
+  // Any change to an account (suspend, delete, deletion request, restore)
+  // updates the blocked-accounts list as soon as the response is sent, so the
+  // person's existing logins stop (or start) working in seconds.
+  if (req.method !== "GET") res.on("finish", () => { void syncAccount(targetId); });
   const isSelf = auth.sub === targetId;
   // C-Level and Branch Managers get the same user-management powers as admins.
   const isAdmin = auth.role === "admin" || auth.role === "c-level" || auth.role === "branch-manager";

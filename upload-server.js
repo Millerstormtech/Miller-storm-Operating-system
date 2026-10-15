@@ -54,10 +54,31 @@ function verifyToken(token) {
   }
 }
 
-function requireAuth(req, res, next) {
+// The signature alone can't tell that an account was deleted or suspended
+// after the token was issued (tokens last 365 days), so the main app is asked
+// too: its /api/session-check applies the blocked-accounts list
+// (src/lib/accountStatus.ts). The cron scripts reach the app the same way.
+// If the app can't be reached the upload is refused (fail closed).
+const MAIN_APP_URL = process.env.MAIN_APP_URL || 'http://127.0.0.1:6790';
+
+async function accountStillActive(token) {
+  try {
+    const r = await fetch(`${MAIN_APP_URL}/api/session-check`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    return r.status === 200;
+  } catch (e) {
+    console.error('[upload-server] session check failed:', e && e.message);
+    return false;
+  }
+}
+
+async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
-  const [scheme, token] = header.split(' ');
-  if (scheme && scheme.toLowerCase() === 'bearer' && verifyToken(token && token.trim())) {
+  const [scheme, rawToken] = header.split(' ');
+  const token = rawToken && rawToken.trim();
+  if (scheme && scheme.toLowerCase() === 'bearer' && verifyToken(token) && await accountStillActive(token)) {
     return next();
   }
   return res.status(401).json({ error: 'Authentication required' });
