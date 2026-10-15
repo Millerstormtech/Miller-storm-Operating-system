@@ -114,6 +114,11 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     return () => document.body.classList.remove('storm-chat-room-open');
   }, []);
   const [rights, setRights] = useState<ChatRights | null>(null);
+  // Removed from the group, or it was deleted, while it was open (readiness
+  // test item 15): stop refreshing and show one calm notice instead of an
+  // error popping up every 3 seconds.
+  const [gone, setGone] = useState<null | 'removed' | 'deleted'>(null);
+  const goneRef = useRef<null | 'removed' | 'deleted'>(null);
   // Muted by this viewer: no alerts for ordinary messages, mentions still come.
   const [muted, setMuted] = useState(false);
   async function toggleMute() {
@@ -302,6 +307,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     loadPinned();
     let ticks = 0;
     const interval = setInterval(() => {
+      if (goneRef.current) { clearInterval(interval); return; }
       fetchMessages();
       if (++ticks % 5 === 0) loadPinned(); // pins change rarely: every 15s
     }, 3000); // Poll every 3 seconds
@@ -458,10 +464,13 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
             setTimeout(() => { olderEnabled.current = true; }, 400);
           }, 50);
         }
+      } else if (response.status === 403 || response.status === 404) {
+        const why = response.status === 404 ? 'deleted' : 'removed';
+        goneRef.current = why;
+        setGone(why);
       } else {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         console.error(`[STORM-CHAT] ❌ Failed to fetch messages:`, error);
-        alert(error.error || 'Failed to fetch messages');
       }
     } catch (error) {
       console.error('[STORM-CHAT] ❌ Error in fetchMessages:', error);
@@ -1544,7 +1553,14 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
         borderTop: '1px solid var(--border-default)',
         backgroundColor: 'var(--surface-default)'
       }}>
-        {!canSendMessage ? (
+        {gone ? (
+          <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderRadius: 8, backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)', fontSize: 14 }}>
+            <span>{gone === 'deleted' ? 'This group was deleted.' : "You're no longer in this group."}</span>
+            <button onClick={onBack} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-default)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
+              Back to chats
+            </button>
+          </div>
+        ) : !canSendMessage ? (
           <div style={{ 
             textAlign: 'center',
             padding: 12,
