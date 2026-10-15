@@ -31,7 +31,7 @@ export function replyQuoteFrom(
   groupId: string,
 ): { replyToMessage: string; replyToSender: string } | null {
   if (!original || String(original.groupId) !== String(groupId)) return null;
-  const text = String(original.message ?? '').trim();
+  const text = captionOf(String(original.messageType || ''), original.message);
   // Photos, videos, files and polls have little or no text: quote what they are.
   const quote =
     original.messageType === 'image' ? (text ? `📷 ${text}` : '📷 Photo')
@@ -104,9 +104,18 @@ export function safeHref(url: unknown): string | undefined {
   return /^(\/(?!\/)|https:\/\/)/.test(u) ? u : undefined;
 }
 
+// The phone app sends a photo's or video's FILE NAME as its text
+// ("send_1792078973731.jpg"). That is not a caption: treat it as no text.
+const FILE_NAME = /^[^\s/\\]+\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?|mp4|mov|m4v|webm|3gp|avi|mkv)$/i;
+export function captionOf(type: string, text: unknown): string {
+  const body = typeof text === 'string' ? text.trim() : '';
+  if ((type === 'image' || type === 'video') && FILE_NAME.test(body)) return '';
+  return body;
+}
+
 /** The short text an alert shows for a message (bell and phone push). */
 export function alertPreview(type: UserMessageType, text: unknown, pollQuestion?: unknown): string {
-  const body = typeof text === 'string' ? text.trim() : '';
+  const body = captionOf(type, text);
   if (type === 'text') return body.substring(0, 100) || 'New message';
   if (type === 'poll') return `📊 ${String(pollQuestion || body || 'New poll').substring(0, 100)}`;
   if (type === 'image') return body && body !== 'GIF' && body !== 'Sticker' ? `📷 ${body.substring(0, 90)}` : 'Sent a photo';

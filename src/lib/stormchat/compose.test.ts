@@ -112,3 +112,18 @@ describe('alertPreview', () => {
     expect(alertPreview('file', 'Q3.pdf')).toBe('📎 Q3.pdf');
   });
 });
+
+describe('phone photo file names are not captions', () => {
+  it('alerts say "Sent a photo", replies quote "📷 Photo"', () => {
+    expect(alertPreview('image', 'send_1792078973731.jpg')).toBe('Sent a photo');
+    expect(alertPreview('video', 'VID_2026.mp4')).toBe('Sent a video');
+    expect(replyQuoteFrom({ groupId: 'g1', senderName: 'Rep', messageType: 'image', message: 'send_1792078973731.jpg' }, 'g1')?.replyToMessage).toBe('📷 Photo');
+  });
+  it('a real caption is kept', () => {
+    expect(alertPreview('image', 'roof damage on Elm St.jpg looks bad')).toBe('📷 roof damage on Elm St.jpg looks bad');
+    expect(alertPreview('image', 'Elm street roof')).toBe('📷 Elm street roof');
+  });
+  it('a file message keeps its file name', () => {
+    expect(alertPreview('file', 'Q3.pdf')).toBe('📎 Q3.pdf');
+  });
+});
