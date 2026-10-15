@@ -11,6 +11,7 @@ import GroupReadReceipt from '../../../../src/lib/models/GroupReadReceipt';
 import { NotificationModel } from '../../../../src/lib/models/Notification';
 import mongoose from 'mongoose';
 import { UserModel } from '../../../../src/lib/models/User';
+import { GROUP_ADMINS_ENABLED } from '../../../../src/lib/stormchat/rollout';
 
 // One group: read it (with the caller's rights), edit it, delete it.
 // Permissions follow the GroupMe model (src/lib/stormchat/access.ts): a group's
@@ -101,6 +102,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // A group admin must be in the group.
         const inGroup = new Set(nextMembers.map(String));
         update.admins = Array.from(new Set(admins.map(String))).filter((a) => inGroup.has(a));
+        // While group admins are paused, nobody new can be made admin.
+        if (!GROUP_ADMINS_ENABLED) {
+          const current = new Set((group.admins || []).map(String));
+          update.admins = update.admins.filter((a: string) => current.has(a));
+        }
       } else if (members !== undefined) {
         // Removing someone also drops their admin role.
         const inGroup = new Set(update.members);

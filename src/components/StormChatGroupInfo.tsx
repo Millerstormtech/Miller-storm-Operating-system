@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { appConfirm, notify } from "../lib/appDialogs";
+import { GROUP_ADMINS_ENABLED } from "../lib/stormchat/rollout";
 
 // "Group info" sheet for one Storm Chat group, opened by tapping the group's
 // name in the chat header (GroupMe-style). Everyone sees the members and can
@@ -362,7 +363,9 @@ export function StormChatGroupInfo({ groupId, myMongoId, onClose, onChanged, onG
                         makes the last admin hand over first). */}
                     {rights?.canManage && id !== meId && (
                       <>
-                        <button style={SMALL} disabled={busy} onClick={() => toggleAdmin(p as Person)}>{isAdminHere ? "Remove admin" : "Make admin"}</button>
+                        {(GROUP_ADMINS_ENABLED || isAdminHere) && (
+                          <button style={SMALL} disabled={busy} onClick={() => toggleAdmin(p as Person)}>{isAdminHere ? "Remove admin" : "Make admin"}</button>
+                        )}
                         <button style={{ ...SMALL, color: "#e5484d" }} disabled={busy} onClick={() => removeMember(p as Person)} aria-label={`Remove ${p.name}`}>Remove</button>
                       </>
                     )}

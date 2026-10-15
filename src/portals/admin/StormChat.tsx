@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import { GROUP_ADMINS_ENABLED } from "../../lib/stormchat/rollout";
 import { GuidedTour } from "../shared/guided-tour/GuidedTour";
 import { STORM_CHAT_MANAGE_TOUR } from "../shared/guided-tour/definitions/stormChatManage";
 import { TourButton } from "../shared/guided-tour/TourButton";
@@ -710,8 +711,8 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
           </div>
         </div>
         
-        {/* Admin selection */}
-        {selectedMembers.length > 0 && (
+        {/* Admin selection (paused until the phone update: src/lib/stormchat/rollout.ts) */}
+        {GROUP_ADMINS_ENABLED && selectedMembers.length > 0 && (
           <div style={{ marginTop: 16 }}>
             <label className="field-label" style={{ marginBottom: 8, display: 'block' }}>
               Assign Group Admins (Optional)

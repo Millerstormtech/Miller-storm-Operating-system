@@ -9,6 +9,7 @@ import { useActiveTourId } from "../portals/shared/guided-tour/tourRegistry";
 import { StormChatRoom } from "../portals/admin/StormChatRoom";
 import { StormChatCreateGroup } from "./StormChatCreateGroup";
 import { canCreateGroup } from "../lib/stormchat/access";
+import { GROUP_ADMINS_ENABLED } from "../lib/stormchat/rollout";
 
 // User-facing StormChat for sales/manager web panels: lists the groups the
 // current user belongs to plus their private 1-on-1 DMs (server-filtered with
@@ -457,7 +458,7 @@ export function StormChatViewer() {
               New message
             </button>
           )}
-          {!impersonating && canCreateGroup(user?.role) && (
+          {!impersonating && GROUP_ADMINS_ENABLED && canCreateGroup(user?.role) && (
             <button onClick={() => setCreating(true)}
               style={{ padding: "13px 20px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
               + Create group

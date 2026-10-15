@@ -7,6 +7,7 @@ import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canSeeGroupInList, isMemberOf as memberOf, dmParticipants, canCreateGroup, canReadMessages } from '../../../../src/lib/stormchat/access';
 import { applyCustomOrder } from '../../../../src/lib/stormchat/chatOrder';
+import { GROUP_ADMINS_ENABLED } from '../../../../src/lib/stormchat/rollout';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -269,8 +270,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const creator = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
       const creatorMongoId = creator?._id ? String(creator._id) : '';
       const memberList = Array.from(new Set([...members.map(String), creatorMongoId].filter(Boolean)));
-      const adminList = Array.from(new Set([...(Array.isArray(admins) ? admins.map(String) : []), creatorMongoId].filter(Boolean)))
-        .filter((a) => memberList.includes(a));
+      // While group admins are paused (src/lib/stormchat/rollout.ts) a new
+      // group gets no admins, so phone members aren't locked out.
+      const adminList = GROUP_ADMINS_ENABLED
+        ? Array.from(new Set([...(Array.isArray(admins) ? admins.map(String) : []), creatorMongoId].filter(Boolean)))
+            .filter((a) => memberList.includes(a))
+        : [];
 
       // Single-level nesting only: a subgroup can never have its own subgroup.
       // Reject creating a group whose parent is itself a subgroup — otherwise the
