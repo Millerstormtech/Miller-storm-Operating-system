@@ -25,6 +25,10 @@ export interface IChatGroup extends Document {
   // "Delete chat for me" on a DM: member ids who hid this thread from their own
   // list. A new message clears this list, so the DM reappears on fresh activity.
   hiddenFor?: string[];
+  // Mongo _ids of people who LEFT or were REMOVED. Public groups auto-add every
+  // account; these are skipped so a leaver stays out (GroupMe: a removed person
+  // only comes back if someone adds them). Adding them again clears the entry.
+  leftMembers?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,6 +91,9 @@ const ChatGroupSchema = new Schema<IChatGroup>(
     // Member ids who "deleted" (hid) this DM from their own list. Cleared when a
     // new message arrives so the thread comes back on fresh activity.
     hiddenFor: [{
+      type: String
+    }],
+    leftMembers: [{
       type: String
     }]
   },

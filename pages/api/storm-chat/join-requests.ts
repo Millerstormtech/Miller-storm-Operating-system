@@ -6,6 +6,8 @@ import { UserModel } from '../../../src/lib/models/User';
 import { NotificationModel } from '../../../src/lib/models/Notification';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
 import { isDmGroup } from '../../../src/lib/stormchat/isDm';
+import { canManageGroup } from '../../../src/lib/stormchat/access';
+import mongoose from 'mongoose';
 
 // Join-request flow for PRIVATE StormChat groups:
 //   POST   { groupId }               → a user asks to join (creates a pending request, notifies group admins)
@@ -19,7 +21,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const me = await UserModel.findOne({ id: auth.sub }, { _id: 1, name: 1, role: 1 }).lean() as any;
   const myMongoId = me?._id?.toString() || '';
-  const isSystemAdmin = auth.role === 'admin' || auth.role === 'c-level';
+  // Only a company Admin has rights over every group (GroupMe model); every
+  // other decision belongs to that group's own admins. C-level gets none.
+  const isSystemAdmin = auth.role === 'admin';
+  const myIds = [auth.sub, myMongoId].filter(Boolean);
 
   const notify = async (appUserId: string, type: string, title: string, message: string, metadata: any) => {
     if (!appUserId) return;
@@ -83,6 +88,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'GET') {
       const { groupId } = req.query;
       if (groupId) {
+        // Only people who can decide a group's requests may list them.
+        const g = mongoose.isValidObjectId(String(groupId)) ? await ChatGroup.findById(String(groupId)).lean() : null;
+        if (!g || !canManageGroup(g, myIds, auth.role)) {
+          return res.status(403).json({ error: "Not authorized to view this group's requests" });
+        }
         const reqs = await GroupJoinRequest.find({ groupId: String(groupId), status: 'pending' })
           .sort({ createdAt: -1 }).lean();
         return res.status(200).json(reqs);
@@ -117,16 +127,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Only a system admin or one of the group's admins may decide.
-      const groupAdminIds = (group.admins || []).map(String);
-      if (!isSystemAdmin && !(myMongoId && groupAdminIds.includes(myMongoId))) {
+      if (!canManageGroup(group, myIds, auth.role)) {
         return res.status(403).json({ error: 'Not authorized to decide this request' });
       }
 
       if (action === 'approve') {
         if (!(group.members || []).map(String).includes(String(jr.userId))) {
           group.members.push(jr.userId);
-          await group.save();
         }
+        // Approved back in: no longer someone who left / was removed.
+        group.leftMembers = (group.leftMembers || []).filter((m: any) => String(m) !== String(jr.userId));
+        await group.save();
         jr.status = 'approved';
         await jr.save();
 

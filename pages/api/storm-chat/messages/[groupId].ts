@@ -8,7 +8,7 @@ import { sendPushNotificationToMultiple } from '../../../../src/lib/firebase-adm
 import { logToDb } from '../../../../src/lib/models/SystemLog';
 import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
-import { canReadMessages, canSendMessage } from '../../../../src/lib/stormchat/access';
+import { canReadMessages, canSendMessage, isGroupAdmin, canModerateMessages, chatRights, dmParticipants } from '../../../../src/lib/stormchat/access';
 import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
 import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess';
 
@@ -121,15 +121,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: 'You are not a member of this group' });
       }
 
-      // Check if only admin can chat
-      if (group.onlyAdminCanChat) {
-        // Check if sender is system admin or group admin
-        const isAdmin = senderRole === 'admin' || senderRole === 'c-level';
-        const isGroupAdmin = group.admins.some((m: string) => senderIds.includes(m));
-
-        if (!isAdmin && !isGroupAdmin) {
-          return res.status(403).json({ error: 'Only admins can send messages in this group' });
-        }
+      // Admin-only group: only its group admins (and company Admins) may post.
+      // Job titles like C-level grant nothing here (GroupMe model).
+      if (group.onlyAdminCanChat && !isDmGroup(group) && !isGroupAdmin(group, senderIds, senderRole)) {
+        return res.status(403).json({ error: 'Only admins can send messages in this group' });
       }
 
       // Extract mentions from message text
@@ -229,8 +224,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
       }
 
-      // 2. New message notifications for other members
-      const otherMemberIds = group.members.filter(
+      // 2. New message notifications for other members. A DM alerts ONLY its two
+      // canonical participants (dmKey), never whoever was written into members[].
+      const recipientPool: string[] = isDmGroup(group)
+        ? (dmParticipants(group) || [])
+        : (group.members || []);
+      const otherMemberIds = recipientPool.filter(
         (id: string) => !senderIds.includes(id) && !mentionedUserIds.includes(id)
       );
       
@@ -354,13 +353,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // group.members/admins store Mongo _ids; auth.sub is the app id.
         const me = await UserModel.findOne({ id: auth.sub }, { _id: 1, name: 1 }).lean() as any;
         const myIds = [auth.sub, me?._id?.toString()].filter(Boolean) as string[];
-        const isMember = (grp.members || []).some((m: string) => myIds.includes(m));
-        const isGroupAdmin = (grp.admins || []).some((m: string) => myIds.includes(m));
-        const dm = isDmGroup(grp);
-        const isModerator = isGroupAdmin || auth.role === 'admin' || auth.role === 'c-level';
-        // Anyone who can SEND a message here can pin one: any member, unless the
-        // group is admin-only chat (then only moderators). DMs: either member.
-        const canPin = dm ? isMember : (isMember && (!grp.onlyAdminCanChat || isModerator));
+        // Anyone who can post here can pin: any member, or only group admins in
+        // an admin-only group; in a DM either participant (shared rule).
+        const canPin = chatRights(grp, myIds, auth.role, true).canPin;
         if (!canPin) {
           return res.status(403).json({ error: "You can't pin messages here" });
         }
@@ -427,10 +422,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // URL param — otherwise an admin could pass a normal group's id in the URL
       // while deleting a message that actually lives in a private DM, bypassing
       // the "admins can't touch DMs" rule.
+      // Moderators are the group's own admins (and company Admins), never in a DM.
       let adminCanModerate = false;
-      if (!isSender && (auth.role === 'admin' || auth.role === 'c-level')) {
+      if (!isSender) {
         const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
-        adminCanModerate = !!grp && !grp.isDirect;
+        const me = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
+        const myIds = [auth.sub, me?._id?.toString()].filter(Boolean) as string[];
+        adminCanModerate = !!grp && canModerateMessages(grp, myIds, auth.role);
       }
       if (!isSender && !adminCanModerate) {
         return res.status(403).json({ error: 'You can only delete your own messages' });
