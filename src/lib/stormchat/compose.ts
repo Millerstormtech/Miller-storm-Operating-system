@@ -103,3 +103,13 @@ export function safeHref(url: unknown): string | undefined {
   const u = typeof url === 'string' ? url.trim() : '';
   return /^(\/(?!\/)|https:\/\/)/.test(u) ? u : undefined;
 }
+
+/** The short text an alert shows for a message (bell and phone push). */
+export function alertPreview(type: UserMessageType, text: unknown, pollQuestion?: unknown): string {
+  const body = typeof text === 'string' ? text.trim() : '';
+  if (type === 'text') return body.substring(0, 100) || 'New message';
+  if (type === 'poll') return `📊 ${String(pollQuestion || body || 'New poll').substring(0, 100)}`;
+  if (type === 'image') return body && body !== 'GIF' && body !== 'Sticker' ? `📷 ${body.substring(0, 90)}` : 'Sent a photo';
+  if (type === 'video') return body ? `🎬 ${body.substring(0, 90)}` : 'Sent a video';
+  return `📎 ${body.substring(0, 90) || 'Sent a file'}`;
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useRouter } from "next/router";
 import { appConfirm } from "../lib/appDialogs";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { STORM_CHAT_TOUR } from "../portals/shared/guided-tour/definitions/stormChat";
@@ -50,6 +51,22 @@ export function StormChatViewer() {
   const [users, setUsers] = useState<PickUser[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [opening, setOpening] = useState(false);
+  // ?group=<id> (a bell alert's link) opens that chat once the page loads.
+  const router = useRouter();
+  const deepLinkGroup = typeof router.query.group === 'string' ? router.query.group : '';
+  useEffect(() => {
+    if (!deepLinkGroup || !user?.id) return;
+    let alive = true;
+    (async () => {
+      const inList = groups.find((g) => g._id === deepLinkGroup);
+      const g = inList || await fetch(`/api/storm-chat/groups/${deepLinkGroup}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!alive) return;
+      router.replace({ pathname: router.pathname }, undefined, { shallow: true });
+      if (g && g._id) openGroup(g as ChatGroup);
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkGroup, user?.id]);
   // Long-press on a DM row (touch): see GroupRow.
   const longPressRef = useRef(false);
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,9 +127,7 @@ export function StormChatViewer() {
     // A private group the user isn't in yet → handle by request state.
     if (g.isMember === false && !g.isDirect) {
       const status = requestedIds.has(g._id) ? 'pending' : (g.joinStatus || 'none');
-      if (status === 'denied') {
-        alert("Rejected by admin — you can't access this group.");
-      } else if (status === 'pending') {
+      if (status === 'pending') {
         alert('Your request is pending the group admin’s approval.');
       } else {
         setJoinTarget(g);
@@ -148,7 +163,7 @@ export function StormChatViewer() {
           setJoinTarget(null);
         }
       } else {
-        // 403 with error 'denied' = the admin already rejected them.
+        // 403 'denied': declined less than 7 days ago; the message says when.
         alert(data.message || data.error || "Couldn't send the request. Please try again.");
         setJoinTarget(null);
       }
@@ -386,7 +401,7 @@ export function StormChatViewer() {
           </div>
           {notMember ? (
             <div style={{ fontSize: 13, marginTop: 3, fontWeight: 500, color: status === 'denied' ? "var(--text-muted)" : status === 'pending' ? "#10b981" : "#e5484d" }}>
-              {status === 'denied' ? "🚫 Rejected · no access" : status === 'pending' ? "✓ Request pending" : (g as any).visibility === 'public' ? "Company-wide · tap to ask to rejoin" : "🔒 Private · tap to request to join"}
+              {status === 'denied' ? "Request declined · tap to ask again" : status === 'pending' ? "✓ Request pending" : (g as any).visibility === 'public' ? "Company-wide · tap to ask to rejoin" : "🔒 Private · tap to request to join"}
             </div>
           ) : (
             <div style={{ fontSize: 13.5, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>{preview}</div>
@@ -401,7 +416,7 @@ export function StormChatViewer() {
                 : status === 'pending'
                   ? { background: "rgba(16,185,129,0.14)", color: "#10b981", border: "1px solid rgba(16,185,129,0.4)" }
                   : { background: "rgba(202,0,2,0.12)", color: "#e5484d", border: "1px solid rgba(202,0,2,0.35)" }) }}>
-              {status === 'denied' ? "Rejected" : status === 'pending' ? "Pending" : "Join"}
+              {status === 'denied' ? "Declined" : status === 'pending' ? "Pending" : "Join"}
             </span>
           ) : count > 0 ? (
             <span style={{ background: "#e01418", color: "var(--text-inverse)", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>

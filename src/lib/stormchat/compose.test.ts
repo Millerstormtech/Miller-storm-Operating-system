@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { userMessageType, replyQuoteFrom, messageProblem, attachmentProblem, safeHref } from './compose';
+import { userMessageType, replyQuoteFrom, messageProblem, attachmentProblem, safeHref, alertPreview } from './compose';
 
 describe('userMessageType', () => {
   it.each(['text', 'image', 'video', 'file', 'poll'])('a person may send %s', (t) => {
@@ -96,5 +96,19 @@ describe('safeHref', () => {
     expect(safeHref('https://x.com/a')).toBe('https://x.com/a');
     expect(safeHref('javascript:alert(1)')).toBeUndefined();
     expect(safeHref('//evil.example')).toBeUndefined();
+  });
+});
+
+describe('alertPreview', () => {
+  it('polls show the question, not "Sent a file"', () => {
+    expect(alertPreview('poll', '', 'Lunch at 12?')).toBe('📊 Lunch at 12?');
+  });
+  it('text, photo, GIF, video and file previews', () => {
+    expect(alertPreview('text', 'hello')).toBe('hello');
+    expect(alertPreview('image', '')).toBe('Sent a photo');
+    expect(alertPreview('image', 'GIF')).toBe('Sent a photo');
+    expect(alertPreview('image', 'site photo @Sam')).toBe('📷 site photo @Sam');
+    expect(alertPreview('video', '')).toBe('Sent a video');
+    expect(alertPreview('file', 'Q3.pdf')).toBe('📎 Q3.pdf');
   });
 });

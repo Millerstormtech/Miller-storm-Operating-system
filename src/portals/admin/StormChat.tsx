@@ -45,6 +45,22 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
+  // ?group=<id> (a bell alert's link) opens that chat.
+  const deepLinkGroup = typeof router.query.group === 'string' ? router.query.group : '';
+  useEffect(() => {
+    if (!deepLinkGroup) return;
+    let alive = true;
+    fetch(`/api/storm-chat/groups/${deepLinkGroup}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((g) => {
+        if (!alive) return;
+        router.replace({ pathname: router.pathname }, undefined, { shallow: true });
+        if (g && g._id) openGroupChat(g as ChatGroup);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkGroup]);
   // Admin's own private messages (DMs) — admin participates like any other user.
   const [myDms, setMyDms] = useState<ChatGroup[]>([]);
   // Drag-reorder for the admin's OWN dms — a personal preference, saved to

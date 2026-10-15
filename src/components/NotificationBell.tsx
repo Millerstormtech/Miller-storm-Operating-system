@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { chatRouteForRole, isChatNotification } from "../lib/chatRoute";
 import { useRouter } from "next/router";
 import { Toast } from "./Toast";
 import { useAuth } from "../contexts/AuthContext";
@@ -25,6 +26,7 @@ type Notification = {
     courseName?: string;
     tab?: string;
     playlistId?: string;
+    groupId?: string; // Storm Chat alerts: the chat to open
   };
 };
 
@@ -128,8 +130,12 @@ export function NotificationBell({ userId }: { userId: string }) {
     setUnreadCount((prev) => Math.max(0, prev - 1));
     markAsRead(notif.id);
 
-    // If it's a lesson share notification, redirect to the lesson page
-    if (notif.type === 'lesson_share' && notif.metadata?.shareUrl) {
+    // A Storm Chat alert (message, mention, join request) opens that chat in
+    // the recipient's own chat page (readiness test: the bell did nothing).
+    if (isChatNotification(notif.type) && notif.metadata?.groupId && chatRouteForRole(user?.role)) {
+      setShowDropdown(false);
+      router.push(`${chatRouteForRole(user?.role)}?group=${encodeURIComponent(notif.metadata.groupId)}`);
+    } else if (notif.type === 'lesson_share' && notif.metadata?.shareUrl) {
       setShowDropdown(false);
       // Extract the path from the full URL if needed
       const url = notif.metadata.shareUrl;

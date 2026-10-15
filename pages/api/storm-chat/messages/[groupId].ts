@@ -11,7 +11,7 @@ import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canReadMessages, canSendMessage, isGroupAdmin, canModerateMessages, chatRights, dmParticipants } from '../../../../src/lib/stormchat/access';
 import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
 import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess';
-import { userMessageType, replyQuoteFrom, messageProblem, attachmentProblem, SEND_BURST } from '../../../../src/lib/stormchat/compose';
+import { userMessageType, replyQuoteFrom, messageProblem, attachmentProblem, alertPreview, SEND_BURST } from '../../../../src/lib/stormchat/compose';
 import { rateLimit } from '../../../../src/lib/rateLimit';
 import { mentionedIds, mentionsAll, alertPlan } from '../../../../src/lib/stormchat/mentions';
 import mongoose from 'mongoose';
@@ -25,6 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   const { groupId } = req.query;
+  // A malformed id is "not found", not a server error.
+  if (typeof groupId !== 'string' || !mongoose.isValidObjectId(groupId)) {
+    return res.status(404).json({ error: 'Group not found' });
+  }
 
   if (req.method === 'GET') {
     // Get messages for a group
@@ -192,7 +196,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Extract mentions from message text
       const mentionedUserIds: string[] = [];
-      if (message && messageType === 'text') {
+      // @mentions in text and in photo / video captions.
+      if (message && (messageType === 'text' || messageType === 'image' || messageType === 'video')) {
         // Import User model
         const { UserModel } = await import('../../../../src/lib/models/User');
         
@@ -290,9 +295,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             userId: mentionedAppId,
             type: 'stormchat_mention',
             title: `You were mentioned by ${senderName}`,
-            message: messageType === 'text'
-              ? (message?.substring(0, 100) || 'New message')
-              : (messageType === 'image' ? 'Shared an image' : 'New message'),
+            message: alertPreview(messageType, message, poll?.question),
             read: false,
             metadata: {
               groupId,
@@ -314,9 +317,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // A private DM reads "<sender> sent you a message"; a group keeps the
       // "New message in <group>: <sender>: …" format.
       const isDm = !!group.isDirect;
-      const bodyPreview = messageType === 'text'
-        ? (message?.substring(0, 100) || 'New message')
-        : (messageType === 'image' ? 'Sent a photo' : messageType === 'video' ? 'Sent a video' : 'Sent a file');
+      const bodyPreview = alertPreview(messageType, message, poll?.question);
       const memberTitle = isDm ? `${senderName} sent you a message` : `New message in ${group.name}`;
       const memberBody = isDm ? bodyPreview : `${senderName}: ${bodyPreview}`;
 
@@ -362,9 +363,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const result = await sendPushNotificationToMultiple(
             mentionTokens,
             `You were mentioned by ${senderName}`,
-            messageType === 'text' 
-              ? (message?.substring(0, 100) || 'New message')
-              : (messageType === 'image' ? 'Shared an image' : 'New message'),
+            alertPreview(messageType, message, poll?.question),
             {
               groupId: groupId as string,
               groupName: group.name,
@@ -420,7 +419,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { messageId } = req.body;
         if (!messageId) return res.status(400).json({ error: 'messageId is required' });
 
-        const msg = await ChatMessage.findById(messageId);
+        const msg = mongoose.isValidObjectId(String(messageId)) ? await ChatMessage.findById(messageId) : null;
         if (!msg) return res.status(404).json({ error: 'Message not found' });
 
         const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
@@ -495,7 +494,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { messageId } = req.body;
       if (!messageId) return res.status(400).json({ error: 'messageId is required' });
 
-      const msg = await ChatMessage.findById(messageId);
+      const msg = mongoose.isValidObjectId(String(messageId)) ? await ChatMessage.findById(messageId) : null;
       if (!msg) return res.status(404).json({ error: 'Message not found' });
 
       const isSender = (msg as any).senderId === auth.sub;

@@ -122,6 +122,8 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   const goneRef = useRef<null | 'removed' | 'deleted'>(null);
   // Muted by this viewer: no alerts for ordinary messages, mentions still come.
   const [muted, setMuted] = useState(false);
+  // Active members only, for "X of N voted" (deleted / suspended don't count).
+  const [activeMembers, setActiveMembers] = useState<number | null>(null);
   async function toggleMute() {
     const next = !muted;
     setMuted(next);
@@ -160,7 +162,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     let alive = true;
     fetch(`/api/storm-chat/groups/${groupProp._id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((g) => { if (alive && g?.myRights) { setRights(g.myRights); setMuted(!!g.muted); } })
+      .then((g) => { if (alive && g?.myRights) { setRights(g.myRights); setMuted(!!g.muted); if (typeof g.activeMemberCount === 'number') setActiveMembers(g.activeMemberCount); } })
       .catch(() => {});
     return () => { alive = false; };
   }, [groupProp._id]);
@@ -1195,7 +1197,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
             {msg.messageType === 'poll' && msg.poll && (() => {
               // Percentage is out of the group's total members, not just the votes
               // cast — so a single vote in a 9-member group reads ~11%, not 100%.
-              const totalMembers = Math.max(group.members?.length || 0, 1);
+              const totalMembers = Math.max(activeMembers ?? group.members?.length ?? 0, 1);
               const voterSet = new Set<string>();
               msg.poll.options.forEach(o => (o.votes || []).forEach(v => voterSet.add(v)));
               const votersCount = voterSet.size;
@@ -1820,6 +1822,8 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileUpload(file);
+                // Let the same file be picked again next time.
+                e.target.value = '';
               }}
             />
             
