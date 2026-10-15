@@ -106,6 +106,12 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   // What the server says this viewer may do here (post, pin, moderate, manage).
   // The web used to guess from ids it doesn't have, which locked C-level and
   // team-lead group admins out of groups the server let them post in.
+  // While a chat is open, the phone layout hides the app's menu button so it
+  // can't cover the room's back arrow (src/styles.css, storm-chat-room-open).
+  useEffect(() => {
+    document.body.classList.add('storm-chat-room-open');
+    return () => document.body.classList.remove('storm-chat-room-open');
+  }, []);
   const [rights, setRights] = useState<ChatRights | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   useEffect(() => {

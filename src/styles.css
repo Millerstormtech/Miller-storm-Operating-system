@@ -4742,6 +4742,12 @@ body {
     border: 0 !important;
     z-index: 500 !important;
   }
+  /* Inside an open chat the room's own back arrow is the way out (GroupMe-
+     style), so hide the menu button that used to sit on top of it. The class
+     is set by StormChatRoom while it is open. */
+  body.storm-chat-room-open .mobile-menu-button {
+    display: none !important;
+  }
   /* Give the message input room so its placeholder stops wrapping: shrink the
      emoji / GIF / attach / send buttons and tighten the gap. */
   .storm-composer {
