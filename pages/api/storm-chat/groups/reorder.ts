@@ -15,6 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
       return res.status(400).json({ error: 'orderedIds array is required' });
     }
+    if (!orderedIds.every((id) => typeof id === 'string' && mongoose.isValidObjectId(id))) {
+      return res.status(400).json({ error: 'orderedIds must be group ids' });
+    }
 
     // Use native driver directly to bypass Mongoose strict schema
     const db = mongoose.connection.db!;

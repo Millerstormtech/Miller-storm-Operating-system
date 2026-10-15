@@ -5,7 +5,7 @@ import { UserModel } from '../../../../src/lib/models/User';
 import mongoose from 'mongoose';
 import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
-import { canSeeGroupInList, isMemberOf as memberOf, dmParticipants, canCreateGroup } from '../../../../src/lib/stormchat/access';
+import { canSeeGroupInList, isMemberOf as memberOf, dmParticipants, canCreateGroup, canReadMessages } from '../../../../src/lib/stormchat/access';
 import { applyCustomOrder } from '../../../../src/lib/stormchat/chatOrder';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -228,6 +228,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
+      // Privacy: a group you can't open shows its card and counts, not WHO is
+      // in it; who left or muted a chat is never sent. (Member lists of
+      // private groups used to reach every browser.)
+      const viewer: any = myDoc?._id
+        ? { _id: myDoc._id, role: effectiveUserId === auth.sub ? auth.role : undefined }
+        : await UserModel.findOne({ id: effectiveUserId }, { _id: 1, role: 1 }).lean();
+      const viewerIds = [effectiveUserId, viewer?._id ? String(viewer._id) : ''].filter(Boolean) as string[];
+      const viewerRole = effectiveUserId === auth.sub
+        ? auth.role
+        : (viewer?.role || (await UserModel.findOne({ id: effectiveUserId }, { role: 1 }).lean() as any)?.role);
+      groups = groups.map((g: any) => {
+        const { leftMembers, mutedBy, hiddenFor, ...rest } = g;
+        if (canReadMessages(g, viewerIds, viewerRole)) return rest;
+        const { members, admins, dmKey, ...card } = rest;
+        return { ...card, memberCount: (members || []).length, adminCount: (admins || []).length };
+      });
+
       res.status(200).json(groups);
     } catch (error) {
       console.error('Error fetching groups:', error);
@@ -261,7 +278,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // exact "a subgroup has a subgroup" mismatch.
       let parentDoc: any = null;
       if (parentGroupId) {
-        parentDoc = await ChatGroup.findById(parentGroupId).select('visibility parentGroupId').lean();
+        parentDoc = mongoose.isValidObjectId(String(parentGroupId))
+          ? await ChatGroup.findById(parentGroupId).select('visibility parentGroupId isDirect dmKey members').lean()
+          : null;
+        // The parent must be a real group (not missing, not a DM).
+        if (!parentDoc || isDmGroup(parentDoc)) {
+          return res.status(400).json({ error: "That parent group doesn't exist" });
+        }
         if (parentDoc?.parentGroupId) {
           return res.status(400).json({
             error: "A subgroup can't have its own subgroup. Add it to the top-level group instead.",

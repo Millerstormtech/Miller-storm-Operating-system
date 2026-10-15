@@ -1,32 +1,38 @@
-// GET /api/admin/storm-chat-groups            (admin only) — list every group + subgroup
-// GET /api/admin/storm-chat-groups?delete=ID&confirm=yes   — delete one group by id
+// GET    /api/admin/storm-chat-groups               (admin only) — list every group + subgroup
+// DELETE /api/admin/storm-chat-groups  { id, confirm: "yes" } — delete one group by id
 //
 // A rescue tool for groups the admin StormChat tree can't reach — e.g. a nested
 // subgroup (a subgroup that ended up under another subgroup) is counted but
 // never rendered, so it can't be deleted from the UI. This lists every non-DM
 // group with its _id, parent, visibility and member count so duplicates are
 // obvious, and can delete one by id (reparenting any children up to its parent
-// first, so nothing is orphaned). GET is allowed so a signed-in admin can use it
-// straight from the browser.
+// first, so nothing is orphaned). Deleting needs a deliberate DELETE request
+// (it used to be a plain GET link, so merely opening a URL deleted a group,
+// DMs included); a DM can never be deleted here.
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import ChatGroup from "../../../src/lib/models/ChatGroup";
+import ChatMessage from "../../../src/lib/models/ChatMessage";
+import GroupJoinRequest from "../../../src/lib/models/GroupJoinRequest";
+import GroupReadReceipt from "../../../src/lib/models/GroupReadReceipt";
+import { NotificationModel } from "../../../src/lib/models/Notification";
+import { isDmGroup } from "../../../src/lib/stormchat/isDm";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!allowMethods(req, res, ["GET"])) return;
+  if (!allowMethods(req, res, ["GET", "DELETE"])) return;
   if (!requireRole(req, res, "admin")) return;
 
   await connectMongo();
 
   const all: any[] = await ChatGroup.find({})
-    .select("_id name visibility parentGroupId members isDirect")
+    .select("_id name visibility parentGroupId members isDirect dmKey")
     .lean();
 
   // ── Delete mode ──────────────────────────────────────────────────────────
-  const deleteId = typeof req.query.delete === "string" ? req.query.delete : "";
-  if (deleteId) {
-    if (req.query.confirm !== "yes") {
+  if (req.method === "DELETE") {
+    const deleteId = typeof req.body?.id === "string" ? req.body.id : "";
+    if (req.body?.confirm !== "yes") {
       return res.status(400).json({
         error: "Add &confirm=yes to actually delete.",
         wouldDelete: all.find((g) => String(g._id) === deleteId) || null,
@@ -34,6 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const target = all.find((g) => String(g._id) === deleteId);
     if (!target) return res.status(404).json({ error: "Group not found for that id" });
+    if (isDmGroup(target)) return res.status(400).json({ error: "A direct message can't be deleted here" });
 
     // Reparent any children up to this group's parent so they stay visible.
     const reparent = await ChatGroup.updateMany(
@@ -41,6 +48,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { $set: { parentGroupId: target.parentGroupId || "" } }
     );
     await ChatGroup.findByIdAndDelete(deleteId);
+    // Nothing of the deleted group is left behind.
+    await Promise.all([
+      ChatMessage.deleteMany({ groupId: deleteId }),
+      GroupJoinRequest.deleteMany({ groupId: deleteId }),
+      GroupReadReceipt.deleteMany({ groupId: deleteId }),
+      NotificationModel.deleteMany({ "metadata.groupId": deleteId }),
+    ]);
 
     return res.status(200).json({
       ok: true,
@@ -79,6 +93,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     duplicates,
     groups,
     howToDelete:
-      "Copy the id of the group you want to remove, then open: /api/admin/storm-chat-groups?delete=THAT_ID&confirm=yes",
+      'Send DELETE /api/admin/storm-chat-groups with body { "id": "THAT_ID", "confirm": "yes" }. DMs cannot be deleted here.',
   });
 }

@@ -7,6 +7,8 @@ import { NotificationModel } from '../../../src/lib/models/Notification';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
 import { isDmGroup } from '../../../src/lib/stormchat/isDm';
 import { canManageGroup } from '../../../src/lib/stormchat/access';
+
+const REQUEST_AGAIN_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 import mongoose from 'mongoose';
 
 // Join-request flow for PRIVATE StormChat groups:
@@ -51,10 +53,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ ok: true, alreadyMember: true });
       }
 
-      // A previously DENIED request cannot be re-sent — the admin rejected it.
       const existing = await GroupJoinRequest.findOne({ groupId: String(groupId), userId: myMongoId }).lean() as any;
+      // A declined request can be sent again after 7 days (Youssef,
+      // 2026-10-15; it used to be refused forever).
       if (existing && existing.status === 'denied') {
-        return res.status(403).json({ error: 'denied', message: "Your request was rejected by the admin. You can't access this group." });
+        const deniedAt = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const retryAt = deniedAt + REQUEST_AGAIN_AFTER_MS;
+        if (Date.now() < retryAt) {
+          const days = Math.max(1, Math.ceil((retryAt - Date.now()) / 86_400_000));
+          return res.status(403).json({ error: 'denied', message: `Your request was declined. You can ask again in ${days} ${days === 1 ? 'day' : 'days'}.` });
+        }
+      }
+      // Already waiting: don't create a second request or alert the admins again.
+      if (existing && existing.status === 'pending') {
+        return res.status(200).json({ ok: true, request: existing, alreadyPending: true });
       }
 
       const request = await GroupJoinRequest.findOneAndUpdate(

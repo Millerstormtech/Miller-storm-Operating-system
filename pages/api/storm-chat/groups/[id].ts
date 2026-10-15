@@ -10,6 +10,7 @@ import GroupJoinRequest from '../../../../src/lib/models/GroupJoinRequest';
 import GroupReadReceipt from '../../../../src/lib/models/GroupReadReceipt';
 import { NotificationModel } from '../../../../src/lib/models/Notification';
 import mongoose from 'mongoose';
+import { UserModel } from '../../../../src/lib/models/User';
 
 // One group: read it (with the caller's rights), edit it, delete it.
 // Permissions follow the GroupMe model (src/lib/stormchat/access.ts): a group's
@@ -51,7 +52,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const muted = (group.mutedBy || []).map(String).some((m: string) => myIds.includes(m));
       // How many subgroups go with it if this group is deleted (the confirm says so).
       const subgroupCount = rights.canDelete ? await ChatGroup.countDocuments({ parentGroupId: String(group._id) }) : 0;
-      return res.status(200).json({ ...group, myRights: rights, myMongoId: myIds[1] || '', muted, subgroupCount });
+      // Active people only (not deleted / suspended / leaving): poll totals.
+      const memberObjIds = (group.members || []).map(String).filter((m: string) => mongoose.isValidObjectId(m));
+      const activeMemberCount = await UserModel.countDocuments({
+        _id: { $in: memberObjIds }, deleted: { $ne: true }, suspended: { $ne: true }, deletionRequested: { $ne: true },
+      });
+      return res.status(200).json({ ...group, myRights: rights, myMongoId: myIds[1] || '', muted, subgroupCount, activeMemberCount });
     }
 
     if (isDmGroup(group)) {
