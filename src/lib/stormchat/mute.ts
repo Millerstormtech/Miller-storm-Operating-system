@@ -52,3 +52,14 @@ export function viewerMute(group: Mutable, viewerIds: string[], now = Date.now()
   const t = end === undefined || end === null || end === '' ? NaN : new Date(end as any).getTime();
   return { muted: true, until: Number.isNaN(t) ? null : new Date(t).toISOString() };
 }
+
+/** "4:30 PM" today, "Sat 10:00 AM" another day, in Central time like the rest of the chat. */
+export function muteUntilLabel(iso: string, now = Date.now()): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const tz = 'America/Chicago';
+  const day = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: tz });
+  // Newer ICU puts a narrow no-break space before AM/PM; keep it a plain space.
+  const time = d.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).replace(/\u202f/g, ' ');
+  return day(d) === day(new Date(now)) ? time : `${d.toLocaleDateString('en-US', { timeZone: tz, weekday: 'short' })} ${time}`;
+}

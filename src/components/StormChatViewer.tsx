@@ -35,7 +35,13 @@ type ChatGroup = {
   joinStatus?: 'pending' | 'denied' | 'none';
   // Attached by the groups API for sorting — used for the row timestamp.
   lastMessageAt?: string;
+  // The newest message in one line ("Tom: meet at 7"); only for chats you can read.
+  lastMessagePreview?: string;
+  isMuted?: boolean;
 };
+
+// A message found by the search box (src/lib/stormchat/findMessages.ts).
+type MessageHit = { _id: string; groupId: string; chatName: string; isDirect: boolean; senderName: string; snippet: string; createdAt: string };
 
 type PickUser = { _id?: string; id: string; name: string; email: string; role: string; headshotUrl?: string };
 
@@ -47,6 +53,22 @@ export function StormChatViewer() {
   const [loading, setLoading] = useState(true);
   const activeTourId = useActiveTourId();
   const [search, setSearch] = useState("");
+  // Messages matching the search box, across every chat you're in (GroupMe-style).
+  const [messageHits, setMessageHits] = useState<MessageHit[] | null>(null);
+  // Open the chat at this message (a search result).
+  const [jumpTo, setJumpTo] = useState("");
+  useEffect(() => {
+    const q = search.trim();
+    // View As searches as the admin, not the person viewed: leave it to names.
+    if (q.length < 2 || impersonating) { setMessageHits(null); return; }
+    let alive = true;
+    const t = setTimeout(async () => {
+      const res = await fetch(`/api/storm-chat/search?q=${encodeURIComponent(q)}`).catch(() => null);
+      const hits = res && res.ok ? await res.json().catch(() => []) : [];
+      if (alive) setMessageHits(Array.isArray(hits) ? hits : []);
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [search, impersonating]);
   // New-message picker
   const [pickerOpen, setPickerOpen] = useState(false);
   const [users, setUsers] = useState<PickUser[]>([]);
@@ -124,7 +146,8 @@ export function StormChatViewer() {
     } catch { /* ignore */ }
   }
 
-  async function openGroup(g: ChatGroup) {
+  async function openGroup(g: ChatGroup, jumpToMessageId = "") {
+    setJumpTo(jumpToMessageId);
     // A private group the user isn't in yet → handle by request state.
     if (g.isMember === false && !g.isDirect) {
       const status = requestedIds.has(g._id) ? 'pending' : (g.joinStatus || 'none');
@@ -213,6 +236,13 @@ export function StormChatViewer() {
   }
   function startDm(u: PickUser) { openDmWithId(u._id || u.id); }
 
+  // A search result: open its chat at that message.
+  async function openHit(h: MessageHit) {
+    const g = groups.find((x) => x._id === h.groupId)
+      || await fetch(`/api/storm-chat/groups/${h.groupId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (g && g._id) openGroup(g as ChatGroup, h._id);
+  }
+
   function titleFor(g: ChatGroup) {
     return g.isDirect ? (g.dmOther?.name || "Direct message") : g.name;
   }
@@ -247,8 +277,9 @@ export function StormChatViewer() {
         group={selected}
         isMember
         title={titleFor(selected)}
+        jumpToMessageId={jumpTo || undefined}
         onMessagePrivately={selected.isDirect ? undefined : (id) => openDmWithId(id)}
-        onBack={() => { setSelected(null); loadUnread(groups); loadGroups(); }}
+        onBack={() => { setSelected(null); setJumpTo(""); loadUnread(groups); loadGroups(); }}
       />
     );
   }
@@ -353,7 +384,8 @@ export function StormChatViewer() {
     const status: 'pending' | 'denied' | 'none' = requestedIds.has(g._id) ? 'pending' : (g.joinStatus || 'none');
     const isPrivate = g.visibility === 'private' && !g.isDirect;
     const time = relTime(g.lastMessageAt);
-    const preview = g.isDirect ? "Private message" : (g.description || "Group chat");
+    // The newest message (GroupMe-style); a chat with none yet keeps the old line.
+    const preview = g.lastMessagePreview || (g.isDirect ? "Private message" : (g.description || "Group chat"));
     return (
       <button
         key={g._id}
@@ -405,7 +437,7 @@ export function StormChatViewer() {
               {status === 'denied' ? "Request declined · tap to ask again" : status === 'pending' ? "✓ Request pending" : (g as any).visibility === 'public' ? "Company-wide · tap to ask to rejoin" : "🔒 Private · tap to request to join"}
             </div>
           ) : (
-            <div style={{ fontSize: 13.5, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>{preview}</div>
+            <div style={{ fontSize: 13.5, color: count > 0 ? "var(--text-primary)" : "var(--text-muted)", fontWeight: count > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>{preview}</div>
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
@@ -450,7 +482,7 @@ export function StormChatViewer() {
         <div style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 4, marginBottom: 20 }}>Your groups and direct messages</div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22, flexWrap: "wrap" }}>
-          <input data-tour="sc-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats"
+          <input data-tour="sc-search" value={search} onChange={e => setSearch(e.target.value)} placeholder={impersonating ? "Search chats" : "Search chats and messages"} aria-label="Search chats and messages"
             style={{ flex: 1, minWidth: 160, padding: "13px 18px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 15, outline: "none" }} />
           {!impersonating && (
             <button data-tour="sc-new" onClick={openPicker}
@@ -468,7 +500,7 @@ export function StormChatViewer() {
 
         {loading ? (
           <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "60px 0" }}>Loading chats…</div>
-        ) : visible.length === 0 ? (
+        ) : visible.length === 0 && !q ? (
           <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "60px 20px" }}>
             <div style={{ fontSize: 46, marginBottom: 12 }}>💬</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 6 }}>No chats yet</div>
@@ -486,6 +518,32 @@ export function StormChatViewer() {
               <div data-tour="sc-groups">
                 <div style={sectionLabel}>Groups</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{normalGroups.map(g => <GroupRow key={g._id} g={g} />)}</div>
+              </div>
+            )}
+            {q && visible.length === 0 && (
+              <div style={{ color: "var(--text-muted)", fontSize: 14 }}>No chats with that name</div>
+            )}
+            {messageHits && (
+              <div>
+                <div style={sectionLabel}>Messages</div>
+                {messageHits.length === 0 ? (
+                  <div style={{ color: "var(--text-muted)", fontSize: 14 }}>No messages found</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {messageHits.map((h) => (
+                      <button key={h._id} onClick={() => openHit(h)}
+                        style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 16px", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 14, cursor: "pointer", color: "var(--text-primary)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                          <span style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.chatName}</span>
+                          <span style={{ fontSize: 12.5, color: "var(--text-subtle)", flexShrink: 0 }}>{relTime(h.createdAt)}</span>
+                        </div>
+                        <div style={{ fontSize: 13.5, color: "var(--text-muted)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {h.senderName}: {h.snippet}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

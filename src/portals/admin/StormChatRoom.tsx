@@ -5,6 +5,9 @@ import { enterSendsMessage } from "../../lib/stormchat/enterKey";
 import { StormChatGroupInfo, type ChatRights } from "../../components/StormChatGroupInfo";
 import { mergeNewestPage, prependOlderPage } from "../../lib/stormchat/messagePages";
 import { safeHref } from "../../lib/stormchat/compose";
+import { canEditMessage, DELETED_TEXT } from "../../lib/stormchat/messageChanges";
+import { muteUntilLabel, type MuteChoice } from "../../lib/stormchat/mute";
+import { StormChatGallery } from "../../components/StormChatGallery";
 
 type ChatMessage = {
   _id: string;
@@ -24,8 +27,12 @@ type ChatMessage = {
   pinned?: boolean;
   pinnedByName?: string;
   pinnedAt?: string;
+  editedAt?: string;
+  deletedAt?: string;
   createdAt: Date;
 };
+
+type SearchHit = { _id: string; senderName: string; snippet: string; messageType: string; createdAt: string };
 
 type ChatGroup = {
   _id: string;
@@ -51,6 +58,8 @@ type Props = {
   // When provided (in a group), each other member's message shows a "Message
   // privately" action that starts a 1-on-1 DM with that sender.
   onMessagePrivately?: (userId: string, name: string) => void;
+  // Open the chat at this message (a search result from the chat list).
+  jumpToMessageId?: string;
 };
 
 // Common emojis for the composer picker (unicode — no dependency needed).
@@ -71,6 +80,22 @@ const COMPOSER_BTN: React.CSSProperties = {
   fontSize: 18,
   lineHeight: 1,
 };
+
+// Small icon buttons in the chat header (search, gallery, mute, info).
+const HEADER_BTN: React.CSSProperties = {
+  background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: 4, color: 'var(--text-primary)', flexShrink: 0,
+};
+const MUTE_ITEM: React.CSSProperties = {
+  display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none',
+  cursor: 'pointer', fontSize: 14, color: 'var(--text-primary)',
+};
+// How long to mute (GroupMe-style; src/lib/stormchat/mute.ts).
+const MUTE_OPTIONS: { key: MuteChoice; label: string }[] = [
+  { key: '1h', label: 'Mute for 1 hour' },
+  { key: '8h', label: 'Mute for 8 hours' },
+  { key: '1d', label: 'Mute for 1 day' },
+  { key: 'forever', label: 'Mute until I turn it back on' },
+];
 
 // Quick-reaction row shown on a message (matches the app's reaction tray).
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '😢', '👎'];
@@ -100,8 +125,10 @@ function SenderAvatar({ url, name }: { url?: string; name: string }) {
   );
 }
 
-export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMessagePrivately }: Props) {
+export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMessagePrivately, jumpToMessageId }: Props) {
   const { user } = useAuth();
+  // The web session knows the app id ("user-123"), which is what senderId holds.
+  const myAppId = user?.id || '';
   // Local copy so Group info edits (rename, admin-only...) show at once.
   const [group, setGroup] = useState<ChatGroup>(groupProp);
   useEffect(() => { setGroup(groupProp); }, [groupProp]);
@@ -121,16 +148,23 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   const [gone, setGone] = useState<null | 'removed' | 'deleted'>(null);
   const goneRef = useRef<null | 'removed' | 'deleted'>(null);
   // Muted by this viewer: no alerts for ordinary messages, mentions still come.
+  // A mute can end by itself (1 hour / 8 hours / 1 day, src/lib/stormchat/mute.ts).
   const [muted, setMuted] = useState(false);
+  const [mutedUntil, setMutedUntil] = useState<string | null>(null);
+  const [muteMenuOpen, setMuteMenuOpen] = useState(false);
+  const mutedNow = muted && (!mutedUntil || Date.parse(mutedUntil) > Date.now());
   // Active members only, for "X of N voted" (deleted / suspended don't count).
   const [activeMembers, setActiveMembers] = useState<number | null>(null);
-  async function toggleMute() {
-    const next = !muted;
-    setMuted(next);
+  async function changeMute(choice: MuteChoice | null) {
+    setMuteMenuOpen(false);
     const res = await fetch(`/api/storm-chat/groups/${groupProp._id}/mute`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: next }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(choice ? { muted: true, for: choice } : { muted: false }),
     }).catch(() => null);
-    if (!res || !res.ok) { setMuted(!next); alert("Couldn't change notifications. Please try again."); }
+    if (!res || !res.ok) { alert("Couldn't change notifications. Please try again."); return; }
+    const data = await res.json().catch(() => ({}));
+    setMuted(!!choice);
+    setMutedUntil(choice ? (data.mutedUntil ?? null) : null);
   }
   // Read receipts (GroupMe-style): whatever this open chat has shown on a
   // visible screen counts as read, including messages that arrive while you're
@@ -162,7 +196,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     let alive = true;
     fetch(`/api/storm-chat/groups/${groupProp._id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((g) => { if (alive && g?.myRights) { setRights(g.myRights); setMuted(!!g.muted); if (typeof g.activeMemberCount === 'number') setActiveMembers(g.activeMemberCount); } })
+      .then((g) => { if (alive && g?.myRights) { setRights(g.myRights); setMuted(!!g.muted); setMutedUntil(g.mutedUntil || null); if (typeof g.activeMemberCount === 'number') setActiveMembers(g.activeMemberCount); } })
       .catch(() => {});
     return () => { alive = false; };
   }, [groupProp._id]);
@@ -224,6 +258,59 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   const [reactionPickerId, setReactionPickerId] = useState<string | null>(null);
   const [reactionPickerExpanded, setReactionPickerExpanded] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  // Editing one of your own messages (15 minutes, src/lib/stormchat/messageChanges.ts):
+  // the text goes back into the box and Send saves the change.
+  const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
+  // Who reacted to a message (opened from its menu).
+  const [reactionsFor, setReactionsFor] = useState<ChatMessage | null>(null);
+  // Search inside this chat, and the Photos & files gallery.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const [searchHits, setSearchHits] = useState<SearchHit[] | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
+  useEffect(() => {
+    const q = searchQ.trim();
+    if (!searchOpen || q.length < 2) { setSearchHits(null); return; }
+    let alive = true;
+    const t = setTimeout(async () => {
+      const res = await fetch(`/api/storm-chat/search?q=${encodeURIComponent(q)}&groupId=${groupProp._id}`).catch(() => null);
+      const hits = res && res.ok ? await res.json().catch(() => []) : [];
+      if (alive) setSearchHits(Array.isArray(hits) ? hits : []);
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [searchQ, searchOpen, groupProp._id]);
+
+  function startEdit(msg: ChatMessage) {
+    setReplyingTo(null);
+    setEditingMsg(msg);
+    setNewMessage(msg.message);
+    setMenuMessageId(null);
+    setTimeout(() => composerRef.current?.focus(), 0);
+  }
+  function cancelEdit() {
+    setEditingMsg(null);
+    setNewMessage('');
+  }
+  async function saveEdit() {
+    const target = editingMsg;
+    if (!target || sending) return;
+    if (newMessage === target.message) { cancelEdit(); return; }
+    setSending(true);
+    try {
+      const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'edit', messageId: target._id, message: newMessage }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { alert(data.error || "Couldn't edit the message"); return; }
+      setMessages(prev => prev.map(m => (m._id === target._id ? { ...m, message: data.message, editedAt: data.editedAt } : m)));
+      cancelEdit();
+    } catch {
+      alert("Couldn't edit the message");
+    } finally {
+      setSending(false);
+    }
+  }
   // Fullscreen image viewer (with a Download button), like the app's viewer.
   const [viewerImage, setViewerImage] = useState<string | null>(null);
   // Forward a message to other users (each becomes a DM). Holds the message being
@@ -261,7 +348,15 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messageId }),
       });
-      if (res.ok) setMessages(prev => prev.filter(m => m._id !== messageId));
+      if (res.ok) {
+        // It stays in the chat as "This message was deleted" (GroupMe-style).
+        const data = await res.json().catch(() => ({}));
+        setMessages(prev => prev.map(m => (m._id === messageId
+          ? (data.message || { ...m, message: DELETED_TEXT, messageType: 'text', mediaUrl: '', poll: undefined, reactions: [], pinned: false, deletedAt: new Date().toISOString() })
+          : m)));
+        if (editingMsg?._id === messageId) cancelEdit();
+        loadPinned();
+      }
       else alert('Failed to delete message');
     } catch {
       alert('Failed to delete message');
@@ -346,8 +441,12 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   }
 
   async function scrollToMessage(messageId: string) {
-    // A quote can point at a message older than what's loaded: load earlier
-    // pages until it's there (up to about 2,000 messages back).
+    // Stay where we jump to: new messages arriving must not pull the view
+    // back down to the bottom.
+    setShouldAutoScroll(false);
+    // A quote, search result or gallery item can point at a message older
+    // than what's loaded: load earlier pages until it's there (up to about
+    // 10,000 messages back).
     if (!messageRefs.current[messageId]) {
       const found = await loadOlderUntil(messageId);
       if (!found) { alert('That message is too far back to jump to.'); return; }
@@ -358,6 +457,8 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     }
     const messageElement = messageRefs.current[messageId];
     if (messageElement) {
+      holdScrollUntil.current = Date.now() + 1500;
+      setShouldAutoScroll(false);
       messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       
       // Start blinking
@@ -370,8 +471,13 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     }
   }
 
+  // While a jump to a message is animating, its first scroll events still
+  // read "at the bottom"; letting them switch auto-scroll back on snapped the
+  // view straight back down (a search result opened at the bottom).
+  const holdScrollUntil = useRef(0);
   function handleScroll() {
     if (messagesContainerRef.current) {
+      if (Date.now() < holdScrollUntil.current) return;
       const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
       const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
       setShouldAutoScroll(isAtBottom);
@@ -385,6 +491,8 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   // loads OLDER_PAGE more at a time. Before, only the newest 500 ever loaded.
   const PAGE = 100;
   const OLDER_PAGE = 50;
+  // Bigger pages when jumping far back to one message (search, gallery, quotes).
+  const JUMP_PAGE = 500;
   const [hasOlder, setHasOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const loadingOlderRef = useRef(false);
@@ -433,9 +541,9 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     let oldestId = messagesRef.current[0]?._id;
     let more = hasOlder;
     for (let i = 0; i < 20 && more && oldestId; i++) {
-      const older = await fetchOlder(oldestId, PAGE);
+      const older = await fetchOlder(oldestId, JUMP_PAGE);
       if (!older || older.length === 0) { more = false; break; }
-      more = older.length === PAGE;
+      more = older.length === JUMP_PAGE;
       setMessages((prev) => prependOlderPage(prev, older));
       oldestId = older[0]._id;
       if (older.some((m) => m._id === messageId)) { setHasOlder(more); return true; }
@@ -464,7 +572,11 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
           // scrolling up to load history.
           setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ block: 'end' });
-            setTimeout(() => { olderEnabled.current = true; }, 400);
+            setTimeout(() => {
+              olderEnabled.current = true;
+              // Opened from a search result: go to that message.
+              if (jumpToMessageId) scrollToMessage(jumpToMessageId);
+            }, 400);
           }, 50);
         }
       } else if (response.status === 403 || response.status === 404) {
@@ -623,6 +735,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   }
 
   async function sendMessage() {
+    if (editingMsg) { saveEdit(); return; }
     if (!newMessage.trim() || sending) return;
 
     console.log(`[STORM-CHAT] 📤 Sending message to group: ${group.name} (${group._id})`);
@@ -1016,6 +1129,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                       {canSendMessage && (
                       <button
                         onClick={() => {
+                          if (editingMsg) cancelEdit();
                           setReplyingTo(msg);
                           setMenuMessageId(null);
                         }}
@@ -1094,6 +1208,26 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                           ⬇ Save
                         </button>
                       )}
+                      {msg.messageType === 'text' && canSendMessage && canEditMessage(msg, myAppId) && (
+                        <button
+                          onClick={() => startEdit(msg)}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          ✏️ Edit
+                        </button>
+                      )}
+                      {(msg.reactions?.length ?? 0) > 0 && (
+                        <button
+                          onClick={() => { setReactionsFor(msg); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          😊 Reactions ({msg.reactions!.length})
+                        </button>
+                      )}
                       {canPin && (
                         <button
                           onClick={() => { togglePin(msg); setMenuMessageId(null); }}
@@ -1127,6 +1261,8 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     const isBlinking = blinkingMessageId === msg._id;
     const isHovered = hoveredMessageId === msg._id;
     const showMenu = menuMessageId === msg._id;
+    // Deleted: a quiet notice in its place, with nothing to tap (GroupMe-style).
+    const deleted = !!msg.deletedAt;
 
     // System notices (e.g. "X joined the group") render as a centered gray pill.
     if (msg.messageType === 'system') {
@@ -1193,7 +1329,13 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 bubble), so it lines up with the ⋮ button — not shifted by the
                 sender name above or reaction badges below. */}
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: isMyMessage ? 'flex-end' : 'flex-start' }}>
-            {reactionAffordance(msg, isMyMessage)}
+            {!deleted && reactionAffordance(msg, isMyMessage)}
+            {deleted && (
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '8px 14px', borderRadius: 16, border: '1px dashed var(--border-strong)', color: 'var(--text-muted)', fontSize: 13, fontStyle: 'italic' }}>
+                <span>🚫 {DELETED_TEXT}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-subtle)', fontStyle: 'normal', whiteSpace: 'nowrap' }}>{formatTime(msg.createdAt)}</span>
+              </div>
+            )}
             {msg.messageType === 'poll' && msg.poll && (() => {
               // Percentage is out of the group's total members, not just the votes
               // cast — so a single vote in a 9-member group reads ~11%, not 100%.
@@ -1225,7 +1367,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 </div>
               );
             })()}
-            {msg.messageType === 'text' && (
+            {msg.messageType === 'text' && !deleted && (
               <div
                 style={{
                   backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)',
@@ -1281,7 +1423,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                     whiteSpace: 'nowrap',
                     alignSelf: 'flex-end'
                   }}>
-                    {formatTime(msg.createdAt)}
+                    {msg.editedAt ? 'edited · ' : ''}{formatTime(msg.createdAt)}
                   </div>
                 </div>
               </div>
@@ -1351,19 +1493,22 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 bubble slightly, each a white pill with a shadow. */}
             {msg.reactions && msg.reactions.length > 0 && (() => {
               const myId = user?._id || user?.id || '';
-              const counts: Record<string, { count: number; mine: boolean }> = {};
+              const counts: Record<string, { count: number; mine: boolean; names: string[] }> = {};
               msg.reactions.forEach(r => {
-                if (!counts[r.emoji]) counts[r.emoji] = { count: 0, mine: false };
+                if (!counts[r.emoji]) counts[r.emoji] = { count: 0, mine: false, names: [] };
                 counts[r.emoji].count += 1;
+                counts[r.emoji].names.push(r.userId === myId ? 'You' : r.userName);
                 if (r.userId === myId) counts[r.emoji].mine = true;
               });
               return (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: -11, marginRight: isMyMessage ? 6 : 0, marginLeft: isMyMessage ? 0 : 6, justifyContent: isMyMessage ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 3 }}>
-                  {Object.entries(counts).map(([em, { count, mine }]) => (
+                  {Object.entries(counts).map(([em, { count, mine, names }]) => (
                     <button
                       key={em}
                       onClick={() => toggleReaction(msg._id, em)}
-                      title={mine ? 'Remove your reaction' : 'React'}
+                      // Who reacted (GroupMe shows this too); the menu's
+                      // "Reactions" lists everyone on touch screens.
+                      title={`${em} ${names.join(', ')}${mine ? ' (tap to remove yours)' : ''}`}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 2,
                         background: 'var(--surface-default)',
@@ -1401,7 +1546,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
         borderBottom: '1px solid var(--border-default)',
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 8,
         backgroundColor: 'var(--surface-subtle)'
       }}>
         <button 
@@ -1443,35 +1588,119 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
           aria-label={isDirect ? undefined : 'Group info'}
           title={isDirect ? undefined : 'Group info'}
         >
-          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {/* title is the DM partner's name; a group shows its live name. */}
             {isDirect ? (title || group.name) : group.name}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {isDirect ? 'Private message' : `${group.members.length} ${group.members.length === 1 ? 'member' : 'members'}`}
             {!isDirect && group.onlyAdminCanChat && ' • Admin-only chat'}
             {!isDirect && ' • Tap for group info'}
           </div>
         </div>
-        <button
-          onClick={toggleMute}
-          aria-label={muted ? 'Unmute notifications' : 'Mute notifications'}
-          title={muted ? 'Muted: only @mentions alert you. Tap to unmute.' : 'Mute notifications'}
-          style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: 4, color: 'var(--text-primary)', opacity: muted ? 1 : 0.6 }}
-        >
-          {muted ? '🔕' : '🔔'}
+        <button onClick={() => { setSearchOpen((v) => !v); setSearchQ(''); }} aria-label="Search this chat" title="Search this chat" style={HEADER_BTN}>
+          🔍
         </button>
+        <button onClick={() => setShowGallery(true)} aria-label="Photos and files" title="Photos & files" style={HEADER_BTN}>
+          🖼️
+        </button>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => setMuteMenuOpen((v) => !v)}
+            aria-label={mutedNow ? 'Notifications muted' : 'Mute notifications'}
+            aria-haspopup="menu"
+            aria-expanded={muteMenuOpen}
+            title={mutedNow ? `Muted${mutedUntil ? ` until ${muteUntilLabel(mutedUntil)}` : ''}: only @mentions alert you` : 'Mute notifications'}
+            style={{ ...HEADER_BTN, opacity: mutedNow ? 1 : 0.6 }}
+          >
+            {mutedNow ? '🔕' : '🔔'}
+          </button>
+          {muteMenuOpen && (
+            <>
+              <div onClick={() => setMuteMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1100 }} />
+              <div role="menu" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 1200, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', minWidth: 240, overflow: 'hidden' }}>
+                {mutedNow && (
+                  <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-muted)', borderBottom: '1px solid var(--border-default)' }}>
+                    {mutedUntil ? `Muted until ${muteUntilLabel(mutedUntil)}.` : 'Muted until you turn it back on.'} You still get @mentions.
+                  </div>
+                )}
+                {mutedNow && <button role="menuitem" onClick={() => changeMute(null)} style={{ ...MUTE_ITEM, fontWeight: 700 }}>🔔 Unmute</button>}
+                {MUTE_OPTIONS.map((o) => (
+                  <button key={o.key} role="menuitem" onClick={() => changeMute(o.key)} style={MUTE_ITEM}>{o.label}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         {!isDirect && (
           <button
             onClick={() => setShowInfo(true)}
             aria-label="Group info"
             title="Group info"
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 4, color: 'var(--text-primary)' }}
+            style={{ ...HEADER_BTN, fontSize: 20 }}
           >
             ⓘ
           </button>
         )}
       </div>
+
+      {/* Search this chat (GroupMe-style): tap a result to jump to it. */}
+      {searchOpen && (
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border-default)', background: 'var(--surface-default)' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              autoFocus
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setSearchOpen(false); setSearchQ(''); } }}
+              placeholder="Search this chat"
+              aria-label="Search this chat"
+              maxLength={100}
+              style={{ flex: 1, minWidth: 0, padding: '8px 12px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 14, background: 'var(--surface-subtle)', color: 'var(--text-primary)', outline: 'none' }}
+            />
+            <button onClick={() => { setSearchOpen(false); setSearchQ(''); }} aria-label="Close search" style={HEADER_BTN}>✕</button>
+          </div>
+          {searchHits && (
+            <div style={{ marginTop: 6, maxHeight: 260, overflowY: 'auto' }}>
+              {searchHits.length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '6px 2px' }}>No messages found</div>
+              ) : searchHits.map((h) => (
+                <button
+                  key={h._id}
+                  onClick={() => { setSearchOpen(false); setSearchQ(''); scrollToMessage(h._id); }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', padding: '8px 2px', cursor: 'pointer', color: 'var(--text-primary)' }}
+                >
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{h.senderName} · {formatDate(new Date(h.createdAt))} {formatTime(new Date(h.createdAt))}</div>
+                  <div style={{ fontSize: 14, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.snippet}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showGallery && (
+        <StormChatGallery groupId={group._id} onClose={() => setShowGallery(false)} onJump={(id) => scrollToMessage(id)} />
+      )}
+
+      {/* Who reacted to a message, with names (works on touch screens). */}
+      {reactionsFor && (
+        <div onClick={() => setReactionsFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div role="dialog" aria-label="Reactions" onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--surface-default)', color: 'var(--text-primary)', borderRadius: 12, padding: 18, width: 320, maxWidth: '90vw', maxHeight: '70vh', overflowY: 'auto' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Reactions</div>
+            {(reactionsFor.reactions || []).map((r, i) => (
+              <div key={`${r.userId}-${r.emoji}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+                <span style={{ fontSize: 20, width: 28, textAlign: 'center' }}>{r.emoji}</span>
+                <span style={{ fontSize: 14 }}>{r.userId === myAppId ? 'You' : r.userName}</span>
+              </div>
+            ))}
+            <div style={{ textAlign: 'right', marginTop: 10 }}>
+              <button onClick={() => setReactionsFor(null)} style={{ padding: '8px 16px', background: 'var(--surface-subtle)', color: 'var(--text-primary)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showInfo && !isDirect && (
         <StormChatGroupInfo
@@ -1481,7 +1710,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
           onChanged={(g: any) => {
             setGroup((prev) => ({ ...prev, ...g, members: g.members || prev.members, admins: g.admins || prev.admins } as ChatGroup));
             if (g?.myRights) setRights(g.myRights);
-            if (typeof g?.muted === 'boolean') setMuted(g.muted);
+            if (typeof g?.muted === 'boolean') { setMuted(g.muted); setMutedUntil(g.mutedUntil || null); }
           }}
           onGone={() => { setShowInfo(false); onBack(); }}
         />
@@ -1576,6 +1805,16 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
           </div>
         ) : (
           <div>
+            {/* Editing one of your messages: Send saves, ✕ or Escape cancels. */}
+            {editingMsg && (
+              <div style={{ marginBottom: 8, padding: 8, backgroundColor: 'var(--surface-subtle)', borderRadius: 8, borderLeft: '3px solid var(--brand-on-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-on-surface)' }}>Editing message</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{editingMsg.message}</div>
+                </div>
+                <button onClick={cancelEdit} aria-label="Cancel editing" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-muted)', padding: 4 }}>✕</button>
+              </div>
+            )}
             {/* Reply preview */}
             {replyingTo && (
               <div style={{
@@ -1838,13 +2077,14 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 setMentionQuery(!isDirect && m ? m[1] : null);
               }}
               onKeyDown={(e) => {
+                if (e.key === 'Escape' && editingMsg) { e.preventDefault(); cancelEdit(); return; }
                 if (enterSendsMessage({ key: e.key, shiftKey: e.shiftKey, touchScreen })) {
                   e.preventDefault();
                   sendMessage();
                 }
               }}
               maxLength={2000}
-              placeholder="Type a message..."
+              placeholder={editingMsg ? 'Edit your message' : 'Type a message...'}
               disabled={sending}
               style={{
                 flex: 1,

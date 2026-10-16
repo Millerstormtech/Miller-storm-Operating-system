@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { appConfirm, notify } from "../lib/appDialogs";
 import { GROUP_ADMINS_ENABLED } from "../lib/stormchat/rollout";
+import { muteUntilLabel, type MuteChoice } from "../lib/stormchat/mute";
 
 // "Group info" sheet for one Storm Chat group, opened by tapping the group's
 // name in the chat header (GroupMe-style). Everyone sees the members and can
@@ -33,6 +34,7 @@ type GroupDoc = {
   myRights: ChatRights;
   myMongoId?: string;
   muted?: boolean;
+  mutedUntil?: string | null;
   subgroupCount?: number;
 };
 
@@ -72,6 +74,14 @@ const BTN: React.CSSProperties = {
 const PRIMARY: React.CSSProperties = { ...BTN, background: "var(--brand-fill)", borderColor: "var(--brand-fill)", color: "var(--text-inverse)" };
 const DANGER: React.CSSProperties = { ...BTN, color: "#e5484d", borderColor: "rgba(229,72,77,0.4)" };
 const SMALL: React.CSSProperties = { ...BTN, padding: "4px 8px", fontSize: 12, fontWeight: 600 };
+
+// How long to mute (GroupMe-style; src/lib/stormchat/mute.ts).
+const MUTE_CHOICES: { key: MuteChoice; label: string; done: string }[] = [
+  { key: "1h", label: "1 hour", done: "Muted for 1 hour" },
+  { key: "8h", label: "8 hours", done: "Muted for 8 hours" },
+  { key: "1d", label: "1 day", done: "Muted for 1 day" },
+  { key: "forever", label: "Until I turn it back on", done: "Muted until you turn it back on" },
+];
 
 export function StormChatGroupInfo({ groupId, myMongoId, onClose, onChanged, onGone }: Props) {
   const [group, setGroup] = useState<GroupDoc | null>(null);
@@ -143,14 +153,16 @@ export function StormChatGroupInfo({ groupId, myMongoId, onClose, onChanged, onG
     } finally { setBusy(false); }
   }
 
-  async function setMute(m: boolean) {
+  async function setMute(choice: MuteChoice | null) {
     setBusy(true);
     try {
       const res = await fetch(`/api/storm-chat/groups/${groupId}/mute`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ muted: m }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(choice ? { muted: true, for: choice } : { muted: false }),
       });
       if (!res.ok) { notify("Couldn't change notifications", "error"); return; }
-      notify(m ? "Group muted. You'll still get @mentions." : "Group unmuted", "success");
+      const done = MUTE_CHOICES.find((c) => c.key === choice)?.done;
+      notify(done ? `${done}. You'll still get @mentions.` : "Group unmuted", "success");
       await load();
       await refreshRoom();
     } finally { setBusy(false); }
@@ -282,11 +294,24 @@ export function StormChatGroupInfo({ groupId, myMongoId, onClose, onChanged, onG
             {/* Notifications: anyone in the group */}
             <div style={SECTION}>
               <div style={LABEL}>Notifications</div>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, cursor: "pointer" }}>
-                <input type="checkbox" checked={!!group.muted} disabled={busy} onChange={(e) => setMute(e.target.checked)} />
-                Mute this group
-              </label>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>
+              {group.muted ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 160, fontSize: 14 }}>
+                    🔕 {group.mutedUntil ? `Muted until ${muteUntilLabel(group.mutedUntil)}` : "Muted until you turn it back on"}
+                  </div>
+                  <button style={BTN} disabled={busy} onClick={() => setMute(null)}>Unmute</button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 14, marginBottom: 8 }}>Mute this group for:</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {MUTE_CHOICES.map((c) => (
+                      <button key={c.key} style={SMALL} disabled={busy} onClick={() => setMute(c.key)}>{c.label}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
                 You still get alerts when someone @mentions you.
               </div>
             </div>

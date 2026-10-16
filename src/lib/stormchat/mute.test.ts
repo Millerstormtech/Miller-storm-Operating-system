@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { muteEndsAt, isMuteChoice, activeMutedIds, viewerMute } from './mute';
+import { muteEndsAt, isMuteChoice, activeMutedIds, viewerMute, muteUntilLabel } from './mute';
 
 const NOW = Date.parse('2026-10-16T15:00:00Z');
 
@@ -46,5 +46,13 @@ describe('viewerMute', () => {
   it('is not muted once the time has passed, or if never muted', () => {
     expect(viewerMute(group, ['m-tom'], Date.parse('2026-10-16T16:00:01Z'))).toEqual({ muted: false, until: null });
     expect(viewerMute(group, ['m-rob'], NOW)).toEqual({ muted: false, until: null });
+  });
+});
+
+describe('muteUntilLabel', () => {
+  it('shows the time today and the weekday otherwise, in Central time', () => {
+    expect(muteUntilLabel('2026-10-16T21:30:00.000Z', NOW)).toBe('4:30 PM');
+    expect(muteUntilLabel('2026-10-17T15:00:00.000Z', NOW)).toBe('Sat 10:00 AM');
+    expect(muteUntilLabel('not a date', NOW)).toBe('');
   });
 });
