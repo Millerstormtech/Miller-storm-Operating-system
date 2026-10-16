@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useRouter } from "next/router";
+import { appConfirm } from "../lib/appDialogs";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { STORM_CHAT_TOUR } from "../portals/shared/guided-tour/definitions/stormChat";
 import { TourButton } from "../portals/shared/guided-tour/TourButton";
 import { useActiveTourId } from "../portals/shared/guided-tour/tourRegistry";
 import { StormChatRoom } from "../portals/admin/StormChatRoom";
+import { StormChatCreateGroup } from "./StormChatCreateGroup";
+import { canCreateGroup } from "../lib/stormchat/access";
+import { GROUP_ADMINS_ENABLED } from "../lib/stormchat/rollout";
 
 // User-facing StormChat for sales/manager web panels: lists the groups the
 // current user belongs to plus their private 1-on-1 DMs (server-filtered with
@@ -47,6 +52,27 @@ export function StormChatViewer() {
   const [users, setUsers] = useState<PickUser[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [opening, setOpening] = useState(false);
+  // ?group=<id> (a bell alert's link) opens that chat once the page loads.
+  const router = useRouter();
+  const deepLinkGroup = typeof router.query.group === 'string' ? router.query.group : '';
+  useEffect(() => {
+    if (!deepLinkGroup || !user?.id) return;
+    let alive = true;
+    (async () => {
+      const inList = groups.find((g) => g._id === deepLinkGroup);
+      const g = inList || await fetch(`/api/storm-chat/groups/${deepLinkGroup}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!alive) return;
+      router.replace({ pathname: router.pathname }, undefined, { shallow: true });
+      if (g && g._id) openGroup(g as ChatGroup);
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkGroup, user?.id]);
+  // Long-press on a DM row (touch): see GroupRow.
+  const longPressRef = useRef(false);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // "Create group" (only the roles allowed to create groups see the button).
+  const [creating, setCreating] = useState(false);
   // Request-to-join (private groups the user isn't a member of yet)
   const [joinTarget, setJoinTarget] = useState<ChatGroup | null>(null);
   const [joinSending, setJoinSending] = useState(false);
@@ -102,9 +128,7 @@ export function StormChatViewer() {
     // A private group the user isn't in yet → handle by request state.
     if (g.isMember === false && !g.isDirect) {
       const status = requestedIds.has(g._id) ? 'pending' : (g.joinStatus || 'none');
-      if (status === 'denied') {
-        alert("Rejected by admin — you can't access this group.");
-      } else if (status === 'pending') {
+      if (status === 'pending') {
         alert('Your request is pending the group admin’s approval.');
       } else {
         setJoinTarget(g);
@@ -140,7 +164,7 @@ export function StormChatViewer() {
           setJoinTarget(null);
         }
       } else {
-        // 403 with error 'denied' = the admin already rejected them.
+        // 403 'denied': declined less than 7 days ago; the message says when.
         alert(data.message || data.error || "Couldn't send the request. Please try again.");
         setJoinTarget(null);
       }
@@ -243,7 +267,7 @@ export function StormChatViewer() {
   // LIST — the other person keeps the thread, and a new message brings it back.
   async function deleteDm(g: ChatGroup) {
     if (!g.isDirect) return;
-    if (!window.confirm(`Delete this chat with ${titleFor(g)}?\n\nIt's removed from your list only; a new message will bring it back.`)) return;
+    if (!(await appConfirm(`Delete this chat with ${titleFor(g)}? It's removed from your list only; a new message will bring it back.`))) return;
     try {
       const res = await fetch(`/api/storm-chat/groups/${g._id}/hide`, { method: "POST" });
       if (!res.ok) throw new Error("failed");
@@ -304,14 +328,25 @@ export function StormChatViewer() {
   const dragEnabled = q.length === 0;
 
   function GroupRow({ g }: { g: ChatGroup }) {
-    const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const longPressed = useRef(false);
+    // The long-press flag lives in the LIST (longPressRef), not in this row:
+    // rows are rebuilt on every refresh, which reset a per-row flag, so the
+    // tap that ended a long press could open whichever chat was now under the
+    // finger (readiness test item 19).
     const startPress = () => {
+      longPressRef.current = false; // every new touch starts fresh
       if (!g.isDirect) return;
-      longPressed.current = false;
-      pressTimer.current = setTimeout(() => { longPressed.current = true; deleteDm(g); }, 550);
+      if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = setTimeout(() => { longPressRef.current = true; deleteDm(g); }, 550);
     };
-    const cancelPress = () => { if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; } };
+    const cancelPress = (e?: React.TouchEvent) => {
+      if (pressTimerRef.current) { clearTimeout(pressTimerRef.current); pressTimerRef.current = null; }
+      // Ending a long press must not also count as a tap; then clear the flag
+      // so the NEXT tap works (some browsers still send a late click).
+      if (longPressRef.current && e?.type === 'touchend') {
+        e.preventDefault();
+        setTimeout(() => { longPressRef.current = false; }, 400);
+      }
+    };
     const count = unread[g._id] || 0;
     const img = imageFor(g);
     const notMember = g.isMember === false && !g.isDirect;
@@ -322,7 +357,7 @@ export function StormChatViewer() {
     return (
       <button
         key={g._id}
-        onClick={() => { if (longPressed.current) { longPressed.current = false; return; } openGroup(g); }}
+        onClick={() => { if (longPressRef.current) { longPressRef.current = false; return; } openGroup(g); }}
         onContextMenu={g.isDirect ? (e) => { e.preventDefault(); deleteDm(g); } : undefined}
         onTouchStart={startPress}
         onTouchEnd={cancelPress}
@@ -362,10 +397,12 @@ export function StormChatViewer() {
           {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(titleFor(g))}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{titleFor(g)}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {titleFor(g)}{(g as any).isMuted ? <span title="Muted" aria-label="Muted" style={{ marginLeft: 6, fontSize: 13 }}>🔕</span> : null}
+          </div>
           {notMember ? (
             <div style={{ fontSize: 13, marginTop: 3, fontWeight: 500, color: status === 'denied' ? "var(--text-muted)" : status === 'pending' ? "#10b981" : "#e5484d" }}>
-              {status === 'denied' ? "🚫 Rejected · no access" : status === 'pending' ? "✓ Request pending" : "🔒 Private · tap to request to join"}
+              {status === 'denied' ? "Request declined · tap to ask again" : status === 'pending' ? "✓ Request pending" : (g as any).visibility === 'public' ? "Company-wide · tap to ask to rejoin" : "🔒 Private · tap to request to join"}
             </div>
           ) : (
             <div style={{ fontSize: 13.5, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>{preview}</div>
@@ -380,7 +417,7 @@ export function StormChatViewer() {
                 : status === 'pending'
                   ? { background: "rgba(16,185,129,0.14)", color: "#10b981", border: "1px solid rgba(16,185,129,0.4)" }
                   : { background: "rgba(202,0,2,0.12)", color: "#e5484d", border: "1px solid rgba(202,0,2,0.35)" }) }}>
-              {status === 'denied' ? "Rejected" : status === 'pending' ? "Pending" : "Join"}
+              {status === 'denied' ? "Declined" : status === 'pending' ? "Pending" : "Join"}
             </span>
           ) : count > 0 ? (
             <span style={{ background: "#e01418", color: "var(--text-inverse)", fontSize: 12, fontWeight: 700, minWidth: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
@@ -421,6 +458,12 @@ export function StormChatViewer() {
               New message
             </button>
           )}
+          {!impersonating && GROUP_ADMINS_ENABLED && canCreateGroup(user?.role) && (
+            <button onClick={() => setCreating(true)}
+              style={{ padding: "13px 20px", background: "var(--surface-default)", color: "var(--text-primary)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+              + Create group
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -449,6 +492,14 @@ export function StormChatViewer() {
         )}
       </div>
       <GuidedTour tour={STORM_CHAT_TOUR} ready={!loading} />
+
+      {creating && (
+        <StormChatCreateGroup
+          myId={user?.id}
+          onClose={() => setCreating(false)}
+          onCreated={(g) => { setCreating(false); setGroups(prev => [g, ...prev.filter(x => x._id !== g._id)]); openGroup(g); loadGroups(); }}
+        />
+      )}
 
       {/* New-message user picker */}
       {pickerOpen && (
@@ -495,7 +546,7 @@ export function StormChatViewer() {
             <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
             <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Join “{joinTarget.name}”?</div>
             <div style={{ fontSize: 13.5, color: "var(--text-muted)", marginBottom: 20 }}>
-              This is a private group. Your request will be sent to the group admin — you’ll be added once it’s approved.
+              {(joinTarget as any).visibility === 'public' ? "You left this group. Your request goes to its admins, and you're back in once they approve." : "This is a private group. Your request goes to the group admin, and you'll be added once it's approved."}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setJoinTarget(null)} disabled={joinSending}

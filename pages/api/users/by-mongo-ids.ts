@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import mongoose from 'mongoose';
 import { connectMongo } from '../../../src/lib/mongodb';
 import { UserModel } from '../../../src/lib/models/User';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
@@ -19,7 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Split comma-separated IDs
-    const idArray = ids.split(',').filter(id => id.trim());
+    // Malformed ids are skipped (they used to crash the lookup with a 500).
+    const idArray = ids.split(',').map(id => id.trim()).filter(id => mongoose.isValidObjectId(id));
 
     if (idArray.length === 0) {
       return res.status(200).json([]);
@@ -29,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const users = await UserModel.find({
       _id: { $in: idArray },
       deleted: { $ne: true }
-    }).select('_id name email headshotUrl role');
+    }).select('_id name headshotUrl role'); // no emails: any user can call this
 
     res.status(200).json(users);
   } catch (error) {

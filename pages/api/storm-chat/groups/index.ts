@@ -3,10 +3,11 @@ import { connectMongo } from '../../../../src/lib/mongodb';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
 import { UserModel } from '../../../../src/lib/models/User';
 import mongoose from 'mongoose';
-import { requireUser, requireRole, allowMethods } from '../../../../src/lib/auth';
+import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
-import { canSeeGroupInList, isMemberOf as memberOf, dmParticipants } from '../../../../src/lib/stormchat/access';
+import { canSeeGroupInList, isMemberOf as memberOf, dmParticipants, canCreateGroup, canReadMessages } from '../../../../src/lib/stormchat/access';
 import { applyCustomOrder } from '../../../../src/lib/stormchat/chatOrder';
+import { GROUP_ADMINS_ENABLED } from '../../../../src/lib/stormchat/rollout';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -130,9 +131,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // stray fields) stays members-only because it has no visibility.
         groups = groups
           .filter((g: any) => canSeeGroupInList(g, myIds))
+          // View As never lists someone's private DMs (Youssef, 2026-10-15).
+          .filter((g: any) => effectiveUserId === auth.sub || !isDmGroup(g))
           // "Delete chat for me": a member who hid a DM stops seeing it until the
           // other person sends a new message (which clears hiddenFor).
           .filter((g: any) => !(isDmGroup(g) && Array.isArray(g.hiddenFor) && g.hiddenFor.some((h: string) => myIds.includes(h))))
+          .map((g: any) => ({ ...g, isMuted: (g.mutedBy || []).map(String).some((m: string) => myIds.includes(m)) }))
           .map((g: any) => (isDmGroup(g) ? { ...g, isDirect: true } : { ...g, isMember: isMemberOf(g) }));
 
         // Attach the caller's join-request status for private groups they aren't
@@ -225,21 +229,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
+      // Privacy: a group you can't open shows its card and counts, not WHO is
+      // in it; who left or muted a chat is never sent. (Member lists of
+      // private groups used to reach every browser.)
+      const viewer: any = myDoc?._id
+        ? { _id: myDoc._id, role: effectiveUserId === auth.sub ? auth.role : undefined }
+        : await UserModel.findOne({ id: effectiveUserId }, { _id: 1, role: 1 }).lean();
+      const viewerIds = [effectiveUserId, viewer?._id ? String(viewer._id) : ''].filter(Boolean) as string[];
+      const viewerRole = effectiveUserId === auth.sub
+        ? auth.role
+        : (viewer?.role || (await UserModel.findOne({ id: effectiveUserId }, { role: 1 }).lean() as any)?.role);
+      groups = groups.map((g: any) => {
+        const { leftMembers, mutedBy, hiddenFor, ...rest } = g;
+        if (canReadMessages(g, viewerIds, viewerRole)) return rest;
+        const { members, admins, dmKey, ...card } = rest;
+        return { ...card, memberCount: (members || []).length, adminCount: (admins || []).length };
+      });
+
       res.status(200).json(groups);
     } catch (error) {
       console.error('Error fetching groups:', error);
       res.status(500).json({ error: 'Failed to fetch groups' });
     }
   } else if (req.method === 'POST') {
-    const auth = requireRole(req, res, ['admin', 'sales-team-lead', 'c-level', 'branch-manager']);
+    // Creating a group is the one chat action still gated by job title
+    // (GROUP_CREATOR_ROLES). The creator becomes the group's first admin.
+    const auth = requireUser(req, res);
     if (!auth) return;
+    if (!canCreateGroup(auth.role)) {
+      return res.status(403).json({ error: 'Your role cannot create groups' });
+    }
     try {
       const { name, description, imageUrl, members, admins, onlyAdminCanChat, parentGroupId, visibility } = req.body;
       const createdBy = auth.sub;
 
-      if (!name || !members || members.length === 0) {
+      if (!name || !Array.isArray(members) || members.length === 0) {
         return res.status(400).json({ error: 'Name and members are required' });
       }
+
+      const creator = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
+      const creatorMongoId = creator?._id ? String(creator._id) : '';
+      const memberList = Array.from(new Set([...members.map(String), creatorMongoId].filter(Boolean)));
+      // While group admins are paused (src/lib/stormchat/rollout.ts) a new
+      // group gets no admins, so phone members aren't locked out.
+      const adminList = GROUP_ADMINS_ENABLED
+        ? Array.from(new Set([...(Array.isArray(admins) ? admins.map(String) : []), creatorMongoId].filter(Boolean)))
+            .filter((a) => memberList.includes(a))
+        : [];
 
       // Single-level nesting only: a subgroup can never have its own subgroup.
       // Reject creating a group whose parent is itself a subgroup — otherwise the
@@ -247,7 +283,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // exact "a subgroup has a subgroup" mismatch.
       let parentDoc: any = null;
       if (parentGroupId) {
-        parentDoc = await ChatGroup.findById(parentGroupId).select('visibility parentGroupId').lean();
+        parentDoc = mongoose.isValidObjectId(String(parentGroupId))
+          ? await ChatGroup.findById(parentGroupId).select('visibility parentGroupId isDirect dmKey members').lean()
+          : null;
+        // The parent must be a real group (not missing, not a DM).
+        if (!parentDoc || isDmGroup(parentDoc)) {
+          return res.status(400).json({ error: "That parent group doesn't exist" });
+        }
         if (parentDoc?.parentGroupId) {
           return res.status(400).json({
             error: "A subgroup can't have its own subgroup. Add it to the top-level group instead.",
@@ -267,8 +309,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         name,
         description: description || '',
         imageUrl: imageUrl || '',
-        members,
-        admins: admins || [],
+        members: memberList,
+        admins: adminList,
         onlyAdminCanChat: onlyAdminCanChat || false,
         visibility: isPublic ? 'public' : 'private',
         createdBy,

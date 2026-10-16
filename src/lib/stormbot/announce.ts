@@ -50,7 +50,11 @@ export async function announce(text: string, mentionIds: string[] = []): Promise
 
     // group.members hold Mongo _ids; the bot is not a member, so every member's
     // phone gets the push.
-    const memberIds: string[] = group.members || [];
+    // People who muted the chat get no push, unless the post mentions them.
+    const muted = new Set((group.mutedBy || []).map((m: any) => String(m)));
+    const memberIds: string[] = (group.members || [])
+      .map((m: any) => String(m))
+      .filter((m: string) => !muted.has(m) || mentions.map(String).includes(m));
     const title = `New message in ${group.name}`;
     const body = `Miller Storm: ${pushPreview(text)}`;
 

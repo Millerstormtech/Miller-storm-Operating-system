@@ -6,6 +6,10 @@ import { UserModel } from '../../../src/lib/models/User';
 import { NotificationModel } from '../../../src/lib/models/Notification';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
 import { isDmGroup } from '../../../src/lib/stormchat/isDm';
+import { canManageGroup } from '../../../src/lib/stormchat/access';
+
+const REQUEST_AGAIN_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+import mongoose from 'mongoose';
 
 // Join-request flow for PRIVATE StormChat groups:
 //   POST   { groupId }               → a user asks to join (creates a pending request, notifies group admins)
@@ -19,7 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const me = await UserModel.findOne({ id: auth.sub }, { _id: 1, name: 1, role: 1 }).lean() as any;
   const myMongoId = me?._id?.toString() || '';
-  const isSystemAdmin = auth.role === 'admin' || auth.role === 'c-level';
+  // Only a company Admin has rights over every group (GroupMe model); every
+  // other decision belongs to that group's own admins. C-level gets none.
+  const isSystemAdmin = auth.role === 'admin';
+  const myIds = [auth.sub, myMongoId].filter(Boolean);
 
   const notify = async (appUserId: string, type: string, title: string, message: string, metadata: any) => {
     if (!appUserId) return;
@@ -35,18 +42,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'POST') {
       const { groupId } = req.body || {};
       if (!groupId) return res.status(400).json({ error: 'groupId is required' });
+      if (!mongoose.isValidObjectId(String(groupId))) return res.status(404).json({ error: 'Group not found' });
       const group = await ChatGroup.findById(groupId).lean() as any;
-      if (!group) return res.status(404).json({ error: 'Group not found' });
+      // A DM can't be joined: answer as if it doesn't exist, so a request
+      // neither alerts anyone nor confirms the DM is there.
+      if (!group || isDmGroup(group)) return res.status(404).json({ error: 'Group not found' });
 
       const memberIds = (group.members || []).map(String);
       if (myMongoId && memberIds.includes(myMongoId)) {
         return res.status(200).json({ ok: true, alreadyMember: true });
       }
 
-      // A previously DENIED request cannot be re-sent — the admin rejected it.
       const existing = await GroupJoinRequest.findOne({ groupId: String(groupId), userId: myMongoId }).lean() as any;
+      // A declined request can be sent again after 7 days (Youssef,
+      // 2026-10-15; it used to be refused forever).
       if (existing && existing.status === 'denied') {
-        return res.status(403).json({ error: 'denied', message: "Your request was rejected by the admin. You can't access this group." });
+        const deniedAt = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const retryAt = deniedAt + REQUEST_AGAIN_AFTER_MS;
+        if (Date.now() < retryAt) {
+          const days = Math.max(1, Math.ceil((retryAt - Date.now()) / 86_400_000));
+          return res.status(403).json({ error: 'denied', message: `Your request was declined. You can ask again in ${days} ${days === 1 ? 'day' : 'days'}.` });
+        }
+      }
+      // Already waiting: don't create a second request or alert the admins again.
+      if (existing && existing.status === 'pending') {
+        return res.status(200).json({ ok: true, request: existing, alreadyPending: true });
       }
 
       const request = await GroupJoinRequest.findOneAndUpdate(
@@ -83,6 +103,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'GET') {
       const { groupId } = req.query;
       if (groupId) {
+        // Only people who can decide a group's requests may list them.
+        const g = mongoose.isValidObjectId(String(groupId)) ? await ChatGroup.findById(String(groupId)).lean() : null;
+        if (!g || !canManageGroup(g, myIds, auth.role)) {
+          return res.status(403).json({ error: "Not authorized to view this group's requests" });
+        }
         const reqs = await GroupJoinRequest.find({ groupId: String(groupId), status: 'pending' })
           .sort({ createdAt: -1 }).lean();
         return res.status(200).json(reqs);
@@ -117,16 +142,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Only a system admin or one of the group's admins may decide.
-      const groupAdminIds = (group.admins || []).map(String);
-      if (!isSystemAdmin && !(myMongoId && groupAdminIds.includes(myMongoId))) {
+      if (!canManageGroup(group, myIds, auth.role)) {
         return res.status(403).json({ error: 'Not authorized to decide this request' });
       }
 
       if (action === 'approve') {
         if (!(group.members || []).map(String).includes(String(jr.userId))) {
           group.members.push(jr.userId);
-          await group.save();
         }
+        // Approved back in: no longer someone who left / was removed.
+        group.leftMembers = (group.leftMembers || []).filter((m: any) => String(m) !== String(jr.userId));
+        await group.save();
         jr.status = 'approved';
         await jr.save();
 

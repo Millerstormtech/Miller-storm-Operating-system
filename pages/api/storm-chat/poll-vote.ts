@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
-import ChatMessage from '../../../src/lib/models/ChatMessage';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
+import { findReadableMessage } from '../../../src/lib/stormchat/messageAccess';
+import ChatMessage from '../../../src/lib/models/ChatMessage';
 
 // Toggle the caller's vote on a poll message option.
 // Body: { messageId, optionIndex }
@@ -13,11 +14,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   const { messageId, optionIndex } = req.body || {};
-  if (!messageId || typeof optionIndex !== 'number') {
+  if (!messageId || !Number.isInteger(optionIndex)) {
     return res.status(400).json({ error: 'messageId and optionIndex are required' });
   }
 
-  const msg: any = await ChatMessage.findById(messageId);
+  // Only someone who can read the poll's chat may vote (and see it back).
+  const msg: any = await findReadableMessage(messageId, auth);
   if (!msg || msg.messageType !== 'poll' || !msg.poll) {
     return res.status(404).json({ error: 'Poll not found' });
   }
@@ -28,21 +30,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Invalid option' });
   }
 
-  const already = (options[optionIndex].votes || []).includes(userId);
-
-  if (already) {
-    // Tapping your own choice again removes the vote.
-    options[optionIndex].votes = options[optionIndex].votes.filter((u: string) => u !== userId);
-  } else {
-    // Single-choice polls clear the user's other votes first.
+  // Each vote is a single add/remove on the database, never "read the whole
+  // poll, change it, save it back": with that, people voting at the same
+  // moment overwrote each other and most votes were lost (8 at once kept 1-2,
+  // readiness test item 9).
+  const votesPath = `poll.options.${optionIndex}.votes`;
+  const removed = await ChatMessage.updateOne(
+    { _id: msg._id, [votesPath]: userId },
+    { $pull: { [votesPath]: userId } },
+  );
+  if (removed.modifiedCount === 0) {
+    // Not voted for this option yet. A single-choice poll first clears the
+    // person's vote elsewhere, then adds this one.
     if (!msg.poll.allowMultiple) {
-      options.forEach((o: any) => { o.votes = (o.votes || []).filter((u: string) => u !== userId); });
+      await ChatMessage.updateOne({ _id: msg._id }, { $pull: { 'poll.options.$[].votes': userId } });
     }
-    options[optionIndex].votes = [...(options[optionIndex].votes || []), userId];
+    await ChatMessage.updateOne({ _id: msg._id }, { $addToSet: { [votesPath]: userId } });
   }
 
-  msg.markModified('poll');
-  await msg.save();
-
-  return res.status(200).json(msg);
+  return res.status(200).json(await ChatMessage.findById(msg._id).lean());
 }

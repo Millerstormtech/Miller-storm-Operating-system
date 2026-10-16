@@ -97,3 +97,108 @@ export function canSendMessage(group: any, viewerIds: string[], viewerRole?: str
   if ((viewerRole || '').toLowerCase() === 'admin') return true;
   return false;
 }
+
+// ---------------------------------------------------------------------------
+// GROUP ROLES (GroupMe model, decided by Youssef 2026-10-15)
+// ---------------------------------------------------------------------------
+// Job titles give NO chat powers. Inside a group there are only two kinds of
+// people: a GROUP ADMIN (listed in group.admins) and a MEMBER. Exceptions:
+//  - a company Admin account is a group admin of every group by default
+//    (rights only: they are not listed as a member and get no alerts), but
+//    never of a DM;
+//  - only today's group creators (GROUP_CREATOR_ROLES) may create a group;
+//    the creator becomes its first group admin;
+//  - only the group's creator may delete the whole group, unless the creator's
+//    account is gone, in which case a company Admin may.
+// C-level and branch managers are ordinary members unless made group admin.
+
+const isCompanyAdmin = (role?: string) => (role || '').toLowerCase() === 'admin';
+
+/** Roles allowed to CREATE a group (the only job-title rule left). */
+export const GROUP_CREATOR_ROLES = ['admin', 'c-level', 'branch-manager', 'sales-team-lead'];
+
+export function canCreateGroup(viewerRole?: string): boolean {
+  return GROUP_CREATOR_ROLES.includes((viewerRole || '').toLowerCase());
+}
+
+/** Is this viewer a group admin here? Never true in a DM. */
+export function isGroupAdmin(group: any, viewerIds: string[], viewerRole?: string): boolean {
+  if (isDmGroup(group)) return false;
+  if (isCompanyAdmin(viewerRole)) return true;
+  const ids = new Set(viewerIds.map(String));
+  return Array.isArray(group?.admins) && group.admins.some((a: any) => ids.has(String(a)));
+}
+
+/** Edit name/picture/members/admins/settings, approve join requests. */
+export function canManageGroup(group: any, viewerIds: string[], viewerRole?: string): boolean {
+  return isGroupAdmin(group, viewerIds, viewerRole);
+}
+
+/** Delete other people's messages in the group. Never in a DM. */
+export function canModerateMessages(group: any, viewerIds: string[], viewerRole?: string): boolean {
+  return isGroupAdmin(group, viewerIds, viewerRole);
+}
+
+/**
+ * Delete the whole group: its creator; or, when the creator's account no
+ * longer exists / is deleted (`creatorActive` false), a company Admin.
+ */
+export function canDeleteGroup(
+  group: any,
+  viewerIds: string[],
+  viewerRole: string | undefined,
+  creatorActive: boolean,
+): boolean {
+  if (isDmGroup(group)) return false;
+  const ids = new Set(viewerIds.map(String));
+  if (group?.createdBy && ids.has(String(group.createdBy))) return true;
+  return isCompanyAdmin(viewerRole) && !creatorActive;
+}
+
+/** Explicitly listed (members or admins), not just a company Admin's rights. */
+function isListedMember(group: any, viewerIds: string[]): boolean {
+  return isMemberOf(group, viewerIds);
+}
+
+export type ChatRights = {
+  isMember: boolean;
+  isGroupAdmin: boolean;
+  canRead: boolean;
+  canSend: boolean;
+  canPin: boolean;
+  canModerate: boolean;
+  canManage: boolean;
+  canDelete: boolean;
+  canLeave: boolean;
+};
+
+/**
+ * Everything one viewer may do in one thread, so the screen shows exactly the
+ * controls the server will accept (the web used to guess, and locked C-level
+ * and team-lead group admins out of groups the server let them post in).
+ */
+export function chatRights(
+  group: any,
+  viewerIds: string[],
+  viewerRole: string | undefined,
+  creatorActive: boolean,
+): ChatRights {
+  const dm = isDmGroup(group);
+  const admin = isGroupAdmin(group, viewerIds, viewerRole);
+  const listed = dm ? viewerIsParticipant(dmParticipants(group), viewerIds) : isListedMember(group, viewerIds);
+  const canRead = canReadMessages(group, viewerIds, viewerRole);
+  const adminOnly = !dm && !!group?.onlyAdminCanChat;
+  const canSend = canSendMessage(group, viewerIds, viewerRole) && (!adminOnly || admin);
+  return {
+    isMember: listed,
+    isGroupAdmin: admin,
+    canRead,
+    canSend,
+    // Anyone who can post can pin (Youssef: anyone in the group may pin).
+    canPin: canSend,
+    canModerate: canModerateMessages(group, viewerIds, viewerRole),
+    canManage: canManageGroup(group, viewerIds, viewerRole),
+    canDelete: canDeleteGroup(group, viewerIds, viewerRole, creatorActive),
+    canLeave: !dm && listed,
+  };
+}

@@ -21,12 +21,19 @@ export async function addAllUsersToGroup(groupId: string | mongoose.Types.Object
     const ids = users.map((u: any) => String(u._id));
     if (ids.length === 0) return;
     // The group itself, plus any subgroup whose parentGroupId is this group's id
-    // (parentGroupId is stored as the parent's _id string).
-    const res = await db.collection('chatgroups').updateMany(
-      { $or: [{ _id }, { parentGroupId: String(_id) }] },
-      { $addToSet: { members: { $each: ids } } }
-    );
-    console.log(`[public-groups] Added ${ids.length} users to public group ${_id} (+${((res as any).modifiedCount ?? 1) - 1} subgroup(s))`);
+    // (parentGroupId is stored as the parent's _id string). Each group skips the
+    // people who left or were removed from it (leftMembers).
+    const targets = await db.collection('chatgroups')
+      .find({ $or: [{ _id }, { parentGroupId: String(_id) }] }, { projection: { _id: 1, leftMembers: 1 } })
+      .toArray();
+    for (const g of targets) {
+      const left = new Set(((g as any).leftMembers || []).map(String));
+      const add = ids.filter((id) => !left.has(id));
+      if (add.length) {
+        await db.collection('chatgroups').updateOne({ _id: g._id }, { $addToSet: { members: { $each: add } } });
+      }
+    }
+    console.log(`[public-groups] Added users to public group ${_id} (+${targets.length - 1} subgroup(s))`);
   } catch (e) {
     console.error('[public-groups] addAllUsersToGroup failed:', e);
   }
@@ -49,7 +56,8 @@ export async function addUserToPublicGroups(userMongoId: string): Promise<void> 
     const publicIds = publicGroups.map((g: any) => String(g._id));
 
     const res = await db.collection('chatgroups').updateMany(
-      { $or: [{ visibility: 'public' }, { parentGroupId: { $in: publicIds } }] },
+      // Never re-add someone who left or was removed from that group.
+      { $or: [{ visibility: 'public' }, { parentGroupId: { $in: publicIds } }], leftMembers: { $ne: uid } },
       { $addToSet: { members: uid } }
     );
     const n = (res as any).modifiedCount ?? 0;

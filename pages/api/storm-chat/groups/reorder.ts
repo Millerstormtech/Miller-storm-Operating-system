@@ -5,7 +5,7 @@ import { requireRole, allowMethods } from '../../../../src/lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['PUT'])) return;
-  if (!requireRole(req, res, ['admin', 'sales-team-lead', 'c-level', 'branch-manager'])) return;
+  if (!requireRole(req, res, ['admin'])) return; // company-wide order: company Admin only
 
   await connectMongo();
 
@@ -14,6 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
       return res.status(400).json({ error: 'orderedIds array is required' });
+    }
+    if (!orderedIds.every((id) => typeof id === 'string' && mongoose.isValidObjectId(id))) {
+      return res.status(400).json({ error: 'orderedIds must be group ids' });
     }
 
     // Use native driver directly to bypass Mongoose strict schema

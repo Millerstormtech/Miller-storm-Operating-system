@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { isAccountBlocked, currentRoleOf } from "./accountStatus";
 
 // ---------------------------------------------------------------------------
 // Lightweight, dependency-free session tokens (HMAC-signed, JWT-like).
@@ -138,13 +139,23 @@ export function getBearerToken(req: NextApiRequest): string | null {
 
 // Resolve the verified session for a request from the Bearer header (preferred)
 // or the session cookie. Returns null when no valid token is present.
+//
+// A valid token for an account that has since been deleted, suspended, or
+// asked to be deleted is treated as no token at all, and the session's role is
+// the account's current one (see ./accountStatus), so
+// every route that uses requireUser / requireRole / requireAuth rejects it
+// with 401 without each route having to look the account up.
 export function getAuthUser(req: NextApiRequest): Session | null {
   const bearer = getBearerToken(req);
-  if (bearer) {
-    const fromHeader = verifySession(bearer);
-    if (fromHeader) return fromHeader;
-  }
-  return getSession(req);
+  let session: Session | null = null;
+  if (bearer) session = verifySession(bearer);
+  if (!session) session = getSession(req);
+  if (session && isAccountBlocked(session.sub)) return null;
+  // Use the account's CURRENT role, not the one the token was issued with,
+  // so a demotion (or promotion) applies within a minute, not after a year.
+  const role = session ? currentRoleOf(session.sub) : null;
+  if (session && role && role !== session.role) return { ...session, role };
+  return session;
 }
 
 /**

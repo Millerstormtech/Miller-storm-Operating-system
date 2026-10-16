@@ -34,6 +34,10 @@ export default defineConfig({
       // The role ladder: one role per account, nested sales roles (2026-10-03).
       "src/lib/roleLadder.test.ts",
       "src/lib/rateLimit.test.ts",
+      // Blocked accounts (deleted/suspended) lose their logins app-wide (2026-10-15).
+      "src/lib/accountStatus.test.ts",
+      // Push alerts reach every device a person uses (2026-10-15).
+      "src/lib/pushDevices.test.ts",
       "src/lib/emailTemplates.test.ts",
       "src/lib/ops/**/*.test.ts",
       "src/lib/uploads/**/*.test.ts",

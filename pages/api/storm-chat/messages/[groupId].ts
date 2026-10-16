@@ -8,8 +8,13 @@ import { sendPushNotificationToMultiple } from '../../../../src/lib/firebase-adm
 import { logToDb } from '../../../../src/lib/models/SystemLog';
 import { requireUser, allowMethods } from '../../../../src/lib/auth';
 import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
-import { canReadMessages, canSendMessage } from '../../../../src/lib/stormchat/access';
+import { canReadMessages, canSendMessage, isGroupAdmin, canModerateMessages, chatRights, dmParticipants } from '../../../../src/lib/stormchat/access';
 import { appIdsForMongoIds } from '../../../../src/lib/stormchat/appIds';
+import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess';
+import { userMessageType, replyQuoteFrom, messageProblem, attachmentProblem, alertPreview, SEND_BURST } from '../../../../src/lib/stormchat/compose';
+import { rateLimit } from '../../../../src/lib/rateLimit';
+import { mentionedIds, mentionsAll, alertPlan } from '../../../../src/lib/stormchat/mentions';
+import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST', 'PATCH', 'DELETE'])) return;
@@ -20,6 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   const { groupId } = req.query;
+  // A malformed id is "not found", not a server error.
+  if (typeof groupId !== 'string' || !mongoose.isValidObjectId(groupId)) {
+    return res.status(404).json({ error: 'Group not found' });
+  }
 
   if (req.method === 'GET') {
     // Get messages for a group
@@ -47,6 +56,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const me = await UserModel.findOne({ id: effectiveUserId }, { _id: 1, role: 1 }).lean() as any;
       const myIds = [effectiveUserId, me?._id?.toString()].filter(Boolean) as string[];
       const effectiveRole = effectiveUserId === auth.sub ? auth.role : me?.role;
+      // View As never opens someone's private DMs (Youssef, 2026-10-15): DMs
+      // stay between their two people, admins included.
+      if (effectiveUserId !== auth.sub && isDmGroup(group)) {
+        return res.status(403).json({ error: 'Direct messages are private, even in View As' });
+      }
 
       // DM: only the two canonical participants (dmKey). Group: members, or a
       // system admin. Enforced by the shared, unit-tested helper.
@@ -59,11 +73,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 500 — so any group past 500 messages never showed recent chat. Uses the
       // existing {groupId, createdAt:-1} index; .lean() skips Mongoose hydration
       // of 500 docs on every 3s poll (same JSON shape — no toJSON transforms).
-      const messages = await ChatMessage.find({ groupId })
-        .sort({ createdAt: -1 })
-        .limit(500)
-        .lean() as any[];
-      messages.reverse();
+      //
+      // Paging (readiness test item 12: older messages were unreachable):
+      //   ?limit=N          newest N (1-500). With no options: newest 500, as
+      //                     before, so older app builds keep working.
+      //   ?beforeId=<id>    the N messages just before that one (scroll up).
+      //   ?pinned=1         every pinned message in the chat, newest pin first.
+      const rawLimit = parseInt(String(req.query.limit || ''), 10);
+      const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 500;
+      let messages: any[];
+      if (req.query.pinned === '1') {
+        messages = await ChatMessage.find({ groupId, pinned: true })
+          .sort({ pinnedAt: -1 })
+          .limit(100)
+          .lean() as any[];
+      } else {
+        const filter: any = { groupId };
+        const beforeId = typeof req.query.beforeId === 'string' ? req.query.beforeId : '';
+        if (beforeId) {
+          const ref = mongoose.isValidObjectId(beforeId)
+            ? await ChatMessage.findOne({ _id: beforeId, groupId }).select('createdAt').lean() as any
+            : null;
+          if (!ref) return res.status(200).json([]);
+          // Strictly older, with _id breaking ties between equal timestamps.
+          filter.$or = [
+            { createdAt: { $lt: ref.createdAt } },
+            { createdAt: ref.createdAt, _id: { $lt: ref._id } },
+          ];
+        }
+        messages = await ChatMessage.find(filter)
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(limit)
+          .lean() as any[];
+        messages.reverse();
+      }
 
       // Attach each sender's current avatar (headshotUrl) so message bubbles show
       // the person's uploaded photo, not just initials. One lookup for all distinct
@@ -89,15 +132,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'POST') {
     // Send a message
     try {
-      const { senderName, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender, poll } = req.body;
+      // The app also sends senderName / replyToMessage / replyToSender, but
+      // they are NOT trusted: the name comes from the sender's account and a
+      // reply quote from the real original (src/lib/stormchat/compose.ts).
+      const { message, mediaUrl, replyTo, poll } = req.body;
       const senderId = auth.sub;
       const senderRole = auth.role;
 
-      await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderName, senderId, messageType });
-
-      if (!senderName) {
-        return res.status(400).json({ error: 'Sender information is required' });
+      // People send text/image/video/file/poll; grey "system" notices are the
+      // server's alone.
+      const messageType = userMessageType(req.body.messageType);
+      if (!messageType) {
+        return res.status(400).json({ error: "That kind of message can't be sent" });
       }
+
+      // No empty text, at most 2,000 characters, polls need 2-10 options.
+      const problem = messageProblem(messageType, message, poll) || attachmentProblem(messageType, mediaUrl);
+      if (problem) return res.status(400).json({ error: problem });
+
+      await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderId, messageType });
 
       // Check if group exists
       // .lean() returns the raw doc so newly-added fields like isDirect are
@@ -108,8 +161,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Group not found' });
       }
 
-      // Resolve sender _id (group.members store Mongo _ids; senderId is app id).
-      const sender = await UserModel.findOne({ id: senderId }, { _id: 1 }).lean() as any;
+      // Resolve sender _id (group.members store Mongo _ids; senderId is app id)
+      // and their real name, which is what everyone sees (GroupMe: your name
+      // is your account's).
+      const sender = await UserModel.findOne({ id: senderId }, { _id: 1, name: 1 }).lean() as any;
+      if (!sender) {
+        return res.status(403).json({ error: 'Your account was not found' });
+      }
+      const senderName: string = sender.name || 'Unknown';
       const senderIds = [senderId, sender?._id?.toString()].filter(Boolean) as string[];
 
       // Send authorization (unit-tested in access.test.ts): for a DM, ONLY the
@@ -120,40 +179,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: 'You are not a member of this group' });
       }
 
-      // Check if only admin can chat
-      if (group.onlyAdminCanChat) {
-        // Check if sender is system admin or group admin
-        const isAdmin = senderRole === 'admin' || senderRole === 'c-level';
-        const isGroupAdmin = group.admins.some((m: string) => senderIds.includes(m));
+      // Admin-only group: only its group admins (and company Admins) may post.
+      // Job titles like C-level grant nothing here (GroupMe model).
+      if (group.onlyAdminCanChat && !isDmGroup(group) && !isGroupAdmin(group, senderIds, senderRole)) {
+        return res.status(403).json({ error: 'Only admins can send messages in this group' });
+      }
 
-        if (!isAdmin && !isGroupAdmin) {
-          return res.status(403).json({ error: 'Only admins can send messages in this group' });
-        }
+      // At most 10 messages per 10 seconds from one person into one chat
+      // (a burst of 100 once produced 900 alerts). Per chat, so forwarding
+      // one message to many people still works.
+      const burst = rateLimit(`chat:send:${senderId}:${groupId}`, SEND_BURST.max, SEND_BURST.windowMs);
+      if (!burst.ok) {
+        res.setHeader('Retry-After', String(burst.retryAfterSec));
+        return res.status(429).json({ error: 'Slow down: too many messages at once. Try again in a few seconds.' });
       }
 
       // Extract mentions from message text
       const mentionedUserIds: string[] = [];
-      if (message && messageType === 'text') {
+      // @mentions in text and in photo / video captions.
+      if (message && (messageType === 'text' || messageType === 'image' || messageType === 'video')) {
         // Import User model
         const { UserModel } = await import('../../../../src/lib/models/User');
         
-        // Get all group members
+        // Who can be mentioned: the group's members, or in a DM ONLY its two
+        // canonical participants, so a stray id in members[] can never be
+        // mentioned (and alerted with the private text).
+        const mentionPool: string[] = isDmGroup(group) ? (dmParticipants(group) || []) : (group.members || []);
         const groupMembers = await UserModel.find({
-          _id: { $in: group.members }
+          _id: { $in: mentionPool }
         }).select('_id id name');
         
         console.log(`[CHAT] Group Members Found: ${groupMembers.length}/${group.members.length}`);
         
-        // For each member, check if their name is mentioned with @
-        for (const member of groupMembers) {
-          const memberName = member.name;
-          // Create regex to match @Name (case insensitive, with word boundary or space after)
-          const nameRegex = new RegExp(`@${memberName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i');
-          if (nameRegex.test(message)) {
-            mentionedUserIds.push(member._id.toString());
-          }
-        }
+        // "@Name" followed by a space, punctuation or the end (src/lib/stormchat/mentions.ts).
+        mentionedUserIds.push(...mentionedIds(message, groupMembers as any[]));
       }
+
+      // Who gets which alert: @all from a group admin mentions everyone; people
+      // who muted the chat only hear about mentions (GroupMe-style).
+      const plan = alertPlan({
+        members: isDmGroup(group) ? (dmParticipants(group) || []) : (group.members || []).map(String),
+        senderIds,
+        mentioned: mentionedUserIds,
+        atAll: messageType === 'text' && mentionsAll(message || ''),
+        senderIsAdmin: isGroupAdmin(group, senderIds, senderRole),
+        mutedBy: (group.mutedBy || []).map(String),
+      });
+      mentionedUserIds.splice(0, mentionedUserIds.length, ...plan.mention);
 
       // Create message with reply fields if provided
       const messageData: any = {
@@ -162,8 +234,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         senderName,
         senderRole,
         message: message || '',
-        messageType: messageType || 'text',
-        mediaUrl: mediaUrl || '',
+        messageType,
+        // Text and polls carry no attachment; others were checked above.
+        mediaUrl: messageType === 'text' || messageType === 'poll' ? '' : String(mediaUrl).trim(),
         mentions: mentionedUserIds
       };
 
@@ -178,11 +251,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
       }
 
-      // Add reply fields if they exist
+      // Reply: quote the REAL original, which must be in this same chat.
       if (replyTo) {
-        messageData.replyTo = replyTo;
-        messageData.replyToMessage = replyToMessage || '';
-        messageData.replyToSender = replyToSender || '';
+        const original = mongoose.isValidObjectId(String(replyTo))
+          ? await ChatMessage.findById(String(replyTo)).select('groupId message senderName messageType poll').lean() as any
+          : null;
+        const quote = replyQuoteFrom(original, String(groupId));
+        if (!quote) {
+          return res.status(400).json({ error: "That message can't be replied to here" });
+        }
+        messageData.replyTo = String(replyTo);
+        messageData.replyToMessage = quote.replyToMessage;
+        messageData.replyToSender = quote.replyToSender;
       }
 
       const newMessage = await ChatMessage.create(messageData);
@@ -215,9 +295,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             userId: mentionedAppId,
             type: 'stormchat_mention',
             title: `You were mentioned by ${senderName}`,
-            message: messageType === 'text'
-              ? (message?.substring(0, 100) || 'New message')
-              : (messageType === 'image' ? 'Shared an image' : 'New message'),
+            message: alertPreview(messageType, message, poll?.question),
             read: false,
             metadata: {
               groupId,
@@ -228,19 +306,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
       }
 
-      // 2. New message notifications for other members
-      const otherMemberIds = group.members.filter(
-        (id: string) => !senderIds.includes(id) && !mentionedUserIds.includes(id)
-      );
+      // 2. New message notifications for other members. A DM alerts ONLY its two
+      // canonical participants (dmKey), never whoever was written into members[].
+      // (alertPlan already used the DM's two participants and dropped the
+      // sender, the mentioned and anyone who muted the chat.)
+      const otherMemberIds = plan.ordinary;
       
       console.log(`[CHAT] Notifying ${otherMemberIds.length} other members (Sender: ${senderId})`);
 
       // A private DM reads "<sender> sent you a message"; a group keeps the
       // "New message in <group>: <sender>: …" format.
       const isDm = !!group.isDirect;
-      const bodyPreview = messageType === 'text'
-        ? (message?.substring(0, 100) || 'New message')
-        : (messageType === 'image' ? 'Sent a photo' : messageType === 'video' ? 'Sent a video' : 'Sent a file');
+      const bodyPreview = alertPreview(messageType, message, poll?.question);
       const memberTitle = isDm ? `${senderName} sent you a message` : `New message in ${group.name}`;
       const memberBody = isDm ? bodyPreview : `${senderName}: ${bodyPreview}`;
 
@@ -286,9 +363,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const result = await sendPushNotificationToMultiple(
             mentionTokens,
             `You were mentioned by ${senderName}`,
-            messageType === 'text' 
-              ? (message?.substring(0, 100) || 'New message')
-              : (messageType === 'image' ? 'Shared an image' : 'New message'),
+            alertPreview(messageType, message, poll?.question),
             {
               groupId: groupId as string,
               groupName: group.name,
@@ -344,7 +419,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { messageId } = req.body;
         if (!messageId) return res.status(400).json({ error: 'messageId is required' });
 
-        const msg = await ChatMessage.findById(messageId);
+        const msg = mongoose.isValidObjectId(String(messageId)) ? await ChatMessage.findById(messageId) : null;
         if (!msg) return res.status(404).json({ error: 'Message not found' });
 
         const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
@@ -353,13 +428,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // group.members/admins store Mongo _ids; auth.sub is the app id.
         const me = await UserModel.findOne({ id: auth.sub }, { _id: 1, name: 1 }).lean() as any;
         const myIds = [auth.sub, me?._id?.toString()].filter(Boolean) as string[];
-        const isMember = (grp.members || []).some((m: string) => myIds.includes(m));
-        const isGroupAdmin = (grp.admins || []).some((m: string) => myIds.includes(m));
-        const dm = isDmGroup(grp);
-        const isModerator = isGroupAdmin || auth.role === 'admin' || auth.role === 'c-level';
-        // Anyone who can SEND a message here can pin one: any member, unless the
-        // group is admin-only chat (then only moderators). DMs: either member.
-        const canPin = dm ? isMember : (isMember && (!grp.onlyAdminCanChat || isModerator));
+        // Anyone who can post here can pin: any member, or only group admins in
+        // an admin-only group; in a DM either participant (shared rule).
+        const canPin = chatRights(grp, myIds, auth.role, true).canPin;
         if (!canPin) {
           return res.status(403).json({ error: "You can't pin messages here" });
         }
@@ -378,33 +449,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     // Add or remove a reaction on a message
     try {
-      const { messageId, emoji, userName } = req.body;
+      const { messageId, emoji } = req.body;
       const userId = auth.sub;
+      // The name shown on a reaction is the reactor's account name, never
+      // whatever the request says.
+      const reactor = await UserModel.findOne({ id: userId }, { name: 1 }).lean() as any;
+      const userName: string = reactor?.name || 'Unknown';
 
       if (!messageId || !emoji) {
         return res.status(400).json({ error: 'messageId and emoji are required' });
       }
-
-      const msg = await ChatMessage.findById(messageId);
-      if (!msg) return res.status(404).json({ error: 'Message not found' });
-
-      const reactions = (msg as any).reactions || [];
-      const existingIndex = reactions.findIndex(
-        (r: any) => r.userId === userId && r.emoji === emoji
-      );
-
-      if (existingIndex !== -1) {
-        // Toggle off — remove existing reaction
-        reactions.splice(existingIndex, 1);
-      } else {
-        // Add new reaction
-        reactions.push({ emoji, userId, userName });
+      if (typeof emoji !== 'string' || emoji.length > 16) {
+        return res.status(400).json({ error: 'A reaction is a single emoji' });
       }
 
-      (msg as any).reactions = reactions;
-      await msg.save();
+      // Only someone who can read the message's chat may react (and see it back).
+      const msg = await findReadableMessage(messageId, auth);
+      if (!msg) return res.status(404).json({ error: 'Message not found' });
 
-      return res.status(200).json(msg);
+      // Toggle as single add/remove operations on the database, so people
+      // reacting at the same moment can't overwrite each other (readiness
+      // test item 9: 8 at once kept 1).
+      const removed = await ChatMessage.updateOne(
+        { _id: (msg as any)._id, reactions: { $elemMatch: { userId, emoji } } },
+        { $pull: { reactions: { userId, emoji } } },
+      );
+      if (removed.modifiedCount === 0) {
+        await ChatMessage.updateOne(
+          { _id: (msg as any)._id, reactions: { $not: { $elemMatch: { userId, emoji } } } },
+          { $push: { reactions: { emoji, userId, userName } } },
+        );
+      }
+
+      return res.status(200).json(await ChatMessage.findById((msg as any)._id).lean());
     } catch (error) {
       console.error('Error saving reaction:', error);
       res.status(500).json({ error: 'Failed to save reaction' });
@@ -417,7 +494,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { messageId } = req.body;
       if (!messageId) return res.status(400).json({ error: 'messageId is required' });
 
-      const msg = await ChatMessage.findById(messageId);
+      const msg = mongoose.isValidObjectId(String(messageId)) ? await ChatMessage.findById(messageId) : null;
       if (!msg) return res.status(404).json({ error: 'Message not found' });
 
       const isSender = (msg as any).senderId === auth.sub;
@@ -425,16 +502,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // URL param — otherwise an admin could pass a normal group's id in the URL
       // while deleting a message that actually lives in a private DM, bypassing
       // the "admins can't touch DMs" rule.
+      // Moderators are the group's own admins (and company Admins), never in a DM.
       let adminCanModerate = false;
-      if (!isSender && (auth.role === 'admin' || auth.role === 'c-level')) {
+      if (!isSender) {
         const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
-        adminCanModerate = !!grp && !grp.isDirect;
+        const me = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
+        const myIds = [auth.sub, me?._id?.toString()].filter(Boolean) as string[];
+        adminCanModerate = !!grp && canModerateMessages(grp, myIds, auth.role);
       }
       if (!isSender && !adminCanModerate) {
         return res.status(403).json({ error: 'You can only delete your own messages' });
       }
 
       await ChatMessage.findByIdAndDelete(messageId);
+      // Its bell alerts go too, so the deleted text doesn't live on in
+      // everyone's bell (readiness test item 17). Stored as an ObjectId.
+      await NotificationModel.deleteMany({
+        'metadata.messageId': { $in: [String(messageId), (msg as any)._id] },
+      });
       return res.status(200).json({ success: true });
     } catch (error) {
       console.error('Error deleting message:', error);

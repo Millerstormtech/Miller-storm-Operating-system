@@ -1,6 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { appConfirm } from "../../lib/appDialogs";
 import { useAuth } from "../../contexts/AuthContext";
+import { enterSendsMessage } from "../../lib/stormchat/enterKey";
+import { StormChatGroupInfo, type ChatRights } from "../../components/StormChatGroupInfo";
+import { mergeNewestPage, prependOlderPage } from "../../lib/stormchat/messagePages";
+import { safeHref } from "../../lib/stormchat/compose";
 
 type ChatMessage = {
   _id: string;
@@ -96,10 +100,82 @@ function SenderAvatar({ url, name }: { url?: string; name: string }) {
   );
 }
 
-export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivately }: Props) {
+export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMessagePrivately }: Props) {
   const { user } = useAuth();
+  // Local copy so Group info edits (rename, admin-only...) show at once.
+  const [group, setGroup] = useState<ChatGroup>(groupProp);
+  useEffect(() => { setGroup(groupProp); }, [groupProp]);
+  // What the server says this viewer may do here (post, pin, moderate, manage).
+  // The web used to guess from ids it doesn't have, which locked C-level and
+  // team-lead group admins out of groups the server let them post in.
+  // While a chat is open, the phone layout hides the app's menu button so it
+  // can't cover the room's back arrow (src/styles.css, storm-chat-room-open).
+  useEffect(() => {
+    document.body.classList.add('storm-chat-room-open');
+    return () => document.body.classList.remove('storm-chat-room-open');
+  }, []);
+  const [rights, setRights] = useState<ChatRights | null>(null);
+  // Removed from the group, or it was deleted, while it was open (readiness
+  // test item 15): stop refreshing and show one calm notice instead of an
+  // error popping up every 3 seconds.
+  const [gone, setGone] = useState<null | 'removed' | 'deleted'>(null);
+  const goneRef = useRef<null | 'removed' | 'deleted'>(null);
+  // Muted by this viewer: no alerts for ordinary messages, mentions still come.
+  const [muted, setMuted] = useState(false);
+  // Active members only, for "X of N voted" (deleted / suspended don't count).
+  const [activeMembers, setActiveMembers] = useState<number | null>(null);
+  async function toggleMute() {
+    const next = !muted;
+    setMuted(next);
+    const res = await fetch(`/api/storm-chat/groups/${groupProp._id}/mute`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: next }),
+    }).catch(() => null);
+    if (!res || !res.ok) { setMuted(!next); alert("Couldn't change notifications. Please try again."); }
+  }
+  // Read receipts (GroupMe-style): whatever this open chat has shown on a
+  // visible screen counts as read, including messages that arrive while you're
+  // in it. Sent "up to" the newest message shown, so nothing unseen is marked
+  // read. Every way of opening a chat goes through here.
+  const markedUpTo = useRef<string>('');
+  const markRead = () => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    const newest = messagesRef.current[messagesRef.current.length - 1];
+    const upTo = newest ? new Date(newest.createdAt).toISOString() : '';
+    if (!upTo || upTo === markedUpTo.current || !(rightsRef.current?.canRead ?? true)) return;
+    markedUpTo.current = upTo;
+    fetch('/api/storm-chat/mark-read', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId: groupProp._id, upTo }),
+    }).catch(() => { markedUpTo.current = ''; });
+  };
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const rightsRef = useRef<ChatRights | null>(null);
+  useEffect(() => { rightsRef.current = rights; }, [rights]);
+  useEffect(() => {
+    const onVisible = () => markRead();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupProp._id]);
+  const [showInfo, setShowInfo] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/storm-chat/groups/${groupProp._id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((g) => { if (alive && g?.myRights) { setRights(g.myRights); setMuted(!!g.muted); if (typeof g.activeMemberCount === 'number') setActiveMembers(g.activeMemberCount); } })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [groupProp._id]);
   const isDirect = !!group.isDirect;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Every pinned message in the chat (the banner), loaded on its own.
+  const [pinnedList, setPinnedList] = useState<ChatMessage[]>([]);
+  // New messages on screen (first load, a poll, or your own send): mark read.
+  useEffect(() => {
+    messagesRef.current = messages;
+    markRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, rights]);
   const [newMessage, setNewMessage] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   // GIPHY GIF / sticker picker
@@ -124,6 +200,21 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const gifInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  // Touch screens have no Shift key, so there Enter is always a new line and
+  // only the Send button sends (see src/lib/stormchat/enterKey.ts).
+  const [touchScreen, setTouchScreen] = useState(false);
+  useEffect(() => {
+    setTouchScreen(window.matchMedia('(pointer: coarse)').matches);
+  }, []);
+  // Grow the box with each new line (up to its maxHeight, then it scrolls),
+  // and shrink it back after sending.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, [newMessage]);
   const [blinkingMessageId, setBlinkingMessageId] = useState<string | null>(null);
   const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -182,13 +273,15 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
   const isAdmin = user?.role === 'admin';
   const isGroupAdmin = group.admins.includes(user?._id || user?.id || '');
 
-  const canSendMessage = isAdmin || isGroupAdmin || (group.onlyAdminCanChat ? false : isGroupMember);
+  // Server rights win once loaded; the old guess only covers the first moment.
+  const canSendMessage = rights ? rights.canSend : (isAdmin || isGroupAdmin || (group.onlyAdminCanChat ? false : isGroupMember));
   // Anyone who can SEND a message here can also pin one (DMs: either member).
-  const canPin = isDirect ? isGroupMember : canSendMessage;
-  // The banner lists every pinned message, newest pin first.
-  const pinnedMessages = messages
-    .filter((m) => m.pinned)
-    .sort((a, b) => new Date(b.pinnedAt || 0).getTime() - new Date(a.pinnedAt || 0).getTime());
+  const canPin = rights ? rights.canPin : (isDirect ? isGroupMember : canSendMessage);
+  // Delete other people's messages: this group's admins (never in a DM).
+  const canModerate = rights ? rights.canModerate : (isAdmin && !isDirect);
+  // The banner lists every pinned message in the chat, newest pin first,
+  // however old (loaded separately: the screen only holds recent pages).
+  const pinnedMessages = pinnedList;
 
   // Pin or unpin a message; updates the list in place on success.
   async function togglePin(msg: ChatMessage) {
@@ -203,6 +296,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
         setMessages((prev) => prev.map((m) => (m._id === msg._id
           ? { ...m, pinned: updated.pinned, pinnedByName: updated.pinnedByName, pinnedAt: updated.pinnedAt }
           : m)));
+        loadPinned();
       } else {
         alert('Failed to pin message');
       }
@@ -213,8 +307,15 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000); // Poll every 3 seconds
+    loadPinned();
+    let ticks = 0;
+    const interval = setInterval(() => {
+      if (goneRef.current) { clearInterval(interval); return; }
+      fetchMessages();
+      if (++ticks % 5 === 0) loadPinned(); // pins change rarely: every 15s
+    }, 3000); // Poll every 3 seconds
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group._id]);
 
   // Load the group's members for @mention autocomplete (not needed in a DM).
@@ -244,7 +345,17 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
-  function scrollToMessage(messageId: string) {
+  async function scrollToMessage(messageId: string) {
+    // A quote can point at a message older than what's loaded: load earlier
+    // pages until it's there (up to about 2,000 messages back).
+    if (!messageRefs.current[messageId]) {
+      const found = await loadOlderUntil(messageId);
+      if (!found) { alert('That message is too far back to jump to.'); return; }
+      // Wait until the loaded pages are drawn and the message exists on screen.
+      for (let i = 0; i < 40 && !messageRefs.current[messageId]; i++) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    }
     const messageElement = messageRefs.current[messageId];
     if (messageElement) {
       messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -264,24 +375,105 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
       const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
       const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
       setShouldAutoScroll(isAtBottom);
+      // Near the top: load the previous page (GroupMe-style history).
+      if (scrollTop < 80) loadOlder();
     }
+  }
+
+  // Message pages (readiness test item 12): the chat opens with the newest
+  // PAGE messages and refreshes only that page every few seconds; scrolling up
+  // loads OLDER_PAGE more at a time. Before, only the newest 500 ever loaded.
+  const PAGE = 100;
+  const OLDER_PAGE = 50;
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const loadingOlderRef = useRef(false);
+  const firstPageLoaded = useRef(false);
+  // Opening a chat lands on the newest message; loading earlier pages is only
+  // allowed after that, or the brief moment the list starts at the top would
+  // trigger it (and stop the chat from opening at the bottom).
+  const olderEnabled = useRef(false);
+  // Keep the reader's place when older messages are added above.
+  const keepScroll = useRef<{ height: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = messagesContainerRef.current;
+    if (el && keepScroll.current) {
+      el.scrollTop = el.scrollHeight - keepScroll.current.height + keepScroll.current.top;
+      keepScroll.current = null;
+    }
+  }, [messages]);
+
+  async function fetchOlder(beforeId: string, limit: number): Promise<ChatMessage[] | null> {
+    const res = await fetch(`/api/storm-chat/messages/${group._id}?beforeId=${beforeId}&limit=${limit}`);
+    return res.ok ? res.json() : null;
+  }
+
+  async function loadOlder() {
+    const oldest = messagesRef.current[0];
+    if (!olderEnabled.current || !hasOlder || loadingOlderRef.current || !oldest) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    try {
+      const older = await fetchOlder(oldest._id, OLDER_PAGE);
+      if (!older) return;
+      setHasOlder(older.length === OLDER_PAGE);
+      if (older.length) {
+        const el = messagesContainerRef.current;
+        if (el) keepScroll.current = { height: el.scrollHeight, top: el.scrollTop };
+        setMessages((prev) => prependOlderPage(prev, older));
+      }
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }
+
+  // Load earlier pages until a given message is on screen (reply jumps).
+  async function loadOlderUntil(messageId: string): Promise<boolean> {
+    let oldestId = messagesRef.current[0]?._id;
+    let more = hasOlder;
+    for (let i = 0; i < 20 && more && oldestId; i++) {
+      const older = await fetchOlder(oldestId, PAGE);
+      if (!older || older.length === 0) { more = false; break; }
+      more = older.length === PAGE;
+      setMessages((prev) => prependOlderPage(prev, older));
+      oldestId = older[0]._id;
+      if (older.some((m) => m._id === messageId)) { setHasOlder(more); return true; }
+    }
+    setHasOlder(more);
+    return false;
+  }
+
+  async function loadPinned() {
+    try {
+      const res = await fetch(`/api/storm-chat/messages/${group._id}?pinned=1`);
+      if (res.ok) setPinnedList(await res.json());
+    } catch { /* keep the last banner */ }
   }
 
   async function fetchMessages() {
     try {
-      const userId = user?._id || user?.id;
-      const userRole = user?.role;
-      const response = await fetch(`/api/storm-chat/messages/${group._id}?userId=${userId}&userRole=${userRole}`);
+      const response = await fetch(`/api/storm-chat/messages/${group._id}?limit=${PAGE}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data.length > messages.length) {
-          console.log(`[STORM-CHAT] 📥 Received ${data.length - messages.length} new messages`);
+        const data: ChatMessage[] = await response.json();
+        setMessages((prev) => mergeNewestPage(prev, data, PAGE));
+        if (!firstPageLoaded.current) {
+          firstPageLoaded.current = true;
+          setHasOlder(data.length === PAGE);
+          // Jump (not smooth-scroll) to the newest message, then allow
+          // scrolling up to load history.
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ block: 'end' });
+            setTimeout(() => { olderEnabled.current = true; }, 400);
+          }, 50);
         }
-        setMessages(data);
+      } else if (response.status === 403 || response.status === 404) {
+        const why = response.status === 404 ? 'deleted' : 'removed';
+        goneRef.current = why;
+        setGone(why);
       } else {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         console.error(`[STORM-CHAT] ❌ Failed to fetch messages:`, error);
-        alert(error.error || 'Failed to fetch messages');
       }
     } catch (error) {
       console.error('[STORM-CHAT] ❌ Error in fetchMessages:', error);
@@ -642,7 +834,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     // Highlight @Name mentions using the group's member names (longest first so
     // "@John Doe" wins over "@John"). Names come from the mention autocomplete list.
     const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const names = members.map(m => m.name).filter(Boolean).sort((a, b) => b.length - a.length);
+    const names = [...members.map(m => m.name), 'all'].filter(Boolean).sort((a, b) => b.length - a.length);
     const mentionSet = new Set(names.map(n => '@' + n));
     const mentionRegex = names.length ? new RegExp(`(@(?:${names.map(esc).join('|')}))`, 'g') : null;
     const onColoredBubble = textColor === '#fff';  /* tokens-guard-ignore: persisted-value, string equality on textColor */
@@ -765,6 +957,169 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
     );
   }
 
+  // The ⋮ menu for ANY message type (text, photo, video, file, poll), so
+  // every message can be replied to, forwarded, pinned and deleted the same
+  // way (readiness test item 14: files had no menu at all). Placed just
+  // outside the bubble; the bubble's wrapper must be position: relative.
+  function renderMenu(msg: ChatMessage, isMyMessage: boolean, showMenu: boolean) {
+    return (
+      <>
+                  {/* Always-visible menu button, positioned just OUTSIDE the
+                      bubble (on the inner side) so it never overlaps the text. */}
+                  <button
+                    onClick={() => setMenuMessageId(showMenu ? null : msg._id)}
+                    title="More"
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      ...(isMyMessage ? { left: -26 } : { right: -26 }),
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-subtle)',
+                      cursor: 'pointer',
+                      padding: 4,
+                      fontSize: 18,
+                      lineHeight: 1,
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ⋮
+                  </button>
+                
+                  {/* Popup menu */}
+                  {showMenu && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 28,
+                        ...(isMyMessage ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }),
+                        backgroundColor: 'var(--surface-inverse-raised)',
+                        borderRadius: 8,
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                        zIndex: 1000,
+                        minWidth: 150,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {/* Message this sender privately (groups only, others' messages) */}
+                      {!isDirect && !isMyMessage && onMessagePrivately && (
+                        <button
+                          onClick={() => { onMessagePrivately(msg.senderId, msg.senderName); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          ✉️ Message privately
+                        </button>
+                      )}
+                      {canSendMessage && (
+                      <button
+                        onClick={() => {
+                          setReplyingTo(msg);
+                          setMenuMessageId(null);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 16px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-inverse)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontSize: 14,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        ↩ Reply
+                      </button>
+                      )}
+                      <button
+                        onClick={() => openForward(msg)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 16px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-inverse)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontSize: 14,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        ➦ Forward
+                      </button>
+                      {msg.messageType === 'text' && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.message);
+                          setMenuMessageId(null);
+                          alert('Message copied!');
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 16px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-inverse)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontSize: 14,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        📋 Copy
+                      </button>
+                      )}
+                      {(msg.messageType === 'image' || msg.messageType === 'video' || msg.messageType === 'file') && msg.mediaUrl && (
+                        <button
+                          onClick={() => { downloadMedia(msg.mediaUrl!); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          ⬇ Save
+                        </button>
+                      )}
+                      {canPin && (
+                        <button
+                          onClick={() => { togglePin(msg); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          {msg.pinned ? '📌 Unpin' : '📌 Pin'}
+                        </button>
+                      )}
+                      {(isMyMessage || canModerate) && (
+                        <button
+                          onClick={() => { deleteMessage(msg._id); setMenuMessageId(null); }}
+                          style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          🗑 Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
+      </>
+    );
+  }
+
   function renderMessage(msg: ChatMessage, index: number) {
     const isMyMessage = msg.senderId === (user?._id || user?.id);
     const showDate = index === 0 ||
@@ -842,23 +1197,15 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             {msg.messageType === 'poll' && msg.poll && (() => {
               // Percentage is out of the group's total members, not just the votes
               // cast — so a single vote in a 9-member group reads ~11%, not 100%.
-              const totalMembers = Math.max(group.members?.length || 0, 1);
+              const totalMembers = Math.max(activeMembers ?? group.members?.length ?? 0, 1);
               const voterSet = new Set<string>();
               msg.poll.options.forEach(o => (o.votes || []).forEach(v => voterSet.add(v)));
               const votersCount = voterSet.size;
               const myId = user?._id || user?.id || '';
               return (
                 <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)', color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
-                  {(isMyMessage || (isAdmin && !isDirect)) && (
-                    <button
-                      onClick={() => deleteMessage(msg._id)}
-                      title="Delete poll"
-                      style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: '50%', border: 'none', background: isMyMessage ? 'rgb(var(--white-rgb) / 0.25)' : 'rgba(0,0,0,0.08)', color: 'inherit', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      🗑
-                    </button>
-                  )}
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, paddingRight: (isMyMessage || (isAdmin && !isDirect)) ? 28 : 0 }}>📊 {msg.poll.question}</div>
+                  {renderMenu(msg, isMyMessage, showMenu)}
+                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, paddingRight: (isMyMessage || canModerate) ? 28 : 0 }}>📊 {msg.poll.question}</div>
                   {msg.poll.options.map((opt, i) => {
                     const votes = opt.votes?.length || 0;
                     const pct = Math.round((votes / totalMembers) * 100);
@@ -890,145 +1237,8 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   wordBreak: 'break-word',
                   position: 'relative'
                 }}>
-                {/* Always-visible menu button, positioned just OUTSIDE the
-                    bubble (on the inner side) so it never overlaps the text. */}
-                <button
-                  onClick={() => setMenuMessageId(showMenu ? null : msg._id)}
-                  title="More"
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    ...(isMyMessage ? { left: -26 } : { right: -26 }),
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-subtle)',
-                    cursor: 'pointer',
-                    padding: 4,
-                    fontSize: 18,
-                    lineHeight: 1,
-                    fontWeight: 'bold'
-                  }}
-                >
-                  ⋮
-                </button>
-                
-                {/* Popup menu */}
-                {showMenu && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 28,
-                      ...(isMyMessage ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }),
-                      backgroundColor: 'var(--surface-inverse-raised)',
-                      borderRadius: 8,
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                      zIndex: 1000,
-                      minWidth: 150,
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {/* Message this sender privately (groups only, others' messages) */}
-                    {!isDirect && !isMyMessage && onMessagePrivately && (
-                      <button
-                        onClick={() => { onMessagePrivately(msg.senderId, msg.senderName); setMenuMessageId(null); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        ✉️ Message privately
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setReplyingTo(msg);
-                        setMenuMessageId(null);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 16px',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-inverse)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      ↩ Reply
-                    </button>
-                    <button
-                      onClick={() => openForward(msg)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 16px',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-inverse)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      ➦ Forward
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(msg.message);
-                        setMenuMessageId(null);
-                        alert('Message copied!');
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 16px',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-inverse)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      📋 Copy
-                    </button>
-                    {canPin && (
-                      <button
-                        onClick={() => { togglePin(msg); setMenuMessageId(null); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        {msg.pinned ? '📌 Unpin' : '📌 Pin'}
-                      </button>
-                    )}
-                    {(isMyMessage || (isAdmin && !isDirect)) && (
-                      <button
-                        onClick={() => { deleteMessage(msg._id); setMenuMessageId(null); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        🗑 Delete
-                      </button>
-                    )}
-                  </div>
-                )}
-                
+                {renderMenu(msg, isMyMessage, showMenu)}
+
                 {/* Reply preview */}
                 {msg.replyTo && msg.replyToMessage && (
                   <div 
@@ -1079,6 +1289,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             
             {msg.messageType === 'image' && msg.mediaUrl && (
               <div style={{ position: 'relative', display: 'inline-block' }}>
+                {renderMenu(msg, isMyMessage, showMenu)}
                 <img
                   src={msg.mediaUrl}
                   alt="Image"
@@ -1086,10 +1297,6 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                   style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block', cursor: 'pointer' }}
                 />
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-                  {(isMyMessage || (isAdmin && !isDirect)) && (
-                    <button onClick={() => deleteMessage(msg._id)} title="Delete"
-                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
-                  )}
                   <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
                     style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
                 </div>
@@ -1098,16 +1305,13 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
 
             {msg.messageType === 'video' && msg.mediaUrl && (
               <div style={{ position: 'relative', display: 'inline-block' }}>
+                {renderMenu(msg, isMyMessage, showMenu)}
                 <video
                   src={msg.mediaUrl}
                   controls
                   style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block' }}
                 />
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-                  {(isMyMessage || (isAdmin && !isDirect)) && (
-                    <button onClick={() => deleteMessage(msg._id)} title="Delete"
-                      style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
-                  )}
                   <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
                     style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⬇</button>
                 </div>
@@ -1116,6 +1320,7 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             
             {msg.messageType === 'file' && msg.mediaUrl && (
               <div style={{ 
+                position: 'relative',
                 backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)',
                 color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
                 padding: '10px 14px',
@@ -1124,8 +1329,9 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 borderTopLeftRadius: isMyMessage ? 16 : 4,
                 wordBreak: 'break-word'
               }}>
+                {renderMenu(msg, isMyMessage, showMenu)}
                 <a 
-                  href={msg.mediaUrl} 
+                  href={safeHref(msg.mediaUrl)} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ 
@@ -1229,16 +1435,57 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
           {!group.imageUrl && '👥'}
         </div>
         
-        <div style={{ flex: 1 }}>
+        {/* Tap the name for Group info (GroupMe-style); DMs have none. */}
+        <div
+          style={{ flex: 1, minWidth: 0, cursor: isDirect ? 'default' : 'pointer' }}
+          onClick={isDirect ? undefined : () => setShowInfo(true)}
+          role={isDirect ? undefined : 'button'}
+          aria-label={isDirect ? undefined : 'Group info'}
+          title={isDirect ? undefined : 'Group info'}
+        >
           <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-            {title || group.name}
+            {/* title is the DM partner's name; a group shows its live name. */}
+            {isDirect ? (title || group.name) : group.name}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            {isDirect ? 'Private message' : `${group.members.length} members`}
+            {isDirect ? 'Private message' : `${group.members.length} ${group.members.length === 1 ? 'member' : 'members'}`}
             {!isDirect && group.onlyAdminCanChat && ' • Admin-only chat'}
+            {!isDirect && ' • Tap for group info'}
           </div>
         </div>
+        <button
+          onClick={toggleMute}
+          aria-label={muted ? 'Unmute notifications' : 'Mute notifications'}
+          title={muted ? 'Muted: only @mentions alert you. Tap to unmute.' : 'Mute notifications'}
+          style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: 4, color: 'var(--text-primary)', opacity: muted ? 1 : 0.6 }}
+        >
+          {muted ? '🔕' : '🔔'}
+        </button>
+        {!isDirect && (
+          <button
+            onClick={() => setShowInfo(true)}
+            aria-label="Group info"
+            title="Group info"
+            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 4, color: 'var(--text-primary)' }}
+          >
+            ⓘ
+          </button>
+        )}
       </div>
+
+      {showInfo && !isDirect && (
+        <StormChatGroupInfo
+          groupId={group._id}
+          myMongoId={user?._id}
+          onClose={() => setShowInfo(false)}
+          onChanged={(g: any) => {
+            setGroup((prev) => ({ ...prev, ...g, members: g.members || prev.members, admins: g.admins || prev.admins } as ChatGroup));
+            if (g?.myRights) setRights(g.myRights);
+            if (typeof g?.muted === 'boolean') setMuted(g.muted);
+          }}
+          onGone={() => { setShowInfo(false); onBack(); }}
+        />
+      )}
 
       {/* Pinned messages banner — every pinned message, scrolls if many. */}
       {pinnedMessages.length > 0 && (
@@ -1290,7 +1537,15 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <div>No messages yet. Start the conversation!</div>
           </div>
         ) : (
-          messages.map((msg, index) => renderMessage(msg, index))
+          <>
+            {loadingOlder && (
+              <div style={{ textAlign: 'center', padding: 8, fontSize: 12, color: 'var(--text-subtle)' }}>Loading earlier messages…</div>
+            )}
+            {!hasOlder && messages.length >= PAGE && (
+              <div style={{ textAlign: 'center', padding: 8, fontSize: 12, color: 'var(--text-subtle)' }}>Start of the chat</div>
+            )}
+            {messages.map((msg, index) => renderMessage(msg, index))}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -1301,7 +1556,14 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
         borderTop: '1px solid var(--border-default)',
         backgroundColor: 'var(--surface-default)'
       }}>
-        {!canSendMessage ? (
+        {gone ? (
+          <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderRadius: 8, backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)', fontSize: 14 }}>
+            <span>{gone === 'deleted' ? 'This group was deleted.' : "You're no longer in this group."}</span>
+            <button onClick={onBack} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--surface-default)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
+              Back to chats
+            </button>
+          </div>
+        ) : !canSendMessage ? (
           <div style={{ 
             textAlign: 'center',
             padding: 12,
@@ -1352,7 +1614,11 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
             <div style={{ position: 'relative' }}>
             {mentionQuery !== null && (() => {
               const q = (mentionQuery || '').toLowerCase();
-              const matches = members.filter(mm => (mm.name || '').toLowerCase().includes(q)).slice(0, 6);
+              // Group admins can mention everyone with @all (alerts even people
+              // who muted the chat). Regular members don't get the option.
+              const everyone = rights?.isGroupAdmin && !isDirect && 'all'.startsWith(q)
+                ? [{ _id: '__all__', name: 'all', headshotUrl: '' }] : [];
+              const matches = [...everyone, ...members.filter(mm => (mm.name || '').toLowerCase().includes(q))].slice(0, 6);
               if (matches.length === 0) return null;
               return (
                 <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 200, overflowY: 'auto', zIndex: 60 }}>
@@ -1364,7 +1630,9 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4b5563', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontSize: 12 }}>
                         {mm.headshotUrl ? <img src={mm.headshotUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (mm.name?.[0]?.toUpperCase() || '?')}
                       </div>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{mm.name}</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                        {mm._id === '__all__' ? 'all (everyone in this group)' : mm.name}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -1554,10 +1822,13 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileUpload(file);
+                // Let the same file be picked again next time.
+                e.target.value = '';
               }}
             />
             
             <textarea
+              ref={composerRef}
               value={newMessage}
               onChange={(e) => {
                 const val = e.target.value;
@@ -1567,11 +1838,12 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
                 setMentionQuery(!isDirect && m ? m[1] : null);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (enterSendsMessage({ key: e.key, shiftKey: e.shiftKey, touchScreen })) {
                   e.preventDefault();
                   sendMessage();
                 }
               }}
+              maxLength={2000}
               placeholder="Type a message..."
               disabled={sending}
               style={{
@@ -1590,6 +1862,11 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               }}
               rows={1}
             />
+            {newMessage.length > 1800 && (
+              <span aria-live="polite" style={{ alignSelf: 'center', fontSize: 11, whiteSpace: 'nowrap', color: newMessage.length >= 2000 ? '#dc2626' : 'var(--text-subtle)' }}>
+                {newMessage.length.toLocaleString('en-US')} / 2,000
+              </span>
+            )}
             
             <button
               type="button"
@@ -1609,6 +1886,11 @@ export function StormChatRoom({ group, onBack, isMember, title, onMessagePrivate
               {sending ? '⏳' : '➤'}
             </button>
           </div>
+          {!touchScreen && (
+            <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 4, textAlign: 'right' }}>
+              Enter to send, Shift + Enter for a new line
+            </div>
+          )}
             </div>
           </div>
         )}

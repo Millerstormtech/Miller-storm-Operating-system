@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import { GROUP_ADMINS_ENABLED } from "../../lib/stormchat/rollout";
 import { GuidedTour } from "../shared/guided-tour/GuidedTour";
 import { STORM_CHAT_MANAGE_TOUR } from "../shared/guided-tour/definitions/stormChatManage";
 import { TourButton } from "../shared/guided-tour/TourButton";
@@ -45,6 +46,22 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
+  // ?group=<id> (a bell alert's link) opens that chat.
+  const deepLinkGroup = typeof router.query.group === 'string' ? router.query.group : '';
+  useEffect(() => {
+    if (!deepLinkGroup) return;
+    let alive = true;
+    fetch(`/api/storm-chat/groups/${deepLinkGroup}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((g) => {
+        if (!alive) return;
+        router.replace({ pathname: router.pathname }, undefined, { shallow: true });
+        if (g && g._id) openGroupChat(g as ChatGroup);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkGroup]);
   // Admin's own private messages (DMs) — admin participates like any other user.
   const [myDms, setMyDms] = useState<ChatGroup[]>([]);
   // Drag-reorder for the admin's OWN dms — a personal preference, saved to
@@ -694,8 +711,8 @@ export function StormChatManagement({ joinRequestsPath = '/admin/join-requests' 
           </div>
         </div>
         
-        {/* Admin selection */}
-        {selectedMembers.length > 0 && (
+        {/* Admin selection (paused until the phone update: src/lib/stormchat/rollout.ts) */}
+        {GROUP_ADMINS_ENABLED && selectedMembers.length > 0 && (
           <div style={{ marginTop: 16 }}>
             <label className="field-label" style={{ marginBottom: 8, display: 'block' }}>
               Assign Group Admins (Optional)
