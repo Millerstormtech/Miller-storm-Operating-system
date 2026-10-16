@@ -80,10 +80,12 @@ export function mimeTypeForName(name: string): string {
   return (ext && MIME_BY_EXTENSION[ext]) || "application/octet-stream";
 }
 
-export function isAllowedUploadName(name: string): boolean {
+// `extensions` narrows the list for one route (e.g. images only for an avatar).
+// The executable-segment check below applies whatever list is passed.
+export function isAllowedUploadName(name: string, extensions: readonly string[] = ALLOWED_UPLOAD_EXTENSIONS): boolean {
   if (!name || typeof name !== "string") return false;
   const ext = finalExtension(name);
-  if (!ext || !ALLOWED_UPLOAD_EXTENSIONS.includes(ext)) return false;
+  if (!ext || !extensions.includes(ext)) return false;
   const kept = (seg: string) => /^[A-Za-z0-9]*/.exec(seg)![0].toLowerCase();
   return !name.split(".").slice(1).some((seg) => FORBIDDEN_EXTENSIONS.has(kept(seg)));
 }
@@ -94,7 +96,7 @@ export function isAllowedUploadName(name: string): boolean {
 // and so lets the client pick what nginx serves the file as. Checks the
 // allowlist itself rather than trusting formidable's `filter`, which some of
 // formidable's parsers (octet-stream) never call.
-export function storedUploadName(originalFilename: string): string {
-  const ext = isAllowedUploadName(originalFilename) ? finalExtension(originalFilename) : null;
+export function storedUploadName(originalFilename: string, extensions: readonly string[] = ALLOWED_UPLOAD_EXTENSIONS): string {
+  const ext = isAllowedUploadName(originalFilename, extensions) ? finalExtension(originalFilename) : null;
   return `${crypto.randomBytes(16).toString("hex")}${ext ?? ""}`;
 }
