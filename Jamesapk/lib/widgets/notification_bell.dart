@@ -77,8 +77,14 @@ class NotificationBellState extends State<NotificationBell> {
           Navigator.push(
             context,
             MaterialPageRoute(
+              // The room reads the group's '_id' ('id' opened /messages/null)
+              // and loads the rest (members, rights) itself.
               builder: (context) => StormChatRoomScreen(
-                group: {'id': groupId, 'name': groupName ?? 'Chat'},
+                group: {
+                  '_id': groupId,
+                  'name': groupName ?? 'Chat',
+                  if (notification.metadata?['isDirect'] == true) 'isDirect': true,
+                },
                 userId: widget.userId,
                 userRole: widget.userRole ?? '',
               ),

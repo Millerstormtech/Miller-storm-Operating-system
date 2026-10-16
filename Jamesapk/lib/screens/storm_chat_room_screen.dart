@@ -3,6 +3,7 @@ import '../services/avatar_url.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -15,6 +16,7 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/storm_chat_logic.dart';
 import 'storm_chat_group_info_screen.dart';
 import 'image_viewer_screen.dart';
 import 'video_viewer_screen.dart';
@@ -48,6 +50,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   bool isSending = false;
   bool isUploading = false;
   Timer? _pollTimer;
+  int _pollTick = 0;
+  // Paging (PR #102): the newest page refreshes every few seconds; older
+  // pages load on top as the person scrolls up.
+  static const _pageSize = 100;
+  static const _olderPageSize = 50;
+  bool _hasOlder = false;
+  bool _loadingOlder = false;
   String? userName;
   // The server stores message senderId as the app `id`, while widget.userId is
   // the Mongo `_id`. Collect both so "is this my message?" matches either form.
@@ -72,40 +81,47 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   String _mentionQuery = '';
   bool _loadingMembers = true;
 
-  bool get canSendMessage {
-    final onlyAdminCanChat = widget.group['onlyAdminCanChat'] ?? false;
-    final members = List<String>.from(widget.group['members'] ?? []);
-    final admins = List<String>.from(widget.group['admins'] ?? []);
-    
-    final isAdmin = widget.userRole == 'admin';
-    final isGroupAdmin = admins.contains(widget.userId);
-    final isGroupMember = members.contains(widget.userId);
-    
-    // If "Only admins can send messages" is checked, only system admins can send
-    if (onlyAdminCanChat) {
-      return isAdmin;
-    }
-    
-    // If group admins are assigned, only group admins can send
-    if (admins.isNotEmpty) {
-      return isAdmin || isGroupAdmin;
-    }
-    
-    // If no restrictions, all members can send
-    return isAdmin || isGroupMember;
-  }
+  // The group as the server has it now (members, admins, settings), over what
+  // the chat list passed in. Refreshed on open and after Group info.
+  late Map<String, dynamic> _group = Map<String, dynamic>.from(widget.group as Map);
+  // What this person may do here, from the server (GET /groups/:id myRights,
+  // PR #102's GroupMe model). Until it arrives, the same rule is worked out
+  // from the list's copy of the group (chatRightsFallback).
+  Map<String, dynamic>? _rights;
+  bool _muted = false;
+  // People who count toward a poll's total (active accounts only).
+  int? _activeMemberCount;
+  // Removed from the chat, or it was deleted, while it was open: say so once.
+  bool _gone = false;
 
-  // Anyone who can SEND a message here can also pin one (reuses canSendMessage);
-  // in a DM either member can.
-  bool get _canPin {
-    final isDirect = widget.group['isDirect'] == true;
-    final members = List<String>.from(widget.group['members'] ?? []);
-    final isGroupMember = members.contains(widget.userId);
-    return isDirect ? isGroupMember : canSendMessage;
+  bool _right(String key) => _rights != null
+      ? _rights![key] == true
+      : chatRightsFallback(_group, _myIds, widget.userRole)[key] == true;
+
+  bool get canSendMessage => _right('canSend');
+  bool get _canPin => _right('canPin');
+  // A group admin (or company Admin) may delete other people's messages.
+  bool get _canModerate => _right('canModerate');
+  bool get _isGroupAdmin => _right('isGroupAdmin');
+
+  // Every pinned message in the chat, newest pin first, from ?pinned=1, so a
+  // pin older than the loaded messages still shows. Until that arrives (or on
+  // an older server), the pins among the loaded messages.
+  List<Map<String, dynamic>>? _pinnedFromServer;
+
+  Future<void> _fetchPinned() async {
+    try {
+      final res = await api.get(Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}?pinned=1'));
+      if (res.statusCode == 200 && mounted) {
+        final list = (json.decode(res.body) as List).whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+        setState(() => _pinnedFromServer = list);
+      }
+    } catch (_) {}
   }
 
   // Every pinned message, newest pin first (drives the banner).
   List<Map<String, dynamic>> get _pinnedMessages {
+    if (_pinnedFromServer != null) return _pinnedFromServer!;
     final pinned = messages
         .where((m) => m['pinned'] == true)
         .map((m) => Map<String, dynamic>.from(m))
@@ -119,11 +135,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final currentlyPinned = message['pinned'] == true;
     try {
       final res = await api.patch(
-        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'action': currentlyPinned ? 'unpin' : 'pin', 'messageId': messageId}),
       );
       if (res.statusCode == 200 && mounted) {
+        _fetchPinned();
         final serverMsg = json.decode(res.body);
         setState(() {
           final idx = messages.indexWhere((m) => m['_id'] == messageId);
@@ -214,7 +231,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   void initState() {
     super.initState();
     _loadUserName();
+    _fetchGroup();
     _fetchMessages();
+    _fetchPinned();
     _startPolling();
     _markAsRead();
     _fetchGroupMembers(); // Fetch members immediately on screen load
@@ -234,8 +253,77 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     super.dispose();
   }
 
+  // Messages from the first loaded page down sit in the CENTER sliver;
+  // earlier pages go in the sliver above it, which grows upward. So loading
+  // earlier messages never moves what the person is reading.
+  static const _centerKey = ValueKey('chat-center');
+  String? _anchorId;
+
+  int _anchorIndex() {
+    if (messages.isEmpty) return 0;
+    var i = _anchorId == null ? -1 : messages.indexWhere((m) => '${m['_id']}' == _anchorId);
+    if (i < 0) {
+      // First load, or the anchor message was deleted: start from the top.
+      _anchorId = '${messages.first['_id']}';
+      i = 0;
+    }
+    return i;
+  }
+
+  Widget _buildMessageList() {
+    final anchor = _anchorIndex();
+    return CustomScrollView(
+      controller: _scrollController,
+      center: _centerKey,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        if (_hasOlder || _loadingOlder)
+          SliverToBoxAdapter(
+            child: Center(
+              child: _loadingOlder
+                  ? const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFCB0002))),
+                    )
+                  : TextButton(
+                      onPressed: _loadOlder,
+                      child: const Text('Load earlier messages', style: TextStyle(color: Color(0xFFCB0002), fontWeight: FontWeight.w600)),
+                    ),
+            ),
+          ),
+        // Earlier messages: index 0 is the one just above the first loaded page.
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => _buildMessage(messages[anchor - 1 - i], anchor - 1 - i),
+              childCount: anchor,
+            ),
+          ),
+        ),
+        SliverPadding(
+          key: _centerKey,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, j) => _buildMessage(messages[anchor + j], anchor + j),
+              childCount: messages.length - anchor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _onScroll() {
     if (_scrollController.hasClients) {
+      final pos = _scrollController.position;
+      // Near the top while the person scrolls up: fetch the page before.
+      if (_hasOlder && !_loadingOlder && pos.userScrollDirection == ScrollDirection.forward &&
+          pos.pixels <= pos.minScrollExtent + 300) {
+        _loadOlder();
+      }
       final maxScroll = _scrollController.position.maxScrollExtent;
       final currentScroll = _scrollController.position.pixels;
       final isAtBottom = (maxScroll - currentScroll) < 100;
@@ -290,13 +378,53 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   bool _isMine(dynamic message) =>
       _myIds.contains(message['senderId']?.toString());
 
+  // The group as the server has it, with this person's rights (myRights),
+  // whether they muted it, and who counts toward poll totals.
+  Future<void> _fetchGroup() async {
+    try {
+      final res = await api.get(Uri.parse('https://millerstorm.tech/api/storm-chat/groups/${_group['_id']}'));
+      if (!mounted) return;
+      if (res.statusCode == 200) {
+        final g = Map<String, dynamic>.from(json.decode(res.body) as Map);
+        final wasDirect = _group['isDirect'] == true;
+        final dmName = _group['name'];
+        setState(() {
+          _group = {..._group, ...g};
+          // A DM's name is the other person's, which only the list knows.
+          if (wasDirect) {
+            _group['isDirect'] = true;
+            _group['name'] = dmName;
+          }
+          _rights = g['myRights'] is Map ? Map<String, dynamic>.from(g['myRights'] as Map) : null;
+          _muted = g['muted'] == true;
+          _activeMemberCount = g['activeMemberCount'] is num ? (g['activeMemberCount'] as num).toInt() : null;
+          final mongoId = (g['myMongoId'] ?? '').toString();
+          if (mongoId.isNotEmpty) _myIds.add(mongoId);
+        });
+        _fetchGroupMembers();
+      } else if (res.statusCode == 404) {
+        _closeGone('This chat is no longer available.');
+      }
+    } catch (_) {}
+  }
+
+  // Removed from the chat, or it was deleted, while it was open: one notice,
+  // then back to the list (the 3-second refresh used to show an error each time).
+  void _closeGone(String text) {
+    if (_gone || !mounted) return;
+    _gone = true;
+    _pollTimer?.cancel();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    Navigator.of(context).maybePop();
+  }
+
   Future<void> _fetchGroupMembers() async {
     setState(() {
       _loadingMembers = true;
     });
     
     try {
-      final members = List<String>.from(widget.group['members'] ?? []);
+      final members = List<String>.from(_group['members'] ?? []);
       
       if (members.isEmpty) {
         setState(() {
@@ -320,12 +448,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           _loadingMembers = false;
           // Update filtered members if mention list is showing
           if (_showMentionList) {
-            _filteredMembers = _mentionQuery.isEmpty 
-                ? List.from(_allMembers)
-                : _allMembers.where((member) {
-                    final name = (member['name'] ?? '').toLowerCase();
-                    return name.contains(_mentionQuery);
-                  }).toList();
+            _filteredMembers = _mentionCandidates(_mentionQuery);
           }
         });
       } else {
@@ -339,6 +462,17 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         _loadingMembers = false;
       });
     }
+  }
+
+  // Who "@" can mention: the members matching what was typed (all of them for
+  // a bare "@"). A group admin also gets "@all", which alerts everyone, muted
+  // people included (the server only honours it from a group admin).
+  List<dynamic> _mentionCandidates(String query) {
+    final people = query.isEmpty
+        ? List<dynamic>.from(_allMembers)
+        : _allMembers.where((member) => (member['name'] ?? '').toString().toLowerCase().contains(query)).toList();
+    final offerAll = _isGroupAdmin && _group['isDirect'] != true && 'all'.startsWith(query);
+    return [if (offerAll) {'_all': true, 'name': 'all'}, ...people];
   }
 
   void _onMessageTextChanged() {
@@ -376,13 +510,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     if (lastAtIndex != -1) {
       final query = text.substring(lastAtIndex + 1, cursorPosition).toLowerCase().trim();
       
-      // Filter members - if query is empty, show all members
-      final filtered = query.isEmpty 
-          ? List.from(_allMembers)
-          : _allMembers.where((member) {
-              final name = (member['name'] ?? '').toLowerCase();
-              return name.contains(query);
-            }).toList();
+ 
+      final filtered = _mentionCandidates(query);
       
       setState(() {
         _showMentionList = true;
@@ -465,6 +594,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   void _startPolling() {
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       _fetchMessages(silent: true);
+      if (++_pollTick % 5 == 0) _fetchPinned();
     });
   }
 
@@ -475,7 +605,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'userId': widget.userId,
-          'groupId': widget.group['_id'],
+          'groupId': _group['_id'],
         }),
       );
     } catch (e) {
@@ -483,39 +613,50 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
   }
 
+  List<Map<String, dynamic>> _asMessages(String body) =>
+      (json.decode(body) as List).whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+
+  // The newest page, merged over what's on screen so older pages the person
+  // scrolled up to stay (src/lib/stormchat/messagePages.ts).
   Future<void> _fetchMessages({bool silent = false}) async {
+    if (_gone) return;
     try {
       final response = await api.get(
-        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}?userId=${widget.userId}&userRole=${widget.userRole}'),
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}?limit=$_pageSize'),
       );
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body) as List;
-        
+        final newest = _asMessages(response.body);
+
         // Check if user is at bottom before updating
         bool wasAtBottom = false;
-        bool hadMessages = messages.isNotEmpty;
+        final lastBefore = messages.isNotEmpty ? '${messages.last['_id']}' : null;
         if (_scrollController.hasClients) {
           final maxScroll = _scrollController.position.maxScrollExtent;
           final currentScroll = _scrollController.position.pixels;
           wasAtBottom = (maxScroll - currentScroll) < 100;
         }
-        
-        // Check for new messages
-        bool hasNewMessages = false;
-        if (hadMessages && data.length > messages.length) {
-          hasNewMessages = true;
-        }
-        
+
+        final merged = mergeNewestPage(
+            messages.map((m) => Map<String, dynamic>.from(m as Map)).toList(), newest, _pageSize);
+        // Something newer than what was last on screen.
+        final hasNewMessages = lastBefore != null && merged.isNotEmpty && '${merged.last['_id']}' != lastBefore;
+
         setState(() {
-          messages = data;
-          if (!silent) isLoading = false;
+          messages = merged;
+          if (!silent) {
+            isLoading = false;
+            _hasOlder = newest.length >= _pageSize;
+          } else if (newest.length < _pageSize) {
+            _hasOlder = false; // the newest page is the whole chat
+          }
           if (hasNewMessages && !wasAtBottom) {
             _hasNewMessages = true;
             _showScrollToBottomButton = true;
           }
         });
-        
+
         // On initial load, go to the latest message. Re-jump after short delays
         // so images/videos finishing layout don't leave the view above bottom.
         if (!silent) {
@@ -531,7 +672,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               }
             });
           }
-        } else if (wasAtBottom) {
+        } else if (wasAtBottom && hasNewMessages) {
           // If user was at bottom and new messages come, scroll to bottom
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
@@ -539,18 +680,20 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             }
           });
         }
-      } else if (response.statusCode == 403) {
-        final error = json.decode(response.body);
-        _showError(error['error'] ?? 'Access denied');
-        if (!silent) {
-          setState(() {
-            isLoading = false;
-          });
-        }
+      } else if (response.statusCode == 403 || response.statusCode == 404) {
+        // Removed from the group, or it was deleted, while it was open.
+        String text = "You're no longer in this chat.";
+        try {
+          final error = json.decode(response.body);
+          if (response.statusCode == 404) text = 'This chat was deleted.';
+          if (error is Map && error['error'] is String && response.statusCode == 403) text = error['error'];
+        } catch (_) {}
+        if (!silent) setState(() => isLoading = false);
+        _closeGone(text);
       }
     } catch (e) {
       print('❌ Error fetching messages: $e');
-      if (!silent) {
+      if (!silent && mounted) {
         setState(() {
           isLoading = false;
         });
@@ -558,7 +701,29 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
   }
 
-
+  // The page just before the oldest message on screen (scrolling up). The list
+  // keeps its place: older messages grow upward from the first loaded page.
+  Future<void> _loadOlder() async {
+    if (_loadingOlder || !_hasOlder || messages.isEmpty || _gone) return;
+    setState(() => _loadingOlder = true);
+    try {
+      final oldest = '${messages.first['_id']}';
+      final res = await api.get(Uri.parse(
+          'https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}?beforeId=$oldest&limit=$_olderPageSize'));
+      if (res.statusCode == 200 && mounted) {
+        final older = _asMessages(res.body);
+        setState(() {
+          messages = prependOlderPage(
+              messages.map((m) => Map<String, dynamic>.from(m as Map)).toList(), older);
+          _hasOlder = older.length >= _olderPageSize;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading earlier messages: $e');
+    } finally {
+      if (mounted) setState(() => _loadingOlder = false);
+    }
+  }
 
   void _scrollToMessage(String messageId) {
     // Find the index of the message
@@ -566,9 +731,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     if (index == -1) return;
 
     // Calculate approximate position
-    // Each message is roughly 80-100px, use 90 as average
-    final position = index * 90.0;
-    
+    // Each message is roughly 80-100px, use 90 as average; offset 0 is the
+    // first loaded page (earlier pages sit above it, at negative offsets).
+    final pos = _scrollController.position;
+    final position = ((index - _anchorIndex()) * 90.0).clamp(pos.minScrollExtent, pos.maxScrollExtent);
+
     // Scroll to the message
     _scrollController.animateTo(
       position,
@@ -590,16 +757,20 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     });
   }
 
+  // The text and reply stay in the box until the server accepts the message,
+  // so a refused one (too long, too fast, no longer allowed) is never lost.
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty || isSending) return;
 
     final message = _messageController.text.trim();
-    final replyData = replyingTo; // Store reply data before clearing
-    _messageController.clear();
+    if (message.length > kMaxMessageChars) {
+      _showError(kTooLongMessage);
+      return;
+    }
+    final replyData = replyingTo;
 
     setState(() {
       isSending = true;
-      replyingTo = null; // Clear reply preview immediately
     });
 
     try {
@@ -623,7 +794,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       print('🔵 Sending message body: ${json.encode(body)}');
 
       final response = await api.post(
-        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(body),
       );
@@ -632,19 +803,52 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       print('🔵 Send message response body: ${response.body}');
 
       if (response.statusCode == 201) {
+        // Sent: now clear (unless they already typed something new).
+        if (_messageController.text.trim() == message) _messageController.clear();
+        if (mounted) setState(() => replyingTo = null);
         await _fetchMessages();
       } else {
-        final error = json.decode(response.body);
-        _showError(error['error'] ?? 'Failed to send message');
+        _showError(_serverError(response.body, 'Failed to send message'));
       }
     } catch (e) {
       print('❌ Error sending message: $e');
       _showError('Failed to send message');
     } finally {
-      setState(() {
-        isSending = false;
-      });
+      if (mounted) {
+        setState(() {
+          isSending = false;
+        });
+      }
     }
+  }
+
+  /// The server's own reason ("Slow down…", "Only admins can…"), or [fallback].
+  String _serverError(String body, String fallback) {
+    try {
+      final data = json.decode(body);
+      if (data is Map && data['error'] is String && (data['error'] as String).isNotEmpty) return data['error'];
+    } catch (_) {}
+    return fallback;
+  }
+
+  /// Posts a photo, video, file, GIF or poll message; shows the server's reason
+  /// when it is refused (these used to fail silently).
+  Future<bool> _postMessage(Map<String, dynamic> body, String fallbackError) async {
+    try {
+      final res = await api.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      );
+      if (res.statusCode == 201 || res.statusCode == 200) {
+        await _fetchMessages();
+        return true;
+      }
+      _showError(_serverError(res.body, fallbackError));
+    } catch (e) {
+      _showError(fallbackError);
+    }
+    return false;
   }
 
   Future<void> _pickAndUploadMedia() async {
@@ -714,7 +918,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               },
             ),
             // Polls only make sense in groups/subgroups, not 1:1 personal chats.
-            if (widget.group['isDirect'] != true)
+            if (_group['isDirect'] != true)
               ListTile(
                 leading: const Icon(Icons.poll_outlined, color: Color(0xFFCB0002)),
                 title: const Text('Create Poll'),
@@ -790,23 +994,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   Future<void> _sendPoll(String question, List<String> options, bool allowMultiple) async {
-    try {
-      await api.post(
-        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'senderId': widget.userId,
-          'senderName': userName,
-          'senderRole': widget.userRole,
-          'message': question,
-          'messageType': 'poll',
-          'poll': {'question': question, 'options': options, 'allowMultiple': allowMultiple},
-        }),
-      );
-      await _fetchMessages();
-    } catch (e) {
-      _showError('Failed to create poll');
-    }
+    await _postMessage({
+      'message': question,
+      'messageType': 'poll',
+      'poll': {'question': question, 'options': options, 'allowMultiple': allowMultiple},
+    }, 'Failed to create poll');
   }
 
   Future<void> _votePoll(String messageId, int optionIndex) async {
@@ -816,9 +1008,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'messageId': messageId, 'optionIndex': optionIndex}),
       );
-      if (res.statusCode == 200) await _fetchMessages();
+      if (res.statusCode == 200) {
+        await _fetchMessages();
+      } else {
+        _showError(_serverError(res.body, "Couldn't save your vote"));
+      }
     } catch (e) {
       print('poll vote error: $e');
+      _showError("Couldn't save your vote");
     }
   }
 
@@ -827,7 +1024,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final options = (poll['options'] as List?) ?? [];
     // Percentage is out of the group's total members, not just the votes cast —
     // so a single vote in a 9-member group reads ~11%, not 100%.
-    final totalMembers = ((widget.group['members'] as List?)?.length ?? 0);
+    final totalMembers = _activeMemberCount ?? ((_group['members'] as List?)?.length ?? 0);
     final denom = totalMembers > 0 ? totalMembers : 1;
     final voterSet = <String>{};
     for (final o in options) {
@@ -836,7 +1033,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       }
     }
     final votersCount = voterSet.length;
-    final myId = widget.userId;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -865,7 +1061,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           final o = entry.value as Map<String, dynamic>;
           final votes = (o['votes'] as List?)?.length ?? 0;
           final pct = ((votes / denom) * 100).round();
-          final voted = ((o['votes'] as List?) ?? []).contains(myId);
+          // Votes are stored under the app id; I may hold the Mongo _id.
+          final voted = votedByMe(o['votes'], _myIds);
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: GestureDetector(
@@ -1011,20 +1208,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         final data = json.decode(response.body);
         final url = data['url'];
 
-        await api.post(
-          Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            'senderId': widget.userId,
-            'senderName': userName,
-            'senderRole': widget.userRole,
-            'message': fileName,
-            'messageType': type,
-            'mediaUrl': url,
-          }),
-        );
-
-        await _fetchMessages();
+        // A photo's or video's file name isn't a caption (the server ignores
+        // it); a document keeps its name so people know what it is.
+        await _postMessage({
+          'message': fileName,
+          'messageType': type,
+          'mediaUrl': url,
+        }, type == 'image' ? "Couldn't send the photo" : type == 'video' ? "Couldn't send the video" : "Couldn't send the file");
       } else {
         String errorMsg = 'Upload failed (${response.statusCode})';
         try {
@@ -1044,23 +1234,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   // Send a GIPHY GIF/sticker — it's already hosted, so post an image message
   // pointing at its URL (no upload).
   Future<void> _sendGiphy(String url, bool isSticker) async {
-    try {
-      await api.post(
-        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'senderId': widget.userId,
-          'senderName': userName,
-          'senderRole': widget.userRole,
-          'message': isSticker ? 'Sticker' : 'GIF',
-          'messageType': 'image',
-          'mediaUrl': url,
-        }),
-      );
-      await _fetchMessages();
-    } catch (e) {
-      print('GIPHY send error: $e');
-    }
+    await _postMessage({
+      'message': isSticker ? 'Sticker' : 'GIF',
+      'messageType': 'image',
+      'mediaUrl': url,
+    }, isSticker ? "Couldn't send the sticker" : "Couldn't send the GIF");
   }
 
   // GIPHY GIF / sticker search sheet (via our /api/giphy proxy — no upload).
@@ -1265,17 +1443,27 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: InkWell(
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            final result = await Navigator.push<String>(
               context,
               MaterialPageRoute(
                 builder: (context) => StormChatGroupInfoScreen(
-                  group: widget.group,
+                  group: _group,
                   userId: widget.userId,
                   userRole: widget.userRole,
                 ),
               ),
             );
+            if (!mounted) return;
+            // Left the group or deleted it: back to the list. Otherwise pick up
+            // any change (name, members, admins, admin-only, mute).
+            if (result == 'gone') {
+              _gone = true;
+              _pollTimer?.cancel();
+              Navigator.of(context).maybePop();
+            } else {
+              _fetchGroup();
+            }
           },
           child: Row(
             children: [
@@ -1285,14 +1473,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 decoration: BoxDecoration(
                   color: Colors.black,
                   borderRadius: BorderRadius.circular(8),
-                  image: widget.group['imageUrl'] != null && widget.group['imageUrl'].isNotEmpty
+                  image: _group['imageUrl'] != null && _group['imageUrl'].isNotEmpty
                       ? DecorationImage(
-                          image: NetworkImage('https://millerstorm.tech${widget.group['imageUrl']}'),
+                          image: NetworkImage('https://millerstorm.tech${_group['imageUrl']}'),
                           fit: BoxFit.cover,
                         )
                       : null,
                 ),
-                child: widget.group['imageUrl'] == null || widget.group['imageUrl'].isEmpty
+                child: _group['imageUrl'] == null || _group['imageUrl'].isEmpty
                     ? const Center(
                         child: Text('👥', style: TextStyle(fontSize: 18)),
                       )
@@ -1303,18 +1491,30 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.group['name'] ?? 'Group',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _group['name'] ?? 'Group',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        // Muted: only @mentions still alert.
+                        if (_muted)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 6),
+                            child: Icon(Icons.notifications_off, size: 15, color: Colors.white70),
+                          ),
+                      ],
                     ),
                     Text(
-                      widget.group['isDirect'] == true
+                      _group['isDirect'] == true
                           ? 'Private message'
-                          : '${(widget.group['members'] as List?)?.length ?? 0} members',
+                          : '${(_group['members'] as List?)?.length ?? 0} members',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -1366,14 +1566,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                             child: RefreshIndicator(
                             color: const Color(0xFFCB0002),
                             onRefresh: _fetchMessages,
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              padding: const EdgeInsets.all(16),
-                              itemCount: messages.length,
-                              itemBuilder: (context, index) {
-                                return _buildMessage(messages[index], index);
-                              },
-                            ),
+                            child: _buildMessageList(),
                           ),
                           ), // GestureDetector
               ),
@@ -1441,6 +1634,24 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 itemCount: _filteredMembers.length,
                                 itemBuilder: (context, index) {
                                   final member = _filteredMembers[index];
+                                  if (member['_all'] == true) {
+                                    return ListTile(
+                                      dense: true,
+                                      leading: const CircleAvatar(
+                                        radius: 18,
+                                        backgroundColor: Color(0xFFFFECEC),
+                                        child: Icon(Icons.campaign_outlined, size: 18, color: Color(0xFFCB0002)),
+                                      ),
+                                      title: Text('@all',
+                                          style: TextStyle(
+                                            color: _isDarkTheme ? Colors.white : const Color(0xFF111827),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          )),
+                                      subtitle: const Text('Notify everyone in this group', style: TextStyle(fontSize: 12)),
+                                      onTap: () => _insertMention('all'),
+                                    );
+                                  }
                                   final name = member['name'] ?? 'Unknown';
                                   final headshotUrl = member['headshotUrl'] ?? '';
                                   
@@ -1559,10 +1770,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          widget.group['onlyAdminCanChat'] == true
-                              ? '🔒 Only admins can send messages\nMembers can only read messages'
-                              : (widget.group['admins'] as List?)?.isNotEmpty == true
-                                  ? '🔒 Only group admins can send messages\nMembers can only read messages'
+                          _group['onlyAdminCanChat'] == true && _right('isMember')
+                              ? '🔒 Only admins can post in this group\nMembers can read messages'
+                              : !_right('isMember')
+                                  ? "🔒 You're not in this group"
                                   : '🔒 You cannot send messages in this group',
                           style: const TextStyle(
                             color: Color(0xFFCB0002),
@@ -2366,7 +2577,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 },
               ),
               // Message this sender privately (groups only, others' messages).
-              if (!isMyMessage && widget.group['isDirect'] != true)
+              if (!isMyMessage && _group['isDirect'] != true)
                 ListTile(
                   leading: Icon(Icons.mail_outline, color: textColor),
                   title: Text('Message privately', style: TextStyle(color: textColor)),
@@ -2397,8 +2608,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     _togglePin(message);
                   },
                 ),
-              // Delete (own messages only — text, photo or video).
-              if (isMyMessage)
+              // Delete: your own messages; a group admin may also remove others'
+              // (never in a DM — the server's canModerate).
+              if (isMyMessage || _canModerate)
                 ListTile(
                   leading: const Icon(Icons.delete_outline, color: Colors.red),
                   title: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -2435,7 +2647,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final messageId = message['_id'];
     try {
       final res = await api.delete(
-        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'messageId': messageId}),
       );
@@ -2771,7 +2983,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
     // Save to server
     api.patch(
-      Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+      Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'messageId': messageId,
@@ -2832,7 +3044,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             MaterialPageRoute(
               builder: (context) => ImageViewerScreen(
                 imageUrl: imageUrl,
-                groupId: widget.group['_id'],
+                groupId: _group['_id'],
                 userId: widget.userId,
                 userName: userName,
                 userRole: widget.userRole,

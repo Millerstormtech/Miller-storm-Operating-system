@@ -86,7 +86,8 @@ final _client = MockClient((req) async {
   sentRequests.add(req);
   for (final e in _routes.entries) {
     if (req.url.path != e.key) continue;
-    final reply = e.value;
+    // A route may also be a function of the request (method, query, body).
+    final reply = e.value is Function ? (e.value as dynamic)(req) : e.value;
     if (reply is http.Response) return reply;
     return http.Response(jsonEncode(reply), 200, headers: {'content-type': 'application/json'});
   }
@@ -108,6 +109,7 @@ Future<void> pumpScreen(WidgetTester tester, Widget screen, Map<String, Object> 
     'token': 'test-token',
     'tour_seen_apps_tools_v1': true,
     'tour_seen_sales_leaderboard_v1': true,
+    'tour_seen_storm_chat_v1': true,
     'user': jsonEncode({'id': 'me', 'name': longName, 'email': 'me@example.com', 'role': role}),
   });
   _routes = routes;

@@ -463,10 +463,8 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
   // were previously denied.
   Future<void> _requestJoin(dynamic group) async {
     final status = (group['joinStatus'] ?? 'none').toString();
-    if (status == 'denied') {
-      _snack("Your request was declined by the group admin.");
-      return;
-    }
+    // A declined request may be sent again after 7 days: the server decides,
+    // and says how long is left when it's too soon.
     if (status == 'pending') {
       _snack("Your request is pending the group admin's approval.");
       return;
@@ -499,7 +497,8 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
     final name = group['name'] ?? 'Unnamed Group';
     final description = group['description'] ?? '';
     final imageUrl = group['imageUrl'] ?? '';
-    final memberCount = (group['members'] as List?)?.length ?? 0;
+    // Groups you're not in come with memberCount, not the member list.
+    final memberCount = (group['members'] as List?)?.length ?? (group['memberCount'] as num?)?.toInt() ?? 0;
     final onlyAdminCanChat = group['onlyAdminCanChat'] ?? false;
     final groupId = group['_id'];
     final unreadCount = unreadCounts[groupId] ?? 0;
@@ -611,6 +610,11 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
                               ),
                             ),
                           ),
+                          if (group['isMuted'] == true)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: Icon(Icons.notifications_off, size: 14, color: _textLight),
+                            ),
                           if (onlyAdminCanChat)
                             const Padding(
                               padding: EdgeInsets.only(left: 6),
@@ -795,7 +799,7 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
                     children: [
                       Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark), ),
                       const SizedBox(height: 3),
-                      Text('Private message', style: TextStyle(fontSize: 13, color: _textLight)),
+                      Text(dm['isMuted'] == true ? 'Private message · Muted' : 'Private message', style: TextStyle(fontSize: 13, color: _textLight)),
                     ],
                   ),
                 ),
