@@ -1436,7 +1436,9 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                   src={msg.mediaUrl}
                   alt="Image"
                   onClick={() => setViewerImage(msg.mediaUrl!)}
-                  style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block', cursor: 'pointer' }}
+                  // At most 300px, and never wider than a phone screen allows
+                  // (a fixed 300px video pushed the chat sideways on phones).
+                  style={{ maxWidth: 'min(300px, 62vw)', maxHeight: 300, borderRadius: 8, display: 'block', cursor: 'pointer' }}
                 />
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
                   <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
@@ -1451,7 +1453,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 <video
                   src={msg.mediaUrl}
                   controls
-                  style={{ maxWidth: 300, maxHeight: 300, borderRadius: 8, display: 'block' }}
+                  style={{ width: 'min(300px, 62vw)', maxHeight: 300, borderRadius: 8, display: 'block' }}
                 />
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
                   <button onClick={() => downloadMedia(msg.mediaUrl!)} title="Save"
