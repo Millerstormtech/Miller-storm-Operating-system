@@ -32,6 +32,9 @@ export interface IChatGroup extends Document {
   // Mongo _ids of people who muted this chat: no alert for ordinary messages,
   // mentions (and @all from an admin) still come through (GroupMe-style).
   mutedBy?: string[];
+  // When a mute ends, by Mongo _id; no entry = until turned back on
+  // (src/lib/stormchat/mute.ts).
+  mutedUntil?: Map<string, Date>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,7 +104,12 @@ const ChatGroupSchema = new Schema<IChatGroup>(
     }],
     mutedBy: [{
       type: String
-    }]
+    }],
+    mutedUntil: {
+      type: Map,
+      of: Date,
+      default: undefined
+    }
   },
   {
     timestamps: true

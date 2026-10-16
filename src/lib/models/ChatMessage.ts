@@ -35,6 +35,11 @@ export interface IChatMessage extends Document {
   pinnedAt?: Date;
   pinnedBy?: string;
   pinnedByName?: string;
+  // Edited by its sender (within 15 minutes): shows "edited".
+  editedAt?: Date;
+  // Deleted: kept as a "This message was deleted" notice (messageChanges.ts).
+  deletedAt?: Date;
+  deletedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,7 +91,10 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     pinned: { type: Boolean, default: false },
     pinnedAt: { type: Date, default: null },
     pinnedBy: { type: String, default: '' },
-    pinnedByName: { type: String, default: '' }
+    pinnedByName: { type: String, default: '' },
+    editedAt: { type: Date },
+    deletedAt: { type: Date },
+    deletedBy: { type: String }
   },
   { timestamps: true }
 );

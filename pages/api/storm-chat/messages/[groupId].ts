@@ -14,6 +14,9 @@ import { findReadableMessage } from '../../../../src/lib/stormchat/messageAccess
 import { userMessageType, replyQuoteFrom, messageProblem, attachmentProblem, alertPreview, SEND_BURST } from '../../../../src/lib/stormchat/compose';
 import { rateLimit } from '../../../../src/lib/rateLimit';
 import { mentionedIds, mentionsAll, alertPlan } from '../../../../src/lib/stormchat/mentions';
+import { editProblem, tombstoneUpdate, DELETED_QUOTE } from '../../../../src/lib/stormchat/messageChanges';
+import { activeMutedIds } from '../../../../src/lib/stormchat/mute';
+import { galleryFilter, isGalleryKind, GALLERY_PAGE } from '../../../../src/lib/stormchat/findMessages';
 import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -79,6 +82,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       //                     before, so older app builds keep working.
       //   ?beforeId=<id>    the N messages just before that one (scroll up).
       //   ?pinned=1         every pinned message in the chat, newest pin first.
+      // Gallery (GroupMe-style): ?media=photos|files|links, newest first,
+      // GALLERY_PAGE at a time; ?beforeId=<id> continues from that item.
+      if (req.query.media !== undefined) {
+        const kind = req.query.media;
+        if (!isGalleryKind(kind)) return res.status(400).json({ error: 'Unknown gallery tab' });
+        const filter: any = { groupId, ...galleryFilter(kind) };
+        const beforeId = typeof req.query.beforeId === 'string' ? req.query.beforeId : '';
+        if (beforeId) {
+          const ref = mongoose.isValidObjectId(beforeId)
+            ? await ChatMessage.findOne({ _id: beforeId, groupId }).select('createdAt').lean() as any
+            : null;
+          if (!ref) return res.status(200).json([]);
+          filter.$or = [
+            { createdAt: { $lt: ref.createdAt } },
+            { createdAt: ref.createdAt, _id: { $lt: ref._id } },
+          ];
+        }
+        const items = await ChatMessage.find(filter)
+          .select('messageType mediaUrl message senderName createdAt')
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(GALLERY_PAGE)
+          .lean();
+        return res.status(200).json(items);
+      }
+
       const rawLimit = parseInt(String(req.query.limit || ''), 10);
       const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 500;
       let messages: any[];
@@ -223,7 +251,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mentioned: mentionedUserIds,
         atAll: messageType === 'text' && mentionsAll(message || ''),
         senderIsAdmin: isGroupAdmin(group, senderIds, senderRole),
-        mutedBy: (group.mutedBy || []).map(String),
+        // Only mutes still in force (a "mute for 1 hour" ends by itself).
+        mutedBy: activeMutedIds(group),
       });
       mentionedUserIds.splice(0, mentionedUserIds.length, ...plan.mention);
 
@@ -254,8 +283,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Reply: quote the REAL original, which must be in this same chat.
       if (replyTo) {
         const original = mongoose.isValidObjectId(String(replyTo))
-          ? await ChatMessage.findById(String(replyTo)).select('groupId message senderName messageType poll').lean() as any
+          ? await ChatMessage.findById(String(replyTo)).select('groupId message senderName messageType poll deletedAt').lean() as any
           : null;
+        if (original?.deletedAt) {
+          return res.status(400).json({ error: 'That message was deleted' });
+        }
         const quote = replyQuoteFrom(original, String(groupId));
         if (!quote) {
           return res.status(400).json({ error: "That message can't be replied to here" });
@@ -411,6 +443,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Failed to send message' });
     }
   } else if (req.method === 'PATCH') {
+    // Edit your own message: text, or a photo / video caption, for 15 minutes
+    // after sending (src/lib/stormchat/messageChanges.ts). Nobody is alerted
+    // again; the bell's copies of it show the new words.
+    if (req.body.action === 'edit') {
+      try {
+        const { messageId } = req.body;
+        const msg = mongoose.isValidObjectId(String(messageId)) ? await ChatMessage.findById(messageId).lean() as any : null;
+        if (!msg) return res.status(404).json({ error: 'Message not found' });
+        const problem = editProblem(msg, auth.sub, req.body.message);
+        if (problem) return res.status(String(msg.senderId) === auth.sub ? 400 : 403).json({ error: problem });
+
+        // Only while you can still post there (not removed, not admin-only now).
+        const grp = await ChatGroup.findById(msg.groupId).lean() as any;
+        const me = await UserModel.findOne({ id: auth.sub }, { _id: 1 }).lean() as any;
+        const myIds = [auth.sub, me?._id?.toString()].filter(Boolean) as string[];
+        if (!grp || !chatRights(grp, myIds, auth.role, true).canSend) {
+          return res.status(403).json({ error: "You can't post in this chat any more" });
+        }
+
+        const text = String(req.body.message);
+        const updated = await ChatMessage.findOneAndUpdate(
+          { _id: msg._id, deletedAt: null },
+          { $set: { message: text, editedAt: new Date() } },
+          { new: true },
+        ).lean();
+        if (!updated) return res.status(400).json({ error: 'That message was deleted' });
+
+        const preview = alertPreview(msg.messageType, text);
+        const ids = { $in: [String(msg._id), msg._id] };
+        await Promise.all([
+          NotificationModel.updateMany({ 'metadata.messageId': ids, type: 'stormchat_mention' }, { $set: { message: preview } }),
+          NotificationModel.updateMany(
+            { 'metadata.messageId': ids, type: 'stormchat_message' },
+            { $set: { message: isDmGroup(grp) ? preview : `${msg.senderName}: ${preview}` } },
+          ),
+        ]);
+        return res.status(200).json(updated);
+      } catch (error) {
+        console.error('Error editing message:', error);
+        return res.status(500).json({ error: 'Failed to edit message' });
+      }
+    }
     // Pin / unpin a message. A moderator (group admin or system admin) may pin
     // in a group; in a DM either of the two members may. Permission is derived
     // from the message's OWN group, never the URL param.
@@ -421,6 +495,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const msg = mongoose.isValidObjectId(String(messageId)) ? await ChatMessage.findById(messageId) : null;
         if (!msg) return res.status(404).json({ error: 'Message not found' });
+        if ((msg as any).deletedAt) return res.status(400).json({ error: 'That message was deleted' });
 
         const grp = await ChatGroup.findById((msg as any).groupId).lean() as any;
         if (!grp) return res.status(404).json({ error: 'Group not found' });
@@ -466,6 +541,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Only someone who can read the message's chat may react (and see it back).
       const msg = await findReadableMessage(messageId, auth);
       if (!msg) return res.status(404).json({ error: 'Message not found' });
+      if ((msg as any).deletedAt) return res.status(400).json({ error: 'That message was deleted' });
 
       // Toggle as single add/remove operations on the database, so people
       // reacting at the same moment can't overwrite each other (readiness
@@ -514,13 +590,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: 'You can only delete your own messages' });
       }
 
-      await ChatMessage.findByIdAndDelete(messageId);
+      // Already deleted: nothing more to do.
+      if ((msg as any).deletedAt) return res.status(200).json({ success: true, message: msg });
+
+      // GroupMe-style: the message stays as "This message was deleted" (it
+      // used to vanish, leaving a confusing gap). Its words, attachment, poll,
+      // reactions and pin go for good (src/lib/stormchat/messageChanges.ts).
+      await ChatMessage.updateOne({ _id: (msg as any)._id }, tombstoneUpdate(auth.sub, new Date()));
+      // Replies that quoted it stop showing its words.
+      await ChatMessage.updateMany({ replyTo: String((msg as any)._id) }, { $set: { replyToMessage: DELETED_QUOTE } });
       // Its bell alerts go too, so the deleted text doesn't live on in
       // everyone's bell (readiness test item 17). Stored as an ObjectId.
       await NotificationModel.deleteMany({
         'metadata.messageId': { $in: [String(messageId), (msg as any)._id] },
       });
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ success: true, message: await ChatMessage.findById((msg as any)._id).lean() });
     } catch (error) {
       console.error('Error deleting message:', error);
       res.status(500).json({ error: 'Failed to delete message' });

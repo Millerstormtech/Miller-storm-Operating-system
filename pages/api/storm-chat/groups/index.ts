@@ -8,6 +8,8 @@ import { isDmGroup } from '../../../../src/lib/stormchat/isDm';
 import { canSeeGroupInList, isMemberOf as memberOf, dmParticipants, canCreateGroup, canReadMessages } from '../../../../src/lib/stormchat/access';
 import { applyCustomOrder } from '../../../../src/lib/stormchat/chatOrder';
 import { GROUP_ADMINS_ENABLED } from '../../../../src/lib/stormchat/rollout';
+import { chatListPreview } from '../../../../src/lib/stormchat/listPreview';
+import { activeMutedIds } from '../../../../src/lib/stormchat/mute';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -136,7 +138,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // "Delete chat for me": a member who hid a DM stops seeing it until the
           // other person sends a new message (which clears hiddenFor).
           .filter((g: any) => !(isDmGroup(g) && Array.isArray(g.hiddenFor) && g.hiddenFor.some((h: string) => myIds.includes(h))))
-          .map((g: any) => ({ ...g, isMuted: (g.mutedBy || []).map(String).some((m: string) => myIds.includes(m)) }))
+          // Only a mute still in force counts ("mute for 1 hour" ends by itself).
+          .map((g: any) => ({ ...g, isMuted: activeMutedIds(g).some((m: string) => myIds.includes(m)) }))
           .map((g: any) => (isDmGroup(g) ? { ...g, isDirect: true } : { ...g, isMember: isMemberOf(g) }));
 
         // Attach the caller's join-request status for private groups they aren't
@@ -191,19 +194,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // group's own createdAt when it has no messages yet) so the client can
       // show it too. The admin management view opts out with ?manage=1 to keep
       // its manual drag order.
+      // The newest message also gives the list its one-line preview
+      // (GroupMe-style, src/lib/stormchat/listPreview.ts); it's kept only for
+      // chats the viewer can read (see the privacy step below).
       {
         const ids = groups.map((g: any) => String(g._id));
         const rows = ids.length
           ? await db.collection('chatmessages').aggregate([
               { $match: { groupId: { $in: ids } } },
-              { $group: { _id: '$groupId', last: { $max: '$createdAt' } } },
+              { $sort: { groupId: 1, createdAt: -1 } },
+              {
+                $group: {
+                  _id: '$groupId',
+                  last: { $first: '$createdAt' },
+                  doc: {
+                    $first: {
+                      senderId: '$senderId', senderName: '$senderName', message: '$message',
+                      messageType: '$messageType', poll: '$poll', deletedAt: '$deletedAt',
+                    },
+                  },
+                },
+              },
             ]).toArray()
           : [];
-        const lastById = new Map(rows.map((r: any) => [String(r._id), r.last]));
-        groups = groups.map((g: any) => ({
-          ...g,
-          lastMessageAt: lastById.get(String(g._id)) || g.createdAt,
-        }));
+        const lastById = new Map(rows.map((r: any) => [String(r._id), r]));
+        groups = groups.map((g: any) => {
+          const row: any = lastById.get(String(g._id));
+          return {
+            ...g,
+            lastMessageAt: row?.last || g.createdAt,
+            lastMessagePreview: chatListPreview(row?.doc, { viewerAppId: effectiveUserId, isDirect: isDmGroup(g) }),
+          };
+        });
         if (!req.query.manage) {
           groups.sort((a: any, b: any) =>
             new Date(b.lastMessageAt as any).getTime() - new Date(a.lastMessageAt as any).getTime()
@@ -240,9 +262,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? auth.role
         : (viewer?.role || (await UserModel.findOne({ id: effectiveUserId }, { role: 1 }).lean() as any)?.role);
       groups = groups.map((g: any) => {
-        const { leftMembers, mutedBy, hiddenFor, ...rest } = g;
+        const { leftMembers, mutedBy, mutedUntil, hiddenFor, ...rest } = g;
         if (canReadMessages(g, viewerIds, viewerRole)) return rest;
-        const { members, admins, dmKey, ...card } = rest;
+        const { members, admins, dmKey, lastMessagePreview, ...card } = rest;
         return { ...card, memberCount: (members || []).length, adminCount: (admins || []).length };
       });
 
