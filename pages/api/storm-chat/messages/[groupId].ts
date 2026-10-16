@@ -17,6 +17,8 @@ import { mentionedIds, mentionsAll, alertPlan } from '../../../../src/lib/stormc
 import { editProblem, tombstoneUpdate, DELETED_QUOTE } from '../../../../src/lib/stormchat/messageChanges';
 import { activeMutedIds } from '../../../../src/lib/stormchat/mute';
 import { galleryFilter, isGalleryKind, GALLERY_PAGE } from '../../../../src/lib/stormchat/findMessages';
+import { cleanVoice, voiceLabel, cleanLocation, locationText, cleanAlbum, albumPreview, cleanPollEnd, type AlbumItem } from '../../../../src/lib/stormchat/richMessages';
+import { withPollViews } from '../../../../src/lib/stormchat/pollViews';
 import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -152,7 +154,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      res.status(200).json(messages);
+      // Polls: voter names, or nobody's id but yours in an anonymous poll.
+      res.status(200).json(await withPollViews(messages, effectiveUserId));
     } catch (error) {
       console.error('Error fetching messages:', error);
       res.status(500).json({ error: 'Failed to fetch messages' });
@@ -163,7 +166,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // The app also sends senderName / replyToMessage / replyToSender, but
       // they are NOT trusted: the name comes from the sender's account and a
       // reply quote from the real original (src/lib/stormchat/compose.ts).
-      const { message, mediaUrl, replyTo, poll } = req.body;
+      const { mediaUrl, replyTo, poll } = req.body;
+      let message = req.body.message;
       const senderId = auth.sub;
       const senderRole = auth.role;
 
@@ -174,8 +178,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "That kind of message can't be sent" });
       }
 
+      // GroupMe-parity batch 2 (src/lib/stormchat/richMessages.ts). Their
+      // text is written here, never taken from the request, so older phone
+      // builds show something true: a file to tap, or a maps link.
+      let voice: { durationSec: number } | null = null;
+      let location: { lat: number; lng: number } | null = null;
+      let albumItems: AlbumItem[] | null = null;
+      let pollEnd: Date | null = null;
+      if (req.body.album !== undefined) {
+        if (messageType !== 'image') return res.status(400).json({ error: 'Albums hold photos and videos only' });
+        const a = cleanAlbum(req.body.album);
+        if ('error' in a) return res.status(400).json({ error: a.error });
+        albumItems = a.ok;
+        message = '';
+      }
+      if (req.body.voice !== undefined) {
+        if (messageType !== 'file') return res.status(400).json({ error: "That kind of message can't be sent" });
+        const v = cleanVoice(req.body.voice, mediaUrl);
+        if ('error' in v) return res.status(400).json({ error: v.error });
+        voice = v.ok;
+        message = voiceLabel(voice.durationSec);
+      }
+      if (req.body.location !== undefined) {
+        if (messageType !== 'text') return res.status(400).json({ error: "That kind of message can't be sent" });
+        location = cleanLocation(req.body.location);
+        if (!location) return res.status(400).json({ error: "That location isn't valid" });
+        message = locationText(location);
+      }
+      if (messageType === 'poll') {
+        const e = cleanPollEnd(poll?.endsAt);
+        if ('error' in e) return res.status(400).json({ error: e.error });
+        pollEnd = e.ok;
+      }
+
       // No empty text, at most 2,000 characters, polls need 2-10 options.
-      const problem = messageProblem(messageType, message, poll) || attachmentProblem(messageType, mediaUrl);
+      const problem = messageProblem(messageType, message, poll) || (albumItems ? null : attachmentProblem(messageType, mediaUrl));
       if (problem) return res.status(400).json({ error: problem });
 
       await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderId, messageType });
@@ -225,7 +262,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Extract mentions from message text
       const mentionedUserIds: string[] = [];
       // @mentions in text and in photo / video captions.
-      if (message && (messageType === 'text' || messageType === 'image' || messageType === 'video')) {
+      if (message && !location && (messageType === 'text' || messageType === 'image' || messageType === 'video')) {
         // Import User model
         const { UserModel } = await import('../../../../src/lib/models/User');
         
@@ -265,15 +302,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: message || '',
         messageType,
         // Text and polls carry no attachment; others were checked above.
-        mediaUrl: messageType === 'text' || messageType === 'poll' ? '' : String(mediaUrl).trim(),
+        mediaUrl: messageType === 'text' || messageType === 'poll' || albumItems ? '' : String(mediaUrl).trim(),
         mentions: mentionedUserIds
       };
+      if (voice) messageData.voice = voice;
+      if (location) messageData.location = location;
 
       // Poll payload: normalize options into { text, votes: [] }.
       if (messageType === 'poll' && poll && Array.isArray(poll.options)) {
         messageData.poll = {
           question: String(poll.question || '').trim(),
           allowMultiple: !!poll.allowMultiple,
+          anonymous: !!poll.anonymous,
+          ...(pollEnd ? { endsAt: pollEnd } : {}),
           options: poll.options
             .map((o: any) => ({ text: String((typeof o === 'string' ? o : o?.text) || '').trim(), votes: [] }))
             .filter((o: any) => o.text.length > 0),
@@ -283,7 +324,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Reply: quote the REAL original, which must be in this same chat.
       if (replyTo) {
         const original = mongoose.isValidObjectId(String(replyTo))
-          ? await ChatMessage.findById(String(replyTo)).select('groupId message senderName messageType poll deletedAt').lean() as any
+          ? await ChatMessage.findById(String(replyTo)).select('groupId message senderName messageType poll deletedAt voice location').lean() as any
           : null;
         if (original?.deletedAt) {
           return res.status(400).json({ error: 'That message was deleted' });
@@ -297,8 +338,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messageData.replyToSender = quote.replyToSender;
       }
 
-      const newMessage = await ChatMessage.create(messageData);
+      // Several photos at once: one message per photo (older phone builds show
+      // one attachment per message) sharing an album id, sent and alerted as one.
+      let albumDocs: any[] | null = null;
+      if (albumItems) {
+        const albumId = new mongoose.Types.ObjectId().toString();
+        const { replyTo: rt, replyToMessage: rtm, replyToSender: rts, ...plain } = messageData;
+        albumDocs = await ChatMessage.insertMany(albumItems.map((it, i) => ({
+          ...(i === 0 ? messageData : plain), // a reply quote goes on the first one only
+          messageType: it.messageType,
+          mediaUrl: it.mediaUrl,
+          message: '',
+          albumId,
+        })));
+      }
+      const newMessage: any = albumDocs ? albumDocs[0] : await ChatMessage.create(messageData);
       await logToDb('info', 'STORM-CHAT', `✅ Message created in DB: ${newMessage._id}`);
+
+      // What alerts say about it ("📷 3 photos", "🎤 Sent a voice message", ...).
+      const preview = albumItems
+        ? albumPreview(albumItems)
+        : alertPreview(messageType, message, poll?.question, { voice, location });
 
       // A new message revives the thread for anyone who "deleted" (hid) this DM,
       // so a hidden 1-on-1 chat comes back on fresh activity.
@@ -327,7 +387,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             userId: mentionedAppId,
             type: 'stormchat_mention',
             title: `You were mentioned by ${senderName}`,
-            message: alertPreview(messageType, message, poll?.question),
+            message: preview,
             read: false,
             metadata: {
               groupId,
@@ -349,7 +409,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // A private DM reads "<sender> sent you a message"; a group keeps the
       // "New message in <group>: <sender>: …" format.
       const isDm = !!group.isDirect;
-      const bodyPreview = alertPreview(messageType, message, poll?.question);
+      const bodyPreview = preview;
       const memberTitle = isDm ? `${senderName} sent you a message` : `New message in ${group.name}`;
       const memberBody = isDm ? bodyPreview : `${senderName}: ${bodyPreview}`;
 
@@ -395,7 +455,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const result = await sendPushNotificationToMultiple(
             mentionTokens,
             `You were mentioned by ${senderName}`,
-            alertPreview(messageType, message, poll?.question),
+            preview,
             {
               groupId: groupId as string,
               groupName: group.name,
@@ -437,7 +497,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       await logToDb('info', 'STORM-CHAT', `✅ Finished processing message: ${newMessage._id}`, { pushStatus });
-      res.status(201).json({ ...newMessage.toObject(), pushStatus });
+      res.status(201).json({
+        ...newMessage.toObject(),
+        pushStatus,
+        ...(albumDocs ? { albumMessages: albumDocs.map((d) => d.toObject()) } : {}),
+      });
     } catch (error: any) {
       await logToDb('error', 'STORM-CHAT', `❌ Critical Error: ${error.message}`);
       res.status(500).json({ error: 'Failed to send message' });
@@ -516,7 +580,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (msg as any).pinnedBy = pin ? auth.sub : '';
         (msg as any).pinnedByName = pin ? (me?.name || '') : '';
         await msg.save();
-        return res.status(200).json(msg);
+        return res.status(200).json((await withPollViews([msg.toObject()], auth.sub))[0]);
       } catch (error) {
         console.error('Error pinning message:', error);
         return res.status(500).json({ error: 'Failed to pin message' });
@@ -557,7 +621,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
       }
 
-      return res.status(200).json(await ChatMessage.findById((msg as any)._id).lean());
+      const after = await ChatMessage.findById((msg as any)._id).lean();
+      return res.status(200).json(after ? (await withPollViews([after as any], auth.sub))[0] : after);
     } catch (error) {
       console.error('Error saving reaction:', error);
       res.status(500).json({ error: 'Failed to save reaction' });

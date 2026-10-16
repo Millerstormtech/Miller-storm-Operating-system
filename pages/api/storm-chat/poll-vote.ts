@@ -3,6 +3,8 @@ import { connectMongo } from '../../../src/lib/mongodb';
 import { requireUser, allowMethods } from '../../../src/lib/auth';
 import { findReadableMessage } from '../../../src/lib/stormchat/messageAccess';
 import ChatMessage from '../../../src/lib/models/ChatMessage';
+import { pollEnded } from '../../../src/lib/stormchat/richMessages';
+import { withPollViews } from '../../../src/lib/stormchat/pollViews';
 
 // Toggle the caller's vote on a poll message option.
 // Body: { messageId, optionIndex }
@@ -23,6 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!msg || msg.messageType !== 'poll' || !msg.poll) {
     return res.status(404).json({ error: 'Poll not found' });
   }
+
+  if (pollEnded(msg.poll)) return res.status(400).json({ error: 'This poll has ended' });
 
   const userId = auth.sub;
   const options = msg.poll.options || [];
@@ -48,5 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await ChatMessage.updateOne({ _id: msg._id }, { $addToSet: { [votesPath]: userId } });
   }
 
-  return res.status(200).json(await ChatMessage.findById(msg._id).lean());
+  // Voter names, or nobody's id but yours in an anonymous poll.
+  const after = await ChatMessage.findById(msg._id).lean();
+  return res.status(200).json(after ? (await withPollViews([after as any], userId))[0] : after);
 }

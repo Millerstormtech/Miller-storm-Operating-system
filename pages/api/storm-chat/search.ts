@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const byId = new Map(chats.map((g) => [String(g._id), g]));
     const found = await ChatMessage.find(searchFilter(Array.from(byId.keys()), term))
-      .select('groupId senderId senderName message messageType poll createdAt')
+      .select('groupId senderId senderName message messageType poll voice location createdAt')
       .sort({ createdAt: -1, _id: -1 })
       .limit(SEARCH_LIMIT)
       .lean() as any[];
@@ -71,7 +71,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const g = byId.get(String(m.groupId));
       const isDirect = isDmGroup(g);
       const type = String(m.messageType || 'text');
-      const text = type === 'poll'
+      const text = m.voice ? '🎤 Voice message'
+        : m.location ? '📍 Location'
+        : type === 'poll'
         ? `📊 ${m.poll?.question || m.message || 'Poll'}`
         : (captionOf(type, m.message) || (type === 'image' ? '📷 Photo' : type === 'video' ? '🎬 Video' : String(m.message || '')));
       return {

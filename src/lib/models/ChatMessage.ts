@@ -15,6 +15,10 @@ interface IPoll {
   question: string;
   options: IPollOption[];
   allowMultiple: boolean;
+  // Optional end; after it nobody can vote (src/lib/stormchat/richMessages.ts).
+  endsAt?: Date;
+  // Hide who voted for what (voters are shown by default).
+  anonymous?: boolean;
 }
 
 export interface IChatMessage extends Document {
@@ -40,6 +44,12 @@ export interface IChatMessage extends Document {
   // Deleted: kept as a "This message was deleted" notice (messageChanges.ts).
   deletedAt?: Date;
   deletedBy?: string;
+  // A voice message: a file message with an audio attachment.
+  voice?: { durationSec: number };
+  // A shared location: a text message with a maps link.
+  location?: { lat: number; lng: number };
+  // Photos sent together share one album id (one alert, shown as a grid).
+  albumId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -75,6 +85,8 @@ const ChatMessageSchema = new Schema<IChatMessage>(
             default: [],
           },
           allowMultiple: { type: Boolean, default: false },
+          endsAt: { type: Date },
+          anonymous: { type: Boolean, default: false },
         },
         { _id: false }
       ),
@@ -94,7 +106,13 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     pinnedByName: { type: String, default: '' },
     editedAt: { type: Date },
     deletedAt: { type: Date },
-    deletedBy: { type: String }
+    deletedBy: { type: String },
+    voice: { type: new Schema({ durationSec: { type: Number, required: true } }, { _id: false }), default: undefined },
+    location: {
+      type: new Schema({ lat: { type: Number, required: true }, lng: { type: Number, required: true } }, { _id: false }),
+      default: undefined,
+    },
+    albumId: { type: String }
   },
   { timestamps: true }
 );

@@ -211,6 +211,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     $first: {
                       senderId: '$senderId', senderName: '$senderName', message: '$message',
                       messageType: '$messageType', poll: '$poll', deletedAt: '$deletedAt',
+                      voice: '$voice', location: '$location',
                     },
                   },
                 },
