@@ -27,6 +27,12 @@ describe('editing a message', () => {
     expect(editProblem({ ...mine, deletedAt: new Date() }, 'user-rita', 'x', SENT)).toBe('That message was deleted');
   });
 
+  it("can't edit a shared location or a voice message (their text isn't typed)", () => {
+    expect(editProblem({ ...mine, location: { lat: 30, lng: -97 } }, 'user-rita', 'x', SENT)).toBe("This kind of message can't be edited");
+    expect(canEditMessage({ ...mine, location: { lat: 30, lng: -97 } }, 'user-rita', SENT)).toBe(false);
+    expect(editProblem({ ...mine, messageType: 'file', voice: { durationSec: 4 } }, 'user-rita', 'x', SENT)).toBe("This kind of message can't be edited");
+  });
+
   it('keeps the usual limits: no empty text, 2,000 characters', () => {
     expect(editProblem(mine, 'user-rita', '   ', SENT)).toBe("A message can't be empty. Delete it instead.");
     expect(editProblem(mine, 'user-rita', 'x'.repeat(2001), SENT)).toBe('Messages can be up to 2,000 characters');
@@ -45,6 +51,6 @@ describe('deleting a message', () => {
     expect(u.$set).toMatchObject({
       message: DELETED_TEXT, messageType: 'text', mediaUrl: '', reactions: [], mentions: [], pinned: false, deletedAt: now, deletedBy: 'user-tom',
     });
-    expect(Object.keys(u.$unset).sort()).toEqual(['editedAt', 'poll', 'replyTo', 'replyToMessage', 'replyToSender']);
+    expect(Object.keys(u.$unset).sort()).toEqual(['albumId', 'editedAt', 'location', 'poll', 'replyTo', 'replyToMessage', 'replyToSender', 'voice']);
   });
 });

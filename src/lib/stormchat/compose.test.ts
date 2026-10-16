@@ -127,3 +127,18 @@ describe('phone photo file names are not captions', () => {
     expect(alertPreview('file', 'Q3.pdf')).toBe('📎 Q3.pdf');
   });
 });
+
+describe('voice messages and locations in alerts and quotes', () => {
+  it('says what was sent instead of a file name or a raw link', () => {
+    expect(alertPreview('file', '🎤 Voice message (0:12)', undefined, { voice: { durationSec: 12 } })).toBe('🎤 Sent a voice message');
+    expect(alertPreview('text', '📍 Location: https://www.google.com/maps?q=1,2', undefined, { location: { lat: 1, lng: 2 } })).toBe('📍 Shared a location');
+    expect(alertPreview('text', 'hi')).toBe('hi');
+  });
+
+  it('quotes them by kind', () => {
+    expect(replyQuoteFrom({ groupId: 'g', messageType: 'file', message: '🎤 Voice message (0:12)', senderName: 'Tom', voice: { durationSec: 12 } }, 'g'))
+      .toEqual({ replyToMessage: '🎤 Voice message', replyToSender: 'Tom' });
+    expect(replyQuoteFrom({ groupId: 'g', messageType: 'text', message: '📍 Location: x', senderName: 'Tom', location: { lat: 1, lng: 2 } }, 'g'))
+      .toEqual({ replyToMessage: '📍 Location', replyToSender: 'Tom' });
+  });
+});
