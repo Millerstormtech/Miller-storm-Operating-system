@@ -43,4 +43,25 @@ void main() {
     await settle(tester);
     expect(posts(path), 1);
   });
+
+  // What the phone's own keyboard is told, on Android and on iPhone: a
+  // multi-line box whose key is Return/Enter. (Android maps it to
+  // IME_ACTION_NONE on a multi-line field: the keyboard's Enter key; Send was
+  // IME_ACTION_SEND.)
+  testWidgets('Storm Chat asks the phone keyboard for Return, not Send', (tester) async {
+    const path = '/api/storm-chat/messages/g1';
+    await pumpScreen(
+      tester,
+      const StormChatRoomScreen(
+        group: {'_id': 'g1', 'name': 'Leadership', 'members': ['me']},
+        userId: 'me',
+        userRole: 'sales',
+      ),
+      {path: []},
+    );
+    await tester.showKeyboard(find.byType(TextField));
+    final config = tester.testTextInput.setClientArgs!;
+    expect(config['inputAction'], 'TextInputAction.newline');
+    expect((config['inputType'] as Map)['name'], 'TextInputType.multiline');
+  }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
 }
