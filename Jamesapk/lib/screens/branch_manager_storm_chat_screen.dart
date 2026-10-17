@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/api_client.dart';
+import 'storm_chat_search_screen.dart';
 import '../theme/app_theme.dart';
 
 class BranchManagerStormChatScreen extends StatefulWidget {
@@ -224,6 +225,22 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
                         child: _newMessageButton(),
                       ),
                       const Spacer(),
+                      // Search messages in every chat you're in (PR #105).
+                      IconButton(
+                        icon: Icon(Icons.search, color: _textDark, size: 26),
+                        tooltip: 'Search messages',
+                        onPressed: userId == null
+                            ? null
+                            : () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => StormChatSearchScreen(userId: userId!, userRole: userRole ?? ''),
+                                  ),
+                                );
+                                _fetchUnreadCounts();
+                              },
+                      ),
                       Showcase(
                         key: _kReplay,
                         title: 'Replay anytime',
@@ -514,9 +531,12 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
             : joinStatus == 'denied'
                 ? 'Private · request was declined'
                 : 'Private · tap to request to join')
-        : (description.isNotEmpty
-            ? description
-            : '$memberCount member${memberCount == 1 ? '' : 's'}');
+        : ((group['lastMessagePreview'] ?? '').toString().isNotEmpty
+            // The newest message, as the server words it (PR #105).
+            ? group['lastMessagePreview'].toString()
+            : description.isNotEmpty
+                ? description
+                : '$memberCount member${memberCount == 1 ? '' : 's'}');
 
     return Container(
       margin: EdgeInsets.only(bottom: isSubgroup ? 6 : 10),
@@ -605,7 +625,8 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
                               name,
                               style: TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                // Unread chats in bold (GroupMe-style).
+                                fontWeight: unreadCount > 0 ? FontWeight.w800 : FontWeight.w600,
                                 color: _textDark,
                               ),
                             ),
@@ -797,9 +818,21 @@ class _BranchManagerStormChatScreenState extends State<BranchManagerStormChatScr
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark), ),
+                      Text(name, style: TextStyle(fontSize: 16, fontWeight: unreadCount > 0 ? FontWeight.w800 : FontWeight.w600, color: _textDark), ),
                       const SizedBox(height: 3),
-                      Text(dm['isMuted'] == true ? 'Private message · Muted' : 'Private message', style: TextStyle(fontSize: 13, color: _textLight)),
+                      Text(
+                        [
+                          (dm['lastMessagePreview'] ?? '').toString().isNotEmpty ? dm['lastMessagePreview'].toString() : 'Private message',
+                          if (dm['isMuted'] == true) 'Muted',
+                        ].join(' · '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                          color: unreadCount > 0 ? _textDark : _textLight,
+                        ),
+                      ),
                     ],
                   ),
                 ),

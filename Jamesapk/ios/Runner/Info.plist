@@ -49,7 +49,9 @@
 		<true/>
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Miller Storm uses the microphone so you can talk to Jay's AI Clone.</string>
+	<string>Miller Storm uses the microphone to record voice messages in Storm Chat and so you can talk to Jay's AI Clone.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Miller Storm uses your location only when you choose to share it in a Storm Chat message. It is sent once and never tracked.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>MillerStorm uses the camera to capture roofing inspection photos and videos for project communication and insurance documentation.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

@@ -131,26 +131,29 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
     } catch (_) {}
   }
 
-  Future<void> _fetchGroupMedia() async {
+  // The chat's gallery (PR #105): ?media=photos|files|links, newest first,
+  // 60 at a time (?beforeId continues). Each tab loads when first opened.
+  static const _galleryKinds = ['photos', 'links', 'files']; // tab 0, 1, 2
+  final Map<int, bool> _galleryMore = {};
+  final Set<int> _galleryLoaded = {};
+
+  List<dynamic> _galleryItems(int tab) => tab == 0 ? _mediaMessages : tab == 1 ? _linkMessages : _docMessages;
+
+  Future<void> _fetchGroupMedia({int? tab, bool more = false}) async {
+    final t = tab ?? _selectedTab;
+    final items = _galleryItems(t);
+    if (!more && _galleryLoaded.contains(t)) return;
     setState(() => _loadingMedia = true);
     try {
-      final response = await api.get(Uri.parse('$_base/messages/${_group['_id']}?limit=500'));
-      if (response.statusCode == 200) {
-        final messages = jsonDecode(response.body) as List<dynamic>;
-        final media = messages.where((m) => m['messageType'] == 'image' || m['messageType'] == 'video').toList();
-        final links = messages.where((m) {
-          if (m['messageType'] != 'text') return false;
-          final text = m['message']?.toString() ?? '';
-          return RegExp(r'https?://[^\s]+').hasMatch(text);
-        }).toList();
-        final docs = messages.where((m) => m['messageType'] == 'file' || m['messageType'] == 'document').toList();
-        if (mounted) {
-          setState(() {
-            _mediaMessages = media;
-            _linkMessages = links;
-            _docMessages = docs;
-          });
-        }
+      final q = {'media': _galleryKinds[t], if (more && items.isNotEmpty) 'beforeId': '${items.last['_id']}'};
+      final res = await api.get(Uri.parse('$_base/messages/${_group['_id']}').replace(queryParameters: q));
+      if (res.statusCode == 200 && mounted) {
+        final page = jsonDecode(res.body) as List<dynamic>;
+        setState(() {
+          _galleryLoaded.add(t);
+          items.addAll(page);
+          _galleryMore[t] = page.length >= 60;
+        });
       }
     } catch (e) {
       print('Error fetching media: $e');
@@ -158,6 +161,13 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
       if (mounted) setState(() => _loadingMedia = false);
     }
   }
+
+  /// The web links in a message, in order, without repeats (like the server's).
+  List<String> _linksIn(String text) => RegExp("https?://[^\\s<>\"']+")
+      .allMatches(text)
+      .map((m) => m.group(0)!.replaceAll(RegExp(r'[.,;:!?)\]]+$'), ''))
+      .toSet()
+      .toList();
 
   // ---- actions ------------------------------------------------------------
 
@@ -218,17 +228,53 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
     }
   }
 
+  // Mute for 1 hour / 8 hours / 1 day / until turned back on (PR #105).
   Future<void> _setMute(bool muted) async {
+    String choice = 'forever';
+    if (muted) {
+      final picked = await showModalBottomSheet<String>(
+        context: context,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Text('Mute notifications', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text("You'll still get alerts when someone @mentions you.", style: TextStyle(color: _textLight)),
+              ),
+              for (final c in kMuteChoices)
+                ListTile(title: Text(c[1]), onTap: () => Navigator.pop(ctx, c[0])),
+            ],
+          ),
+        ),
+      );
+      if (picked == null) return;
+      choice = picked;
+    }
     setState(() => _busy = true);
     try {
       final res = await api.post(
         Uri.parse('$_base/groups/${_group['_id']}/mute'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'muted': muted}),
+        body: json.encode({'muted': muted, if (muted) 'for': choice}),
       );
       if (res.statusCode == 200) {
-        setState(() => _group['muted'] = muted);
-        _snack(muted ? "Muted. You'll still get @mentions." : 'Unmuted');
+        String? until;
+        try {
+          until = (json.decode(res.body) as Map)['mutedUntil'] as String?;
+        } catch (_) {}
+        setState(() {
+          _group['muted'] = muted;
+          _group['mutedUntil'] = muted ? until : null;
+        });
+        _snack(muted
+            ? (until != null ? 'Muted until ${centralWhenLabel(until)}' : "Muted. You'll still get @mentions.")
+            : 'Unmuted');
       } else {
         _snack("Couldn't change notifications", error: true);
       }
@@ -656,7 +702,9 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
                   activeColor: _primary,
                   onChanged: _busy ? null : _setMute,
                   title: Text(_isDirect ? 'Mute this chat' : 'Mute this group'),
-                  subtitle: const Text("You'll still get alerts when someone @mentions you."),
+                  subtitle: Text(_group['muted'] == true
+                      ? '${_group['mutedUntil'] != null ? 'Muted until ${centralWhenLabel('${_group['mutedUntil']}')}' : 'Muted until you turn it back on'}. @mentions still come through.'
+                      : "You'll still get alerts when someone @mentions you."),
                 ),
               ),
 
@@ -740,12 +788,13 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
                     ],
                   ),
                   const Divider(height: 1),
-                  _loadingMedia
+                  _loadingMedia && _galleryItems(_selectedTab).isEmpty
                       ? const Padding(
                           padding: EdgeInsets.all(24),
                           child: Center(child: CircularProgressIndicator(color: _primary)),
                         )
                       : _buildMediaContent(),
+                  _galleryFooter(),
                 ],
               ),
             ),
@@ -826,7 +875,10 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
     final isSelected = _selectedTab == index;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _selectedTab = index),
+        onTap: () {
+          setState(() => _selectedTab = index);
+          _fetchGroupMedia(tab: index);
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
@@ -884,20 +936,22 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
       );
     } else if (_selectedTab == 1) {
       if (_linkMessages.isEmpty) return _emptyState('No links shared yet');
+      // A message can hold several links; each gets its own row.
+      final rows = [
+        for (final msg in _linkMessages)
+          for (final url in _linksIn('${msg['message'] ?? ''}')) {'url': url, 'by': '${msg['senderName'] ?? ''}'},
+      ];
       return ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: _linkMessages.length,
+        itemCount: rows.length,
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (context, index) {
-          final msg = _linkMessages[index];
-          final text = msg['message']?.toString() ?? '';
-          final urlMatch = RegExp(r'https?://[^\s]+').firstMatch(text);
-          final url = urlMatch?.group(0) ?? '';
+          final url = rows[index]['url']!;
           return ListTile(
             leading: const Icon(Icons.link, color: _primary),
-            title: Text(url, style: const TextStyle(fontSize: 13, color: Colors.blue), maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(msg['senderName'] ?? '', style: const TextStyle(fontSize: 11)),
+            title: Text(url, style: const TextStyle(fontSize: 13, color: Colors.blue), maxLines: 2, overflow: TextOverflow.ellipsis),
+            subtitle: Text(rows[index]['by']!, style: const TextStyle(fontSize: 11)),
             onTap: () async {
               final uri = Uri.parse(url);
               if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -914,15 +968,28 @@ class _StormChatGroupInfoScreenState extends State<StormChatGroupInfoScreen> {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final msg = _docMessages[index];
+          final raw = '${msg['mediaUrl'] ?? ''}';
           return ListTile(
             leading: const Icon(Icons.insert_drive_file, color: _primary),
-            title: Text(msg['message'] ?? 'Document', style: const TextStyle(fontSize: 13)),
-            subtitle: Text(msg['senderName'] ?? '', style: const TextStyle(fontSize: 11)),
+            title: Text('${msg['message'] ?? 'Document'}', style: const TextStyle(fontSize: 13)),
+            subtitle: Text('${msg['senderName'] ?? ''}', style: const TextStyle(fontSize: 11)),
+            onTap: raw.isEmpty
+                ? null
+                : () => launchUrl(Uri.parse(raw.startsWith('http') ? raw : 'https://millerstorm.tech$raw'),
+                    mode: LaunchMode.externalApplication),
           );
         },
       );
     }
   }
+
+  // More of the open tab, when the server said there's more.
+  Widget _galleryFooter() => _galleryMore[_selectedTab] == true
+      ? TextButton(
+          onPressed: _loadingMedia ? null : () => _fetchGroupMedia(more: true),
+          child: const Text('Load more', style: TextStyle(color: _primary)),
+        )
+      : const SizedBox.shrink();
 
   Widget _emptyState(String text) {
     return Padding(

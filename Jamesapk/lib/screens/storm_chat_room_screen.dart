@@ -18,23 +18,30 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/storm_chat_logic.dart';
 import 'storm_chat_group_info_screen.dart';
+import 'storm_chat_search_screen.dart';
+import '../widgets/voice_message_bubble.dart';
 import 'image_viewer_screen.dart';
 import 'video_viewer_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:image_editor_plus/image_editor_plus.dart';
+import 'package:record/record.dart';
+import 'package:geolocator/geolocator.dart';
 
 class StormChatRoomScreen extends StatefulWidget {
   final dynamic group;
   final String userId;
   final String userRole;
+  // Open the chat at this message (a search result), loading back to it.
+  final String? initialMessageId;
 
   const StormChatRoomScreen({
     Key? key,
     required this.group,
     required this.userId,
     required this.userRole,
+    this.initialMessageId,
   }) : super(key: key);
 
   @override
@@ -57,6 +64,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   static const _olderPageSize = 50;
   bool _hasOlder = false;
   bool _loadingOlder = false;
+  bool _openedAtTarget = false;
   String? userName;
   // The server stores message senderId as the app `id`, while widget.userId is
   // the Mongo `_id`. Collect both so "is this my message?" matches either form.
@@ -245,6 +253,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   void dispose() {
     _pollTimer?.cancel();
     _blinkTimer?.cancel();
+    _recordTimer?.cancel();
+    if (_recording) _recorderInstance?.stop().catchError((_) => null);
+    _recorderInstance?.dispose();
     _messageController.removeListener(_onMessageTextChanged);
     _messageFocusNode.dispose();
     _scrollController.removeListener(_onScroll);
@@ -268,6 +279,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       i = 0;
     }
     return i;
+  }
+
+  Widget _keyed(int index) {
+    final m = messages[index];
+    return KeyedSubtree(key: _keyFor('${m['_id']}'), child: _buildMessage(m, index));
   }
 
   Widget _buildMessageList() {
@@ -297,7 +313,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, i) => _buildMessage(messages[anchor - 1 - i], anchor - 1 - i),
+              (context, i) => _keyed(anchor - 1 - i),
               childCount: anchor,
             ),
           ),
@@ -307,7 +323,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, j) => _buildMessage(messages[anchor + j], anchor + j),
+              (context, j) => _keyed(anchor + j),
               childCount: messages.length - anchor,
             ),
           ),
@@ -657,6 +673,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           }
         });
 
+        // Opened from a search result: go to that message instead of the end.
+        final target = widget.initialMessageId;
+        if (!silent && target != null && !_openedAtTarget) {
+          _openedAtTarget = true;
+          _jumpToMessage(target);
+          return;
+        }
         // On initial load, go to the latest message. Re-jump after short delays
         // so images/videos finishing layout don't leave the view above bottom.
         if (!silent) {
@@ -703,19 +726,19 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   // The page just before the oldest message on screen (scrolling up). The list
   // keeps its place: older messages grow upward from the first loaded page.
-  Future<void> _loadOlder() async {
+  Future<void> _loadOlder({int limit = _olderPageSize}) async {
     if (_loadingOlder || !_hasOlder || messages.isEmpty || _gone) return;
     setState(() => _loadingOlder = true);
     try {
       final oldest = '${messages.first['_id']}';
       final res = await api.get(Uri.parse(
-          'https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}?beforeId=$oldest&limit=$_olderPageSize'));
+          'https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}?beforeId=$oldest&limit=$limit'));
       if (res.statusCode == 200 && mounted) {
         final older = _asMessages(res.body);
         setState(() {
           messages = prependOlderPage(
               messages.map((m) => Map<String, dynamic>.from(m as Map)).toList(), older);
-          _hasOlder = older.length >= _olderPageSize;
+          _hasOlder = older.length >= limit;
         });
       }
     } catch (e) {
@@ -725,10 +748,30 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
   }
 
+  // Each message's widget, so a jump can bring the exact one into view.
+  final Map<String, GlobalKey> _messageKeys = {};
+  GlobalKey _keyFor(String id) => _messageKeys.putIfAbsent(id, () => GlobalKey());
+
+  // Go to a message that may be older than what's loaded (a search result, a
+  // quoted reply): load earlier pages until it's there, up to ~10,000 back,
+  // like the website.
+  Future<void> _jumpToMessage(String messageId) async {
+    bool loaded() => messages.any((m) => '${m['_id']}' == messageId);
+    for (var tries = 0; !loaded() && _hasOlder && tries < 20; tries++) {
+      await _loadOlder(limit: 500);
+    }
+    if (!mounted) return;
+    if (!loaded()) {
+      _showError("That message isn't in this chat any more");
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToMessage(messageId));
+  }
+
   void _scrollToMessage(String messageId) {
     // Find the index of the message
     final index = messages.indexWhere((msg) => msg['_id'] == messageId);
-    if (index == -1) return;
+    if (index == -1 || !_scrollController.hasClients) return;
 
     // Calculate approximate position
     // Each message is roughly 80-100px, use 90 as average; offset 0 is the
@@ -741,7 +784,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       position,
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
-    ).then((_) {
+    ).then((_) async {
+      if (!mounted) return;
+      // The estimate lands near it; now bring the message itself into view.
+      final ctx = _messageKeys[messageId]?.currentContext;
+      if (ctx != null) {
+        await Scrollable.ensureVisible(ctx, alignment: 0.3, duration: const Duration(milliseconds: 200));
+      }
+      if (!mounted) return;
       // Start blinking animation
       setState(() {
         _blinkingMessageId = messageId;
@@ -750,6 +800,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       // Stop blinking after 2 blinks (1 second)
       _blinkTimer?.cancel();
       _blinkTimer = Timer(const Duration(milliseconds: 1000), () {
+        if (!mounted) return;
         setState(() {
           _blinkingMessageId = null;
         });
@@ -862,18 +913,25 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ListTile(
               leading: const Icon(Icons.photo_library, color: Color(0xFFCB0002)),
               title: const Text('Choose from Gallery'),
+              subtitle: const Text('Photos or videos, up to 10 at a time'),
               onTap: () async {
                 Navigator.pop(context);
                 // Compress on pick: cap resolution + re-encode so a 5–15MB phone
                 // photo becomes a few hundred KB → fast upload AND fast display.
-                final XFile? image = await picker.pickImage(
-                  source: ImageSource.gallery,
+                final picked = await picker.pickMultipleMedia(
+                  limit: kAlbumMax,
                   imageQuality: 70,
                   maxWidth: 1920,
                   maxHeight: 1920,
                 );
-                if (image != null) {
-                  _editAndSendImage(File(image.path));
+                if (picked.isEmpty) return;
+                if (picked.length == 1) {
+                  // One photo goes through the editor first, as before.
+                  final f = File(picked.first.path);
+                  _isVideoPath(f.path) ? _uploadFile(f, 'video') : _editAndSendImage(f);
+                } else {
+                  if (picked.length > kAlbumMax) _showError('You can send up to $kAlbumMax at a time; sending the first $kAlbumMax.');
+                  _sendAlbum(picked.take(kAlbumMax).map((x) => File(x.path)).toList());
                 }
               },
             ),
@@ -917,6 +975,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 }
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.location_on_outlined, color: Color(0xFFCB0002)),
+              title: const Text('Share location'),
+              subtitle: const Text('Sends where you are now, once'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareLocation();
+              },
+            ),
             // Polls only make sense in groups/subgroups, not 1:1 personal chats.
             if (_group['isDirect'] != true)
               ListTile(
@@ -937,6 +1004,16 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final questionC = TextEditingController();
     final optionCs = [TextEditingController(), TextEditingController()];
     bool multiple = false;
+    // PR #106: an optional end time, and anonymous voting.
+    bool anonymous = false;
+    String ends = 'none';
+    const endChoices = {
+      'none': ['No end', Duration.zero],
+      '1h': ['In 1 hour', Duration(hours: 1)],
+      '1d': ['In 1 day', Duration(days: 1)],
+      '3d': ['In 3 days', Duration(days: 3)],
+      '1w': ['In 1 week', Duration(days: 7)],
+    };
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -971,6 +1048,28 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                   title: const Text('Allow multiple answers', style: TextStyle(fontSize: 13)),
                   controlAffinity: ListTileControlAffinity.leading,
                 ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: anonymous,
+                  onChanged: (v) => setDlg(() => anonymous = v ?? false),
+                  title: const Text('Anonymous voting', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text("Nobody sees who voted for what", style: TextStyle(fontSize: 11)),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                Row(
+                  children: [
+                    const Text('Poll ends', style: TextStyle(fontSize: 13)),
+                    const SizedBox(width: 12),
+                    DropdownButton<String>(
+                      value: ends,
+                      onChanged: (v) => setDlg(() => ends = v ?? 'none'),
+                      items: [
+                        for (final e in endChoices.entries)
+                          DropdownMenuItem(value: e.key, child: Text(e.value[0] as String, style: const TextStyle(fontSize: 13))),
+                      ],
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -983,7 +1082,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 final opts = optionCs.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
                 if (q.isEmpty || opts.length < 2) return;
                 Navigator.pop(ctx);
-                _sendPoll(q, opts, multiple);
+                final span = endChoices[ends]![1] as Duration;
+                _sendPoll(q, opts, multiple,
+                    anonymous: anonymous,
+                    endsAt: span == Duration.zero ? null : DateTime.now().toUtc().add(span).toIso8601String());
               },
               child: const Text('Send', style: TextStyle(color: Colors.white)),
             ),
@@ -993,12 +1095,54 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
-  Future<void> _sendPoll(String question, List<String> options, bool allowMultiple) async {
+  Future<void> _sendPoll(String question, List<String> options, bool allowMultiple,
+      {bool anonymous = false, String? endsAt}) async {
     await _postMessage({
       'message': question,
       'messageType': 'poll',
-      'poll': {'question': question, 'options': options, 'allowMultiple': allowMultiple},
+      'poll': {
+        'question': question,
+        'options': options,
+        'allowMultiple': allowMultiple,
+        'anonymous': anonymous,
+        if (endsAt != null) 'endsAt': endsAt,
+      },
     }, 'Failed to create poll');
+  }
+
+  // Who picked what (PR #106). The server sends names, never ids, and none
+  // at all for an anonymous poll.
+  void _showPollVoters(Map poll) {
+    final options = (poll['options'] as List?) ?? [];
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text('📊 ${poll['question'] ?? ''}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              for (final o in options) ...[
+                Text('${o['text'] ?? ''} · ${((o['votes'] as List?) ?? []).length}',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 12),
+                  child: Text(
+                    ((o['voterNames'] as List?) ?? []).isEmpty ? 'No votes' : (o['voterNames'] as List).join(', '),
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _votePoll(String messageId, int optionIndex) async {
@@ -1032,7 +1176,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         voterSet.add(v.toString());
       }
     }
-    final votersCount = voterSet.length;
+    final votersCount = (poll['voterCount'] as num?)?.toInt() ?? voterSet.length;
+    final ended = pollEnded(poll);
+    final endsAt = '${poll['endsAt'] ?? ''}';
+    final anonymous = poll['anonymous'] == true;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -1055,6 +1202,17 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               ),
           ],
         ),
+        if (anonymous || endsAt.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              [
+                if (anonymous) '🔒 Anonymous',
+                if (ended) 'Poll ended' else if (endsAt.isNotEmpty) 'Ends ${centralWhenLabel(endsAt)}',
+              ].join(' · '),
+              style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
         const SizedBox(height: 8),
         ...options.asMap().entries.map((entry) {
           final i = entry.key;
@@ -1066,7 +1224,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: GestureDetector(
-              onTap: () => _votePoll(message['_id'].toString(), i),
+              // Votes after the end are refused, so don't offer them.
+              onTap: ended ? null : () => _votePoll(message['_id'].toString(), i),
               child: Container(
                 decoration: BoxDecoration(
                   border: Border.all(color: isMyMessage ? Colors.white54 : const Color(0xFFE5E7EB)),
@@ -1106,8 +1265,20 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ),
           );
         }),
-        Text('$votersCount of $denom voted · tap to vote${poll['allowMultiple'] == true ? ' (multiple)' : ''}',
+        Text(
+            ended
+                ? '$votersCount of $denom voted · Poll ended'
+                : '$votersCount of $denom voted · tap to vote${poll['allowMultiple'] == true ? ' (multiple)' : ''}',
             style: TextStyle(color: textColor.withOpacity(0.75), fontSize: 11)),
+        if (!anonymous && votersCount > 0)
+          GestureDetector(
+            onTap: () => _showPollVoters(poll),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('See votes',
+                  style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
+            ),
+          ),
       ],
     );
   }
@@ -1230,6 +1401,192 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       setState(() { isUploading = false; });
     }
   }
+
+  bool _isVideoPath(String path) => RegExp(r'\.(mp4|mov|m4v|3gp|webm|avi|mkv)$', caseSensitive: false).hasMatch(path);
+
+  /// Uploads one file and returns its address, or null (the reason is shown).
+  Future<String?> _uploadToServer(File file) async {
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse('https://millerstorm.tech/api/direct-upload'));
+      request.headers['Accept'] = 'application/json';
+      request.files.add(await http.MultipartFile.fromPath('file', file.path, filename: file.path.split('/').last));
+      final streamed = await api.send(request).timeout(const Duration(minutes: 15));
+      final res = await http.Response.fromStream(streamed);
+      if (res.statusCode == 200) {
+        final url = json.decode(res.body)['url'];
+        if (url is String && url.isNotEmpty) return url;
+      }
+      _showError(_serverError(res.body, 'Upload failed (${res.statusCode})'));
+    } catch (e) {
+      _showError('Upload failed: ${e.toString().replaceAll('Exception: ', '')}');
+    }
+    return null;
+  }
+
+  // Several photos/videos at once (PR #106): uploaded, then sent as ONE album
+  // (one message each on the server, one alert, shown as a grid).
+  Future<void> _sendAlbum(List<File> files) async {
+    setState(() => isUploading = true);
+    try {
+      final album = <Map<String, String>>[];
+      for (final original in files) {
+        final isVideo = _isVideoPath(original.path);
+        final mb = (await original.length()) / (1024 * 1024);
+        if (mb > (isVideo ? 500 : 30)) {
+          _showError(isVideo ? 'A video is over the 500MB limit' : 'A photo is over the 30MB limit');
+          return;
+        }
+        var file = original;
+        if (isVideo) {
+          try {
+            final info = await VideoCompress.compressVideo(original.path, quality: VideoQuality.MediumQuality, includeAudio: true);
+            if (info?.file != null) file = info!.file!;
+          } catch (_) {}
+        }
+        final url = await _uploadToServer(file);
+        if (url == null) return;
+        album.add({'mediaUrl': url, 'messageType': isVideo ? 'video' : 'image'});
+      }
+      await _postMessage({'message': '', 'messageType': 'image', 'album': album}, "Couldn't send the photos");
+    } finally {
+      if (mounted) setState(() => isUploading = false);
+    }
+  }
+
+  // Share where you are now, once (PR #106). The server stores the point and
+  // writes the maps link itself.
+  Future<void> _shareLocation() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Share your location?'),
+        content: const Text('Everyone in this chat will see a map pin of where you are right now. It is sent once, not tracked.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Share')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _showError('Turn on Location Services to share where you are');
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        _showError('Allow location access in Settings to share where you are');
+        return;
+      }
+      setState(() => isUploading = true);
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)),
+      );
+      await _postMessage({
+        'message': '',
+        'messageType': 'text',
+        'location': {'lat': pos.latitude, 'lng': pos.longitude},
+      }, "Couldn't share your location");
+    } catch (_) {
+      _showError("Couldn't find your location. Try again in a moment.");
+    } finally {
+      if (mounted) setState(() => isUploading = false);
+    }
+  }
+
+  // ---- voice messages (PR #106): up to 5 minutes -------------------------
+
+  // Made on first use, so opening a chat never touches the microphone.
+  AudioRecorder? _recorderInstance;
+  AudioRecorder get _recorder => _recorderInstance ??= AudioRecorder();
+  bool _recording = false;
+  int _recordSec = 0;
+  Timer? _recordTimer;
+  DateTime? _recordStartedAt;
+
+  Future<void> _startVoice() async {
+    try {
+      if (!await _recorder.hasPermission()) {
+        _showError('Allow the microphone to send voice messages');
+        return;
+      }
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+      _recordStartedAt = DateTime.now();
+      if (!mounted) return;
+      setState(() {
+        _recording = true;
+        _recordSec = 0;
+      });
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        final sec = DateTime.now().difference(_recordStartedAt!).inSeconds;
+        if (sec >= kVoiceMaxSec) {
+          _finishVoice(send: true); // the 5-minute limit: send what there is
+        } else if (mounted) {
+          setState(() => _recordSec = sec);
+        }
+      });
+    } catch (_) {
+      _showError("Couldn't start recording");
+    }
+  }
+
+  Future<void> _finishVoice({required bool send}) async {
+    if (!_recording) return;
+    _recordTimer?.cancel();
+    final started = _recordStartedAt;
+    String? path;
+    try {
+      path = await _recorder.stop();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _recording = false);
+    if (!send || path == null || started == null) return;
+    final seconds = DateTime.now().difference(started).inMilliseconds / 1000;
+    if (seconds < 1) {
+      _showError('That was too short to send');
+      return;
+    }
+    setState(() => isUploading = true);
+    try {
+      final url = await _uploadToServer(File(path));
+      if (url == null) return;
+      await _postMessage({
+        'message': '',
+        'messageType': 'file',
+        'mediaUrl': url,
+        'voice': {'durationSec': seconds.clamp(1, kVoiceMaxSec)},
+      }, "Couldn't send the voice message");
+    } finally {
+      if (mounted) setState(() => isUploading = false);
+    }
+  }
+
+  Widget _recordingBar() => Row(
+        children: [
+          IconButton(
+            tooltip: 'Cancel recording',
+            icon: const Icon(Icons.delete_outline, color: Color(0xFFCB0002)),
+            onPressed: () => _finishVoice(send: false),
+          ),
+          const Icon(Icons.fiber_manual_record, color: Color(0xFFCB0002), size: 14),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text('Recording ${formatDuration(_recordSec)} / ${formatDuration(kVoiceMaxSec)}',
+                style: TextStyle(fontSize: 15, color: _isDarkTheme ? Colors.white : const Color(0xFF111827))),
+          ),
+          Container(
+            decoration: const BoxDecoration(color: Color(0xFFCB0002), shape: BoxShape.circle),
+            child: IconButton(
+              tooltip: 'Send voice message',
+              icon: const Icon(Icons.send, color: Colors.white, size: 20),
+              onPressed: () => _finishVoice(send: true),
+            ),
+          ),
+        ],
+      );
 
   // Send a GIPHY GIF/sticker — it's already hosted, so post an image message
   // pointing at its URL (no upload).
@@ -1442,6 +1799,27 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // Search this chat (PR #105); a result jumps to that message.
+          IconButton(
+            tooltip: 'Search this chat',
+            icon: const Icon(Icons.search, color: Colors.white),
+            onPressed: () async {
+              final id = await Navigator.push<String>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StormChatSearchScreen(
+                    groupId: '${_group['_id']}',
+                    chatName: '${_group['name'] ?? 'this chat'}',
+                    userId: widget.userId,
+                    userRole: widget.userRole,
+                  ),
+                ),
+              );
+              if (id != null && mounted) _jumpToMessage(id);
+            },
+          ),
+        ],
         title: InkWell(
           onTap: () async {
             final result = await Navigator.push<String>(
@@ -1683,6 +2061,32 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 },
                               ),
                   ),
+                // Editing one of my messages (PR #105).
+                if (_editing != null)
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(8),
+                      border: const Border(left: BorderSide(color: Color(0xFFCB0002), width: 3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.edit_outlined, size: 16, color: Color(0xFFCB0002)),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text('Editing message',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                        ),
+                        IconButton(
+                          tooltip: 'Cancel edit',
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: _cancelEdit,
+                        ),
+                      ],
+                    ),
+                  ),
                 // Reply preview
                 if (replyingTo != null)
                   Container(
@@ -1785,6 +2189,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (_recording) _recordingBar() else
                         Row(
                         children: [
                           // GIF / Stickers (GIPHY). Emojis come from the device
@@ -1862,14 +2267,32 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                               color: Color(0xFFCB0002),
                               shape: BoxShape.circle,
                             ),
-                            child: IconButton(
-                              icon: Icon(
-                                isSending ? Icons.hourglass_empty : Icons.send,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                              onPressed: isSending ? null : _sendMessage,
-                            ),
+                            // Empty box: record a voice message (PR #106);
+                            // editing: save the edit; otherwise send.
+                            child: Builder(builder: (context) {
+                              final empty = _messageController.text.trim().isEmpty && _editing == null;
+                              return IconButton(
+                                tooltip: empty ? 'Record a voice message' : _editing != null ? 'Save edit' : 'Send',
+                                icon: Icon(
+                                  isSending
+                                      ? Icons.hourglass_empty
+                                      : empty
+                                          ? Icons.mic
+                                          : _editing != null
+                                              ? Icons.check
+                                              : Icons.send,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                onPressed: isSending || isUploading
+                                    ? null
+                                    : empty
+                                        ? _startVoice
+                                        : _editing != null
+                                            ? _saveEdit
+                                            : _sendMessage,
+                              );
+                            }),
                           ),
                         ],
                       ),
@@ -1954,6 +2377,94 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
+  // Text, location and voice messages sit in a coloured bubble; photos,
+  // videos, files and polls don't.
+  bool _inBubble(dynamic m) => m['messageType'] == 'text' || m['voice'] != null;
+
+  String _timeLabel(dynamic m) => '${m['editedAt'] != null && !isDeletedMessage(m) ? 'edited · ' : ''}${_formatTime(m['createdAt'])}';
+
+  String _absUrl(String url) => url.startsWith('http') ? url : 'https://millerstorm.tech$url';
+
+  // A shared location (PR #106): a pin and "Open in Maps".
+  Widget _buildLocationCard(Map message, Color textColor) {
+    final loc = message['location'] as Map;
+    final url = 'https://www.google.com/maps?q=${loc['lat']},${loc['lng']}';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.location_on, color: textColor, size: 22),
+          const SizedBox(width: 6),
+          Text('Shared location', style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+          icon: Icon(Icons.map_outlined, color: textColor, size: 18),
+          label: Text('Open in Maps', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: textColor.withOpacity(0.7)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            minimumSize: const Size(0, 34),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Photos and videos sent together (PR #106): one grid, tap to open each.
+  Widget _buildAlbumGrid(List<Map<String, dynamic>> items) {
+    final cols = items.length == 2 || items.length == 4 ? 2 : 3;
+    return SizedBox(
+      width: 240,
+      child: GridView.count(
+        crossAxisCount: cols,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        mainAxisSpacing: 3,
+        crossAxisSpacing: 3,
+        children: [
+          for (final item in items)
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => item['messageType'] == 'video'
+                      ? VideoViewerScreen(videoUrl: '${item['mediaUrl']}')
+                      : ImageViewerScreen(
+                          imageUrl: _absUrl('${item['mediaUrl']}'),
+                          groupId: _group['_id'],
+                          userId: widget.userId,
+                          userName: userName,
+                          userRole: widget.userRole,
+                        ),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: item['messageType'] == 'video'
+                    ? Container(
+                        color: Colors.black87,
+                        child: const Center(child: Icon(Icons.play_circle_fill, color: Colors.white, size: 30)),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: _absUrl('${item['mediaUrl']}'),
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(color: const Color(0xFFE5E7EB)),
+                        errorWidget: (_, __, ___) => Container(
+                          color: const Color(0xFFE5E7EB),
+                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                        ),
+                      ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMessage(dynamic message, int index) {
     final isMyMessage = _isMine(message);
     final showDate = index == 0 ||
@@ -1978,6 +2489,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         ),
       );
     }
+
+    // Photos sent together show once, as one grid on the first of them.
+    final Map asMap = message;
+    final album = albumOf(asMap, messages);
+    if (album != null && '${album.first['_id']}' != '${message['_id']}') return const SizedBox.shrink();
+    final deleted = isDeletedMessage(message);
 
     // Look up original replied-to message from local list (server may not return these fields)
     final replyToId = message['replyTo']?.toString() ?? '';
@@ -2021,6 +2538,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         // Swipeable message with animation
         _SwipeableMessage(
           onSwipeRight: () {
+            if (deleted) return;
             setState(() {
               replyingTo = message;
             });
@@ -2028,6 +2546,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           },
           child: GestureDetector(
             onLongPress: () {
+              if (deleted) return;
               setState(() {
                 _longPressedMessage = message;
                 _emojiTrayMessageId = message['_id'];
@@ -2126,7 +2645,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                               ),
                             ),
                           // Different styling for different message types
-                          if (message['messageType'] == 'text')
+                          if (_inBubble(message))
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               decoration: BoxDecoration(
@@ -2148,7 +2667,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                       message['replyToMessage'].toString().isNotEmpty)
                                     GestureDetector(
                                       onTap: () {
-                                        _scrollToMessage(message['replyTo']);
+                                        _jumpToMessage('${message['replyTo']}');
                                       },
                                       child: Container(
                                         margin: const EdgeInsets.only(bottom: 6),
@@ -2235,7 +2754,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                       Padding(
                                         padding: const EdgeInsets.only(bottom: 1),
                                         child: Text(
-                                          _formatTime(message['createdAt']),
+                                          _timeLabel(message),
                                           style: TextStyle(
                                             fontSize: 10,
                                             color: isMyMessage
@@ -2256,7 +2775,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           // overlapping it slightly — WhatsApp style.
                           _buildReactions(message, isMyMessage),
                           // Images/videos have no bubble, so show their time below.
-                          if (message['messageType'] != 'text')
+                          if (!_inBubble(message))
                             Padding(
                               padding: const EdgeInsets.only(
                                 left: 8,
@@ -2264,7 +2783,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 top: 4,
                               ),
                               child: Text(
-                                _formatTime(message['createdAt']),
+                                _timeLabel(message),
                                 style: const TextStyle(
                                   fontSize: 10,
                                   color: Color(0xFF9CA3AF),
@@ -2279,6 +2798,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     // skip the sender name (above) and the time + reaction pill
                     // (below) so the button centers on the message body, lining up
                     // with the bubble instead of the whole column.
+                    if (!deleted)
                     Positioned(
                       top: isMyMessage ? 0 : 20,
                       bottom: 8 +
@@ -2558,6 +3078,16 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               ),
               const Divider(height: 1),
               // Options
+              // Edit: your own text or caption, for 15 minutes (PR #105).
+              if (canEditMessage(message, _myIds) && canSendMessage)
+                ListTile(
+                  leading: Icon(Icons.edit_outlined, color: textColor),
+                  title: Text('Edit', style: TextStyle(color: textColor)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _startEdit(message);
+                  },
+                ),
               ListTile(
                 leading: Icon(Icons.reply, color: textColor),
                 title: Text('Reply', style: TextStyle(color: textColor)),
@@ -2627,15 +3157,25 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   void _confirmDeleteMessage(dynamic message) {
+    // Photos sent together are deleted together (like the website).
+    final Map asMap = message;
+    final album = albumOf(asMap, messages);
+    final targets = album ?? [message];
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete message?'),
-        content: const Text('This message will be removed for everyone.'),
+        title: Text(album != null ? 'Delete these ${album.length} photos?' : 'Delete message?'),
+        content: const Text('Everyone will see "This message was deleted" instead.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
-            onPressed: () { Navigator.pop(ctx); _deleteMessage(message); },
+            onPressed: () async {
+              Navigator.pop(ctx);
+              for (final m in targets) {
+                if (!await _deleteMessage(m)) break;
+              }
+              _fetchPinned();
+            },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
@@ -2643,7 +3183,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
-  Future<void> _deleteMessage(dynamic message) async {
+  // GroupMe-style (PR #105): the message stays as "This message was
+  // deleted"; the server sends back that notice.
+  Future<bool> _deleteMessage(dynamic message) async {
     final messageId = message['_id'];
     try {
       final res = await api.delete(
@@ -2652,12 +3194,94 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         body: json.encode({'messageId': messageId}),
       );
       if (res.statusCode == 200) {
-        setState(() => messages.removeWhere((m) => m['_id'] == messageId));
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete message')));
+        Map<String, dynamic>? notice;
+        try {
+          final d = json.decode(res.body);
+          if (d is Map && d['message'] is Map) notice = Map<String, dynamic>.from(d['message'] as Map);
+        } catch (_) {}
+        if (mounted) {
+          setState(() {
+            final i = messages.indexWhere((m) => m['_id'] == messageId);
+            if (i >= 0) {
+              messages[i] = notice ??
+                  <String, dynamic>{
+                    ...Map<String, dynamic>.from(messages[i] as Map),
+                    'message': kDeletedText,
+                    'messageType': 'text',
+                    'mediaUrl': '',
+                    'reactions': [],
+                    'deletedAt': DateTime.now().toUtc().toIso8601String(),
+                  };
+            }
+          });
+        }
+        return true;
       }
+      _showError(_serverError(res.body, 'Failed to delete message'));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete message')));
+      _showError('Failed to delete message');
+    }
+    return false;
+  }
+
+  // ---- edit (PR #105): your own text or caption, for 15 minutes ----------
+
+  // The message being edited; the box holds its words until saved or cancelled.
+  dynamic _editing;
+
+  void _startEdit(dynamic message) {
+    final Map asMap = message;
+    setState(() {
+      _editing = message;
+      replyingTo = null;
+      _messageController.text = captionOf(asMap);
+      _messageController.selection = TextSelection.collapsed(offset: _messageController.text.length);
+    });
+    _messageFocusNode.requestFocus();
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _editing = null;
+      _messageController.clear();
+    });
+  }
+
+  Future<void> _saveEdit() async {
+    final target = _editing;
+    if (target == null || isSending) return;
+    final text = _messageController.text.trim();
+    if (text.length > kMaxMessageChars) {
+      _showError(kTooLongMessage);
+      return;
+    }
+    if (target['messageType'] == 'text' && text.isEmpty) {
+      _showError("A message can't be empty. Delete it instead.");
+      return;
+    }
+    setState(() => isSending = true);
+    try {
+      final res = await api.patch(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${_group['_id']}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'action': 'edit', 'messageId': target['_id'], 'message': text}),
+      );
+      if (res.statusCode == 200) {
+        final updated = Map<String, dynamic>.from(json.decode(res.body) as Map);
+        if (!mounted) return;
+        setState(() {
+          final i = messages.indexWhere((m) => m['_id'] == target['_id']);
+          if (i >= 0) messages[i] = <String, dynamic>{...Map<String, dynamic>.from(messages[i] as Map), ...updated};
+          _editing = null;
+          _messageController.clear();
+        });
+      } else {
+        _showError(_serverError(res.body, "Couldn't save the edit"));
+      }
+    } catch (_) {
+      _showError("Couldn't save the edit");
+    } finally {
+      if (mounted) setState(() => isSending = false);
     }
   }
 
@@ -2909,6 +3533,19 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       'messageType': mType,
       'mediaUrl': message['mediaUrl'] ?? '',
     };
+    final Map asMap = message;
+    final album = albumOf(asMap, messages);
+    if (album != null) {
+      baseBody
+        ..remove('mediaUrl')
+        ..['message'] = ''
+        ..['messageType'] = 'image'
+        ..['album'] = [for (final a in album) {'mediaUrl': a['mediaUrl'], 'messageType': a['messageType']}];
+    } else if (message['voice'] is Map) {
+      baseBody['voice'] = {'durationSec': message['voice']['durationSec']};
+    } else if (message['location'] is Map) {
+      baseBody['location'] = {'lat': message['location']['lat'], 'lng': message['location']['lng']};
+    }
     if (mType == 'poll' && message['poll'] != null) {
       final poll = message['poll'] as Map<String, dynamic>;
       baseBody['poll'] = {
@@ -3028,6 +3665,23 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final messageType = message['messageType'] ?? 'text';
     // Red (my) and dark (others') bubbles both use white text.
     final textColor = Colors.white;
+
+    // GroupMe-style: a deleted message stays as a notice (PR #105).
+    if (isDeletedMessage(message)) {
+      return Text('🚫 $kDeletedText',
+          style: TextStyle(color: textColor.withOpacity(0.75), fontSize: 15, fontStyle: FontStyle.italic));
+    }
+    if (message['location'] is Map) return _buildLocationCard(message, textColor);
+    if (message['voice'] is Map && '${message['mediaUrl'] ?? ''}'.isNotEmpty) {
+      return VoiceMessageBubble(
+        url: _absUrl('${message['mediaUrl']}'),
+        durationSec: (message['voice']['durationSec'] as num?) ?? 0,
+        color: textColor,
+      );
+    }
+    final Map asMap = message;
+    final album = albumOf(asMap, messages);
+    if (album != null) return _buildAlbumGrid(album);
 
     if (messageType == 'text') {
       return _buildTextWithLinks(message['message'] ?? '', textColor, isMyMessage);

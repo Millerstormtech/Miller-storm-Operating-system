@@ -220,6 +220,7 @@ void main() {
   group('sending keeps what was typed until the server accepts it', () {
     Future<void> send(WidgetTester tester, String text) async {
       await tester.enterText(find.byType(TextField), text);
+      await tester.pump(); // the 🎤 turns into Send once there's text
       await tester.tap(find.byIcon(Icons.send));
       await settle(tester);
     }
@@ -368,11 +369,17 @@ void main() {
       expect(find.text('Delete group for everyone'), findsOneWidget);
     });
 
-    testWidgets('mute sends the choice to the server', (tester) async {
-      await pumpInfo(tester, {...room(groupDoc(rights()), messages()), '$groupPath/mute': {'muted': true}});
+    testWidgets('mute asks for how long and sends the choice to the server', (tester) async {
+      await pumpInfo(tester, {
+        ...room(groupDoc(rights()), messages()),
+        '$groupPath/mute': {'muted': true, 'mutedUntil': '2026-10-17T21:30:00.000Z'},
+      });
       await tester.tap(find.text('Mute this group'));
+      await settle(tester, 6);
+      await tester.tap(find.text('For 1 hour'));
       await settle(tester);
-      expect(jsonDecode(sent('POST', '$groupPath/mute').single.body), {'muted': true});
+      expect(jsonDecode(sent('POST', '$groupPath/mute').single.body), {'muted': true, 'for': '1h'});
+      expect(find.textContaining('Muted until'), findsWidgets);
     });
 
     testWidgets('the last admin picks a successor, then leaves', (tester) async {
