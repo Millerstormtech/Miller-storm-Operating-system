@@ -15,6 +15,7 @@ import { UserModel } from "../models/User";
 import { sendPushNotificationToMultiple } from "../firebase-admin";
 import { logToDb } from "../models/SystemLog";
 import { pushPreview } from "./copy";
+import { activeMutedIds } from "../stormchat/mute";
 
 // Main Chat 2026 (public, top-level, whole company), targeted by _id so renaming
 // the group never breaks this. Verified against production 2026-08-03.
@@ -51,7 +52,8 @@ export async function announce(text: string, mentionIds: string[] = []): Promise
     // group.members hold Mongo _ids; the bot is not a member, so every member's
     // phone gets the push.
     // People who muted the chat get no push, unless the post mentions them.
-    const muted = new Set((group.mutedBy || []).map((m: any) => String(m)));
+    // Only mutes still in force ("mute for 1 hour" ends by itself).
+    const muted = new Set(activeMutedIds(group));
     const memberIds: string[] = (group.members || [])
       .map((m: any) => String(m))
       .filter((m: string) => !muted.has(m) || mentions.map(String).includes(m));

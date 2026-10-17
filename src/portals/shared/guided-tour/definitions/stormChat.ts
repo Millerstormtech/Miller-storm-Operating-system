@@ -9,7 +9,7 @@ export const STORM_CHAT_TOUR: TourDefinition = {
     {
       target: "sc-search",
       title: "Find a conversation",
-      body: "Type to filter your groups and your direct messages down to the one you want.",
+      body: "Type to find a chat by name, or any message in the chats you're in.",
     },
     {
       target: "sc-new",
