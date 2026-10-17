@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { appConfirm } from "../../lib/appDialogs";
+import { appConfirm, notify } from "../../lib/appDialogs";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { useAuth } from "../../contexts/AuthContext";
@@ -2350,11 +2350,14 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
         const fd = new FormData();
         fd.append("file", avatarFile);
         const res = await fetch("/api/ai-bots/upload-avatar", { method: "POST", body: fd });
+        const data = await res.json().catch(() => ({}));
         if (res.ok) {
-          const data = await res.json();
           finalAvatarUrl = data.url;
           setAvatarPreview(finalAvatarUrl);
           setAvatarFile(null);
+        } else {
+          // Say why the avatar didn't change (e.g. an .svg) instead of silently keeping the old one.
+          notify(data.error || "Avatar upload failed", "error");
         }
       } finally {
         setUploadingAvatar(false);
@@ -2484,7 +2487,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
                 {avatarFile ? `✓ ${avatarFile.name}` : "Chatbot Avatar"}
               </div>
               <div style={{ fontSize: "10px", color: "var(--text-subtle)", marginTop: "2px" }}>Click to change</div>
-              <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarChange} />
+              <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" style={{ display: "none" }} onChange={handleAvatarChange} />
             </div>
             {/* Icon size + enter message */}
             <div style={{ flex: 1, minWidth: "200px" }}>

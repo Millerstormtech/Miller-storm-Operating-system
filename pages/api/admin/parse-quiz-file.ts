@@ -44,16 +44,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // mode "full" (default) -> output Course/Lesson-structured document.
     const modeRaw = Array.isArray(fields.mode) ? fields.mode[0] : fields.mode;
     const questionsOnly = modeRaw === "questions";
+    let answer: { ok: true; doc: string } | { ok: false; error: string };
     try {
-      const doc = await fileToQuizDoc(file, questionsOnly);
-      // best-effort cleanup of the temp upload
-      try {
-        fs.unlinkSync(file.filepath);
-      } catch {}
-      res.status(200).json({ ok: true, doc });
+      answer = { ok: true, doc: await fileToQuizDoc(file, questionsOnly) };
     } catch (e: any) {
-      res.status(200).json({ ok: false, error: e?.message || "Could not read this file." });
+      answer = { ok: false, error: e?.message || "Could not read this file." };
     }
+    // Best-effort cleanup of the temp upload, whether or not it could be read
+    // (it used to be left behind whenever reading failed).
+    await fs.promises.unlink(file.filepath).catch(() => {});
+    res.status(200).json(answer);
   });
 }
 

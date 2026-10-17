@@ -117,3 +117,19 @@ describe("isAllowedUploadName", () => {
     expect(isAllowedUploadName("")).toBe(false);
   });
 });
+
+describe("a route's own, narrower list", () => {
+  const IMAGES = [".png", ".jpg"];
+
+  it("allows only what the route lists", () => {
+    expect(isAllowedUploadName("face.png", IMAGES)).toBe(true);
+    expect(isAllowedUploadName("notes.pdf", IMAGES)).toBe(false);
+    expect(storedUploadName("notes.pdf", IMAGES)).toMatch(/^[0-9a-f]{32}$/);
+    expect(storedUploadName("face.PNG", IMAGES)).toMatch(/^[0-9a-f]{32}\.png$/);
+  });
+
+  it("still refuses an executable segment, even if the route lists its extension", () => {
+    expect(isAllowedUploadName("page.html.png", IMAGES)).toBe(false);
+    expect(isAllowedUploadName("logo.svg", [".svg"])).toBe(false);
+  });
+});

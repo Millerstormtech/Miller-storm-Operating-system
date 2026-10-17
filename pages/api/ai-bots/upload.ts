@@ -6,6 +6,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
 import { reindexBotInBackground } from "../../../src/lib/rag";
+import { safeUploadForm, uploadProblem } from "../../../src/lib/uploads/safeUploadForm";
 
 export const config = { api: { bodyParser: false } };
 
@@ -23,46 +24,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectMongo();
 
-  const form = formidable({ maxFileSize: 70 * 1024 * 1024, uploadDir: UPLOAD_DIR, keepExtensions: true });
+  // Only the types extractFileContent can read are written at all; anything
+  // else (e.g. an .html page) used to be saved into the public folder before
+  // being refused. Every refusal or failure below deletes what was written.
+  const upload = safeUploadForm({ uploadDir: UPLOAD_DIR, maxFileSize: 70 * 1024 * 1024, extensions: BOT_FILE_EXTENSIONS });
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) return res.status(500).json({ error: "Upload failed" });
+  let fields: formidable.Fields;
+  let files: formidable.Files;
+  try {
+    ({ fields, files } = await upload.parse(req));
+  } catch (err) {
+    await upload.discard();
+    const problem = uploadProblem(err, "70 MB");
+    if (problem) return res.status(problem.status).json({ error: problem.error });
+    return res.status(500).json({ error: "Upload failed" });
+  }
 
-    const botId = Array.isArray(fields.botId) ? fields.botId[0] : fields.botId;
-    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+  const botId = Array.isArray(fields.botId) ? fields.botId[0] : fields.botId;
+  const file = Array.isArray(files.file) ? files.file[0] : files.file;
 
-    if (!botId || !file) return res.status(400).json({ error: "Missing botId or file" });
-
-    try {
-      const content = await extractFileContent(file);
-      const bot = await AiBotModel.findOne({ id: botId });
-      if (!bot) return res.status(404).json({ error: "Bot not found" });
-
-      // Build a publicly accessible URL from the saved file path
-      const savedFilename = path.basename(file.filepath);
-      const publicUrl = `/uploads/bots/${savedFilename}`;
-
-      const newLink = {
-        id: `file-${Date.now()}`,
-        url: publicUrl,
-        type: getFileType(file.originalFilename || ""),
-        status: "trained",
-        chars: content.length,
-        originalName: file.originalFilename || "uploaded-file"
-      };
-
-      bot.trainingLinks = bot.trainingLinks || [];
-      bot.trainingLinks.push(newLink);
-      bot.trainingText = (bot.trainingText || "") + `\n\n[File: ${file.originalFilename}]\n${content}`;
-      await bot.save();
-      reindexBotInBackground(bot.id);
-
-      return res.status(200).json({ link: newLink, extractedChars: content.length });
-    } catch (error) {
-      console.error("File processing error:", error);
-      return res.status(500).json({ error: "Failed to process file" });
+  if (!botId || !file) {
+    await upload.discard();
+    const name = upload.refused[0];
+    if (name) {
+      return res.status(400).json({
+        error: `"${name}" can't be used to train a bot. Use a PDF, Word, Excel, CSV, text, audio or video file.`,
+      });
     }
-  });
+    return res.status(400).json({ error: "Missing botId or file" });
+  }
+
+  try {
+    const content = await extractFileContent(file);
+    const bot = await AiBotModel.findOne({ id: botId });
+    if (!bot) {
+      await upload.discard();
+      return res.status(404).json({ error: "Bot not found" });
+    }
+
+    // Build a publicly accessible URL from the saved file path
+    const savedFilename = path.basename(file.filepath);
+    const publicUrl = `/uploads/bots/${savedFilename}`;
+
+    const newLink = {
+      id: `file-${Date.now()}`,
+      url: publicUrl,
+      type: getFileType(file.originalFilename || ""),
+      status: "trained",
+      chars: content.length,
+      originalName: file.originalFilename || "uploaded-file"
+    };
+
+    bot.trainingLinks = bot.trainingLinks || [];
+    bot.trainingLinks.push(newLink);
+    bot.trainingText = (bot.trainingText || "") + `\n\n[File: ${file.originalFilename}]\n${content}`;
+    await bot.save();
+    reindexBotInBackground(bot.id);
+
+    return res.status(200).json({ link: newLink, extractedChars: content.length });
+  } catch (error) {
+    await upload.discard();
+    console.error("File processing error:", error);
+    return res.status(500).json({ error: "Failed to process file" });
+  }
 }
 
 async function extractFileContent(file: formidable.File): Promise<string> {
@@ -108,6 +132,9 @@ async function extractFileContent(file: formidable.File): Promise<string> {
 
 // Audio/video extensions we transcribe instead of parsing as text.
 const MEDIA_EXTS = [".mov", ".mp4", ".m4a", ".mp3", ".wav", ".webm", ".mpeg", ".mpga", ".ogg", ".oga"];
+
+// Everything extractFileContent can read: the only types this route accepts.
+const BOT_FILE_EXTENSIONS = [".txt", ".md", ".csv", ".pdf", ".docx", ".doc", ".xlsx", ".xls", ...MEDIA_EXTS];
 
 // Transcribe an audio/video file to text via OpenAI's Whisper API. The API
 // caps uploads at 25MB, so we surface a clear message for anything larger
