@@ -7,6 +7,7 @@ import { mergeNewestPage, prependOlderPage } from "../../lib/stormchat/messagePa
 import { safeHref } from "../../lib/stormchat/compose";
 import { canEditMessage, DELETED_TEXT } from "../../lib/stormchat/messageChanges";
 import { muteUntilLabel, type MuteChoice } from "../../lib/stormchat/mute";
+import { ALBUM_MAX, VOICE_MAX_SEC, formatDuration, mapsUrl, pollEnded } from "../../lib/stormchat/richMessages";
 import { StormChatGallery } from "../../components/StormChatGallery";
 
 type ChatMessage = {
@@ -19,7 +20,14 @@ type ChatMessage = {
   message: string;
   messageType: 'text' | 'image' | 'video' | 'file' | 'poll' | 'system';
   mediaUrl?: string;
-  poll?: { question: string; options: { text: string; votes: string[] }[]; allowMultiple: boolean };
+  poll?: {
+    question: string;
+    options: { text: string; votes: string[]; voterNames?: string[] }[];
+    allowMultiple: boolean;
+    anonymous?: boolean;
+    endsAt?: string;
+    voterCount?: number;
+  };
   replyTo?: string;
   replyToMessage?: string;
   replyToSender?: string;
@@ -29,6 +37,9 @@ type ChatMessage = {
   pinnedAt?: string;
   editedAt?: string;
   deletedAt?: string;
+  voice?: { durationSec: number };
+  location?: { lat: number; lng: number };
+  albumId?: string;
   createdAt: Date;
 };
 
@@ -81,11 +92,34 @@ const COMPOSER_BTN: React.CSSProperties = {
   lineHeight: 1,
 };
 
+// The red of your own message bubbles (one name, so new bubbles add no raw colours).
+const MY_BUBBLE = '#DC2626';
+
+// When a new poll closes (GroupMe-style end date; up to 30 days).
+const POLL_ENDS: { key: string; label: string; ms: number }[] = [
+  { key: 'none', label: 'No end time', ms: 0 },
+  { key: '1h', label: 'In 1 hour', ms: 3600e3 },
+  { key: '4h', label: 'In 4 hours', ms: 4 * 3600e3 },
+  { key: '1d', label: 'In 1 day', ms: 24 * 3600e3 },
+  { key: '3d', label: 'In 3 days', ms: 3 * 24 * 3600e3 },
+  { key: '1w', label: 'In 1 week', ms: 7 * 24 * 3600e3 },
+];
+
+// Recorder format: MP4/AAC where the browser can (plays everywhere, iPhones
+// included), else WebM/Ogg.
+function pickAudioFormat(): { mime: string; ext: string } {
+  const options: [string, string][] = [['audio/mp4', 'm4a'], ['audio/webm;codecs=opus', 'webm'], ['audio/webm', 'webm'], ['audio/ogg;codecs=opus', 'ogg']];
+  for (const [mime, ext] of options) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(mime)) return { mime, ext };
+  }
+  return { mime: '', ext: 'webm' };
+}
+
 // Small icon buttons in the chat header (search, gallery, mute, info).
 const HEADER_BTN: React.CSSProperties = {
   background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: 4, color: 'var(--text-primary)', flexShrink: 0,
 };
-const MUTE_ITEM: React.CSSProperties = {
+const MENU_ITEM: React.CSSProperties = {
   display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none',
   cursor: 'pointer', fontSize: 14, color: 'var(--text-primary)',
 };
@@ -223,6 +257,26 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollMultiple, setPollMultiple] = useState(false);
+  const [pollEnd, setPollEnd] = useState('none');
+  const [pollAnonymous, setPollAnonymous] = useState(false);
+  // Who voted for what (a poll's "See votes").
+  const [votersFor, setVotersFor] = useState<ChatMessage | null>(null);
+  // 📎 menu: photos (up to 10 at once), a file, or your location.
+  const [attachOpen, setAttachOpen] = useState(false);
+  const photosInputRef = useRef<HTMLInputElement>(null);
+  // Voice messages (up to 5 minutes): recording state and timer.
+  const [canRecord, setCanRecord] = useState(false);
+  const [recState, setRecState] = useState<'idle' | 'recording' | 'sending'>('idle');
+  const [recSeconds, setRecSeconds] = useState(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recChunks = useRef<Blob[]>([]);
+  const recStartedAt = useRef(0);
+  const recTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recCancelled = useRef(false);
+  useEffect(() => {
+    setCanRecord(typeof window !== 'undefined' && 'MediaRecorder' in window && !!navigator.mediaDevices?.getUserMedia);
+    return () => { if (recTimer.current) clearInterval(recTimer.current); recorderRef.current?.stream.getTracks().forEach((t) => t.stop()); };
+  }, []);
   // @mention autocomplete: the group's members and the current "@…" query.
   const [members, setMembers] = useState<{ _id: string; name: string; headshotUrl?: string }[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -342,7 +396,18 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
   // Delete a message (text/photo/video). Server allows the sender always, and a
   // system admin in a group. Removes it from the list on success.
   async function deleteMessage(messageId: string) {
+    // Photos sent together are deleted together.
+    const target = messages.find((m) => m._id === messageId);
+    const together = target?.albumId ? messages.filter((m) => m.albumId === target.albumId && !m.deletedAt) : [];
+    if (together.length > 1) {
+      if (!await appConfirm(`Delete these ${together.length} photos?`)) return;
+      for (const m of together) await removeOne(m._id);
+      return;
+    }
     if (!await appConfirm('Delete this message?')) return;
+    await removeOne(messageId);
+  }
+  async function removeOne(messageId: string) {
     try {
       const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -609,7 +674,10 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
           senderRole: user?.role,
           message: q,
           messageType: 'poll',
-          poll: { question: q, options: opts, allowMultiple: pollMultiple },
+          poll: {
+            question: q, options: opts, allowMultiple: pollMultiple, anonymous: pollAnonymous,
+            endsAt: (() => { const ms = POLL_ENDS.find((e) => e.key === pollEnd)?.ms || 0; return ms ? new Date(Date.now() + ms).toISOString() : undefined; })(),
+          },
         }),
       });
       if (response.ok) {
@@ -619,6 +687,8 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
         setPollQuestion("");
         setPollOptions(["", ""]);
         setPollMultiple(false);
+        setPollEnd('none');
+        setPollAnonymous(false);
         setShouldAutoScroll(true);
       } else {
         let err = '';
@@ -644,6 +714,9 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
       if (res.ok) {
         const updated = await res.json();
         setMessages(prev => prev.map(m => (m._id === messageId ? { ...m, poll: updated.poll } : m)));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        if (err?.error) alert(err.error); // e.g. "This poll has ended"
       }
     } catch (e) {
       console.error('[STORM-CHAT] poll vote error', e);
@@ -709,7 +782,16 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
       mediaUrl: m.mediaUrl || '',
     };
     if (m.messageType === 'poll' && m.poll) {
-      body.poll = { question: m.poll.question, options: m.poll.options.map(o => o.text), allowMultiple: m.poll.allowMultiple };
+      body.poll = { question: m.poll.question, options: m.poll.options.map(o => o.text), allowMultiple: m.poll.allowMultiple, anonymous: !!m.poll.anonymous };
+    }
+    if (m.voice) body.voice = { durationSec: m.voice.durationSec };
+    if (m.location) body.location = m.location;
+    const albumItems = m.albumId ? messages.filter((x) => x.albumId === m.albumId && !x.deletedAt) : [];
+    if (albumItems.length > 1) {
+      body.messageType = 'image';
+      body.album = albumItems.map((x) => ({ mediaUrl: x.mediaUrl, messageType: x.messageType }));
+      delete body.mediaUrl;
+      body.message = '';
     }
     let ok = 0, fail = 0;
     for (const uid of Array.from(forwardSelected)) {
@@ -863,6 +945,122 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     } finally {
       setUploading(false);
     }
+  }
+
+  // ── Several photos at once (GroupMe-style album, up to 10) ────────────────────
+  async function handlePhotos(picked: File[]) {
+    const files = picked.filter((f) => f.type.startsWith('image/') || f.type.startsWith('video/'));
+    if (files.length === 0) return;
+    if (files.length === 1) { await handleFileUpload(files[0]); return; }
+    if (files.length > ALBUM_MAX) { alert(`You can send up to ${ALBUM_MAX} photos at a time.`); return; }
+    setUploading(true);
+    try {
+      const album: { mediaUrl: string; messageType: 'image' | 'video' }[] = [];
+      for (const f of files) {
+        const fd = new FormData();
+        fd.append('file', f);
+        const up = await fetch('/api/upload-image', { method: 'POST', body: fd });
+        if (!up.ok) {
+          const e = await up.json().catch(() => ({}));
+          alert(e.error || `Couldn't upload ${f.name}`);
+          return;
+        }
+        const { url } = await up.json();
+        album.push({ mediaUrl: url, messageType: f.type.startsWith('video/') ? 'video' : 'image' });
+      }
+      const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageType: 'image', album }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { alert(data.error || "Couldn't send the photos"); return; }
+      setMessages((prev) => [...prev, ...(data.albumMessages || [data])]);
+      setShouldAutoScroll(true);
+    } catch {
+      alert("Couldn't send the photos");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // ── Share your location (one-time pin, never live tracking) ──────────────────
+  async function shareLocation() {
+    setAttachOpen(false);
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { alert("This browser can't share a location."); return; }
+    if (!(await appConfirm('Share your current location in this chat?'))) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageType: 'text', location: { lat: pos.coords.latitude, lng: pos.coords.longitude } }),
+        }).catch(() => null);
+        const data = res ? await res.json().catch(() => ({})) : {};
+        if (!res || !res.ok) { alert(data.error || "Couldn't share your location"); return; }
+        setMessages((prev) => [...prev, data]);
+        setShouldAutoScroll(true);
+      },
+      () => alert('Allow location access in your browser to share where you are.'),
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  }
+
+  // ── Voice messages (up to 5 minutes) ─────────────────────────────────────────
+  async function startRecording() {
+    if (recState !== 'idle') return;
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      alert('Allow microphone access in your browser to record a voice message.');
+      return;
+    }
+    const { mime, ext } = pickAudioFormat();
+    const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    recChunks.current = [];
+    recCancelled.current = false;
+    rec.ondataavailable = (e) => { if (e.data.size) recChunks.current.push(e.data); };
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
+      const secs = Math.min((Date.now() - recStartedAt.current) / 1000, VOICE_MAX_SEC);
+      if (recCancelled.current || secs < 1) { setRecState('idle'); return; }
+      setRecState('sending');
+      try {
+        await sendVoice(new Blob(recChunks.current, { type: rec.mimeType || mime || 'audio/webm' }), secs, ext);
+      } finally {
+        setRecState('idle');
+      }
+    };
+    recorderRef.current = rec;
+    recStartedAt.current = Date.now();
+    setRecSeconds(0);
+    rec.start();
+    setRecState('recording');
+    recTimer.current = setInterval(() => {
+      const secs = (Date.now() - recStartedAt.current) / 1000;
+      setRecSeconds(secs);
+      if (secs >= VOICE_MAX_SEC) stopRecording(false); // 5 minutes: send what's there
+    }, 250);
+  }
+  function stopRecording(cancel: boolean) {
+    recCancelled.current = cancel;
+    const rec = recorderRef.current;
+    if (rec && rec.state !== 'inactive') rec.stop();
+  }
+  async function sendVoice(blob: Blob, secs: number, ext: string) {
+    const fd = new FormData();
+    fd.append('file', blob, `voice-${Date.now()}.${ext}`);
+    const up = await fetch('/api/upload-image', { method: 'POST', body: fd }).catch(() => null);
+    if (!up || !up.ok) { alert("Couldn't send the voice message"); return; }
+    const { url } = await up.json();
+    const res = await fetch(`/api/storm-chat/messages/${group._id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageType: 'file', mediaUrl: url, voice: { durationSec: secs } }),
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
+    if (!res || !res.ok) { alert(data.error || "Couldn't send the voice message"); return; }
+    setMessages((prev) => [...prev, data]);
+    setShouldAutoScroll(true);
   }
 
   // ── GIPHY GIF / sticker picker ──────────────────────────────────────────────
@@ -1200,7 +1398,11 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                       )}
                       {(msg.messageType === 'image' || msg.messageType === 'video' || msg.messageType === 'file') && msg.mediaUrl && (
                         <button
-                          onClick={() => { downloadMedia(msg.mediaUrl!); setMenuMessageId(null); }}
+                          onClick={() => {
+                            const items = msg.albumId ? (albumsById.get(msg.albumId) || [msg]) : [msg];
+                            items.forEach((a) => { if (a.mediaUrl) downloadMedia(a.mediaUrl); });
+                            setMenuMessageId(null);
+                          }}
                           style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--text-inverse)', cursor: 'pointer', textAlign: 'left', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12 }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-700) /* no semantic: gray-700 as surface */'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -1254,6 +1456,15 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     );
   }
 
+  // Photos sent together (one album id) show as one grid.
+  const albumsById = new Map<string, ChatMessage[]>();
+  for (const m of messages) {
+    if (!m.albumId || m.deletedAt) continue;
+    const list = albumsById.get(m.albumId) || [];
+    list.push(m);
+    albumsById.set(m.albumId, list);
+  }
+
   function renderMessage(msg: ChatMessage, index: number) {
     const isMyMessage = msg.senderId === (user?._id || user?.id);
     const showDate = index === 0 ||
@@ -1263,6 +1474,11 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     const showMenu = menuMessageId === msg._id;
     // Deleted: a quiet notice in its place, with nothing to tap (GroupMe-style).
     const deleted = !!msg.deletedAt;
+    // An album is drawn once, with its first photo; the rest return nothing
+    // here but still answer jumps (search, gallery) through the same box.
+    const album = msg.albumId && !deleted ? (albumsById.get(msg.albumId) || []) : [];
+    if (album.length > 1 && album[0]._id !== msg._id) return null;
+    const isAlbum = album.length > 1;
 
     // System notices (e.g. "X joined the group") render as a centered gray pill.
     if (msg.messageType === 'system') {
@@ -1276,7 +1492,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
     }
 
     return (
-      <div key={msg._id} ref={(el) => { messageRefs.current[msg._id] = el; }}>
+      <div key={msg._id} ref={(el) => { messageRefs.current[msg._id] = el; for (const a of album) messageRefs.current[a._id] = el; }}>
         {showDate && (
           <div style={{ 
             textAlign: 'center', 
@@ -1342,10 +1558,12 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               const totalMembers = Math.max(activeMembers ?? group.members?.length ?? 0, 1);
               const voterSet = new Set<string>();
               msg.poll.options.forEach(o => (o.votes || []).forEach(v => voterSet.add(v)));
-              const votersCount = voterSet.size;
+              // The server counts people (one person may pick several options).
+              const votersCount = msg.poll.voterCount ?? voterSet.size;
+              const ended = pollEnded(msg.poll);
               const myId = user?._id || user?.id || '';
               return (
-                <div style={{ position: 'relative', backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)', color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
+                <div style={{ position: 'relative', backgroundColor: isMyMessage ? MY_BUBBLE : 'var(--surface-default)', color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)', padding: 14, borderRadius: 16, minWidth: 260, maxWidth: 340 }}>
                   {renderMenu(msg, isMyMessage, showMenu)}
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, paddingRight: (isMyMessage || canModerate) ? 28 : 0 }}>📊 {msg.poll.question}</div>
                   {msg.poll.options.map((opt, i) => {
@@ -1353,24 +1571,33 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                     const pct = Math.round((votes / totalMembers) * 100);
                     const voted = (opt.votes || []).includes(myId);
                     return (
-                      <button key={i} type="button" onClick={() => votePoll(msg._id, i)}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', position: 'relative', border: `1px solid ${isMyMessage ? 'rgb(var(--white-rgb) / 0.4)' : 'var(--border-default)'}`, background: 'transparent', borderRadius: 8, padding: '8px 10px', marginBottom: 6, cursor: 'pointer', overflow: 'hidden', color: 'inherit' }}>
+                      <button key={i} type="button" onClick={() => { if (!ended) votePoll(msg._id, i); }} aria-disabled={ended}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', position: 'relative', border: `1px solid ${isMyMessage ? 'rgb(var(--white-rgb) / 0.4)' : 'var(--border-default)'}`, background: 'transparent', borderRadius: 8, padding: '8px 10px', marginBottom: 6, cursor: ended ? 'default' : 'pointer', overflow: 'hidden', color: 'inherit' }}>
                         <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`, background: isMyMessage ? 'rgb(var(--white-rgb) / 0.2)' : 'rgba(37,99,235,0.12)' }} />
                         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, fontWeight: voted ? 700 : 500 }}>
                           <span>{voted ? '✓ ' : ''}{opt.text}</span>
-                          <span style={{ whiteSpace: 'nowrap' }}>{votes} · {pct}%</span>
+                          <span style={{ whiteSpace: 'nowrap' }} title={opt.voterNames?.length ? opt.voterNames.join(', ') : undefined}>{votes} · {pct}%</span>
                         </div>
                       </button>
                     );
                   })}
-                  <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{votersCount} of {totalMembers} voted · tap to vote{msg.poll.allowMultiple ? ' (multiple)' : ''}</div>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                    <span>{votersCount} of {totalMembers} voted{msg.poll.allowMultiple ? ' (multiple)' : ''}{msg.poll.anonymous ? ' · anonymous' : ''}</span>
+                    <span>· {ended ? 'Poll ended' : msg.poll.endsAt ? `Ends ${muteUntilLabel(msg.poll.endsAt)}` : 'tap to vote'}</span>
+                    {!msg.poll.anonymous && votersCount > 0 && (
+                      <button type="button" onClick={() => setVotersFor(msg)}
+                        style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer', fontSize: 11 }}>
+                        See votes
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })()}
             {msg.messageType === 'text' && !deleted && (
               <div
                 style={{
-                  backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)',
+                  backgroundColor: isMyMessage ? MY_BUBBLE : 'var(--surface-default)',
                   color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
                   padding: '10px 14px',
                   borderRadius: 16,
@@ -1415,7 +1642,16 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 )}
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
                   <div style={{ fontSize: 14, flex: 1, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                    {renderTextWithLinks(msg.message, isMyMessage ? '#fff' : '#111827' /* tokens-guard-ignore: persisted-value, string equality on textColor */)}
+                    {msg.location ? (
+                      <a href={mapsUrl(msg.location)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'inherit', textDecoration: 'none' }}>
+                        <span aria-hidden style={{ fontSize: 26, lineHeight: 1 }}>📍</span>
+                        <span>
+                          <span style={{ display: 'block', fontWeight: 700 }}>Location</span>
+                          <span style={{ display: 'block', fontSize: 12, textDecoration: 'underline' }}>Open in Maps</span>
+                        </span>
+                      </a>
+                    ) : renderTextWithLinks(msg.message, isMyMessage ? '#fff' : '#111827' /* tokens-guard-ignore: persisted-value, string equality on textColor */)}
                   </div>
                   <div style={{ 
                     fontSize: 10, 
@@ -1429,7 +1665,23 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               </div>
             )}
             
-            {msg.messageType === 'image' && msg.mediaUrl && (
+            {isAlbum && (
+              <div style={{ position: 'relative' }}>
+                {renderMenu(msg, isMyMessage, showMenu)}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3, width: 'min(300px, 62vw)' }}>
+                  {album.map((a) => (a.messageType === 'video' ? (
+                    <video key={a._id} src={safeHref(a.mediaUrl)} controls preload="metadata"
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 6, display: 'block', background: 'black' }} />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={a._id} src={a.mediaUrl} alt="Photo" onClick={() => setViewerImage(a.mediaUrl!)}
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 6, display: 'block', cursor: 'pointer' }} />
+                  )))}
+                </div>
+              </div>
+            )}
+
+            {msg.messageType === 'image' && msg.mediaUrl && !isAlbum && (
               <div style={{ position: 'relative', display: 'inline-block' }}>
                 {renderMenu(msg, isMyMessage, showMenu)}
                 <img
@@ -1447,7 +1699,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               </div>
             )}
 
-            {msg.messageType === 'video' && msg.mediaUrl && (
+            {msg.messageType === 'video' && msg.mediaUrl && !isAlbum && (
               <div style={{ position: 'relative', display: 'inline-block' }}>
                 {renderMenu(msg, isMyMessage, showMenu)}
                 <video
@@ -1462,10 +1714,32 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               </div>
             )}
             
-            {msg.messageType === 'file' && msg.mediaUrl && (
+            {msg.voice && msg.mediaUrl && !deleted && (
+              <div style={{
+                position: 'relative',
+                backgroundColor: isMyMessage ? MY_BUBBLE : 'var(--surface-default)',
+                color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
+                padding: '8px 12px',
+                borderRadius: 16,
+                borderTopRightRadius: isMyMessage ? 4 : 16,
+                borderTopLeftRadius: isMyMessage ? 16 : 4,
+              }}>
+                {renderMenu(msg, isMyMessage, showMenu)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span aria-hidden style={{ fontSize: 18 }}>🎤</span>
+                  <audio controls preload="none" src={safeHref(msg.mediaUrl)} aria-label={`Voice message, ${formatDuration(msg.voice.durationSec)}`}
+                    style={{ width: 'min(240px, 50vw)', height: 36 }} />
+                </div>
+                <div style={{ fontSize: 10, opacity: 0.75, textAlign: 'right', marginTop: 2 }}>
+                  {formatDuration(msg.voice.durationSec)} · {formatTime(msg.createdAt)}
+                </div>
+              </div>
+            )}
+
+            {msg.messageType === 'file' && msg.mediaUrl && !msg.voice && (
               <div style={{ 
                 position: 'relative',
-                backgroundColor: isMyMessage ? '#DC2626' : 'var(--surface-default)',
+                backgroundColor: isMyMessage ? MY_BUBBLE : 'var(--surface-default)',
                 color: isMyMessage ? 'var(--text-inverse)' : 'var(--text-primary)',
                 padding: '10px 14px',
                 borderRadius: 16,
@@ -1626,9 +1900,9 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                     {mutedUntil ? `Muted until ${muteUntilLabel(mutedUntil)}.` : 'Muted until you turn it back on.'} You still get @mentions.
                   </div>
                 )}
-                {mutedNow && <button role="menuitem" onClick={() => changeMute(null)} style={{ ...MUTE_ITEM, fontWeight: 700 }}>🔔 Unmute</button>}
+                {mutedNow && <button role="menuitem" onClick={() => changeMute(null)} style={{ ...MENU_ITEM, fontWeight: 700 }}>🔔 Unmute</button>}
                 {MUTE_OPTIONS.map((o) => (
-                  <button key={o.key} role="menuitem" onClick={() => changeMute(o.key)} style={MUTE_ITEM}>{o.label}</button>
+                  <button key={o.key} role="menuitem" onClick={() => changeMute(o.key)} style={MENU_ITEM}>{o.label}</button>
                 ))}
               </div>
             </>
@@ -1683,6 +1957,25 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
 
       {showGallery && (
         <StormChatGallery groupId={group._id} onClose={() => setShowGallery(false)} onJump={(id) => scrollToMessage(id)} />
+      )}
+
+      {/* Who voted for what (not shown for anonymous polls). */}
+      {votersFor?.poll && (
+        <div onClick={() => setVotersFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div role="dialog" aria-label="Votes" onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--surface-default)', color: 'var(--text-primary)', borderRadius: 12, padding: 18, width: 340, maxWidth: '90vw', maxHeight: '70vh', overflowY: 'auto' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>📊 {votersFor.poll.question}</div>
+            {votersFor.poll.options.map((o, i) => (
+              <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{o.text} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({o.votes.length})</span></div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{(o.voterNames || []).join(', ') || 'No votes yet'}</div>
+              </div>
+            ))}
+            <div style={{ textAlign: 'right', marginTop: 10 }}>
+              <button onClick={() => setVotersFor(null)} style={{ padding: '8px 16px', background: 'var(--surface-subtle)', color: 'var(--text-primary)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Who reacted to a message, with names (works on touch screens). */}
@@ -1895,8 +2188,18 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                   {pollOptions.length < 10 && (
                     <button type="button" onClick={() => setPollOptions(prev => [...prev, ''])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontSize: 13, fontWeight: 600, marginBottom: 12, padding: 0 }}>+ Add option</button>
                   )}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
                     <input type="checkbox" checked={pollMultiple} onChange={e => setPollMultiple(e.target.checked)} /> Allow multiple answers
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={pollAnonymous} onChange={e => setPollAnonymous(e.target.checked)} /> Anonymous (hide who voted)
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
+                    Poll ends
+                    <select value={pollEnd} onChange={e => setPollEnd(e.target.value)} aria-label="Poll ends"
+                      style={{ padding: '6px 8px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, background: 'var(--surface-subtle)', color: 'var(--text-primary)' }}>
+                      {POLL_ENDS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                    </select>
                   </label>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                     <button type="button" onClick={() => setShowPoll(false)} style={{ padding: '8px 16px', background: 'var(--surface-subtle)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
@@ -1913,6 +2216,7 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 : forwardMsg.messageType === 'image' ? '📷 Photo'
                 : forwardMsg.messageType === 'video' ? '🎥 Video'
                 : forwardMsg.messageType === 'poll' ? `📊 ${forwardMsg.poll?.question || 'Poll'}`
+                : forwardMsg.voice ? '🎤 Voice message'
                 : '📎 File';
               return (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setForwardMsg(null)}>
@@ -1958,6 +2262,20 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 </div>
               );
             })()}
+            {recState !== 'idle' ? (
+              <div role="status" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 0' }}>
+                <button type="button" onClick={() => stopRecording(true)} disabled={recState === 'sending'} aria-label="Cancel voice message" style={COMPOSER_BTN}>✕</button>
+                <div style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)' }}>
+                  {recState === 'sending' ? 'Sending voice message…' : (
+                    <>🔴 Recording {formatDuration(recSeconds)} <span style={{ color: 'var(--text-subtle)' }}>/ {formatDuration(VOICE_MAX_SEC)}</span></>
+                  )}
+                </div>
+                <button type="button" onClick={() => stopRecording(false)} disabled={recState === 'sending'} aria-label="Send voice message"
+                  style={{ padding: '10px 16px', backgroundColor: MY_BUBBLE, color: 'var(--text-inverse)', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 18, fontWeight: 600 }}>
+                  ➤
+                </button>
+              </div>
+            ) : (
             <div className="storm-composer" style={{ display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
             {/* Emoji picker */}
             {showEmoji && (
@@ -2046,15 +2364,43 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
                 📊
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              title="Attach a photo, video, or document"
-              style={{ ...COMPOSER_BTN, cursor: uploading ? 'not-allowed' : 'pointer' }}
-            >
-              {uploading ? '⏳' : '📎'}
-            </button>
+            <div style={{ position: 'relative', flex: '0 0 auto' }}>
+              <button
+                type="button"
+                onClick={() => setAttachOpen((v) => !v)}
+                disabled={uploading}
+                aria-haspopup="menu"
+                aria-expanded={attachOpen}
+                aria-label="Attach photos, a file or your location"
+                title="Attach photos, a file or your location"
+                style={{ ...COMPOSER_BTN, cursor: uploading ? 'not-allowed' : 'pointer' }}
+              >
+                {uploading ? '⏳' : '📎'}
+              </button>
+              {attachOpen && (
+                <>
+                  <div onClick={() => setAttachOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div role="menu" style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 8, zIndex: 50, background: 'var(--surface-default)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', minWidth: 240, overflow: 'hidden' }}>
+                    <button role="menuitem" type="button" onClick={() => { setAttachOpen(false); photosInputRef.current?.click(); }} style={MENU_ITEM}>📷 Photos or videos (up to {ALBUM_MAX})</button>
+                    <button role="menuitem" type="button" onClick={() => { setAttachOpen(false); fileInputRef.current?.click(); }} style={MENU_ITEM}>📄 File</button>
+                    <button role="menuitem" type="button" onClick={shareLocation} style={MENU_ITEM}>📍 My location</button>
+                  </div>
+                </>
+              )}
+            </div>
+            <input
+              ref={photosInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                // Let the same photos be picked again next time.
+                e.target.value = '';
+                handlePhotos(files);
+              }}
+            />
             <input
               ref={fileInputRef}
               type="file"
@@ -2110,13 +2456,24 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
               </span>
             )}
             
+            {!newMessage.trim() && !editingMsg && canRecord ? (
+              <button
+                type="button"
+                onClick={startRecording}
+                aria-label="Record a voice message"
+                title="Record a voice message (up to 5 minutes)"
+                style={{ padding: '10px 16px', backgroundColor: 'var(--surface-muted)', color: 'var(--text-primary)', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 18, fontWeight: 600 }}
+              >
+                🎤
+              </button>
+            ) : (
             <button
               type="button"
               onClick={sendMessage}
               disabled={!newMessage.trim() || sending}
               style={{
                 padding: '10px 16px',
-                backgroundColor: newMessage.trim() ? '#DC2626' : 'var(--surface-muted)',
+                backgroundColor: newMessage.trim() ? MY_BUBBLE : 'var(--surface-muted)',
                 color: 'var(--text-inverse)',
                 border: 'none',
                 borderRadius: 8,
@@ -2127,7 +2484,9 @@ export function StormChatRoom({ group: groupProp, onBack, isMember, title, onMes
             >
               {sending ? '⏳' : '➤'}
             </button>
+            )}
           </div>
+          )}
           {!touchScreen && (
             <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 4, textAlign: 'right' }}>
               Enter to send, Shift + Enter for a new line

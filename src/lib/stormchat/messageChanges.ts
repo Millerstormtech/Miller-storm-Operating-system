@@ -20,6 +20,8 @@ type Msg = {
   message?: unknown;
   createdAt?: unknown;
   deletedAt?: unknown;
+  voice?: unknown;
+  location?: unknown;
 };
 
 export function isDeletedMessage(m: Msg | null | undefined): boolean {
@@ -34,6 +36,7 @@ export function canEditMessage(m: Msg | null | undefined, editorAppId: string, n
   const type = String(m.messageType ?? '');
   if (type !== 'text' && type !== 'image' && type !== 'video') return false;
   if (type === 'image' && isGif(m)) return false;
+  if (m.voice || m.location) return false; // their text is generated, not typed
   const sent = new Date(m.createdAt as any).getTime();
   if (Number.isNaN(sent)) return false;
   return now - sent <= EDIT_WINDOW_MS; // a clock a little ahead (negative age) is fine
@@ -44,7 +47,7 @@ export function editProblem(m: Msg | null | undefined, editorAppId: string, text
   if (!m || String(m.senderId ?? '') !== editorAppId) return 'You can only edit your own messages';
   if (isDeletedMessage(m)) return 'That message was deleted';
   const type = String(m.messageType ?? '');
-  if ((type !== 'text' && type !== 'image' && type !== 'video') || (type === 'image' && isGif(m))) {
+  if ((type !== 'text' && type !== 'image' && type !== 'video') || (type === 'image' && isGif(m)) || m.voice || m.location) {
     return "This kind of message can't be edited";
   }
   if (!canEditMessage(m, editorAppId, now)) return 'Messages can only be edited for 15 minutes after sending';
@@ -70,6 +73,6 @@ export function tombstoneUpdate(deletedBy: string, now: Date) {
       deletedAt: now,
       deletedBy,
     },
-    $unset: { poll: '', editedAt: '', replyTo: '', replyToMessage: '', replyToSender: '' },
+    $unset: { poll: '', editedAt: '', replyTo: '', replyToMessage: '', replyToSender: '', voice: '', location: '', albumId: '' },
   };
 }

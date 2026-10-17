@@ -30,6 +30,14 @@ describe('chatListPreview', () => {
       .toBe('Tom Lead: 📊 Lunch at noon?');
   });
 
+  it('names voice messages and shared locations', () => {
+    const tom = { senderId: 'user-tom', senderName: 'Tom Lead' };
+    expect(chatListPreview({ ...tom, messageType: 'file', message: '🎤 Voice message (0:12)', voice: { durationSec: 12 } }, group))
+      .toBe('Tom Lead: 🎤 Voice message');
+    expect(chatListPreview({ ...tom, messageType: 'text', message: '📍 Location: https://www.google.com/maps?q=1,2', location: { lat: 1, lng: 2 } }, dm))
+      .toBe('📍 Location');
+  });
+
   it('says a deleted message was deleted, never its old text', () => {
     expect(chatListPreview({ senderId: 'user-tom', senderName: 'Tom Lead', messageType: 'text', message: 'This message was deleted', deletedAt: new Date() }, group))
       .toBe('Tom Lead: Message deleted');

@@ -54,7 +54,8 @@ describe('gallery', () => {
     expect(f.messageType).toEqual({ $in: ['image', 'video'] });
     expect(f.mediaUrl.$not.test('https://media1.giphy.com/media/x/giphy.gif')).toBe(true);
     expect(f.mediaUrl.$not.test('/uploads/abc.jpg')).toBe(false);
-    expect(galleryFilter('files')).toEqual({ messageType: 'file', deletedAt: null });
+    expect(galleryFilter('files')).toEqual({ messageType: 'file', deletedAt: null, voice: null });
+    expect((galleryFilter('links') as any).location).toBeNull();
     expect((galleryFilter('links') as any).message.test('see https://example.com')).toBe(true);
   });
 

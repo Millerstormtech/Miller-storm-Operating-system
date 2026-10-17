@@ -27,6 +27,7 @@ export function replyQuoteFrom(
   original: {
     groupId?: unknown; message?: unknown; senderName?: unknown;
     messageType?: unknown; poll?: { question?: unknown } | null;
+    voice?: unknown; location?: unknown;
   } | null | undefined,
   groupId: string,
 ): { replyToMessage: string; replyToSender: string } | null {
@@ -34,7 +35,9 @@ export function replyQuoteFrom(
   const text = captionOf(String(original.messageType || ''), original.message);
   // Photos, videos, files and polls have little or no text: quote what they are.
   const quote =
-    original.messageType === 'image' ? (text ? `📷 ${text}` : '📷 Photo')
+    original.voice ? '🎤 Voice message'
+    : original.location ? '📍 Location'
+    : original.messageType === 'image' ? (text ? `📷 ${text}` : '📷 Photo')
     : original.messageType === 'video' ? (text ? `🎬 ${text}` : '🎬 Video')
     : original.messageType === 'file' ? `📎 ${text || 'File'}`
     : original.messageType === 'poll' ? `📊 ${String(original.poll?.question ?? text ?? 'Poll') || 'Poll'}`
@@ -114,7 +117,14 @@ export function captionOf(type: string, text: unknown): string {
 }
 
 /** The short text an alert shows for a message (bell and phone push). */
-export function alertPreview(type: UserMessageType, text: unknown, pollQuestion?: unknown): string {
+export function alertPreview(
+  type: UserMessageType,
+  text: unknown,
+  pollQuestion?: unknown,
+  extra?: { voice?: unknown; location?: unknown },
+): string {
+  if (extra?.voice) return '🎤 Sent a voice message';
+  if (extra?.location) return '📍 Shared a location';
   const body = captionOf(type, text);
   if (type === 'text') return body.substring(0, 100) || 'New message';
   if (type === 'poll') return `📊 ${String(pollQuestion || body || 'New poll').substring(0, 100)}`;

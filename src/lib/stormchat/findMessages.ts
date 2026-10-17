@@ -51,8 +51,10 @@ export function galleryFilter(kind: GalleryKind) {
   if (kind === 'photos') {
     return { messageType: { $in: ['image', 'video'] }, deletedAt: null, mediaUrl: { $not: /giphy\.com/i } };
   }
-  if (kind === 'files') return { messageType: 'file', deletedAt: null };
-  return { messageType: 'text', deletedAt: null, message: /https?:\/\/\S/i };
+  // Voice messages aren't documents; a shared location's map link isn't one
+  // of the chat's links.
+  if (kind === 'files') return { messageType: 'file', deletedAt: null, voice: null };
+  return { messageType: 'text', deletedAt: null, location: null, message: /https?:\/\/\S/i };
 }
 
 /** The web links in a message, in order, without repeats. */

@@ -12,6 +12,8 @@ export type LastMessage = {
   messageType?: unknown;
   poll?: { question?: unknown } | null;
   deletedAt?: unknown;
+  voice?: unknown;
+  location?: unknown;
 };
 
 const MAX = 100;
@@ -25,6 +27,8 @@ function oneLine(s: string): string {
 function bodyOf(m: LastMessage, type: string): string {
   const text = typeof m.message === 'string' ? m.message : '';
   if (m.deletedAt) return 'Message deleted';
+  if (m.voice) return '🎤 Voice message';
+  if (m.location) return '📍 Location';
   if (type === 'image') {
     if (text === 'GIF' || text === 'Sticker') return text;
     const caption = captionOf(type, text);
