@@ -22,9 +22,9 @@ import { CertificateAwardModel } from "../../src/lib/models/CertificateAward";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange } from "../../src/lib/acculynx/windows";
 import { computeSalesBoard, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
-import { otherSalesForScope, type OtherSales } from "../../src/lib/leaderboard/others";
+import type { OtherSales } from "../../src/lib/leaderboard/others";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
-import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
+import { scopeRows, sumTotals, rankFor, withOtherSales } from "../../src/lib/scoreboard/rollup";
 import { scopeLabel, scopeResolved } from "../../src/lib/scoreboard/display";
 import { trend } from "../../src/lib/scoreboard/metrics";
 import { previousSlice } from "../../src/lib/scoreboard/periods";
@@ -214,13 +214,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Sales by people with no row (not on RepCard) count in the company and branch
     // totals only: never in a top three, a team or a rep's own numbers (others.ts).
-    const plusOthers = (t: Totals, others: OtherSales[], view: { level: string; branch?: string | null }): Totals => {
-      const o = otherSalesForScope(others, view);
-      return { revenue: t.revenue + o.revenue, knocks: t.knocks, claims: t.claims + o.filed, contracts: t.contracts + o.won };
-    };
-    const yearTotals = plusOthers(sumTotals(yearRows), yearBoard.others, scope);
-    const monthTotals = plusOthers(sumTotals(monthRows), monthBoard.others, scope);
-    const prevTotals = plusOthers(sumTotals(prevRows), prevBoard.others, scope);
+    const yearTotals = withOtherSales(sumTotals(yearRows), yearBoard.others, scope);
+    const monthTotals = withOtherSales(sumTotals(monthRows), monthBoard.others, scope);
+    const prevTotals = withOtherSales(sumTotals(prevRows), prevBoard.others, scope);
 
     // Four cards: this month's number, the honest trend against last month, and
     // the top three inside the viewer's own scope.
@@ -253,7 +249,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // needs the year for weight and the month for momentum.
       // Branch cards (C-Level) add their branch's non-rep sales; team cards never do.
       const forGroup = (t: Totals, others: OtherSales[], key: string) =>
-        kind === "branch" ? plusOthers(t, others, { level: "branch", branch: key }) : t;
+        kind === "branch" ? withOtherSales(t, others, { level: "branch", branch: key }) : t;
       breakdown.groups = groupsMonth.map((g) => ({
         ...g,
         totals: forGroup(g.totals, monthBoard.others, g.key),

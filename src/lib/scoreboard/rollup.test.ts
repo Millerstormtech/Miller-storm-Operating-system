@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sumTotals, scopeRows, rankFor, coversWindow } from "./rollup";
+import { sumTotals, scopeRows, rankFor, coversWindow, withOtherSales } from "./rollup";
 import { groupBreakdown } from "./dashboard";
 import type { SalesRow } from "./types";
 
@@ -151,5 +151,24 @@ describe("team history: fix round 1", () => {
     const rep = mk([seg("Gunner McCullough", "Fort Worth", "2026-09-01", "2026-09-22", 0), seg("Daniel Reyes", "Fort Worth", "2026-09-23", "2026-09-30", 0)]);
     expect(coversWindow(rep, { level: "branch", branch: "Fort Worth" }, "2026-09-20", "2026-09-26")).toBe(true);
     expect(coversWindow(rep, { level: "team", team: "Daniel Reyes" }, "2026-09-20", "2026-09-26")).toBe(false);
+  });
+});
+
+describe("withOtherSales (sales by people with no row)", () => {
+  const others = [
+    { branch: "", lead: 0, filed: 1, won: 2, revenue: 700 },
+    { branch: "Dallas", lead: 0, filed: 3, won: 1, revenue: 200 },
+  ];
+  const base = { revenue: 1000, knocks: 50, claims: 10, contracts: 4 };
+
+  it("adds everything to the company total, knocks untouched", () => {
+    expect(withOtherSales(base, others, { level: "company" })).toEqual({ revenue: 1900, knocks: 50, claims: 14, contracts: 7 });
+  });
+  it("adds only the branch's own share to a branch total", () => {
+    expect(withOtherSales(base, others, { level: "branch", branch: "Dallas" })).toEqual({ revenue: 1200, knocks: 50, claims: 13, contracts: 5 });
+  });
+  it("adds nothing to a team or a rep", () => {
+    expect(withOtherSales(base, others, { level: "team", branch: "Dallas" })).toEqual(base);
+    expect(withOtherSales(base, others, { level: "self" })).toEqual(base);
   });
 });

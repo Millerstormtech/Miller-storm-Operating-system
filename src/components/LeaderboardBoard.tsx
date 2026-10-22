@@ -496,7 +496,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
               <span className="sl__hint">
                 <button type="button" className="sl__hint-btn" aria-label="What this total includes" aria-describedby="sl-total-hint">i</button>
                 <span role="tooltip" id="sl-total-hint" className="sl__hint-tip">
-                  Includes {fmtMoney(otherRevenue)} in revenue from people who are not sales reps.
+                  Includes {fmtMoney(otherRevenue)} in extra revenue from staff who are not sales reps.
                 </span>
               </span>
             )}
@@ -1003,6 +1003,9 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl > * { position: relative; z-index: 1; }
 
         /* Board heading (mockup: big condensed title + period subtitle, pills right) */
+        /* Above the YTD plate (every .sl child sits at z-index 1, later ones on top),
+           so the Total Revenue hint can hang over it. Below the filters' 50. */
+        .sl > .sl__head { z-index: 40; }
         .sl__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
         .sl__head-titles { min-width: 0; }
         .sl__head-title {
@@ -1017,11 +1020,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         }
         .sl__head-sub { margin: 8px 0 0; font-size: 15px; color: var(--muted); }
 
-        .sl__total { text-align: right; padding: 10px 18px; border-radius: 14px; border: 1px solid var(--chip-border); background: var(--chip-bg); flex-shrink: 0; }
-        .sl__total-label { font-size: 11px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+        .sl__total { position: relative; text-align: right; padding: 10px 18px; border-radius: 14px; border: 1px solid var(--chip-border); background: var(--chip-bg); flex-shrink: 0; }
+        .sl__total-label { font-size: 13px; font-weight: 700; color: var(--muted); }
         .sl__total-val { margin-top: 3px; font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif; font-size: clamp(24px, 3vw, 32px); font-weight: 900; line-height: 1; letter-spacing: 0.01em; color: #16a34a; }
         @media (max-width: 560px) { .sl__total { text-align: left; } }
-        .sl__hint { position: relative; display: inline-block; margin-left: 6px; vertical-align: middle; }
+        /* The tip hangs under the whole Total box (positioned on .sl__total), so it never covers the number. */
+        .sl__hint { display: inline-block; margin-left: 6px; vertical-align: middle; }
         .sl__hint-btn { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1px solid var(--chip-border); background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 800; line-height: 18px; text-transform: none; letter-spacing: 0; cursor: help; }
         .sl__hint-btn:focus-visible { outline: 2px solid var(--th-active); outline-offset: 2px; }
         .sl__hint-tip { display: none; position: absolute; z-index: 20; right: 0; top: calc(100% + 6px); width: 240px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--panel-line); background: var(--panel); color: var(--text); font-size: 13px; font-weight: 500; line-height: 1.4; letter-spacing: 0; text-transform: none; text-align: left; }
