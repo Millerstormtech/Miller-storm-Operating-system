@@ -550,7 +550,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
           {/* Contract King: this month's top rep by Contract Amount. */}
           {contractKing && (
             <div className="sl__king" data-tour="contract-king">
-              <div className="sl__king-eyebrow">&#128081; {contractKing.monthLabel.toUpperCase()} CONTRACT KING</div>
+              <div className="sl__king-eyebrow">&#128081; {contractKing.monthLabel} Contract King</div>
               {/* A departed rep can still have topped the month, so the bar strips
                   the marker the same way the Storm Chat announcement does: this is a
                   celebration, and "❌ Waylon Marked" reads as a rendering glitch. */}
@@ -1050,7 +1050,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__banner-sub { font-size: 15px; font-weight: 600; opacity: 0.85; }
         .sl__banner-stats { display: flex; gap: 22px; text-align: right; }
         .sl__stat-val { font-size: 18px; font-weight: 800; }
-        .sl__stat-lbl { font-size: 11px; opacity: 0.8; }
+        .sl__stat-lbl { font-size: 12px; opacity: 0.8; }
 
         /* YTD Top Sales plate. Fixed dark in both themes, the same precedent as
            the Contract King bar being fixed red: these are branded objects, not
@@ -1058,7 +1058,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
            --text-inverse is used wherever text must stay white on that fixed
            dark ground, because it is the one token that does not flip. */
         .sl__podium { position: relative; border-radius: 16px; padding: 18px 18px 14px; margin-bottom: 18px; overflow: hidden; background: linear-gradient(168deg, #252A34 0%, #171A21 46%, #0F1218 100%); border: 1px solid rgb(var(--white-rgb) / 0.13); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34); }
-        .sl__podium-title { font-family: 'Arial Narrow', 'Roboto Condensed', sans-serif; font-size: 17px; font-weight: 800; letter-spacing: 2.6px; text-transform: uppercase; color: #8D96A6; margin-bottom: 12px; }
+        .sl__podium-title { font-family: 'Arial Narrow', 'Roboto Condensed', sans-serif; font-size: 17px; font-weight: 800; letter-spacing: 0.3px; color: #8D96A6; margin-bottom: 12px; }
         .sl__podium-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
         @media (min-width: 720px) { .sl__podium-row { grid-template-columns: repeat(3, 1fr); } }
         .sl__pod { position: relative; border-radius: 13px; padding: 14px 14px 12px; background: rgb(var(--white-rgb) / 0.038); border: 1px solid rgb(var(--white-rgb) / 0.11); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; overflow: hidden; }
@@ -1070,7 +1070,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__pod--gold { --metal: linear-gradient(90deg, #A9800F, #F4C542 48%, #A9800F); --wash: rgba(244, 197, 66, 0.16); }
         .sl__pod--silver { --metal: linear-gradient(90deg, #79828F, #D8DDE4 48%, #79828F); --wash: rgba(216, 221, 228, 0.10); }
         .sl__pod--bronze { --metal: linear-gradient(90deg, #7A4A22, #D89A62 48%, #7A4A22); --wash: rgba(216, 154, 98, 0.11); }
-        .sl__pod-place { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1.7px; text-transform: uppercase; }
+        .sl__pod-place { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; }
         .sl__pod--gold .sl__pod-place { color: #F4C542; }
         .sl__pod--silver .sl__pod-place { color: #D8DDE4; }
         .sl__pod--bronze .sl__pod-place { color: #D89A62; }
@@ -1092,7 +1092,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         /* Year crown: the same glyph in a gold ring. Shape carries the
            meaning, weight carries the rank, so the pair reads in greyscale. */
         .sl__crown-year { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #F4C542; background: rgba(244, 197, 66, 0.16); font-size: 10px; line-height: 1; }
-        .sl__king-eyebrow { font-size: 11px; letter-spacing: 1.6px; font-weight: 800; text-transform: uppercase; color: #FF8A85; }
+        .sl__king-eyebrow { font-size: 13px; font-weight: 800; color: #FF8A85; }
         .sl__king-name { font-size: 15px; font-weight: 700; }
         .sl__king-amount { font-size: 17px; font-weight: 800; margin-left: auto; font-variant-numeric: tabular-nums; }
 
@@ -1158,7 +1158,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         /* Phone sort bar. Chips scroll sideways rather than wrapping, so the row
            stays one line no matter how many columns are visible. */
         .sl__sortbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-        .sl__sortbar-lbl { flex-shrink: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
+        .sl__sortbar-lbl { flex-shrink: 0; font-size: 13px; font-weight: 700; color: var(--muted); }
         .sl__sortbar-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
         .sl__sortbar-chips::-webkit-scrollbar { display: none; }
         .sl__sortchip {
@@ -1189,7 +1189,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__card-stats { display: flex; justify-content: space-around; }
         .sl__card-stat { text-align: center; }
         .sl__card-stat-val { font-size: 15px; font-weight: 800; color: var(--text); }
-        .sl__card-stat-lbl { font-size: 11px; color: var(--subtle); margin-top: 2px; }
+        .sl__card-stat-lbl { font-size: 12px; color: var(--subtle); margin-top: 2px; }
 
         /* Motion. The plate and its places arrive rather than blinking into
            existence; every rule here is an ENTRANCE, nothing loops, and a

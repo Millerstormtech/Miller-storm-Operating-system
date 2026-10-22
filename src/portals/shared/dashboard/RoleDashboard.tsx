@@ -107,10 +107,9 @@ const CARD: React.CSSProperties = {
   minWidth: 0,
 };
 
+// Card labels: normal size and case (Youssef bans tiny uppercase labels, 2026-10-22).
 const CAP: React.CSSProperties = {
-  fontSize: 11,
-  letterSpacing: "0.1em",
-  textTransform: "uppercase",
+  fontSize: 13,
   color: "var(--text-muted)",
   fontWeight: 600,
   display: "block",
@@ -204,7 +203,7 @@ function LeaderList(props: { metric: Metric; items: Leader[] }): JSX.Element | n
       {props.items.map((l, i) => (
         <div key={`${l.repUserId ?? l.name}-${i}`}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: i === 0 ? "var(--brand-on-surface)" : "var(--text-subtle)", width: 10, flex: "none" }}>{i + 1}</span>
+            <span style={{ fontSize: 12, color: i === 0 ? "var(--brand-on-surface)" : "var(--text-subtle)", width: 12, flex: "none" }}>{i + 1}</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flex: 1, minWidth: 0, whiteSpace: "normal", overflowWrap: "anywhere" }}>{l.name}</span>
             <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flex: "none" }}>{fmt(props.metric, l.value)}</span>
           </div>
@@ -278,7 +277,7 @@ function GroupCards(props: { kind: "branch" | "team"; groups: GroupPayload[]; le
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 11, marginBottom: 12 }}>
               {([["Revenue", "revenue"], ["Contracts", "contracts"]] as Array<[string, Metric]>).map(([title, m]) => (
                 <div key={m}>
-                  <span style={{ ...CAP, fontSize: 10, fontWeight: 400 }}>{title}</span>
+                  <span style={{ ...CAP, fontSize: 12, fontWeight: 400 }}>{title}</span>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
                     <span style={{ fontSize: 12, color: "var(--text-subtle)", whiteSpace: "nowrap" }}>Year</span>
                     <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmt(m, g.yearTotals[m])}</span>
@@ -291,11 +290,11 @@ function GroupCards(props: { kind: "branch" | "team"; groups: GroupPayload[]; le
               ))}
             </div>
             <div style={{ borderTop: "1px solid var(--border-default)", paddingTop: 11 }}>
-              <span style={{ ...CAP, fontSize: 10, fontWeight: 400 }}>Top rep &middot; month to date</span>
+              <span style={{ ...CAP, fontSize: 12, fontWeight: 400 }}>Top rep &middot; month to date</span>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 11, marginTop: 8 }}>
                 {(["revenue", "claims", "knocks"] as Metric[]).map((m) => (
                   <div key={m} style={{ minWidth: 0 }}>
-                    <span style={{ ...CAP, fontSize: 10, fontWeight: 400 }}>#1 {METRIC_TITLE[m]}</span>
+                    <span style={{ ...CAP, fontSize: 12, fontWeight: 400 }}>#1 {METRIC_TITLE[m]}</span>
                     <b style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "normal", overflowWrap: "anywhere", marginTop: 3 }}>
                       {g.leaders[m]?.name ?? "Nobody yet"}
                     </b>
@@ -371,9 +370,7 @@ function DmoStatusLine(): JSX.Element | null {
 const TH: React.CSSProperties = {
   padding: "9px 10px",
   textAlign: "right",
-  fontSize: 10,
-  letterSpacing: "0.09em",
-  textTransform: "uppercase",
+  fontSize: 12,
   color: "var(--text-subtle)",
   fontWeight: 400,
   borderBottom: "1px solid var(--border-default)",
@@ -392,7 +389,7 @@ const TD_NAME: React.CSSProperties = { ...TD, textAlign: "left", fontSize: 14, f
 
 function Pill(props: { text: string; strong?: boolean }): JSX.Element {
   return (
-    <span style={{ display: "inline-block", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", padding: "1px 6px", borderRadius: 9, marginLeft: 7, background: props.strong ? "var(--brand-fill)" : "var(--surface-muted)", color: props.strong ? "var(--text-inverse)" : "var(--text-subtle)" }}>
+    <span style={{ display: "inline-block", fontSize: 12, padding: "1px 6px", borderRadius: 9, marginLeft: 7, background: props.strong ? "var(--brand-fill)" : "var(--surface-muted)", color: props.strong ? "var(--text-inverse)" : "var(--text-subtle)" }}>
       {props.text}
     </span>
   );
