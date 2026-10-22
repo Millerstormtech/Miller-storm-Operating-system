@@ -35,6 +35,13 @@ export const STAGE_TO_METRIC: Record<string, Exclude<Metric, "revenue">> = {
 export const REVENUE_FIELD = "approvedJobValue";
 export const REVENUE_STAGE = "Approved";
 
+// A job earns its Contract and Contract Amount only while AccuLynx has it at one of
+// these stages. It is the same filter as AccuLynx's own Sales Report (Current
+// Milestone includes Approved, Completed, Invoiced, Closed), so our totals match the
+// report the office checks us against (Youssef, 2026-10-22). A job sent back to
+// Lead/Prospect, or marked Cancelled, loses both.
+export const COUNTED_STAGES = ["Approved", "Completed", "Invoiced", "Closed"];
+
 // ---- Backfill (recompute) version ----
 // Bump this ONLY when the MEANING of a stored fact changes and history must be
 // recomputed: a new milestone->metric mapping, a changed stage, a revenue-field
@@ -45,7 +52,9 @@ export const REVENUE_STAGE = "Approved";
 // so ordinary deploys never trigger a costly backfill. See sync-policy.ts.
 // History:
 //   v1 = adds the Lead ("Leads Created") metric (STAGE_TO_METRIC.Lead).
-export const BACKFILL_VERSION = 1;
+//   v2 = Contract/Amount only at COUNTED_STAGES with a value above $0, and a job
+//        that stops counting has its old Contract/Amount removed.
+export const BACKFILL_VERSION = 2;
 
 // ---- Multi-location support ----
 // Miller Storm runs a SEPARATE AccuLynx account per location, each with its OWN API

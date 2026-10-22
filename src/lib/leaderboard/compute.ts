@@ -16,7 +16,9 @@ import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
 import { isDeletedFromRepCard } from "./roster";
 import { officeToBranch, BRANCH_ORDER } from "../repcard/branches";
-import { buildOrgChart, repcardTeamMatcher, type OrgChart } from "../repcard/org-chart";
+import { buildOrgChart, repcardTeamMatcher, branchFromProfile, type OrgChart } from "../repcard/org-chart";
+import { saleRegion } from "../repcard/branches";
+import { otherSalesByBranch, type OtherSales } from "./others";
 
 export interface SalesLeaderRow {
   id: string;               // merge id, e.g. "rc:<repcardUserId>"
@@ -151,10 +153,29 @@ export async function loadSharedRosterData(): Promise<SharedRosterData> {
   return { acxAll, allTimeKnockers, rcById, acctSets, byEmail, deletedByEmail, org, appTeamForRepCardTeam, histories };
 }
 
+// The board rows only. Every ranking, DMO, celebration and per-rep view uses this.
 export async function computeSalesRows(
   range: { start: Date; end: Date },
   shared?: SharedRosterData
 ): Promise<SalesLeaderRow[]> {
+  return (await computeBoard(range, shared, false)).rows;
+}
+
+// The rows plus the sales of people with no board row (others.ts), for the views
+// that show a company or branch TOTAL: the dashboards and the leaderboard's Total
+// Revenue. One extra grouped query, so only those callers pay for it.
+export async function computeSalesBoard(
+  range: { start: Date; end: Date },
+  shared?: SharedRosterData
+): Promise<{ rows: SalesLeaderRow[]; others: OtherSales[] }> {
+  return computeBoard(range, shared, true);
+}
+
+async function computeBoard(
+  range: { start: Date; end: Date },
+  shared: SharedRosterData | undefined,
+  withOthers: boolean
+): Promise<{ rows: SalesLeaderRow[]; others: OtherSales[] }> {
   await connectMongo();
   const { start, end } = range;
   const roster = shared ?? (await loadSharedRosterData());
@@ -242,8 +263,9 @@ export async function computeSalesRows(
     merged.map((x) => x.id.slice(3))
       .filter((id) => periodsOverlapping(roster.histories.get(id) || [], rangeDays.from, rangeDays.to).length > 1)
   );
+  const acxToRow = matchAcxToRc(acx, rc);
   const acxIdsByRc = new Map<string, string[]>();
-  for (const [acxId, rowId] of matchAcxToRc(acx, rc)) {
+  for (const [acxId, rowId] of acxToRow) {
     const id = rowId.slice(3);
     if (movers.has(id)) acxIdsByRc.set(id, [...(acxIdsByRc.get(id) || []), acxId]);
   }
@@ -311,5 +333,43 @@ export async function computeSalesRows(
     };
   });
 
-  return leaderboard as SalesLeaderRow[];
+  return {
+    rows: leaderboard as SalesLeaderRow[],
+    others: withOthers ? await loadOtherSales(range, new Set(acxToRow.keys()), roster) : [],
+  };
+}
+
+// AccuLynx credit that matched no board row, totalled per branch (others.ts). Grouped
+// by seller AND sub-account, because one person can sell in two places. A job with
+// no salesperson at all (none today) is counted here too, as AccuLynx's report does.
+async function loadOtherSales(
+  range: { start: Date; end: Date },
+  onBoard: Set<string>,
+  roster: SharedRosterData
+): Promise<OtherSales[]> {
+  const raw = await ScoringFactModel.aggregate([
+    { $match: { occurredAt: { $gte: range.start, $lte: range.end }, repExternalId: { $nin: [...onBoard] } } },
+    { $sort: { occurredAt: 1, _id: 1 } },
+    { $group: {
+        _id: { rep: "$repExternalId", loc: "$location" },
+        email: { $last: "$repEmail" },
+        lead: { $sum: { $cond: [{ $eq: ["$metric", "lead"] }, "$value", 0] } },
+        filed: { $sum: { $cond: [{ $eq: ["$metric", "filed"] }, "$value", 0] } },
+        won: { $sum: { $cond: [{ $eq: ["$metric", "won"] }, "$value", 0] } },
+        revenue: { $sum: { $cond: [{ $eq: ["$metric", "revenue"] }, "$value", 0] } },
+    } },
+  ]);
+  const profileBranch = (email: string) => {
+    const raw = branchFromProfile(roster.byEmail.get(email));
+    return raw ? officeToBranch(raw) || raw : "";
+  };
+  return otherSalesByBranch(
+    raw.map((r: any) => ({
+      repExternalId: String(r._id?.rep ?? ""), email: normEmail(r.email), location: String(r._id?.loc ?? ""),
+      lead: r.lead, filed: r.filed, won: r.won, revenue: r.revenue,
+    })),
+    onBoard,
+    saleRegion,
+    profileBranch
+  );
 }

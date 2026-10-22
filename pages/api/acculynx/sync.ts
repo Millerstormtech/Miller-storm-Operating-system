@@ -1,6 +1,6 @@
 // pages/api/acculynx/sync.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { runSync } from "../../../src/lib/acculynx/sync";
+import { runSync, runDeletedJobSweep } from "../../../src/lib/acculynx/sync";
 import { requireRole } from "../../../src/lib/auth";
 
 // Authorization. Two paths:
@@ -20,8 +20,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!auth) return;
   }
 
-  const mode = req.body?.mode === "backfill" ? "backfill" : "incremental";
   const dryRun = req.body?.dryRun === true;
+
+  // The nightly deleted-job check (the cron sends it once a night). It looks up
+  // ~700 jobs, so like a background sync it answers at once and keeps running.
+  if (req.body?.mode === "sweep") {
+    if (dryRun) return res.status(200).json(await runDeletedJobSweep({ dryRun }));
+    runDeletedJobSweep().then(
+      (r) => console.log(`[acculynx/sweep] ${r.status}: checked ${r.checked}, removed ${r.factsRemoved}`),
+      (err) => console.error("[acculynx/sweep] failed:", err?.message ?? err)
+    );
+    return res.status(202).json({ status: "started" });
+  }
+
+  const mode = req.body?.mode === "backfill" ? "backfill" : "incremental";
   // Optional cap on jobs per location — used only for a bounded dry-run smoke test.
   const limitJobs = Number.isInteger(req.body?.limitJobs) && req.body.limitJobs > 0 ? req.body.limitJobs : undefined;
 

@@ -21,7 +21,8 @@ import { RepCardKnockFactModel } from "../../src/lib/models/RepCardKnockFact";
 import { CertificateAwardModel } from "../../src/lib/models/CertificateAward";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange } from "../../src/lib/acculynx/windows";
-import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
+import { computeSalesBoard, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
+import { otherSalesForScope, type OtherSales } from "../../src/lib/leaderboard/others";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
 import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
 import { scopeLabel, scopeResolved } from "../../src/lib/scoreboard/display";
@@ -43,6 +44,7 @@ import {
   type Metric,
   type MonthLine,
 } from "../../src/lib/scoreboard/dashboard";
+import type { Totals } from "../../src/lib/scoreboard/types";
 
 const MONTH_LABELS = [
   "January", "February", "March", "April", "May", "June",
@@ -179,10 +181,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const scope = resolveScope({ id: user.id, role: user.role, name: user.name, territory: user.territory });
 
     const shared = await loadSharedRosterData();
-    const [yearRaw, monthRaw, prevRaw, board, crowningRow] = await Promise.all([
-      computeSalesRows(year, shared),
-      computeSalesRows(month, shared),
-      computeSalesRows(prevMonth, shared),
+    const [yearBoard, monthBoard, prevBoard, board, crowningRow] = await Promise.all([
+      computeSalesBoard(year, shared),
+      computeSalesBoard(month, shared),
+      computeSalesBoard(prevMonth, shared),
       loadBoardData(),
       // The crowning that actually happened: one row per month, written by the
       // 1st-of-month cron. The live crown on the leaderboard is a race still
@@ -191,6 +193,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .sort({ month: -1 })
         .lean(),
     ]);
+
+    const [yearRaw, monthRaw, prevRaw] = [yearBoard.rows, monthBoard.rows, prevBoard.rows];
 
     // Was the viewer the one crowned? The announcement stores a leaderboard row
     // id ("rc:123"), never an account, so only the server can answer this.
@@ -208,9 +212,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const monthRows = scopeRows(monthRaw.map(toSalesRow), scope);
     const prevRows = scopeRows(prevRaw.map(toSalesRow), scope);
 
-    const yearTotals = sumTotals(yearRows);
-    const monthTotals = sumTotals(monthRows);
-    const prevTotals = sumTotals(prevRows);
+    // Sales by people with no row (not on RepCard) count in the company and branch
+    // totals only: never in a top three, a team or a rep's own numbers (others.ts).
+    const plusOthers = (t: Totals, others: OtherSales[], view: { level: string; branch?: string | null }): Totals => {
+      const o = otherSalesForScope(others, view);
+      return { revenue: t.revenue + o.revenue, knocks: t.knocks, claims: t.claims + o.filed, contracts: t.contracts + o.won };
+    };
+    const yearTotals = plusOthers(sumTotals(yearRows), yearBoard.others, scope);
+    const monthTotals = plusOthers(sumTotals(monthRows), monthBoard.others, scope);
+    const prevTotals = plusOthers(sumTotals(prevRows), prevBoard.others, scope);
 
     // Four cards: this month's number, the honest trend against last month, and
     // the top three inside the viewer's own scope.
@@ -241,9 +251,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
       // Each card carries both windows, because a branch manager judging a team
       // needs the year for weight and the month for momentum.
+      // Branch cards (C-Level) add their branch's non-rep sales; team cards never do.
+      const forGroup = (t: Totals, others: OtherSales[], key: string) =>
+        kind === "branch" ? plusOthers(t, others, { level: "branch", branch: key }) : t;
       breakdown.groups = groupsMonth.map((g) => ({
         ...g,
-        yearTotals: yearByKey.get(g.key) ?? { revenue: 0, knocks: 0, claims: 0, contracts: 0 },
+        totals: forGroup(g.totals, monthBoard.others, g.key),
+        yearTotals: forGroup(yearByKey.get(g.key) ?? { revenue: 0, knocks: 0, claims: 0, contracts: 0 }, yearBoard.others, g.key),
       }));
     } else if (kind === "rep") {
       breakdown.reps = repLines(monthRows).map((r) => ({ ...r, note: moveNote({ movedOut: r.movedOut ?? null, joined: r.joined ?? null }) }));

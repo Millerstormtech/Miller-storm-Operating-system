@@ -10,6 +10,7 @@ import { moveNote } from "../lib/teamhistory/segments";
 import { GuidedTour } from "../portals/shared/guided-tour/GuidedTour";
 import { SALES_LEADERBOARD_TOUR } from "../portals/shared/guided-tour/definitions/salesLeaderboard";
 import { compareStanding } from "../lib/leaderboard/ranking";
+import { sumOtherSales, type OtherSales } from "../lib/leaderboard/others";
 import { isFormerRep, buildRepOptions, stripFormerMarker } from "../lib/leaderboard/formerRep";
 import { RepAvatar } from "./RepAvatar";
 import { ExportReportButton, type ExportRequest, type ExportScope } from "./report/ExportReportButton";
@@ -144,6 +145,8 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
   const [moment, setMoment] = useState<{ mark: string; title: string; line: string } | null>(null);
   // Every team in the org chart, from the endpoint (named by the team lead).
   const [teams, setTeams] = useState<string[]>([]);
+  // Sales by people with no row (not on RepCard), per branch. Added to Total Revenue only.
+  const [otherSales, setOtherSales] = useState<OtherSales[]>([]);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -153,6 +156,7 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         const data = await res.json();
         setRows(data.leaderboard ?? []);
         setTeams(data.teams ?? []);
+        setOtherSales(data.otherSales ?? []);
         setRankMoves(data.rankMoves ?? null);
         setContractKing(data.contractKing ?? null);
         setYtdPodium(data.ytdPodium ?? []);
@@ -394,6 +398,16 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
     { verifiedKnocks: 0, leadsCreated: 0, filed: 0, won: 0, revenue: 0 }
   );
 
+  // Total Revenue also counts sales by people with no row (office staff, owners,
+  // sellers not on RepCard), for the whole company or the branches picked
+  // (Youssef, 2026-10-22). They are on no team and are not reps, so a Team or Rep
+  // filter, or only "(No branch)", leaves them out. The Sum row stays rows only.
+  const otherRevenue = useMemo(() => {
+    if (teamSel.size > 0 || appliedReps.size > 0) return 0;
+    const branches = branchSel.size === 0 ? null : new Set([...branchSel].filter((b) => b !== NO_VALUE));
+    return sumOtherSales(otherSales, branches).revenue;
+  }, [otherSales, branchSel, teamSel, appliedReps]);
+
   // ---- Export report -------------------------------------------------------
   // "Full board" drops the row filters but NEVER the period: the period is not a
   // client-side filter, it is what the API was asked to fetch. `boardRows` is
@@ -476,8 +490,18 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
             filter (and any active branch/team/rep filters) since it sums the
             visible rows. */}
         <div className="sl__total" title="Total contract amount for the selected period">
-          <div className="sl__total-label">Total Revenue</div>
-          <div className="sl__total-val">{fmtMoney(totals.revenue)}</div>
+          <div className="sl__total-label">
+            Total Revenue
+            {otherRevenue > 0 && (
+              <span className="sl__hint">
+                <button type="button" className="sl__hint-btn" aria-label="What this total includes" aria-describedby="sl-total-hint">i</button>
+                <span role="tooltip" id="sl-total-hint" className="sl__hint-tip">
+                  Includes {fmtMoney(otherRevenue)} in revenue from people who are not sales reps.
+                </span>
+              </span>
+            )}
+          </div>
+          <div className="sl__total-val">{fmtMoney(totals.revenue + otherRevenue)}</div>
         </div>
       </div>
 
@@ -997,6 +1021,12 @@ export function LeaderboardBoard({ currentUserId }: { currentUserId?: string }) 
         .sl__total-label { font-size: 11px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
         .sl__total-val { margin-top: 3px; font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif; font-size: clamp(24px, 3vw, 32px); font-weight: 900; line-height: 1; letter-spacing: 0.01em; color: #16a34a; }
         @media (max-width: 560px) { .sl__total { text-align: left; } }
+        .sl__hint { position: relative; display: inline-block; margin-left: 6px; vertical-align: middle; }
+        .sl__hint-btn { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1px solid var(--chip-border); background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 800; line-height: 18px; text-transform: none; letter-spacing: 0; cursor: help; }
+        .sl__hint-btn:focus-visible { outline: 2px solid var(--th-active); outline-offset: 2px; }
+        .sl__hint-tip { display: none; position: absolute; z-index: 20; right: 0; top: calc(100% + 6px); width: 240px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--panel-line); background: var(--panel); color: var(--text); font-size: 13px; font-weight: 500; line-height: 1.4; letter-spacing: 0; text-transform: none; text-align: left; }
+        .sl__hint:hover .sl__hint-tip, .sl__hint-btn:focus + .sl__hint-tip { display: block; }
+        @media (max-width: 560px) { .sl__hint-tip { right: auto; left: 0; } }
 
         .sl__periods { display: flex; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; justify-content: flex-start; }
         @media (max-width: 1100px) { .sl__periods { flex-wrap: wrap; } }

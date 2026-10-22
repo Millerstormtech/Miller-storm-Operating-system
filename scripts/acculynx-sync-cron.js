@@ -20,15 +20,36 @@ const PORT = process.env.PORT || 6790; // prod app port (PM2). 6789 fallback onc
 const URL = `http://127.0.0.1:${PORT}/api/acculynx/sync`;
 const SECRET = process.env.ACCULYNX_SYNC_SECRET;
 const REFRESH_MS = 30 * 60 * 1000; // every 30 minutes
+// The nightly deleted-job check runs on the first tick after 2 AM Central, once a day.
+const SWEEP_HOUR_CENTRAL = 2;
+let lastSweepDay = "";
+
+function centralDayHour() {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date())
+      .map((x) => [x.type, x.value])
+  );
+  return { day: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) };
+}
+
+async function post(mode) {
+  const res = await fetch(URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-sync-secret": SECRET || "" },
+    body: JSON.stringify({ mode }),
+  });
+  console.log(`[acculynx-cron] ${new Date().toISOString()} ${mode} -> ${res.status}`, (await res.text()).slice(0, 200));
+}
 
 async function tick() {
   try {
-    const res = await fetch(URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-sync-secret": SECRET || "" },
-      body: JSON.stringify({ mode: "incremental" }),
-    });
-    console.log(`[acculynx-cron] ${new Date().toISOString()} -> ${res.status}`, (await res.text()).slice(0, 200));
+    await post("incremental");
+    const { day, hour } = centralDayHour();
+    if (hour === SWEEP_HOUR_CENTRAL && day !== lastSweepDay) {
+      lastSweepDay = day;
+      await post("sweep");
+    }
   } catch (e) {
     console.error("[acculynx-cron] error:", e.message);
   }
