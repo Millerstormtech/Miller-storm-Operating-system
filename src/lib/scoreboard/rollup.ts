@@ -1,6 +1,15 @@
 import type { SalesRow, Totals, Scope, ScoreSegment } from "./types";
 import { pickSegments } from "../teamhistory/segments";
 import { shiftDay } from "../teamhistory/periods";
+import { otherSalesForScope, type OtherSales } from "../leaderboard/others";
+
+// A company or branch total plus the sales of people with no row (not on RepCard,
+// leaderboard/others.ts). A team or a single rep gets nothing added. They knock no
+// doors, so knocks stay as they are.
+export function withOtherSales(t: Totals, others: readonly OtherSales[], view: { level: string; branch?: string | null }): Totals {
+  const o = otherSalesForScope(others, view);
+  return { revenue: t.revenue + o.revenue, knocks: t.knocks, claims: t.claims + o.filed, contracts: t.contracts + o.won };
+}
 
 export function sumTotals(rows: SalesRow[]): Totals {
   return rows.reduce<Totals>(

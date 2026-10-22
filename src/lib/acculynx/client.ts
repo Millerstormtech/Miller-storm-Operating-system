@@ -100,6 +100,8 @@ export function createClient(apiKey: string) {
     return { items: page?.items ?? [], count: Number(page?.count ?? 0) };
   }
 
+  // One job, or null when AccuLynx answers 404 (the job was deleted).
+  const fetchJob = (jobId: string) => get(`/jobs/${jobId}`);
   const fetchMilestoneHistory = (jobId: string) => get(`/jobs/${jobId}/milestone-history`);
   const fetchRepresentatives = (jobId: string) => get(`/jobs/${jobId}/representatives`);
   const fetchFinancials = (jobId: string) => get(`/jobs/${jobId}/financials`);
@@ -133,6 +135,7 @@ export function createClient(apiKey: string) {
     fetchCompanySettings,
     fetchJobsModifiedSince,
     fetchAllJobsPage,
+    fetchJob,
     fetchMilestoneHistory,
     fetchRepresentatives,
     fetchFinancials,

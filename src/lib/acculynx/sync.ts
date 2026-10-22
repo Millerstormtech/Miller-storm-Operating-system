@@ -4,10 +4,11 @@ import { ScoringFactModel } from "../models/ScoringFact";
 import { SyncStateModel } from "../models/SyncState";
 import { UserModel } from "../models/User";
 import { AcculynxUserModel } from "../models/AcculynxUser";
-import { STAGE_TO_METRIC, REVENUE_STAGE, REP_TYPES, getLocationKeys, cleanBranchName, BACKFILL_VERSION } from "./config";
+import { STAGE_TO_METRIC, REVENUE_STAGE, REP_TYPES, COUNTED_STAGES, getLocationKeys, cleanBranchName, BACKFILL_VERSION } from "./config";
 import { createClient } from "./client";
 import type { AcculynxClient } from "./client";
-import { mapJobToFacts, isJobDead } from "./mapping";
+import { mapJobToFacts, metricsToClear } from "./mapping";
+import { planDeletedJobPurge } from "./sweep";
 import type { MappingConfig } from "./mapping";
 import { resolveSyncMode } from "./sync-policy";
 import { getWindowRange } from "./windows";
@@ -19,6 +20,7 @@ const MAPPING_CFG: MappingConfig = {
   repTypes: REP_TYPES,
   stageToMetric: STAGE_TO_METRIC,
   revenueStage: REVENUE_STAGE,
+  countedStages: COUNTED_STAGES,
 };
 
 function toDateOnly(d: Date): string { return d.toISOString().slice(0, 10); }
@@ -31,7 +33,9 @@ export interface LocationSyncResult {
   mode?: "incremental" | "backfill"; // what this run actually did (a version gap upgrades incremental -> backfill)
   jobsProcessed: number;
   factsWritten: number;
-  deadContractsRemoved?: number; // won/revenue facts deleted because the deal is now Cancelled
+  // won/revenue facts deleted because the job stopped counting (Cancelled, moved
+  // back below Approved, or value now $0). Name kept from when only Cancelled did.
+  deadContractsRemoved?: number;
   unmatched: { repExternalId: string; name: string }[];
   error?: string;
 }
@@ -193,12 +197,14 @@ async function syncOneLocation(
       const facts = mapJobToFacts({ job, milestoneHistory, representatives, financials }, MAPPING_CFG, branch);
       result.jobsProcessed++;
 
-      // A deal AccuLynx now marks "Cancelled" earns no contract/revenue. The mapper
-      // already stops EMITTING those facts; because the store is upsert-only (it never
-      // deletes), we must ALSO remove any won/revenue a PRIOR sync wrote while the deal
-      // was still Approved. Its "filed" fact is intentionally left untouched.
-      if (!dryRun && isJobDead(job)) {
-        const del = await ScoringFactModel.deleteMany({ jobId: job.id, metric: { $in: ["won", "revenue"] } });
+      // A job that no longer counts (Cancelled, moved back below Approved, value now
+      // $0) earns no contract/revenue. The mapper already stops EMITTING those facts;
+      // because the store is upsert-only (it never deletes), we must ALSO remove any
+      // won/revenue a PRIOR sync wrote while the job still counted. Its "filed" fact
+      // is intentionally left untouched.
+      const clear = metricsToClear(facts);
+      if (!dryRun && clear.length) {
+        const del = await ScoringFactModel.deleteMany({ jobId: job.id, metric: { $in: clear } });
         if (del.deletedCount) result.deadContractsRemoved = (result.deadContractsRemoved ?? 0) + del.deletedCount;
       }
 
@@ -286,4 +292,85 @@ async function syncOneLocation(
   }
 
   return result;
+}
+
+export interface SweepLocationResult {
+  branch: string;
+  companyId: string;
+  status: "ok" | "failed" | "skipped" | "refused";
+  checked: number;
+  missing: number;
+  missingJobs: string[]; // job ids AccuLynx answered 404 for, for the log
+  factsRemoved: number;
+  error?: string;
+}
+
+export interface SweepResult {
+  status: "ok" | "partial" | "failed";
+  checked: number;
+  factsRemoved: number;
+  locations: SweepLocationResult[];
+}
+
+// Nightly deleted-job check. AccuLynx never reports a deletion and a deleted job
+// drops out of the "modified since" pull, so every job holding a Contract or
+// Contract Amount this year is looked up once (one GET each). Jobs that answer 404
+// lose their Contract and Contract Amount; their Claims Filed / Leads stay, as for
+// any deal that stops counting. sweep.ts refuses mass removals (a bad key 404s
+// everything). Facts are matched to a location by sourceCompanyId, so each job is
+// looked up with the key of the account it was synced from.
+export async function runDeletedJobSweep(opts: { dryRun?: boolean } = {}): Promise<SweepResult> {
+  const { dryRun = false } = opts;
+  await connectMongo();
+  const out: SweepResult = { status: "ok", checked: 0, factsRemoved: 0, locations: [] };
+  const yearStart = getWindowRange("year").start;
+
+  const seenCompany = new Set<string>();
+  for (const loc of getLocationKeys()) {
+    const client = createClient(loc.key);
+    const r: SweepLocationResult = { branch: loc.envVar, companyId: "", status: "ok", checked: 0, missing: 0, missingJobs: [], factsRemoved: 0 };
+    try {
+      const cs = await client.fetchCompanySettings();
+      if (!cs?.companyId) throw new Error(`no company-settings resolved for ${loc.envVar}`);
+      r.companyId = cs.companyId;
+      r.branch = cleanBranchName(cs.name);
+      if (seenCompany.has(r.companyId)) { r.status = "skipped"; out.locations.push(r); continue; }
+      seenCompany.add(r.companyId);
+
+      const jobIds: string[] = await ScoringFactModel.distinct("jobId", {
+        sourceCompanyId: r.companyId,
+        metric: { $in: ["won", "revenue"] },
+        occurredAt: { $gte: yearStart },
+      });
+      const missing: string[] = [];
+      for (const id of jobIds) {
+        if (!(await client.fetchJob(id))) missing.push(id);
+      }
+      r.checked = jobIds.length;
+      r.missing = missing.length;
+      r.missingJobs = missing;
+
+      const plan = planDeletedJobPurge({ checked: jobIds.length, missing });
+      if (plan.refused) {
+        r.status = "refused";
+        r.error = plan.reason;
+        console.warn(`[acculynx/sweep] ${r.branch}: ${plan.reason}`);
+      } else if (!dryRun && plan.purge.length) {
+        const del = await ScoringFactModel.deleteMany({ jobId: { $in: plan.purge }, metric: { $in: ["won", "revenue"] } });
+        r.factsRemoved = del.deletedCount ?? 0;
+        console.log(`[acculynx/sweep] ${r.branch}: removed ${r.factsRemoved} facts from ${plan.purge.length} deleted job(s): ${plan.purge.join(", ")}`);
+      }
+    } catch (err: any) {
+      r.status = "failed";
+      r.error = err?.message ?? String(err);
+    }
+    out.checked += r.checked;
+    out.factsRemoved += r.factsRemoved;
+    out.locations.push(r);
+  }
+
+  const ran = out.locations.filter((l) => l.status !== "skipped");
+  if (ran.some((l) => l.status === "failed" || l.status === "refused")) out.status = "partial";
+  if (ran.length > 0 && ran.every((l) => l.status === "failed")) out.status = "failed";
+  return out;
 }

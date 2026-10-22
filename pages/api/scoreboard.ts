@@ -5,10 +5,10 @@ import { UserModel } from "../../src/lib/models/User";
 import { SyncStateModel } from "../../src/lib/models/SyncState";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 import { getWindowRange, type Window } from "../../src/lib/acculynx/windows";
-import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
+import { computeSalesBoard, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 import type { Totals } from "../../src/lib/scoreboard/types";
 import { resolveScope } from "../../src/lib/scoreboard/resolve";
-import { scopeRows, sumTotals, rankFor } from "../../src/lib/scoreboard/rollup";
+import { scopeRows, sumTotals, rankFor, withOtherSales } from "../../src/lib/scoreboard/rollup";
 import { conversions, trend, rateDir } from "../../src/lib/scoreboard/metrics";
 import { scopeLabel, scopeResolved } from "../../src/lib/scoreboard/display";
 import { previousSlice, periodEndFor, paceFraction } from "../../src/lib/scoreboard/periods";
@@ -108,23 +108,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // app-user directories). Load it once per request and hand the same object to
     // both calls instead of letting each one re-run those unbounded scans.
     const shared = await loadSharedRosterData();
-    const [curRowsRaw, prevRowsRaw, syncedAt] = await Promise.all([
-      computeSalesRows(cur, shared),
-      computeSalesRows(prev, shared),
+    const [curBoard, prevBoard, syncedAt] = await Promise.all([
+      computeSalesBoard(cur, shared),
+      computeSalesBoard(prev, shared),
       resolveSyncedAt(),
     ]);
-    const curRows = curRowsRaw.map(toSalesRow);
-    const prevRows = prevRowsRaw.map(toSalesRow);
+    const curRows = curBoard.rows.map(toSalesRow);
+    const prevRows = prevBoard.rows.map(toSalesRow);
 
     const scope = resolveScope({ id: (user as any).id, role: (user as any).role, name: (user as any).name, territory: (user as any).territory });
 
     const inScope = scopeRows(curRows, scope);
     const inScopePrev = scopeRows(prevRows, scope);
-    const totals = sumTotals(inScope);
-    const previous = sumTotals(inScopePrev);
+    const repTotals = sumTotals(inScope);
+    const repPrevious = sumTotals(inScopePrev);
+    // Company and branch totals include sales by people with no row (not on
+    // RepCard), like every board (leaderboard/others.ts). The conversion rates stay
+    // on the reps' own numbers: those people knock no doors, so their claims would
+    // inflate knock-to-claim.
+    const totals = withOtherSales(repTotals, curBoard.others, scope);
+    const previous = withOtherSales(repPrevious, prevBoard.others, scope);
 
-    const conv = conversions(totals);
-    const convPrev = conversions(previous);
+    const conv = conversions(repTotals);
+    const convPrev = conversions(repPrevious);
 
     // Personal strip: the viewer's own row, only when their scope is wider than themselves
     // AND they personally sell (they appear as a row).

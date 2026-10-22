@@ -8,6 +8,7 @@ export interface MappingConfig {
   repTypes: string[]; // ordered preference; first matching rep type wins
   stageToMetric: Record<string, Exclude<Metric, "revenue">>;
   revenueStage: string;
+  countedStages: string[]; // current stages at which a job earns won/revenue
 }
 
 export interface FactDraft {
@@ -57,6 +58,22 @@ export function isJobDead(job: any): boolean {
   return job?.currentMilestone === "Cancelled";
 }
 
+// Does the job earn its Contract and Contract Amount right now? Only while its
+// CURRENT stage is a counted one (AccuLynx's own Sales Report filter). So a dead
+// deal, and a job sent back to Lead/Prospect, earn neither, whatever its history.
+export function isJobCounted(job: any, countedStages: string[]): boolean {
+  return countedStages.includes(job?.currentMilestone);
+}
+
+// The fact store is upsert-only, so a contract or amount a PRIOR sync wrote must
+// be deleted when the job stops earning it (Cancelled, moved back below Approved,
+// value now $0). Returns the metrics this job no longer earns. Claims Filed and
+// Leads are never cleared: the rep did that work whatever happened to the deal.
+export function metricsToClear(facts: Pick<FactDraft, "metric">[]): Metric[] {
+  const emitted = new Set(facts.map((f) => f.metric));
+  return (["won", "revenue"] as Metric[]).filter((m) => !emitted.has(m));
+}
+
 // `branch` is the leaderboard branch label (resolved by the sync from the location's
 // AccuLynx company name). The customer city is kept separately on each fact.
 export function mapJobToFacts(
@@ -68,21 +85,22 @@ export function mapJobToFacts(
   const jobId = job.id;
   const repExternalId = pickRepUserId(representatives, cfg.repTypes);
   const city = extractCity(job);
-  const dead = isJobDead(job); // Cancelled deal: earns "filed" but never "won"/"revenue".
+  const counted = isJobCounted(job, cfg.countedStages); // else: "filed" yes, "won"/"revenue" no
   const facts: FactDraft[] = [];
 
-  // filed (Prospect) + won (Approved) — but a dead deal earns no contract (won) credit.
+  // filed (Prospect) + won (Approved) — but only a counted job earns contract (won) credit.
   for (const [stage, metric] of Object.entries(cfg.stageToMetric)) {
-    if (dead && metric === "won") continue;
+    if (!counted && metric === "won") continue;
     const d = milestoneDate(milestoneHistory, stage);
     if (d) facts.push({ factKey: buildFactKey(jobId, metric), jobId, metric, repExternalId, value: 1, occurredAt: d, location: branch, city });
   }
 
-  // revenue (approvedJobValue @ Approved date; fallback to job.milestoneDate) — a dead
-  // deal contributes no dollars.
+  // revenue (approvedJobValue @ Approved date). No Approved date, no dollars: the old
+  // fallback to job.milestoneDate once counted a $22,500 job still at Prospect
+  // (2026-10-22), and AccuLynx's report dates every sale by its Approved date too.
   const value = Number(financials?.approvedJobValue ?? 0);
-  if (!dead && value > 0) {
-    const occurredAt = milestoneDate(milestoneHistory, cfg.revenueStage) ?? (job.milestoneDate ? new Date(job.milestoneDate) : null);
+  if (counted && value > 0) {
+    const occurredAt = milestoneDate(milestoneHistory, cfg.revenueStage);
     if (occurredAt) facts.push({ factKey: buildFactKey(jobId, "revenue"), jobId, metric: "revenue", repExternalId, value, occurredAt, location: branch, city });
   }
 

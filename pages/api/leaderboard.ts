@@ -12,7 +12,7 @@ import type { Window } from "../../src/lib/acculynx/windows";
 import { pickContractKing, pickYtdPodium, kingMonthLabel } from "../../src/lib/leaderboard/contractKing";
 import { courseStats, isBoardUser, BOARD_ROLES, scoresVideosOnly } from "../../src/lib/training/scoring";
 import { compareOverallRows } from "../../src/lib/training/board";
-import { computeSalesRows, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
+import { computeSalesRows, computeSalesBoard, loadSharedRosterData } from "../../src/lib/leaderboard/compute";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["GET"])) return;
@@ -129,7 +129,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // One roster load for all three ranges below (and the team list).
   const shared = await loadSharedRosterData();
-  const rows = await computeSalesRows({ start, end }, shared);
+  // `otherSales`: money from people with no row (not on RepCard). It counts in the
+  // Total Revenue for the company and their branch, never as a row (others.ts).
+  const { rows, others: otherSales } = await computeSalesBoard({ start, end }, shared);
 
   // Contract King: the CURRENT CALENDAR MONTH's top rep by Contract Amount.
   // Deliberately its own month window rather than the selected period, so a Year
@@ -207,6 +209,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     window: isCustom ? "custom" : w,
     range: { from: isCustom ? fromQ : centralDateStr(start), to: isCustom ? toQ : centralDateStr(end) },
     leaderboard,
+    // Totals per branch ("" = company total only) of sales by people not on the
+    // board. The web adds them to Total Revenue for the matching view.
+    otherSales,
     // Every team in the org chart (User Management), in branch order, for the
     // Team filter: the options never vanish because a team is quiet this period.
     teams: shared.org.teams,
