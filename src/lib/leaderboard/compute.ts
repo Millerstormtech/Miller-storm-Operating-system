@@ -14,7 +14,7 @@ import { centralDateStr } from "../acculynx/windows";
 import { placeRep } from "../teamhistory/placement";
 import { compareStanding } from "./ranking";
 import { normEmail, normName, normPhone, hasAcculynxAccount } from "./identity";
-import { isDeletedFromRepCard } from "./roster";
+import { isDeletedFromRepCard, formerRepsWithActivity } from "./roster";
 import { officeToBranch, BRANCH_ORDER } from "../repcard/branches";
 import { buildOrgChart, repcardTeamMatcher, branchFromProfile, type OrgChart } from "../repcard/org-chart";
 import { saleRegion } from "../repcard/branches";
@@ -219,7 +219,8 @@ async function computeBoard(
   const acxAll = roster.acxAll;
 
   // Build the roster: everyone with in-range knocks (active or former), PLUS idle ACTIVE
-  // door-knockers as zero rows. Former reps with no in-range activity fall off.
+  // door-knockers as zero rows, PLUS former reps with in-range AccuLynx activity
+  // (below). Former reps with no in-range activity fall off.
   //
   // Reps DELETED from RepCard are excluded outright. Deleted is not the same as
   // deactivated: a deactivated rep is still a real rep, keeps their row, their totals
@@ -246,6 +247,22 @@ async function computeBoard(
     if (rosterIds.has(id)) continue;
     const u = rcById.get(id);
     if (!u || String((u as any).status) !== "ACTIVE") continue;
+    rosterIds.add(id);
+    rc.push({
+      repcardUserId: id, email: normEmail((u as any).email), phone: normPhone((u as any).phone),
+      nameKey: normName((u as any).name), name: (u as any).name || "Unknown Rep", branch: "",
+      verifiedKnocks: 0,
+    });
+  }
+
+  // Former reps (deactivated in RepCard) with AccuLynx activity but no knocks in
+  // this range get their row too, with the ❌ like any former rep (roster.ts).
+  const directory = [...rcById.values()].map((u: any) => ({
+    repcardUserId: String(u.repcardUserId), email: normEmail(u.email), phone: normPhone(u.phone),
+    status: u.status, team: u.team,
+  }));
+  for (const id of formerRepsWithActivity(acx, rc, directory)) {
+    const u = rcById.get(id);
     rosterIds.add(id);
     rc.push({
       repcardUserId: id, email: normEmail((u as any).email), phone: normPhone((u as any).phone),
