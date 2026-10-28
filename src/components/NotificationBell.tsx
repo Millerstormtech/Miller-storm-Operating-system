@@ -7,6 +7,7 @@ import { trainingRouteForRole } from "../lib/trainingRoute";
 import { calendarRouteForRole } from "../lib/calendarRoute";
 import { dmoRouteForRole } from "../lib/dmoRoute";
 import { pastAnnouncementsRouteForRole } from "../lib/pastAnnouncementsRoute";
+import { TICKET_NOTIFICATION_TYPES, ticketLinkFor } from "../lib/support/ticketLink";
 
 type Notification = {
   id: string;
@@ -27,6 +28,7 @@ type Notification = {
     tab?: string;
     playlistId?: string;
     groupId?: string; // Storm Chat alerts: the chat to open
+    ticketId?: string; // support ticket alerts: the ticket to open
   };
 };
 
@@ -171,6 +173,14 @@ export function NotificationBell({ userId }: { userId: string }) {
       if (notif.metadata?.lessonId) params.set("lessonId", notif.metadata.lessonId);
       const qs = params.toString();
       router.push(qs ? `${base}?${qs}` : base);
+    } else if (TICKET_NOTIFICATION_TYPES.includes(notif.type) && notif.metadata?.ticketId) {
+      // A support ticket alert (new ticket, reply, status change) opens that
+      // ticket: staff on their tickets page, the rep in the header's Support
+      // panel (TicketButton listens for "open-support-ticket").
+      setShowDropdown(false);
+      const link = ticketLinkFor({ role: user?.role, email: user?.email }, notif.metadata.ticketId);
+      if (link.kind === "page") router.push(link.href);
+      else window.dispatchEvent(new CustomEvent("open-support-ticket", { detail: { ticketId: link.ticketId } }));
     } else {
       console.log('No deep link for this notification');
     }

@@ -1,8 +1,10 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { STATUS_LABEL, STATUS_COLOR } from "../../components/TicketButton";
+import { TicketStatusHint } from "../../components/TicketStatusHint";
 import { supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES } from "../../lib/support/categories";
 import { formatTicketNumber } from "../../lib/support/ticketNumberFormat";
-import { TICKET_STATUSES, type TicketStatus } from "../../lib/support/ticketStatus";
+import { DECISION_STATUSES, TICKET_STATUSES, ticketStatusesFor, type TicketStatus } from "../../lib/support/ticketStatus";
 import { useAuth } from "../../contexts/AuthContext";
 
 type TicketMessage = {
@@ -34,7 +36,10 @@ type Ticket = {
   staffSeenAt?: string | null;
 };
 
+// Every status, for the filter. Each row offers only its own type's statuses
+// (Approved/Rejected exist on Billing and Draw Request tickets only).
 const STATUS_OPTIONS = TICKET_STATUSES;
+const DECISION_NOTE = "Approved and Rejected appear only on Billing and Draw Request tickets.";
 
 // Messages from the raiser staff hasn't SEEN yet — opening the conversation
 // (pages/api/tickets/[id].ts's GET) or replying to it both count as seeing it,
@@ -82,6 +87,12 @@ export function TicketTable() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // An Approve/Reject picked in a row's dropdown waits here for a confirm,
+  // because it emails the rep and the type's whole list. `reason` is the
+  // optional rejection reason the rep will see.
+  const [pendingDecision, setPendingDecision] = useState<{ id: string; status: TicketStatus; reason: string } | null>(null);
+  const router = useRouter();
+  const openedFromLink = useRef(false);
 
   // Opening a ticket's conversation marks it seen server-side (GET on
   // /api/tickets/[id] records staffSeenAt for anyone other than the raiser),
@@ -109,13 +120,24 @@ export function TicketTable() {
 
   useEffect(() => { load(); }, []);
 
-  const changeStatus = async (id: string, status: string) => {
+  // A ticket alert in the bell links here as ?ticket=<id>: open that ticket's
+  // conversation once the list has loaded, and scroll it into view.
+  useEffect(() => {
+    const wanted = typeof router.query.ticket === "string" ? router.query.ticket : "";
+    if (loading || !wanted || openedFromLink.current) return;
+    if (!tickets.some((t) => t.id === wanted)) return;
+    openedFromLink.current = true;
+    openTicket(wanted);
+    setTimeout(() => document.getElementById(`ticket-row-${wanted}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  }, [loading, tickets, router.query.ticket]);
+
+  const changeStatus = async (id: string, status: string, reason?: string) => {
     setUpdating(id);
     try {
       const res = await fetch(`/api/tickets/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(status === "rejected" ? { status, adminNote: reason ?? "" } : { status }),
       });
       if (res.ok) {
         const updated = await res.json();
@@ -252,7 +274,11 @@ export function TicketTable() {
                 <th style={th}>Details</th>
                 <th style={th}>Date</th>
                 <th style={th}>Last Update</th>
-                <th style={th}>Status</th>
+                <th style={th}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    Status <TicketStatusHint statuses={[...TICKET_STATUSES]} note={DECISION_NOTE} />
+                  </span>
+                </th>
                 <th style={th}>Update</th>
                 <th style={th}>Chat</th>
               </tr>
@@ -263,9 +289,10 @@ export function TicketTable() {
                 const count = t.messages?.length ?? 0;
                 const pending = pendingFromUser(t);
                 const open = openId === t.id;
+                const decision = pendingDecision?.id === t.id ? pendingDecision : null;
                 return (
                   <Fragment key={t.id}>
-                    <tr style={{ borderTop: "1px solid var(--border-default)" }}>
+                    <tr id={`ticket-row-${t.id}`} style={{ borderTop: "1px solid var(--border-default)" }}>
                       <td style={{ ...td, color: "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
                         {t.number ? formatTicketNumber(t.number) : "—"}
                       </td>
@@ -294,15 +321,23 @@ export function TicketTable() {
                         <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
                           {STATUS_LABEL[t.status]}
                         </span>
+                        {t.status === "rejected" && t.adminNote?.trim() && (
+                          <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-muted)", maxWidth: 200, whiteSpace: "pre-wrap" }}>Reason: {t.adminNote}</div>
+                        )}
                       </td>
                       <td style={td}>
                         <select
                           value={t.status}
                           disabled={updating === t.id}
-                          onChange={(e) => changeStatus(t.id, e.target.value)}
+                          onChange={(e) => {
+                            const next = e.target.value as TicketStatus;
+                            // A decision waits for a confirm; anything else saves at once.
+                            if (DECISION_STATUSES.includes(next)) setPendingDecision({ id: t.id, status: next, reason: "" });
+                            else { setPendingDecision(null); changeStatus(t.id, next); }
+                          }}
                           style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid var(--border-default)", fontSize: 13, cursor: "pointer", background: "var(--surface-subtle)", color: "var(--text-primary)" }}
                         >
-                          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                          {ticketStatusesFor(t.type).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
                         </select>
                       </td>
                       <td style={td}>
@@ -322,6 +357,42 @@ export function TicketTable() {
                         </div>
                       </td>
                     </tr>
+                    {decision && (
+                      <tr>
+                        <td colSpan={9} style={{ padding: 16, background: "var(--surface-subtle)", borderTop: "1px solid var(--border-default)" }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>
+                            {decision.status === "approved" ? "Approve" : "Reject"} {t.name}&apos;s {supportTypeLabel(t.type)} ticket? {t.name} and everyone on the {supportTypeLabel(t.type)} email list will be emailed.
+                          </div>
+                          {decision.status === "rejected" && (
+                            <textarea
+                              value={decision.reason}
+                              onChange={(e) => setPendingDecision({ ...decision, reason: e.target.value })}
+                              placeholder="Reason (optional). The rep will see it."
+                              rows={2}
+                              maxLength={1000}
+                              style={{ width: "100%", boxSizing: "border-box", resize: "vertical", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-default)", fontSize: 14, background: "var(--surface-default)", color: "var(--text-primary)", fontFamily: "inherit", marginBottom: 8 }}
+                            />
+                          )}
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              type="button"
+                              disabled={updating === t.id}
+                              onClick={async () => { await changeStatus(t.id, decision.status, decision.reason); setPendingDecision(null); }}
+                              style={{ padding: "8px 18px", borderRadius: 999, border: "none", background: "#CB0002", color: "var(--text-inverse)", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+                            >
+                              {decision.status === "approved" ? "Approve" : "Reject"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingDecision(null)}
+                              style={{ padding: "8px 18px", borderRadius: 999, border: "1px solid var(--border-default)", background: "var(--surface-default)", color: "var(--text-primary)", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     {open && (
                       <tr>
                         <td colSpan={9} style={{ padding: 0, background: "var(--surface-subtle)" }}>
