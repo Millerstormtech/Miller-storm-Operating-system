@@ -5,25 +5,54 @@ import { TICKET_STATUS_HINT, TICKET_STATUS_LABEL, type TicketStatus } from "../l
 // changes by itself (Youssef, 2026-10-28). Used on the staff tickets page and
 // in the rep's own ticket view. `note` adds a line under the list, e.g. that
 // Approved/Rejected only exist on some ticket types.
-export function TicketStatusHint({ statuses, note }: { statuses: TicketStatus[]; note?: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
+//
+// The box is position: fixed, placed from the button's position: on the staff
+// page the button sits inside the table's horizontal scroll area, which clips
+// anything absolutely positioned inside it.
+const BOX_WIDTH = 300;
 
-  // Close on a click anywhere else, or on Escape.
+export function TicketStatusHint({ statuses, note }: { statuses: TicketStatus[]; note?: string }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const ref = useRef<HTMLSpanElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const open = pos !== null;
+
+  const toggle = () => {
+    if (open) { setPos(null); return; }
+    const r = buttonRef.current?.getBoundingClientRect();
+    if (!r) return;
+    // clientWidth, not innerWidth (which includes the page scrollbar), and a
+    // 20px right margin to clear the inner content scrollbar too.
+    const vw = document.documentElement.clientWidth;
+    const width = Math.min(BOX_WIDTH, vw - 16);
+    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, vw - width - 20)) });
+  };
+
+  // Close on a click anywhere else, on Escape, or when the page scrolls (the
+  // box is fixed, so it would otherwise float away from its button).
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const close = () => setPos(null);
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [open]);
 
   return (
-    <span ref={ref} style={{ position: "relative", display: "inline-flex", verticalAlign: "middle" }}>
+    <span ref={ref} style={{ display: "inline-flex", verticalAlign: "middle" }}>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onClick={(e) => { e.stopPropagation(); toggle(); }}
         aria-label="What do the statuses mean?"
         aria-expanded={open}
         title="What do the statuses mean?"
@@ -31,12 +60,12 @@ export function TicketStatusHint({ statuses, note }: { statuses: TicketStatus[];
       >
         ?
       </button>
-      {open && (
+      {pos && (
         <div
           role="dialog"
           aria-label="Ticket statuses"
           onClick={(e) => e.stopPropagation()}
-          style={{ position: "absolute", top: 26, left: 0, zIndex: 50, width: 300, maxWidth: "80vw", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 10, boxShadow: "0 10px 24px rgba(15,23,42,0.18)", padding: "12px 14px", textAlign: "left", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}
+          style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 10001, width: BOX_WIDTH, maxWidth: "calc(100vw - 16px)", boxSizing: "border-box", background: "var(--surface-default)", border: "1px solid var(--border-default)", borderRadius: 10, boxShadow: "0 10px 24px rgba(15,23,42,0.18)", padding: "12px 14px", textAlign: "left", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}
         >
           {statuses.map((s) => (
             <div key={s} style={{ marginBottom: 8 }}>
