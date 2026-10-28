@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../contexts/AuthContext";
 import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, isTicketOwner } from "../lib/support/categories";
-import { TICKET_STATUSES, TICKET_STATUS_LABEL, normalizeTicketStatus, type TicketStatus } from "../lib/support/ticketStatus";
+import { TICKET_STATUS_LABEL, normalizeTicketStatus, statusSteps, ticketStatusesFor, type TicketStatus } from "../lib/support/ticketStatus";
+import { TicketStatusHint } from "./TicketStatusHint";
 
 type TicketMessage = {
   _id?: string;
@@ -30,14 +31,15 @@ type Ticket = {
   createdAt?: string;
 };
 
-const STATUS_FLOW = TICKET_STATUSES;
-
 export const STATUS_LABEL: Record<string, string> = TICKET_STATUS_LABEL;
 
+// Chip colours per status, from src/tokens.css (--ticket-*).
 export const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
-  open: { bg: "#dbeafe", fg: "#1e40af" },         // blue — newly opened
-  in_progress: { bg: "#fef3c7", fg: "#92400e" },  // amber — being worked on
-  completed: { bg: "#dcfce7", fg: "#166534" },    // green — done
+  open: { bg: "var(--ticket-open-bg)", fg: "var(--ticket-open-fg)" },
+  in_progress: { bg: "var(--ticket-progress-bg)", fg: "var(--ticket-progress-fg)" },
+  approved: { bg: "var(--ticket-approved-bg)", fg: "var(--ticket-approved-fg)" },
+  rejected: { bg: "var(--ticket-rejected-bg)", fg: "var(--ticket-rejected-fg)" },
+  completed: { bg: "var(--ticket-completed-bg)", fg: "var(--ticket-completed-fg)" },
 };
 
 export function TicketButton() {
@@ -88,12 +90,14 @@ export function TicketButton() {
   // reply the user hasn't opened shows a red pending badge on the ticket.
   const [readMap, setReadMap] = useState<Record<string, number>>({});
 
-  // Let other UI (e.g. a "Submit Draw Request" sidebar item) open this same
-  // support form, optionally pre-selecting a ticket type.
+  // Let other UI open this same panel: a "Submit Draw Request" sidebar item
+  // (optionally pre-selecting a ticket type), or a ticket alert in the bell
+  // (opening that ticket's conversation).
   useEffect(() => {
     function onOpen(e: Event) {
       const detail = (e as CustomEvent).detail || {};
-      setSelectedId(null);
+      setSelectedId(typeof detail.ticketId === "string" ? detail.ticketId : null);
+      setDraft("");
       setFields({});
       setNote("");
       if (typeof detail.type === "string") setType(detail.type);
@@ -448,22 +452,33 @@ function TicketConversation(props: {
   const { ticket, draft, setDraft, sending, uploading, onSend, onAttach } = props;
   if (!ticket) return null;
   const messages = ticket.messages ?? [];
-  const status = normalizeTicketStatus(ticket.status);
-  const current = STATUS_FLOW.indexOf(status);
+  const status = normalizeTicketStatus(ticket.status, ticket.type);
+  // Billing and Draw Request tickets run Open → In Progress → Approved →
+  // Completed (or stop at Rejected); every other type has three steps.
+  const steps = statusSteps(ticket.type, status);
+  const current = steps.indexOf(status);
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {/* Status header + stepper */}
       <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border-default)" }}>
-        <span style={{ background: STATUS_COLOR[status].bg, color: STATUS_COLOR[status].fg, borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{STATUS_LABEL[status]}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ background: STATUS_COLOR[status].bg, color: STATUS_COLOR[status].fg, borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{STATUS_LABEL[status]}</span>
+          <TicketStatusHint statuses={ticketStatusesFor(ticket.type)} />
+        </div>
+        {status === "rejected" && ticket.adminNote?.trim() && (
+          <div style={{ marginTop: 10, fontSize: 13, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>
+            <strong>Reason:</strong> {ticket.adminNote}
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", marginTop: 14 }}>
-          {STATUS_FLOW.map((s, i) => (
-            <div key={s} style={{ display: "flex", alignItems: "center", flex: i < STATUS_FLOW.length - 1 ? 1 : "0 0 auto" }}>
+          {steps.map((s, i) => (
+            <div key={s} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? 1 : "0 0 auto" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <div style={{ width: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: i <= current ? "#CB0002" : "var(--surface-subtle)", border: `2px solid ${i <= current ? "#CB0002" : "var(--border-default)"}`, color: "var(--text-inverse)", fontSize: 11 }}>{i <= current ? "✓" : ""}</div>
                 <span style={{ fontSize: 9, fontWeight: i === current ? 700 : 500, color: i <= current ? "var(--text-primary)" : "var(--text-subtle)" }}>{STATUS_LABEL[s]}</span>
               </div>
-              {i < STATUS_FLOW.length - 1 && <div style={{ flex: 1, height: 2, margin: "0 4px 16px", background: i < current ? "#CB0002" : "var(--border-default)" }} />}
+              {i < steps.length - 1 && <div style={{ flex: 1, height: 2, margin: "0 4px 16px", background: i < current ? "#CB0002" : "var(--border-default)" }} />}
             </div>
           ))}
         </div>

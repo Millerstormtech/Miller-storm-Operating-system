@@ -20,6 +20,9 @@ export type SupportCategory = {
   department: string;
   emails: string[]; // who is notified for this category
   fields: SupportField[]; // predefined fields for this reason
+  // True when a ticket of this type gets a yes/no decision (Approved or
+  // Rejected) on top of the usual statuses. See ticketStatus.ts.
+  decisions?: boolean;
 };
 
 const ACCULYNX_JOB: SupportField = {
@@ -37,6 +40,7 @@ export const SUPPORT_CATEGORIES: SupportCategory[] = [
     department: "Billing",
     emails: ["billing@millerstorm.com", "office@millerstorm.com", "mo@millerstorm.com"],
     fields: [ACCULYNX_JOB],
+    decisions: true,
   },
   {
     key: "draw_request",
@@ -45,6 +49,7 @@ export const SUPPORT_CATEGORIES: SupportCategory[] = [
     department: "Billing",
     emails: ["billing@millerstorm.com", "office@millerstorm.com", "naaman@millerstorm.com", "jaymiller@millerstorm.com"],
     fields: [ACCULYNX_JOB, { key: "amount", label: "Amount", type: "text", placeholder: "e.g. $1,200" }],
+    decisions: true,
   },
   {
     key: "tech",
@@ -69,6 +74,10 @@ export const SUPPORT_CATEGORIES: SupportCategory[] = [
 export const SUPPORT_CATEGORY_BY_KEY: Record<string, SupportCategory> = Object.fromEntries(
   SUPPORT_CATEGORIES.map((c) => [c.key, c])
 );
+
+// The ticket types that can be Approved or Rejected (Billing and Draw Request,
+// set by Youssef on 2026-10-28 after Nadine's 2026-10-27 call).
+export const DECISION_TICKET_TYPES: string[] = SUPPORT_CATEGORIES.filter((c) => c.decisions).map((c) => c.key);
 
 // Legacy ticket types from before categories existed, kept so old tickets still
 // render a sensible label in the admin table.

@@ -5,6 +5,8 @@ import { NotificationModel } from "../../../src/lib/models/Notification";
 import { UserModel } from "../../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
 import { sendSupportTicketCreatedEmail } from "../../../src/lib/email";
+import { sendPushNotification } from "../../../src/lib/firebase-admin";
+import { ticketStaffFor, ticketEmailRecipients } from "../../../src/lib/support/ticketStaff";
 import { SUPPORT_CATEGORY_BY_KEY, supportTypeLabel, supportFieldLines, SUPPORT_CATEGORIES, ownedTicketTypes } from "../../../src/lib/support/categories";
 import { computeSalesRows } from "../../../src/lib/leaderboard/compute";
 import { findSubmitterRow } from "../../../src/lib/leaderboard/identity";
@@ -57,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
     const withNumbers = (tickets as any[]).map((t) => ({
       ...t,
-      status: normalizeTicketStatus(t.status),
+      status: normalizeTicketStatus(t.status, t.type),
       number: numbers.get(t.id) ?? null,
     }));
     res.status(200).json(withNumbers);
@@ -132,23 +134,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const admins = await UserModel.find(
-      { role: "admin", deleted: { $ne: true } },
-      { id: 1, name: 1, email: 1 }
-    ).lean();
     const ticketNumber = await ticketNumberFor((ticket as any).createdAt);
 
     // Email goes to this category's addresses PLUS every admin (admins always
     // receive all tickets), deduped so a shared address isn't emailed twice.
-    const adminEmails = (admins as any[]).map((a) => a.email).filter(Boolean);
-    const recipients = Array.from(
-      new Set([...(category?.emails || []), ...adminEmails].filter(Boolean).map((e) => e.toLowerCase()))
-    );
-    const adminEmailSet = new Set(adminEmails.map((e: string) => e.toLowerCase()));
+    // Legacy types have no category, so only the admins.
+    const recipients = await ticketEmailRecipients(ticketType);
+    // An app alert + phone notification for the same people: every admin and
+    // each account on this type's list (billing@, office@, Jay, Naaman...),
+    // except whoever raised it. Before 2026-10-28 only the admins got one.
+    const staff = (await ticketStaffFor(ticketType)).filter((u) => u.id !== auth.sub);
+    const title = "🎫 New Support Request";
+    const message = `${name} raised a "${typeLabel}" request`;
 
     await Promise.all([
-      // Per-category + admin emails.
-      ...recipients.map((to) =>
+      ...recipients.map(({ to, isAdmin: recipientIsAdmin }) =>
         sendSupportTicketCreatedEmail({
           adminName: "Team",
           adminEmail: to,
@@ -157,20 +157,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           type: typeLabel,
           note: emailNote,
           ticketNumber,
-          recipientIsAdmin: adminEmailSet.has(to),
+          recipientIsAdmin,
         }).catch((e) => console.error("[ticket] email failed:", e?.message || e))
       ),
-      // In-app bell notification for every admin.
-      ...(admins as any[]).map((admin) =>
-        NotificationModel.create({
-          id: `notif-${Date.now()}-${admin.id}`,
-          userId: admin.id,
+      ...staff.map(async (u) => {
+        await NotificationModel.create({
+          id: `notif-${Date.now()}-${u.id}`,
+          userId: u.id,
           type: "ticket_new",
-          title: "🎫 New Support Request",
-          message: `${name} raised a "${typeLabel}" request`,
+          title,
+          message,
           metadata: { ticketId: ticket.id },
-        })
-      ),
+        });
+        if (u.fcmToken) {
+          await sendPushNotification(u.fcmToken, title, message, { type: "ticket_new", ticketId: ticket.id }).catch(() => {});
+        }
+      }),
     ]);
   } catch (e: any) {
     console.error("[ticket] notify failed:", e?.message || e);

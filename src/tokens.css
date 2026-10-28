@@ -132,6 +132,15 @@
      which means a number went the wrong way, and from the hard red used for
      validation errors that stop a save. */
   --warning-on-surface: #92400e;
+
+  /* Support ticket status chips (src/components/TicketButton.tsx STATUS_COLOR):
+     a pastel chip with dark text, one pair per status. Same in both themes, as
+     the chips were before they were tokenised. */
+  --ticket-open-bg: #dbeafe;        --ticket-open-fg: #1e40af;        /* blue: newly opened */
+  --ticket-progress-bg: #fef3c7;    --ticket-progress-fg: #92400e;    /* amber: being worked on */
+  --ticket-approved-bg: #ccfbf1;    --ticket-approved-fg: #115e59;    /* teal: yes, not yet paid */
+  --ticket-rejected-bg: #fee2e2;    --ticket-rejected-fg: #991b1b;    /* red: turned down */
+  --ticket-completed-bg: #dcfce7;   --ticket-completed-fg: #166534;   /* green: done */
 }
 
 /* =============================================================================

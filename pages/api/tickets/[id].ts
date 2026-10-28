@@ -4,17 +4,28 @@ import { TicketModel } from "../../../src/lib/models/Ticket";
 import { NotificationModel } from "../../../src/lib/models/Notification";
 import { UserModel } from "../../../src/lib/models/User";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
-import { sendTicketStatusEmail, sendTicketReplyEmail } from "../../../src/lib/email";
+import { sendTicketStatusEmail, sendTicketStatusStaffEmail } from "../../../src/lib/email";
 import { sendPushNotification } from "../../../src/lib/firebase-admin";
-import { ownedTicketTypes, SUPPORT_CATEGORY_BY_KEY, supportTypeLabel } from "../../../src/lib/support/categories";
+import { ownedTicketTypes, supportTypeLabel, supportFieldLines } from "../../../src/lib/support/categories";
 import { ticketNumberFor } from "../../../src/lib/support/ticketNumber";
-import { isTicketStatus, normalizeTicketStatus } from "../../../src/lib/support/ticketStatus";
+import { hasDecisions, isTicketStatusFor, normalizeTicketStatus, statusAfterMessage, TICKET_STATUS_LABEL } from "../../../src/lib/support/ticketStatus";
+import { ticketStaffFor, ticketEmailRecipients } from "../../../src/lib/support/ticketStaff";
 
-// Sent when a handler changes the status by hand. Moving back to "open" says nothing.
-const STATUS_MSG: Record<string, { title: string; message: string }> = {
-  in_progress: { title: "Ticket In Progress 🔧", message: "Your ticket is now in progress." },
-  completed: { title: "Ticket Completed 🎉", message: "Your ticket has been completed successfully — please check further." },
-};
+// The raiser's app alert + phone notification when a handler changes the
+// status by hand. Moving back to "open" says nothing.
+function statusMessage(status: string, typeLabel: string, decidedBy: string, reason: string): { title: string; message: string } | null {
+  switch (status) {
+    case "in_progress": return { title: "Ticket In Progress 🔧", message: "Your ticket is now in progress." };
+    case "approved": return { title: "Ticket Approved ✅", message: `Your ${typeLabel} ticket was approved by ${decidedBy}.` };
+    case "rejected": return { title: "Ticket Not Approved", message: `Your ${typeLabel} ticket was not approved.${reason ? ` Reason: ${reason}` : ""}` };
+    case "completed": return { title: "Ticket Completed 🎉", message: "Your ticket has been completed successfully — please check further." };
+    default: return null;
+  }
+}
+
+// Statuses that also email the submission list on a Billing or Draw Request
+// ticket, so billing and office always learn the outcome (Nadine, 2026-10-27).
+const STAFF_EMAIL_STATUSES = ["approved", "rejected", "completed"];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -38,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // for that type's tickets — they can read, reply, and change status just like
   // an admin, but only for tickets whose type they own. Resolve their owned types
   // once so every method below can authorize against the ticket's own type.
-  const me = await UserModel.findOne({ id: auth.sub }, { email: 1 }).lean() as any;
+  const me = await UserModel.findOne({ id: auth.sub }, { email: 1, name: 1 }).lean() as any;
   const ownedTypes = ownedTicketTypes(me?.email);
   const ownsType = (t: string) => ownedTypes.includes(t);
 
@@ -60,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ticket.staffSeenAt = new Date();
       await TicketModel.updateOne({ id }, { $set: { staffSeenAt: ticket.staffSeenAt } });
     }
-    res.status(200).json({ ...ticket, status: normalizeTicketStatus(ticket.status) });
+    res.status(200).json({ ...ticket, status: normalizeTicketStatus(ticket.status, ticket.type) });
     return;
   }
 
@@ -110,34 +121,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // sync with the GET handler's "opening it counts as seen" rule.
     if (isStaff) (ticket as any).staffSeenAt = new Date();
 
-    // An old ticket may still hold a retired status, which the schema would
-    // now refuse on save.
-    ticket.status = normalizeTicketStatus(ticket.status);
-    // A handler answering a new ticket means someone has picked it up — it
-    // moves to "in_progress" by itself (the reply already notifies the raiser,
-    // so no separate status message). The raiser adding details to their own
-    // open ticket leaves it open.
-    if (isStaff && auth.sub !== ticket.userId && ticket.status === "open") {
-      ticket.status = "in_progress";
-    }
-    // The raiser writing again on a "completed" ticket means it wasn't
-    // actually done — reopen it to "in_progress" automatically instead of
-    // leaving a green "Completed" chip sitting on an active conversation.
-    if (!isStaff && ticket.status === "completed") {
-      ticket.status = "in_progress";
-    }
+    // An old ticket may still hold a status its type no longer has; read it as
+    // the nearest one first. Then the automatic moves (statusAfterMessage): a
+    // handler answering a new ticket picks it up (the reply already notifies the
+    // raiser, so no separate status message), the raiser writing again on a
+    // completed one reopens it, and a decision (Approved/Rejected) never moves.
+    ticket.status = statusAfterMessage(normalizeTicketStatus(ticket.status, ticket.type), {
+      fromStaff: isStaff,
+      isRaiser: auth.sub === ticket.userId,
+    });
     await ticket.save();
 
     // A short preview for notifications (photo/video when there's no caption).
     const preview = text || (mediaType === "video" ? "🎬 Video" : mediaUrl ? "📷 Photo" : "");
 
-    // Notify the OTHER side about the new reply.
+    // Notify the OTHER side about the new reply, by app alert + phone
+    // notification only. Chat messages stopped emailing on 2026-10-28 (Nadine:
+    // "too spammy"); the new-ticket and status-change emails still go.
     try {
-      const typeLabel = supportTypeLabel(ticket.type);
-      const ticketNumber = await ticketNumberFor((ticket as any).createdAt);
-      if (isStaff) {
-        // Staff (admin or the type's owner) replied → notify the raiser (bell +
-        // push + email), so they know a question/answer is waiting.
+      if (isStaff && auth.sub !== ticket.userId) {
+        // Staff (admin or the type's owner) replied → notify the raiser.
         await NotificationModel.create({
           id: `notif-${Date.now()}-${ticket.userId}`,
           userId: ticket.userId,
@@ -153,40 +156,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ticketId: ticket.id,
           });
         }
-        if (ticket.email) {
-          await sendTicketReplyEmail({ to: ticket.email, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: true, ticketNumber }).catch(() => {});
-        }
       } else {
-        // Raiser replied → notify every admin (bell + push) so a handler sees it.
-        const admins = await UserModel.find(
-          { role: "admin", deleted: { $ne: true } },
-          { id: 1, fcmToken: 1, email: 1 }
-        ).lean() as any[];
-        await Promise.all(admins.map(async (admin) => {
+        // Raiser replied → notify everyone who handles this ticket type (every
+        // admin plus the type's own people), except the sender.
+        const staff = (await ticketStaffFor(ticket.type)).filter((u) => u.id !== auth.sub);
+        await Promise.all(staff.map(async (u) => {
           await NotificationModel.create({
-            id: `notif-${Date.now()}-${admin.id}`,
-            userId: admin.id,
+            id: `notif-${Date.now()}-${u.id}`,
+            userId: u.id,
             type: "ticket_reply",
             title: "💬 New reply on a ticket",
             message: `${senderName}: ${preview.slice(0, 80)}`,
             metadata: { ticketId: ticket.id },
           });
-          if (admin.fcmToken) {
-            await sendPushNotification(admin.fcmToken, "💬 New reply on a ticket", `${senderName}: ${preview.slice(0, 100)}`, {
+          if (u.fcmToken) {
+            await sendPushNotification(u.fcmToken, "💬 New reply on a ticket", `${senderName}: ${preview.slice(0, 100)}`, {
               type: "ticket_reply",
               ticketId: ticket.id,
             }).catch(() => {});
           }
         }));
-        // Email the handlers: every admin PLUS this type's owner addresses (same
-        // people the original ticket went to), deduped.
-        const adminEmails = admins.map((a) => a.email).filter(Boolean);
-        const ownerEmails = SUPPORT_CATEGORY_BY_KEY[ticket.type]?.emails || [];
-        const recipients = Array.from(new Set([...ownerEmails, ...adminEmails].filter(Boolean).map((e) => e.toLowerCase())));
-        const adminEmailSet = new Set(adminEmails.map((e: string) => e.toLowerCase()));
-        await Promise.all(recipients.map((to) =>
-          sendTicketReplyEmail({ to, type: typeLabel, senderName, text, mediaUrl, mediaType, forRaiser: false, recipientIsAdmin: adminEmailSet.has(to), ticketNumber }).catch(() => {})
-        ));
       }
     } catch (e: any) {
       console.error("[ticket] reply notify failed:", e?.message || e);
@@ -198,10 +187,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ---- PATCH: change status (admin, or the type's owner) ---------------------
   const { status, adminNote } = req.body || {};
-  if (!isTicketStatus(status)) {
-    res.status(400).json({ error: "Invalid status" });
-    return;
-  }
 
   const ticket = await TicketModel.findOne({ id });
   if (!ticket) {
@@ -214,52 +199,93 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(403).json({ error: "Forbidden" });
     return;
   }
+  // Approved/Rejected exist only on Billing and Draw Request tickets.
+  if (!isTicketStatusFor(ticket.type, status)) {
+    res.status(400).json({ error: "Invalid status" });
+    return;
+  }
 
+  const previous = normalizeTicketStatus(ticket.status, ticket.type);
+  // The optional reason goes with a rejection only; it is stored so the raiser
+  // can see it on the ticket.
+  const reason = status === "rejected" ? (adminNote ?? "").toString().trim().slice(0, 1000) : "";
   ticket.status = status;
-  if (adminNote !== undefined) ticket.adminNote = adminNote;
+  if (status === "rejected") ticket.adminNote = reason;
+  else if (adminNote !== undefined) ticket.adminNote = adminNote;
   await ticket.save();
 
-  // Email + in-app notification + push to the user who raised it.
-  const msg = STATUS_MSG[status];
-  if (msg) {
-    try {
-      await sendTicketStatusEmail({
-        status,
-        name: ticket.name,
-        email: ticket.email,
-        // The readable name ("Draw Request"), not the stored key ("draw_request").
-        type: supportTypeLabel(ticket.type),
-        adminNote: ticket.adminNote,
-        ticketNumber: await ticketNumberFor((ticket as any).createdAt),
-      });
-    } catch (e: any) {
-      console.error("[ticket] status email failed:", e?.message || e);
-    }
+  // Picking the status a ticket already has notifies nobody.
+  if (status !== previous) {
+    const typeLabel = supportTypeLabel(ticket.type);
+    const decidedBy = me?.name || "the team";
+    const ticketNumber = await ticketNumberFor((ticket as any).createdAt);
 
-    try {
-      await NotificationModel.create({
-        id: `notif-${Date.now()}-${ticket.userId}`,
-        userId: ticket.userId,
-        type: "ticket_update",
-        title: msg.title,
-        message: msg.message,
-        metadata: { ticketId: ticket.id, status },
-      });
-    } catch (e: any) {
-      console.error("[ticket] user notification failed:", e?.message || e);
-    }
-
-    try {
-      const user = await UserModel.findOne({ id: ticket.userId }, { fcmToken: 1 }).lean() as any;
-      if (user?.fcmToken) {
-        await sendPushNotification(user.fcmToken, msg.title, msg.message, {
-          type: "ticket_update",
-          ticketId: ticket.id,
+    // Email + in-app notification + push to the user who raised it.
+    const msg = statusMessage(status, typeLabel, decidedBy, reason);
+    if (msg) {
+      try {
+        await sendTicketStatusEmail({
           status,
+          name: ticket.name,
+          email: ticket.email,
+          type: typeLabel,
+          decidedBy,
+          adminNote: reason,
+          ticketNumber,
         });
+      } catch (e: any) {
+        console.error("[ticket] status email failed:", e?.message || e);
       }
-    } catch (e: any) {
-      console.error("[ticket] user push failed:", e?.message || e);
+
+      try {
+        await NotificationModel.create({
+          id: `notif-${Date.now()}-${ticket.userId}`,
+          userId: ticket.userId,
+          type: "ticket_update",
+          title: msg.title,
+          message: msg.message,
+          metadata: { ticketId: ticket.id, status },
+        });
+      } catch (e: any) {
+        console.error("[ticket] user notification failed:", e?.message || e);
+      }
+
+      try {
+        const user = await UserModel.findOne({ id: ticket.userId }, { fcmToken: 1 }).lean() as any;
+        if (user?.fcmToken) {
+          await sendPushNotification(user.fcmToken, msg.title, msg.message, {
+            type: "ticket_update",
+            ticketId: ticket.id,
+            status,
+          });
+        }
+      } catch (e: any) {
+        console.error("[ticket] user push failed:", e?.message || e);
+      }
+    }
+
+    // A decision (or Completed) on a Billing or Draw Request ticket also goes to
+    // everyone who got the new-ticket email: the type's list plus every admin.
+    if (hasDecisions(ticket.type) && STAFF_EMAIL_STATUSES.includes(status)) {
+      try {
+        const recipients = await ticketEmailRecipients(ticket.type);
+        const details = supportFieldLines(ticket.type, ticket.fields).join(", ");
+        await Promise.all(recipients.map(({ to, isAdmin: recipientIsAdmin }) =>
+          sendTicketStatusStaffEmail({
+            to,
+            recipientIsAdmin,
+            userName: ticket.name,
+            type: typeLabel,
+            status: TICKET_STATUS_LABEL[status],
+            decidedBy,
+            details,
+            adminNote: reason,
+            ticketNumber,
+          }).catch((e) => console.error("[ticket] staff status email failed:", e?.message || e))
+        ));
+      } catch (e: any) {
+        console.error("[ticket] staff status emails failed:", e?.message || e);
+      }
     }
   }
 
