@@ -292,22 +292,9 @@ Open it here: {{ticketsUrl}}
 ${SIGN_OFF}`,
     variables: ["{{adminName}}", "{{adminFirstName}}", "{{userName}}", "{{userEmail}}", "{{type}}", "{{note}}", "{{ticketNumber}}", "{{ticketsUrl}}"],
   },
-  ticketReply: {
-    subject: "New reply on ticket {{ticketNumber}} — {{type}}",
-    body: `{{intro}}
-
-* Ticket: {{ticketNumber}}
-* Ticket type: {{type}}
-* From: {{senderName}}
-
-Message:
-{{message}}
-
-{{howToReply}}
-
-${SIGN_OFF}`,
-    variables: ["{{intro}}", "{{type}}", "{{senderName}}", "{{message}}", "{{ticketNumber}}", "{{howToReply}}"],
-  },
+  // No "ticket reply" email any more: since 2026-10-28 chat messages notify by
+  // app alert and phone notification only (Nadine: emailing every message was
+  // "too spammy").
   ticketInProgress: {
     subject: "Your ticket {{ticketNumber}} is now in progress 🔧",
     body: `Hi {{firstName}},
@@ -329,6 +316,56 @@ To see your ticket, open Miller Storm ({{appUrl}}) and ${SUPPORT_BUTTON_HINT}.
 
 ${SIGN_OFF}`,
     variables: ["{{name}}", "{{firstName}}", "{{type}}", "{{ticketNumber}}"],
+  },
+  // Billing and Draw Request tickets only (the decision types).
+  ticketApproved: {
+    subject: "Your ticket {{ticketNumber}} has been approved ✅",
+    body: `Hi {{firstName}},
+
+Good news: your {{type}} ticket ({{ticketNumber}}) has been approved by {{decidedBy}}.
+
+To see your ticket, open Miller Storm ({{appUrl}}) and ${SUPPORT_BUTTON_HINT}.
+
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{type}}", "{{ticketNumber}}", "{{decidedBy}}"],
+  },
+  // The Reason line is left out when no reason was given.
+  ticketRejected: {
+    subject: "Update on your ticket {{ticketNumber}}",
+    body: `Hi {{firstName}},
+
+Your {{type}} ticket ({{ticketNumber}}) was not approved by {{decidedBy}}.
+
+Reason: {{adminNote}}
+
+If you have questions, reply to the ticket in the app. To see it, open Miller Storm ({{appUrl}}) and ${SUPPORT_BUTTON_HINT}.
+
+${SIGN_OFF}`,
+    variables: ["{{name}}", "{{firstName}}", "{{type}}", "{{ticketNumber}}", "{{decidedBy}}", "{{adminNote}}"],
+  },
+  // To everyone who got the new-ticket email, when a Billing or Draw Request
+  // ticket is Approved, Rejected or Completed. Details and Reason lines are
+  // left out when empty.
+  ticketStatusStaff: {
+    subject: "Ticket {{ticketNumber}} {{status}}: {{type}} from {{userName}}",
+    body: `Hi {{adminFirstName}},
+
+{{decidedBy}} marked {{userName}}'s {{type}} ticket as {{status}}.
+
+**Ticket Details**
+
+* Ticket: {{ticketNumber}}
+* Submitted By: {{userName}}
+* Ticket Type: {{type}}
+* Details: {{details}}
+* Status: {{status}}
+* Changed By: {{decidedBy}}
+* Reason: {{adminNote}}
+
+Open it here: {{ticketsUrl}}
+
+${SIGN_OFF}`,
+    variables: ["{{adminName}}", "{{adminFirstName}}", "{{userName}}", "{{type}}", "{{details}}", "{{status}}", "{{decidedBy}}", "{{adminNote}}", "{{ticketNumber}}", "{{ticketsUrl}}"],
   },
 };
 

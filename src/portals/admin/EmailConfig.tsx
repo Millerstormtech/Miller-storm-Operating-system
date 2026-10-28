@@ -17,9 +17,11 @@ const EMAIL_LABELS: Record<string, string> = {
   managerDeadlineMissed: "Training Deadline Missed (Sales Team Lead)",
   weeklyTeamDigest: "Weekly Team Digest (Sales Team Lead)",
   supportTicketCreated: "Support Ticket Created (Admin)",
-  ticketReply: "Ticket Reply (User & Admin)",
   ticketInProgress: "Ticket In Progress (User)",
+  ticketApproved: "Ticket Approved (User)",
+  ticketRejected: "Ticket Rejected (User)",
   ticketCompleted: "Ticket Completed (User)",
+  ticketStatusStaff: "Ticket Approved / Rejected / Completed (Billing & Staff)",
 };
 
 // A template with no label still shows (by its key) rather than as a blank row.

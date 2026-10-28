@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { renderTemplate, APP_LINKS, SUPPORT_BUTTON_HINT, branchAndLead } from "./emailTemplates";
+import { renderTemplate, APP_LINKS, branchAndLead } from "./emailTemplates";
 import { getEmailTemplate } from "./emailTemplatesServer";
 import { roleDisplayName } from "./roleLabels";
 import { formatTicketNumber } from "./support/ticketNumberFormat";
@@ -304,58 +304,23 @@ export async function sendSupportTicketCreatedEmail(params: {
   return sendEmail({ to: params.adminEmail, subject, html, text });
 }
 
-// A new message in a ticket conversation. Sent to the OTHER side: the raiser when
-// staff replies, or the handlers (admins + the type's owners) when the raiser
-// replies — so the whole Q&A of a ticket is emailed, not just its creation.
-export async function sendTicketReplyEmail(params: {
-  to: string;
-  type: string;        // the ticket type's display label
-  senderName: string;
-  text: string;
-  mediaUrl?: string;
-  mediaType?: string;  // 'image' | 'video'
-  forRaiser: boolean;  // true → email to the raiser; false → to a handler
-  recipientIsAdmin?: boolean; // for a handler: admin page vs the owner inbox
-  ticketNumber: number;
-}) {
-  const tmpl = await getEmailTemplate("ticketReply");
-  if (tmpl.status === "draft") { console.log("[Email] ticketReply is draft — skipping"); return; }
-  const intro = params.forRaiser
-    ? "There's a new reply on your support ticket. Please check it and respond."
-    : "A user replied on their support ticket. Here's their message.";
-  // Build the message body: the text, then a viewable link when a photo/video
-  // was attached (most email clients auto-link the URL).
-  const parts: string[] = [];
-  if (params.text) parts.push(params.text);
-  if (params.mediaUrl) {
-    const abs = params.mediaUrl.startsWith("http") ? params.mediaUrl : `https://millerstorm.tech${params.mediaUrl}`;
-    parts.push(`${params.mediaType === "video" ? "🎬 Video attachment" : "📷 Photo attachment"} — view it here:\n${abs}`);
-  }
-  const message = parts.join("\n\n") || "(no content)";
-  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
-    "{{intro}}": intro,
-    "{{type}}": params.type,
-    "{{senderName}}": params.senderName,
-    "{{message}}": message,
-    "{{ticketNumber}}": formatTicketNumber(params.ticketNumber),
-    // The raiser has no tickets page, only the header's Support button.
-    "{{howToReply}}": params.forRaiser
-      ? `To see the conversation and reply, open Miller Storm (${APP_LINKS.appUrl}) and ${SUPPORT_BUTTON_HINT}.`
-      : `See the conversation and reply here: ${params.recipientIsAdmin ? APP_LINKS.adminTicketsUrl : APP_LINKS.ownerTicketsUrl}`,
-  });
-  return sendEmail({ to: params.to, subject, html, text });
-}
+// No email for a ticket chat message any more (2026-10-28): replies notify by
+// app alert and phone notification only. See pages/api/tickets/[id].ts.
 
 const TICKET_STATUS_TEMPLATE: Record<string, string> = {
   in_progress: "ticketInProgress",
+  approved: "ticketApproved",
+  rejected: "ticketRejected",
   completed: "ticketCompleted",
 };
 
+// To the person who raised the ticket, when a handler changes its status.
 export async function sendTicketStatusEmail(params: {
   status: string;
   name: string;
   email: string;
   type: string;
+  decidedBy?: string;
   adminNote?: string;
   ticketNumber: number;
 }) {
@@ -366,10 +331,42 @@ export async function sendTicketStatusEmail(params: {
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": params.name,
     "{{type}}": params.type,
-    "{{adminNote}}": params.adminNote || "",
+    "{{decidedBy}}": params.decidedBy || "the team",
+    // null drops the "Reason:" line when no reason was given.
+    "{{adminNote}}": params.adminNote?.trim() ? params.adminNote.trim() : null,
     "{{ticketNumber}}": formatTicketNumber(params.ticketNumber),
   });
   return sendEmail({ to: params.email, subject, html, text });
+}
+
+// To everyone who got the new-ticket email, when a Billing or Draw Request
+// ticket is Approved, Rejected or Completed, so billing and office always know
+// the outcome whoever decided it (Nadine, 2026-10-27).
+export async function sendTicketStatusStaffEmail(params: {
+  to: string;
+  recipientIsAdmin: boolean;
+  userName: string;
+  type: string;
+  status: string;      // the status's display label
+  decidedBy: string;
+  details?: string;    // "Acculynx Job#: 123, Amount: $4,000"
+  adminNote?: string;
+  ticketNumber: number;
+}) {
+  const tmpl = await getEmailTemplate("ticketStatusStaff");
+  if (tmpl.status === "draft") { console.log("[Email] ticketStatusStaff is draft — skipping"); return; }
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{adminName}}": "Team",
+    "{{userName}}": params.userName,
+    "{{type}}": params.type,
+    "{{status}}": params.status,
+    "{{decidedBy}}": params.decidedBy,
+    "{{details}}": params.details?.trim() ? params.details.trim() : null,
+    "{{adminNote}}": params.adminNote?.trim() ? params.adminNote.trim() : null,
+    "{{ticketNumber}}": formatTicketNumber(params.ticketNumber),
+    "{{ticketsUrl}}": params.recipientIsAdmin ? APP_LINKS.adminTicketsUrl : APP_LINKS.ownerTicketsUrl,
+  });
+  return sendEmail({ to: params.to, subject, html, text });
 }
 
 /**
